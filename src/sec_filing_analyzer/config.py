@@ -29,6 +29,7 @@ class StorageConfig:
     # Graph store settings
     max_cluster_size: int = int(os.getenv("GRAPH_MAX_CLUSTER_SIZE", "5"))
     use_neo4j: bool = os.getenv("USE_NEO4J", "false").lower() == "true"
+    graph_store_path: Optional[Path] = None
     
     # Vector store settings
     vector_store_type: str = os.getenv("VECTOR_STORE_TYPE", "simple")  # simple, pinecone, weaviate, etc.
@@ -40,6 +41,11 @@ class StorageConfig:
         if self.vector_store_path is None:
             self.vector_store_path = Path("data/vector_store")
             self.vector_store_path.mkdir(parents=True, exist_ok=True)
+            
+        # Set graph store path if not specified
+        if self.graph_store_path is None:
+            self.graph_store_path = Path("data/graph_store")
+            self.graph_store_path.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class ETLConfig:
@@ -95,5 +101,6 @@ STORAGE_CONFIG: Dict[str, Any] = {
     "max_cluster_size": storage_config.max_cluster_size,
     "use_neo4j": storage_config.use_neo4j,
     "vector_store_type": storage_config.vector_store_type,
-    "vector_store_path": str(storage_config.vector_store_path)
+    "vector_store_path": str(storage_config.vector_store_path),
+    "graph_store_path": str(storage_config.graph_store_path)
 } 

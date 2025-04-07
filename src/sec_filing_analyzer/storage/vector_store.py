@@ -106,6 +106,37 @@ class PineconeVectorStore(VectorStoreInterface):
         except Exception as e:
             logger.error(f"Error searching vectors in Pinecone: {str(e)}")
             return []
+    
+    def get_vector(
+        self,
+        vector_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get a vector by ID from Pinecone."""
+        try:
+            result = self.index.fetch(ids=[vector_id])
+            if vector_id in result.vectors:
+                vector = result.vectors[vector_id]
+                return {
+                    "id": vector.id,
+                    "values": vector.values,
+                    "metadata": vector.metadata
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Error getting vector from Pinecone: {str(e)}")
+            return None
+    
+    def delete_vector(
+        self,
+        vector_id: str
+    ) -> bool:
+        """Delete a vector by ID from Pinecone."""
+        try:
+            self.index.delete(ids=[vector_id])
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting vector from Pinecone: {str(e)}")
+            return False
 
 class LlamaIndexVectorStore(VectorStoreInterface):
     """LlamaIndex implementation of vector store."""
@@ -117,10 +148,10 @@ class LlamaIndexVectorStore(VectorStoreInterface):
     ):
         """Initialize LlamaIndex vector store."""
         try:
-            from llama_index import VectorStoreIndex, SimpleDirectoryReader, Document
-            from llama_index.vector_stores import SimpleVectorStore
-            from llama_index.storage.storage_context import StorageContext
-            from llama_index.embeddings import OpenAIEmbedding
+            from llama_index.core import VectorStoreIndex, Document
+            from llama_index.core.vector_stores import SimpleVectorStore
+            from llama_index.core.storage import StorageContext
+            from llama_index.embeddings.openai import OpenAIEmbedding
             
             self.store_dir = store_dir
             self.index_name = index_name
@@ -129,8 +160,9 @@ class LlamaIndexVectorStore(VectorStoreInterface):
             self.vector_store = SimpleVectorStore()
             self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
             
-            self.index = VectorStoreIndex.from_vector_store(
-                self.vector_store,
+            # Create an empty index first
+            self.index = VectorStoreIndex(
+                [],
                 storage_context=self.storage_context,
                 embed_model=self.embedding_model
             )
@@ -148,19 +180,23 @@ class LlamaIndexVectorStore(VectorStoreInterface):
         self,
         vectors: List[List[float]],
         ids: List[str],
-        metadata: Optional[List[Dict[str, Any]]] = None
+        metadata: Optional[List[Dict[str, Any]]] = None,
+        texts: Optional[List[str]] = None
     ) -> bool:
         """Upsert vectors to LlamaIndex."""
         try:
-            from llama_index import Document
+            from llama_index.core import Document
             
             documents = []
             for i, (vector, id_) in enumerate(zip(vectors, ids)):
                 doc_metadata = metadata[i] if metadata else {}
                 doc_metadata["vector_id"] = id_
                 
+                # Use the text if provided, otherwise use a placeholder
+                text = texts[i] if texts and i < len(texts) else f"Document {id_}"
+                
                 doc = Document(
-                    text="",  # Empty text as we only care about the embedding
+                    text=text,
                     embedding=vector,
                     metadata=doc_metadata
                 )
@@ -182,23 +218,69 @@ class LlamaIndexVectorStore(VectorStoreInterface):
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors in LlamaIndex."""
         try:
+            from llama_index.core.vector_stores.types import VectorStoreQuery
+            
             query = VectorStoreQuery(
-                query_vector=query_vector,
+                query_embedding=query_vector,
                 similarity_top_k=top_k,
                 filters=filter_metadata
             )
             
-            results = self.index.query(query)
+            results = self.vector_store.query(query)
             
             return [
                 {
                     "id": node.metadata.get("vector_id"),
                     "score": score,
-                    "metadata": node.metadata
+                    "metadata": node.metadata,
+                    "text": node.text
                 }
-                for node, score in zip(results.nodes, results.scores)
+                for node, score in zip(results.nodes, results.similarities)
             ]
-            
         except Exception as e:
             logger.error(f"Error searching vectors in LlamaIndex: {str(e)}")
-            return [] 
+            return []
+    
+    def get_vector(
+        self,
+        vector_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """Get a vector by ID from LlamaIndex."""
+        try:
+            from llama_index.core.vector_stores.types import VectorStoreQuery
+            
+            # This is a simplified implementation
+            # You might want to implement a more efficient way to retrieve vectors
+            query = VectorStoreQuery(
+                query_embedding=[0] * 1536,  # Dummy vector
+                similarity_top_k=1,
+                filters={"vector_id": vector_id}
+            )
+            
+            results = self.vector_store.query(query)
+            if results.nodes:
+                node = results.nodes[0]
+                return {
+                    "id": node.metadata.get("vector_id"),
+                    "values": node.embedding,
+                    "metadata": node.metadata,
+                    "text": node.text
+                }
+            return None
+        except Exception as e:
+            logger.error(f"Error getting vector from LlamaIndex: {str(e)}")
+            return None
+    
+    def delete_vector(
+        self,
+        vector_id: str
+    ) -> bool:
+        """Delete a vector by ID from LlamaIndex."""
+        try:
+            # This is a simplified implementation
+            # You might want to implement a more efficient way to delete vectors
+            self.index.delete_nodes([vector_id])
+            return True
+        except Exception as e:
+            logger.error(f"Error deleting vector from LlamaIndex: {str(e)}")
+            return False 

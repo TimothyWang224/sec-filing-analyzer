@@ -8,13 +8,13 @@ import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
-from edgar import Company, Filing
-from edgar.files.htmltools import chunk
+from llama_index.embeddings.openai import OpenAIEmbedding
 
-from ..config import ETL_CONFIG, STORAGE_CONFIG
-from ..storage import GraphStore, LlamaIndexVectorStore
-from ..data_retrieval.filing_processor import FilingProcessor
-from ..data_retrieval.file_storage import FileStorage
+from sec_filing_analyzer.config import ETLConfig, StorageConfig
+from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
+from sec_filing_analyzer.data_retrieval import SECFilingsDownloader, FilingProcessor
+from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
+from sec_filing_analyzer.data_processing.chunking import FilingChunker
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -31,18 +31,31 @@ class SECFilingETLPipeline:
         vector_store: Optional[LlamaIndexVectorStore] = None,
         filing_processor: Optional[FilingProcessor] = None,
         file_storage: Optional[FileStorage] = None,
+        sec_downloader: Optional[SECFilingsDownloader] = None,
     ):
         """Initialize the ETL pipeline."""
         self.graph_store = graph_store or GraphStore()
         self.vector_store = vector_store or LlamaIndexVectorStore(
-            store_dir=STORAGE_CONFIG["vector_store_path"]
+            store_dir=StorageConfig().vector_store_path
+        )
+        self.file_storage = file_storage or FileStorage(
+            base_dir=ETLConfig().cache_dir.parent / "filings"
         )
         self.filing_processor = filing_processor or FilingProcessor(
             graph_store=self.graph_store,
             vector_store=self.vector_store
         )
-        self.file_storage = file_storage or FileStorage(
-            base_dir=ETL_CONFIG["cache_dir"].parent / "filings"
+        self.sec_downloader = sec_downloader or SECFilingsDownloader(
+            file_storage=self.file_storage
+        )
+        
+        # Initialize embedding model
+        self.embedding_model = OpenAIEmbedding()
+        
+        # Initialize filing chunker
+        self.filing_chunker = FilingChunker(
+            max_tokens=4000,  # Maximum tokens per chunk
+            chunk_overlap=200  # Overlap between chunks
         )
     
     def process_company(
@@ -61,91 +74,61 @@ class SECFilingETLPipeline:
             start_date: Start date for filing range
             end_date: End date for filing range
         """
-        # Get company
-        company = Company(ticker)
-        
-        # Get filings
-        filings = company.get_filings(
-            form_types=filing_types or ETL_CONFIG["default_filing_types"],
+        # Download filings
+        downloaded_filings = self.sec_downloader.download_company_filings(
+            ticker=ticker,
+            filing_types=filing_types or ETLConfig().filing_types,
             start_date=start_date,
             end_date=end_date
         )
         
         # Process each filing
-        for filing in filings:
+        for filing_data in downloaded_filings:
             try:
-                self.process_filing(filing)
+                self.process_filing_data(filing_data)
             except Exception as e:
-                logger.error(f"Error processing filing {filing.accession_number}: {e}")
+                logger.error(f"Error processing filing {filing_data['accession_number']}: {e}")
     
-    def process_filing(self, filing: Filing) -> None:
+    def process_filing_data(self, filing_data: Dict[str, Any]) -> None:
         """
-        Process a single filing.
+        Process filing data.
         
         Args:
-            filing: The filing to process
+            filing_data: The filing data to process
         """
-        # Download filing
-        filing.download()
+        # Get filing content
+        filing_content = self.file_storage.load_raw_filing(filing_data['accession_number'])
+        if not filing_content:
+            logger.error(f"Could not load content for filing {filing_data['accession_number']}")
+            return
+            
+        # Get HTML content if available
+        if filing_data.get('has_html'):
+            try:
+                html_content = self.file_storage.load_html_filing(filing_data['accession_number'])
+                if html_content:
+                    filing_content['html'] = html_content
+            except Exception as e:
+                logger.warning(f"Could not load HTML content for filing {filing_data['accession_number']}: {e}")
         
-        # Download HTML content if available
-        html_content = None
-        try:
-            html_content = filing.download_html()
-            logger.info(f"Downloaded HTML content for filing {filing.accession_number}")
-        except Exception as e:
-            logger.warning(f"Could not download HTML content for filing {filing.accession_number}: {e}")
+        # Process filing with chunker
+        processed_data = self.filing_chunker.process_filing(filing_data, filing_content)
         
-        # Extract year from filing date
-        year = filing.filing_date.split("-")[0]
-        
-        # Create metadata with all available information
-        metadata = {
-            "accession_number": filing.accession_number,
-            "form": filing.form,
-            "filing_date": filing.filing_date,
-            "company": filing.company,
-            "ticker": filing.ticker,
-            "description": filing.description,
-            "url": filing.url,
-            "has_html": html_content is not None
-        }
-        
-        # Save raw filing to disk
-        self.file_storage.save_raw_filing(
-            filing_id=filing.accession_number,
-            content=filing.text,
-            metadata=metadata
-        )
-        
-        # Save HTML filing to disk if available
-        if html_content:
-            self.file_storage.save_html_filing(
-                filing_id=filing.accession_number,
-                html_content=html_content,
-                metadata=metadata
-            )
-        
-        # Process filing
-        processed_data = self.filing_processor.process_filing({
-            "id": filing.accession_number,
-            "text": filing.text,
-            "embedding": filing.embedding,
-            "metadata": metadata
-        })
+        # Process filing with embeddings
+        self.filing_processor.process_filing(processed_data)
         
         # Save processed filing to disk
         self.file_storage.save_processed_filing(
-            filing_id=filing.accession_number,
+            filing_id=filing_data['accession_number'],
             processed_data=processed_data,
-            metadata=metadata
+            metadata=filing_data
         )
         
         # Cache filing for quick access
         self.file_storage.cache_filing(
-            filing_id=filing.accession_number,
+            filing_id=filing_data['accession_number'],
             filing_data={
-                "metadata": metadata,
+                "metadata": filing_data,
                 "processed_data": processed_data
             }
         ) 

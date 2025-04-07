@@ -45,6 +45,9 @@ class FilingProcessor:
         text = filing_data["text"]
         embedding = filing_data["embedding"]
         metadata = filing_data["metadata"]
+        chunks = filing_data.get("chunks")
+        chunk_embeddings = filing_data.get("chunk_embeddings", [])
+        chunk_texts = filing_data.get("chunk_texts", [])
         
         # Check if filing is already processed
         cached_data = self.file_storage.load_cached_filing(filing_id)
@@ -54,17 +57,40 @@ class FilingProcessor:
         
         # Process filing
         try:
-            # Add to graph store with all metadata
+            # Add full document to vector store
+            self.vector_store.upsert_vectors(
+                vectors=[embedding],
+                ids=[filing_id],
+                metadata=[metadata],
+                texts=[text]
+            )
+            
+            # Add chunks to vector store if available
+            if chunks and chunk_embeddings and chunk_texts:
+                chunk_ids = [f"{filing_id}_chunk_{i}" for i in range(len(chunks))]
+                chunk_metadata = []
+                for i, chunk in enumerate(chunks):
+                    chunk_meta = metadata.copy()
+                    chunk_meta.update({
+                        "chunk_id": i,
+                        "parent_filing": filing_id,
+                        "chunk_metadata": chunk
+                    })
+                    chunk_metadata.append(chunk_meta)
+                
+                self.vector_store.upsert_vectors(
+                    vectors=chunk_embeddings,
+                    ids=chunk_ids,
+                    metadata=chunk_metadata,
+                    texts=chunk_texts
+                )
+            
+            # Add to graph store with vector reference and chunks
             self.graph_store.add_filing(
                 filing_id=filing_id,
                 text=text,
-                metadata=metadata
-            )
-            
-            # Add to vector store with all metadata
-            self.vector_store.upsert_vectors(
-                vectors=[(filing_id, embedding)],
-                metadata=[metadata]
+                metadata=metadata,
+                chunks=chunks
             )
             
             # Create processed data with all metadata
@@ -73,6 +99,9 @@ class FilingProcessor:
                 "text": text,
                 "embedding": embedding,
                 "metadata": metadata,
+                "chunks": chunks,
+                "chunk_embeddings": chunk_embeddings,
+                "chunk_texts": chunk_texts,
                 "graph_nodes": self.graph_store.get_filing_nodes(filing_id),
                 "graph_relationships": self.graph_store.get_filing_relationships(filing_id)
             }

@@ -27,7 +27,8 @@ class FileStorage:
         raw_dir: Optional[Path] = None,
         processed_dir: Optional[Path] = None,
         cache_dir: Optional[Path] = None,
-        html_dir: Optional[Path] = None
+        html_dir: Optional[Path] = None,
+        xml_dir: Optional[Path] = None
     ):
         """
         Initialize the file storage.
@@ -38,6 +39,7 @@ class FileStorage:
             processed_dir: Directory for processed filing data
             cache_dir: Directory for cached filing data
             html_dir: Directory for HTML filing content
+            xml_dir: Directory for XML filing content
         """
         # Set up directories
         self.base_dir = base_dir or Path("data/filings")
@@ -45,12 +47,14 @@ class FileStorage:
         self.processed_dir = processed_dir or self.base_dir / "processed"
         self.cache_dir = cache_dir or self.base_dir / "cache"
         self.html_dir = html_dir or self.base_dir / "html"
+        self.xml_dir = xml_dir or self.base_dir / "xml"
         
         # Create directories
         self.raw_dir.mkdir(parents=True, exist_ok=True)
         self.processed_dir.mkdir(parents=True, exist_ok=True)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.html_dir.mkdir(parents=True, exist_ok=True)
+        self.xml_dir.mkdir(parents=True, exist_ok=True)
         
         logger.info(f"Initialized file storage with base directory: {self.base_dir}")
     
@@ -136,6 +140,47 @@ class FileStorage:
             json.dump(metadata, f, indent=2, default=str)
         
         logger.info(f"Saved HTML filing {filing_id} to {file_path}")
+        return file_path
+    
+    def save_xml_filing(
+        self,
+        filing_id: str,
+        xml_content: str,
+        metadata: Dict[str, Any]
+    ) -> Path:
+        """
+        Save XML filing content to disk.
+        
+        Args:
+            filing_id: Unique identifier for the filing
+            xml_content: XML content
+            metadata: Filing metadata
+            
+        Returns:
+            Path to the saved file
+        """
+        # Create company directory
+        company_dir = self.xml_dir / metadata.get("ticker", "unknown")
+        company_dir.mkdir(exist_ok=True)
+        
+        # Create year directory
+        year = metadata.get("filing_date", "").split("-")[0]
+        year_dir = company_dir / year
+        year_dir.mkdir(exist_ok=True)
+        
+        # Create file path
+        file_path = year_dir / f"{filing_id}.xml"
+        
+        # Save content
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(xml_content)
+        
+        # Save metadata
+        metadata_path = year_dir / f"{filing_id}_metadata.json"
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, indent=2, default=str)
+        
+        logger.info(f"Saved XML filing {filing_id} to {file_path}")
         return file_path
     
     def save_processed_filing(
@@ -337,6 +382,72 @@ class FileStorage:
             "metadata": metadata
         }
     
+    def load_xml_filing(
+        self,
+        filing_id: str,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Load XML filing from disk.
+        
+        Args:
+            filing_id: Unique identifier for the filing
+            ticker: Optional company ticker symbol
+            year: Optional filing year
+            
+        Returns:
+            Dictionary with XML content and metadata, or None if not found
+        """
+        # Try to find the filing if ticker and year are not provided
+        if not ticker or not year:
+            # Search in all directories
+            for company_dir in self.xml_dir.glob("*"):
+                if not company_dir.is_dir():
+                    continue
+                    
+                for year_dir in company_dir.glob("*"):
+                    if not year_dir.is_dir():
+                        continue
+                        
+                    xml_path = year_dir / f"{filing_id}.xml"
+                    metadata_path = year_dir / f"{filing_id}_metadata.json"
+                    
+                    if xml_path.exists() and metadata_path.exists():
+                        ticker = company_dir.name
+                        year = year_dir.name
+                        break
+                
+                if ticker and year:
+                    break
+        
+        # If still not found, return None
+        if not ticker or not year:
+            logger.warning(f"XML filing {filing_id} not found")
+            return None
+        
+        # Create file paths
+        xml_path = self.xml_dir / ticker / year / f"{filing_id}.xml"
+        metadata_path = self.xml_dir / ticker / year / f"{filing_id}_metadata.json"
+        
+        # Check if files exist
+        if not xml_path.exists() or not metadata_path.exists():
+            logger.warning(f"XML filing {filing_id} not found")
+            return None
+        
+        # Load XML content
+        with open(xml_path, "r", encoding="utf-8") as f:
+            xml_content = f.read()
+        
+        # Load metadata
+        with open(metadata_path, "r", encoding="utf-8") as f:
+            metadata = json.load(f)
+        
+        return {
+            "xml_content": xml_content,
+            "metadata": metadata
+        }
+    
     def load_processed_filing(
         self,
         filing_id: str,
@@ -535,6 +646,16 @@ class FileStorage:
         
         if html_metadata_path.exists():
             shutil.copy2(html_metadata_path, export_dir / "html_metadata.json")
+        
+        # Copy XML filing if available
+        xml_path = self.xml_dir / ticker / year / f"{filing_id}.xml"
+        xml_metadata_path = self.xml_dir / ticker / year / f"{filing_id}_metadata.json"
+        
+        if xml_path.exists():
+            shutil.copy2(xml_path, export_dir / "filing.xml")
+        
+        if xml_metadata_path.exists():
+            shutil.copy2(xml_metadata_path, export_dir / "xml_metadata.json")
         
         # Copy processed filing
         processed_path = self.processed_dir / ticker / year / f"{filing_id}_processed.json"

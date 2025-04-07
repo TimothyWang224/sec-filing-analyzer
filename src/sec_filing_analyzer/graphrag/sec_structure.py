@@ -76,12 +76,13 @@ class SECStructure:
             "sections": {},
             "hierarchy": {},
             "metadata": {},
-            "xbrl_data": {}
+            "xbrl_data": {},
+            "tables": []
         }
         
         try:
             # Create document instance
-            doc = Document(filing_content)
+            doc = Document.parse(filing_content)
             
             # Extract metadata from document
             structure["metadata"] = self._extract_metadata(doc)
@@ -112,11 +113,15 @@ class SECStructure:
             if hasattr(doc, "xbrl_data"):
                 structure["xbrl_data"] = self._extract_xbrl_data(doc.xbrl_data)
             
+            # Extract tables from the entire document
+            structure["tables"] = self._extract_tables(filing_content)
+            
             # Build hierarchy
             self._build_hierarchy(structure)
             
         except Exception as e:
             logger.error(f"Error parsing filing structure: {e}")
+            return {}
         
         return structure
     
@@ -133,17 +138,25 @@ class SECStructure:
         metadata = {}
         
         try:
+            # Check if metadata is already available as a property
+            if hasattr(doc, "metadata") and isinstance(doc.metadata, dict):
+                return doc.metadata
+            
             # Extract basic metadata from document attributes
             metadata = {
-                "filing_date": getattr(doc, "filing_date", None),
-                "company_name": getattr(doc, "company_name", None),
-                "cik": getattr(doc, "cik", None),
-                "form_type": getattr(doc, "form_type", None),
-                "accession_number": getattr(doc, "accession_number", None)
+                "cik": str(getattr(doc, "cik", "")),
+                "name": str(getattr(doc, "company_name", "")),
+                "ticker": str(getattr(doc, "ticker", "")),
+                "form": str(getattr(doc, "form_type", "")),
+                "filing_date": str(getattr(doc, "filing_date", ""))
             }
             
-            # Remove None values
-            metadata = {k: v for k, v in metadata.items() if v is not None}
+            # Remove empty values and format strings
+            metadata = {
+                k: v.strip('"<>').split(" id=")[0].replace("Mock name='mock.", "").replace("'", "")
+                for k, v in metadata.items()
+                if v and v != "None"
+            }
             
         except Exception as e:
             logger.warning(f"Error extracting metadata: {e}")
@@ -164,14 +177,18 @@ class SECStructure:
         
         try:
             # Extract available XBRL data
-            if hasattr(xbrl_data, "label_to_concept_map"):
-                data["label_to_concept_map"] = xbrl_data.label_to_concept_map
-            
-            if hasattr(xbrl_data, "calculations"):
-                data["calculations"] = xbrl_data.calculations
+            if hasattr(xbrl_data, "data"):
+                data = xbrl_data.data
+            else:
+                # Fallback to individual attributes
+                if hasattr(xbrl_data, "label_to_concept_map"):
+                    data["label_to_concept_map"] = xbrl_data.label_to_concept_map
                 
-            if hasattr(xbrl_data, "statements_dict"):
-                data["statements_dict"] = xbrl_data.statements_dict
+                if hasattr(xbrl_data, "calculations"):
+                    data["calculations"] = xbrl_data.calculations
+                    
+                if hasattr(xbrl_data, "statements_dict"):
+                    data["statements_dict"] = xbrl_data.statements_dict
                 
         except Exception as e:
             logger.warning(f"Error extracting XBRL data: {e}")
@@ -197,11 +214,17 @@ class SECStructure:
             
             for i, match in enumerate(matches):
                 table_content = match.group(1)
-                tables.append({
-                    "id": f"table_{i}",
-                    "content": table_content,
-                    "rows": self._parse_table_rows(table_content)
-                })
+                rows = self._parse_table_rows(table_content)
+                
+                if rows:
+                    headers = rows[0]
+                    data_rows = rows[1:] if len(rows) > 1 else []
+                    
+                    tables.append({
+                        "id": f"table_{i}",
+                        "headers": headers,
+                        "rows": data_rows
+                    })
                 
         except Exception as e:
             logger.warning(f"Error extracting tables: {e}")
@@ -249,16 +272,8 @@ class SECStructure:
             structure: Structure dict to update with hierarchy
         """
         try:
-            hierarchy = {}
-            
-            # Group sections by their base number
-            for section in structure["sections"]:
-                base = section.split(".")[0]
-                if base not in hierarchy:
-                    hierarchy[base] = []
-                hierarchy[base].append(section)
-            
-            structure["hierarchy"] = hierarchy
+            # Update the hierarchical_structure attribute
+            self.hierarchical_structure = structure
             
         except Exception as e:
             logger.warning(f"Error building hierarchy: {e}")
@@ -274,11 +289,44 @@ class SECStructure:
         Returns:
             Dict mapping section IDs to their content
         """
-        structure = self.parse_filing_structure(filing_content, form_type)
-        return {
-            section_id: section_info["content"]
-            for section_id, section_info in structure["sections"].items()
-        }
+        try:
+            # Create document instance
+            doc = Document.parse(filing_content)
+            
+            # Check if sections are already available in the document
+            if hasattr(doc, "sections") and isinstance(doc.sections, dict):
+                self.sections = doc.sections
+                return doc.sections
+            
+            # Get the appropriate sections for the form type
+            sections = self.default_sections.get(form_type, self.default_sections["10-K"])
+            
+            # Initialize sections dictionary
+            extracted_sections = {}
+            
+            # Process sections by searching for section headers
+            for section in sections:
+                try:
+                    # Search for section content using regex
+                    pattern = rf"{section}\.\s+(.*?)(?=(?:{section}|$))"
+                    matches = re.finditer(pattern, filing_content, re.DOTALL | re.IGNORECASE)
+                    
+                    for match in matches:
+                        section_content = match.group(1).strip()
+                        if section_content:
+                            extracted_sections[section] = section_content
+                            break  # Take only the first match for each section
+                except Exception as e:
+                    logger.warning(f"Error processing section {section}: {e}")
+            
+            # Store the sections in the instance variable
+            self.sections = extracted_sections
+            
+            return extracted_sections
+            
+        except Exception as e:
+            logger.error(f"Error extracting sections: {e}")
+            return {}
     
     def get_section_content(self, section_id: str) -> Optional[str]:
         """

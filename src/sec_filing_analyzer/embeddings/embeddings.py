@@ -1,21 +1,21 @@
 """
 Embeddings Module
 
-This module provides functionality for generating vector embeddings using OpenAI's API.
+This module provides functionality for generating vector embeddings using OpenAI's API through LlamaIndex.
 """
 
 import os
 import logging
 import numpy as np
 from typing import List, Optional
-from openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class EmbeddingGenerator:
-    """Handles generation of vector embeddings using OpenAI's API."""
+    """Handles generation of vector embeddings using OpenAI's API through LlamaIndex."""
     
     def __init__(self, model: str = "text-embedding-3-small"):
         """Initialize the embedding generator.
@@ -27,10 +27,12 @@ class EmbeddingGenerator:
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set. Please set it in your .env file.")
         
-        self.client = OpenAI(api_key=api_key)
-        self.model = model
+        self.embed_model = OpenAIEmbedding(
+            model=model,
+            api_key=api_key
+        )
         self.dimensions = 1536  # text-embedding-3-small has 1536 dimensions
-        logger.info(f"Initialized OpenAI embedding generator with model: {model}")
+        logger.info(f"Initialized LlamaIndex OpenAI embedding generator with model: {model}")
     
     def generate_embeddings(
         self,
@@ -47,17 +49,16 @@ class EmbeddingGenerator:
             Numpy array of embeddings with shape (n_texts, embedding_dim)
         """
         try:
+            # Handle empty list case
+            if not texts:
+                return np.zeros((0, self.dimensions))
+                
             all_embeddings = []
             
             # Process in batches to avoid rate limits
             for i in range(0, len(texts), batch_size):
                 batch = texts[i:i+batch_size]
-                response = self.client.embeddings.create(
-                    model=self.model,
-                    input=batch,
-                    encoding_format="float"
-                )
-                batch_embeddings = [data.embedding for data in response.data]
+                batch_embeddings = self.embed_model.get_text_embedding_batch(batch)
                 all_embeddings.extend(batch_embeddings)
             
             return np.array(all_embeddings)

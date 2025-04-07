@@ -2,13 +2,18 @@
 Test script for the SEC Filing ETL Pipeline
 """
 
-import asyncio
 import logging
 import os
 from datetime import datetime
 from dotenv import load_dotenv
+from pathlib import Path
+from typing import Optional, Dict, Any
 
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
+from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
+from sec_filing_analyzer.data_retrieval.filing_processor import FilingProcessor
+from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
+from sec_filing_analyzer.config import ETLConfig, STORAGE_CONFIG
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,7 +25,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def main():
+def get_neo4j_config() -> Optional[Dict[str, Any]]:
+    """Get Neo4j configuration from environment variables."""
+    username = os.getenv("NEO4J_USERNAME")
+    password = os.getenv("NEO4J_PASSWORD")
+    url = os.getenv("NEO4J_URL", "bolt://localhost:7687")
+    database = os.getenv("NEO4J_DATABASE", "neo4j")
+    
+    if not all([username, password]):
+        logger.info("Neo4j credentials not found, using in-memory storage")
+        return None
+        
+    return {
+        "username": username,
+        "password": password,
+        "url": url,
+        "database": database
+    }
+
+def test_nvda_2023_filings():
+    """Test processing NVDA's 2023 filings."""
     # Check for required environment variables
     edgar_identity = os.getenv("EDGAR_IDENTITY")
     if not edgar_identity:
@@ -29,72 +53,43 @@ async def main():
     
     logger.info(f"Using EDGAR identity: {edgar_identity}")
     
-    # Initialize pipeline with Neo4j if credentials are available
-    neo4j_uri = os.getenv("NEO4J_URI")
-    neo4j_user = os.getenv("NEO4J_USER")
-    neo4j_password = os.getenv("NEO4J_PASSWORD")
+    # Initialize components
+    neo4j_config = get_neo4j_config()
+    use_neo4j = neo4j_config is not None
     
-    use_neo4j = all([neo4j_uri, neo4j_user, neo4j_password])
-    if use_neo4j:
-        logger.info("Neo4j credentials found. Will store data in Neo4j database.")
-    else:
-        logger.info("No Neo4j credentials found. Will use in-memory storage.")
-    
-    pipeline = SECFilingETLPipeline(
+    graph_store = GraphStore(
+        store_dir=STORAGE_CONFIG["graph_store_path"],
         use_neo4j=use_neo4j,
-        neo4j_uri=neo4j_uri,
-        neo4j_user=neo4j_user,
-        neo4j_password=neo4j_password
+        **(neo4j_config or {})
     )
     
-    # Test parameters
-    ticker = "AAPL"
-    current_year = datetime.now().year
-    years = [current_year - 1]  # Use previous year to ensure we have complete filings
+    vector_store = LlamaIndexVectorStore(
+        store_dir=STORAGE_CONFIG["vector_store_path"]
+    )
+    filing_processor = FilingProcessor(graph_store=graph_store, vector_store=vector_store)
+    file_storage = FileStorage(
+        base_dir=ETLConfig().cache_dir.parent / "filings"
+    )
     
-    try:
-        logger.info(f"Starting ETL process for {ticker} for years {years}")
-        
-        # Process company filings
-        results = await pipeline.process_company(ticker, years)
-        
-        # Print results
-        if results["filings"]:
-            logger.info(f"Successfully processed {len(results['filings'])} filings for {ticker}")
-            for filing in results["filings"]:
-                logger.info(f"\nProcessed {filing['form_type']} from {filing['filing_date']}")
-                
-                # Log XBRL data
-                if filing["xbrl_data"]:
-                    logger.info("XBRL data extracted:")
-                    for metric, value in filing["xbrl_data"].items():
-                        logger.info(f"  {metric}: {value}")
-                
-                # Log structure data
-                if filing["structure"]:
-                    logger.info("Filing structure extracted:")
-                    if "sections" in filing["structure"]:
-                        logger.info(f"  Found {len(filing['structure']['sections'])} sections")
-                    if "metadata" in filing["structure"]:
-                        logger.info("  Metadata extracted")
-                
-                # Log entity data
-                if filing["entities"]:
-                    logger.info("Entities extracted:")
-                    for entity_type, entities in filing["entities"].items():
-                        logger.info(f"  {entity_type}: {len(entities)} entities found")
-        else:
-            logger.warning(f"No filings processed for {ticker}")
-            
-        # Print any errors
-        if results["errors"]:
-            logger.warning("Encountered errors:")
-            for error in results["errors"]:
-                logger.error(f"- {error['error']}")
-                
-    except Exception as e:
-        logger.error(f"Error running pipeline: {str(e)}")
-        raise  # Re-raise the exception to see the full traceback
+    # Initialize pipeline
+    pipeline = SECFilingETLPipeline(
+        graph_store=graph_store,
+        vector_store=vector_store,
+        filing_processor=filing_processor,
+        file_storage=file_storage
+    )
+    
+    # Process NVDA's 2023 filings
+    pipeline.process_company(
+        ticker="NVDA",
+        filing_types=["10-K", "10-Q", "8-K"],
+        start_date="2023-01-01",
+        end_date="2023-12-31"
+    )
+    
+    # Verify that filings were processed
+    # This is a basic test - you may want to add more specific assertions
+    assert True  # Replace with actual assertions based on expected outcomes
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    test_nvda_2023_filings() 

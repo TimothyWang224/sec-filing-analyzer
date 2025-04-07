@@ -52,6 +52,38 @@ class VectorStoreInterface(ABC):
                 - metadata: Vector metadata
         """
         pass
+    
+    @abstractmethod
+    def get_vector(
+        self,
+        vector_id: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get a vector by ID.
+        
+        Args:
+            vector_id: The vector ID
+            
+        Returns:
+            Dict containing vector data if found, None otherwise
+        """
+        pass
+    
+    @abstractmethod
+    def delete_vector(
+        self,
+        vector_id: str
+    ) -> bool:
+        """
+        Delete a vector by ID.
+        
+        Args:
+            vector_id: The vector ID
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        pass
 
 class GraphStoreInterface(ABC):
     """Interface for graph storage."""

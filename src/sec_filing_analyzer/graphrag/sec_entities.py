@@ -98,10 +98,13 @@ class SECEntities:
         """
         metadata = {}
         
-        # Create document
-        doc = Document.parse(filing_content)
-        if doc and hasattr(doc, "metadata"):
-            metadata = doc.metadata
+        try:
+            # Create document
+            doc = Document.parse(filing_content)
+            if doc and hasattr(doc, "metadata") and doc.metadata is not None:
+                metadata = doc.metadata
+        except Exception as e:
+            logger.error(f"Error extracting filing metadata: {e}")
         
         return metadata
     

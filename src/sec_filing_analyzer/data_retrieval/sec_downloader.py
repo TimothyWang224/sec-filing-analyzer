@@ -7,6 +7,7 @@ This module provides functionality for downloading SEC filings.
 import logging
 from typing import Dict, List, Any, Optional
 from pathlib import Path
+from datetime import datetime, date
 
 from edgar import Company, Filing
 from .file_storage import FileStorage
@@ -40,8 +41,8 @@ class SECFilingsDownloader:
         Args:
             ticker: Company ticker symbol
             filing_types: List of filing types to download
-            start_date: Start date for filing range
-            end_date: End date for filing range
+            start_date: Start date for filing range (YYYY-MM-DD)
+            end_date: End date for filing range (YYYY-MM-DD)
             
         Returns:
             List of downloaded filing metadata
@@ -51,16 +52,30 @@ class SECFilingsDownloader:
         
         # Get filings
         filings = company.get_filings(
-            form_types=filing_types,
-            start_date=start_date,
-            end_date=end_date
+            form=filing_types[0] if filing_types else None
         )
+        
+        # Filter filings by date if specified
+        if start_date or end_date:
+            filtered_filings = []
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else None
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else None
+            
+            for filing in filings:
+                filing_dt = filing.filing_date
+                if start_dt and filing_dt < start_dt:
+                    continue
+                if end_dt and filing_dt > end_dt:
+                    continue
+                filtered_filings.append(filing)
+            
+            filings = filtered_filings
         
         # Download each filing
         downloaded_filings = []
         for filing in filings:
             try:
-                filing_data = self.download_filing(filing)
+                filing_data = self.download_filing(filing, ticker)
                 if filing_data:
                     downloaded_filings.append(filing_data)
             except Exception as e:
@@ -68,12 +83,13 @@ class SECFilingsDownloader:
         
         return downloaded_filings
     
-    def download_filing(self, filing: Filing) -> Optional[Dict[str, Any]]:
+    def download_filing(self, filing: Filing, ticker: str) -> Optional[Dict[str, Any]]:
         """
         Download a single filing.
         
         Args:
             filing: The filing to download
+            ticker: Company ticker symbol
             
         Returns:
             Dict containing filing data if successful, None otherwise
@@ -86,33 +102,51 @@ class SECFilingsDownloader:
         
         # Download filing
         try:
-            # Download text content
-            filing.download()
+            # Get text content
+            text_content = None
+            try:
+                text_content = filing.text()
+                if not text_content:
+                    logger.warning(f"No text content available for filing {filing.accession_number}")
+                    return None
+            except Exception as e:
+                logger.error(f"Error getting text content for filing {filing.accession_number}: {e}")
+                return None
             
-            # Download HTML content if available
+            # Get HTML content if available
             html_content = None
             try:
-                html_content = filing.download_html()
-                logger.info(f"Downloaded HTML content for filing {filing.accession_number}")
+                html_content = filing.html()
+                if html_content:
+                    logger.info(f"Downloaded HTML content for filing {filing.accession_number}")
             except Exception as e:
                 logger.warning(f"Could not download HTML content for filing {filing.accession_number}: {e}")
+            
+            # Get XML content if available
+            xml_content = None
+            try:
+                xml_content = filing.xml()
+                if xml_content:
+                    logger.info(f"Downloaded XML content for filing {filing.accession_number}")
+            except Exception as e:
+                logger.warning(f"Could not download XML content for filing {filing.accession_number}: {e}")
             
             # Create metadata
             metadata = {
                 "accession_number": filing.accession_number,
                 "form": filing.form,
-                "filing_date": filing.filing_date,
+                "filing_date": filing.filing_date.isoformat(),
                 "company": filing.company,
-                "ticker": filing.ticker,
-                "description": filing.description,
-                "url": filing.url,
-                "has_html": html_content is not None
+                "ticker": ticker,
+                "cik": filing.cik,
+                "has_html": html_content is not None,
+                "has_xml": xml_content is not None
             }
             
             # Save raw filing to disk
             self.file_storage.save_raw_filing(
                 filing_id=filing.accession_number,
-                content=filing.text,
+                content=text_content,
                 metadata=metadata
             )
             
@@ -121,6 +155,14 @@ class SECFilingsDownloader:
                 self.file_storage.save_html_filing(
                     filing_id=filing.accession_number,
                     html_content=html_content,
+                    metadata=metadata
+                )
+            
+            # Save XML filing to disk if available
+            if xml_content:
+                self.file_storage.save_xml_filing(
+                    filing_id=filing.accession_number,
+                    xml_content=xml_content,
                     metadata=metadata
                 )
             
