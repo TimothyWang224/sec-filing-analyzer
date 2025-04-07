@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from base import Capability
+from .base import Capability
 from agents.base import Agent
 
 class SECAnalysisCapability(Capability):

@@ -16,7 +16,6 @@ class OpenAILLM(BaseLLM):
         self,
         model: str = "gpt-4-turbo-preview",
         api_key: Optional[str] = None,
-        organization: Optional[str] = None,
         **kwargs: Any
     ):
         """Initialize the OpenAI LLM.
@@ -24,20 +23,19 @@ class OpenAILLM(BaseLLM):
         Args:
             model: The OpenAI model to use
             api_key: OpenAI API key. If not provided, will look for OPENAI_API_KEY env var
-            organization: OpenAI organization ID. If not provided, will look for OPENAI_ORG_ID env var
             **kwargs: Additional configuration parameters
         """
         self.model = model
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.organization = organization or os.getenv("OPENAI_ORG_ID")
         
         if not self.api_key:
             raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
             
-        # Configure OpenAI client
-        openai.api_key = self.api_key
-        if self.organization:
-            openai.organization = self.organization
+        # Create OpenAI client instance
+        self.client = openai.OpenAI(
+            api_key=self.api_key,
+            base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
+        )
             
     async def generate(
         self,
@@ -53,7 +51,7 @@ class OpenAILLM(BaseLLM):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         
-        response = await openai.ChatCompletion.acreate(
+        response = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,
@@ -77,7 +75,7 @@ class OpenAILLM(BaseLLM):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
         
-        stream = await openai.ChatCompletion.acreate(
+        stream = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,
             temperature=temperature,

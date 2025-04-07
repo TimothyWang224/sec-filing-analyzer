@@ -1,119 +1,134 @@
 """
-Filing Processor
+SEC Filing Processor
 
-Handles processing of SEC filings into chunks and embeddings.
+This module provides functionality for processing SEC filings.
 """
 
-from typing import List, Dict, Any, Optional
-from pathlib import Path
 import logging
-from rich.console import Console
+from typing import Dict, Any, Optional, List
+from pathlib import Path
 
-from llama_index.core import Document, SimpleDirectoryReader
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.core.vector_stores import SimpleVectorStore
+from ..storage import GraphStore, LlamaIndexVectorStore
+from .file_storage import FileStorage
 
-# Configure logging
+# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-console = Console()
 
 class FilingProcessor:
-    """Processes SEC filings into chunks and embeddings."""
+    """
+    Processor for SEC filings.
+    """
     
     def __init__(
         self,
-        chunk_size: int = 512,
-        chunk_overlap: int = 50,
-        embedding_model: str = "text-embedding-3-small"
+        graph_store: Optional[GraphStore] = None,
+        vector_store: Optional[LlamaIndexVectorStore] = None,
+        file_storage: Optional[FileStorage] = None,
     ):
-        """Initialize the processor.
-        
-        Args:
-            chunk_size: Size of text chunks
-            chunk_overlap: Overlap between chunks
-            embedding_model: OpenAI embedding model to use
-        """
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.embedding_model = embedding_model
-        
-        # Initialize components
-        self.llm = OpenAI(model="gpt-4", temperature=0)
-        self.embedding = OpenAIEmbedding(model=embedding_model)
-        self.vector_store = SimpleVectorStore()
+        """Initialize the filing processor."""
+        self.graph_store = graph_store or GraphStore()
+        self.vector_store = vector_store or LlamaIndexVectorStore()
+        self.file_storage = file_storage or FileStorage()
     
-    def process_filing(self, filing: Dict[str, Any]) -> Dict[str, Any]:
-        """Process a single filing.
+    def process_filing(self, filing_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Process a filing and store it in the graph and vector stores.
         
         Args:
-            filing: Filing dictionary with content and metadata
+            filing_data: Dictionary containing filing data
             
         Returns:
-            Processed filing with chunks and embeddings
+            Dict containing processed filing data
         """
-        # Create document
-        doc = Document(
-            text=filing["content"],
-            metadata={
-                "accession_number": filing["accession_number"],
-                "form": filing["form"],
-                "filing_date": filing["filing_date"],
-                "company": filing["company"],
-                "ticker": filing["ticker"]
+        filing_id = filing_data["id"]
+        text = filing_data["text"]
+        embedding = filing_data["embedding"]
+        metadata = filing_data["metadata"]
+        
+        # Check if filing is already processed
+        cached_data = self.file_storage.load_cached_filing(filing_id)
+        if cached_data:
+            logger.info(f"Using cached data for filing {filing_id}")
+            return cached_data["processed_data"]
+        
+        # Process filing
+        try:
+            # Add to graph store with all metadata
+            self.graph_store.add_filing(
+                filing_id=filing_id,
+                text=text,
+                metadata=metadata
+            )
+            
+            # Add to vector store with all metadata
+            self.vector_store.upsert_vectors(
+                vectors=[(filing_id, embedding)],
+                metadata=[metadata]
+            )
+            
+            # Create processed data with all metadata
+            processed_data = {
+                "filing_id": filing_id,
+                "text": text,
+                "embedding": embedding,
+                "metadata": metadata,
+                "graph_nodes": self.graph_store.get_filing_nodes(filing_id),
+                "graph_relationships": self.graph_store.get_filing_relationships(filing_id)
             }
-        )
-        
-        # Create chunks
-        chunks = self._create_chunks(doc)
-        
-        # Create embeddings
-        embeddings = self._create_embeddings(chunks)
-        
-        return {
-            **filing,
-            "chunks": chunks,
-            "embeddings": embeddings
-        }
-    
-    def _create_chunks(self, doc: Document) -> List[Dict[str, Any]]:
-        """Create text chunks from document."""
-        # Simple chunking implementation
-        # In production, use more sophisticated chunking
-        text = doc.text
-        chunks = []
-        
-        start = 0
-        while start < len(text):
-            end = start + self.chunk_size
-            chunk = text[start:end]
             
-            chunks.append({
-                "text": chunk,
-                "metadata": doc.metadata,
-                "start": start,
-                "end": end
-            })
+            return processed_data
             
-            start = end - self.chunk_overlap
+        except Exception as e:
+            logger.error(f"Error processing filing {filing_id}: {e}")
+            raise
+    
+    def get_filing(self, filing_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a filing by ID.
         
-        return chunks
+        Args:
+            filing_id: The filing ID
+            
+        Returns:
+            Dict containing filing data if found, None otherwise
+        """
+        # Try to get from cache first
+        cached_data = self.file_storage.load_cached_filing(filing_id)
+        if cached_data:
+            return cached_data
+        
+        # Try to get from processed files
+        processed_data = self.file_storage.load_processed_filing(filing_id)
+        if processed_data:
+            return processed_data
+        
+        # Try to get from raw files
+        raw_data = self.file_storage.load_raw_filing(filing_id)
+        if raw_data:
+            return raw_data
+        
+        return None
     
-    def _create_embeddings(self, chunks: List[Dict[str, Any]]) -> List[List[float]]:
-        """Create embeddings for chunks."""
-        texts = [chunk["text"] for chunk in chunks]
-        return self.embedding.get_text_embedding(texts)
-    
-    def store_in_vector_db(self, processed_filing: Dict[str, Any]):
-        """Store processed filing in vector database."""
-        # Store chunks and embeddings
-        for chunk, embedding in zip(
-            processed_filing["chunks"],
-            processed_filing["embeddings"]
-        ):
-            self.vector_store.add(
-                text=chunk["text"],
-                embedding=embedding,
-                metadata=chunk["metadata"]
-            ) 
+    def list_filings(
+        self,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None,
+        filing_type: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        List available filings.
+        
+        Args:
+            ticker: Filter by company ticker
+            year: Filter by filing year
+            filing_type: Filter by filing type
+            
+        Returns:
+            List of filing metadata
+        """
+        return self.file_storage.list_filings(
+            ticker=ticker,
+            year=year,
+            filing_type=filing_type
+        ) 

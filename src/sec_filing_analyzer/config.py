@@ -23,10 +23,23 @@ class Neo4jConfig:
     database: str = os.getenv("NEO4J_DATABASE", "neo4j")
 
 @dataclass
-class GraphStoreConfig:
-    """Configuration for Graph Store settings."""
+class StorageConfig:
+    """Configuration for storage settings."""
     
+    # Graph store settings
     max_cluster_size: int = int(os.getenv("GRAPH_MAX_CLUSTER_SIZE", "5"))
+    use_neo4j: bool = os.getenv("USE_NEO4J", "false").lower() == "true"
+    
+    # Vector store settings
+    vector_store_type: str = os.getenv("VECTOR_STORE_TYPE", "simple")  # simple, pinecone, weaviate, etc.
+    vector_store_path: Optional[Path] = None
+    
+    def __post_init__(self):
+        """Initialize configuration after creation."""
+        # Set vector store path if not specified
+        if self.vector_store_path is None:
+            self.vector_store_path = Path("data/vector_store")
+            self.vector_store_path.mkdir(parents=True, exist_ok=True)
 
 @dataclass
 class ETLConfig:
@@ -39,13 +52,9 @@ class ETLConfig:
     timeout: int = 30
     
     # Document processing settings
-    chunk_size: int = 512
+    chunk_size: int = 1024
     chunk_overlap: int = 50
     embedding_model: str = "text-embedding-3-small"
-    
-    # Vector store settings
-    vector_store_type: str = "simple"  # simple, pinecone, weaviate, etc.
-    vector_store_path: Optional[Path] = None
     
     def __post_init__(self):
         """Initialize configuration after creation."""
@@ -55,10 +64,6 @@ class ETLConfig:
         
         # Create cache directory if it doesn't exist
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Set vector store path if not specified
-        if self.vector_store_path is None:
-            self.vector_store_path = Path("data/vector_store")
     
     @classmethod
     def from_env(cls) -> "ETLConfig":
@@ -70,14 +75,12 @@ class ETLConfig:
             timeout=int(os.getenv("SEC_TIMEOUT", "30")),
             chunk_size=int(os.getenv("CHUNK_SIZE", "512")),
             chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "50")),
-            embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
-            vector_store_type=os.getenv("VECTOR_STORE_TYPE", "simple"),
-            vector_store_path=Path(os.getenv("VECTOR_STORE_PATH", "data/vector_store"))
+            embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
         )
 
 # Create global configuration instances
 neo4j_config = Neo4jConfig()
-graph_store_config = GraphStoreConfig()
+storage_config = StorageConfig()
 etl_config = ETLConfig.from_env()
 
 # Export configuration dictionaries for backward compatibility
@@ -88,6 +91,9 @@ NEO4J_CONFIG: Dict[str, Any] = {
     "database": neo4j_config.database,
 }
 
-GRAPH_STORE_CONFIG: Dict[str, Any] = {
-    "max_cluster_size": graph_store_config.max_cluster_size,
+STORAGE_CONFIG: Dict[str, Any] = {
+    "max_cluster_size": storage_config.max_cluster_size,
+    "use_neo4j": storage_config.use_neo4j,
+    "vector_store_type": storage_config.vector_store_type,
+    "vector_store_path": str(storage_config.vector_store_path)
 } 

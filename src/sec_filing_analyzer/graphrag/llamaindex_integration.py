@@ -1,153 +1,78 @@
 """
 LlamaIndex Integration for GraphRAG
 
-This module provides integration with LlamaIndex for enhanced GraphRAG capabilities.
+This module provides integration between LlamaIndex and our graph store.
+Note: This module is deprecated. Use the storage module instead.
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Tuple, Set
-import time
-import os
+from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
-from collections import defaultdict
-import re
 
-import networkx as nx
-import numpy as np
-
-# LlamaIndex core imports
-from llama_index.core import Document, ServiceContext
-from llama_index.core.llms import LLM
-from llama_index.core.indices import PropertyGraphIndex
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.retrievers import VectorIndexRetriever, KGRetriever, HybridRetriever
-from llama_index.core.response_synthesizers import ResponseSynthesizer
-from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.extractors import TitleExtractor, QuestionsAnsweredExtractor
-from llama_index.core.chat_engine import ContextChatEngine
+from llama_index.core.graph_stores.types import LabelledNode, ChunkNode, EntityNode, Relation
 from llama_index.core.vector_stores.types import VectorStoreQuery
-from llama_index.core.schema import MetadataMode, RelatedNodeInfo, NodeRelationship, TextNode
 
-# Neo4j graph store
-from llama_index.graph_stores.neo4j import Neo4jPropertyGraphStore
-
-# Import our SEC document processing utilities
-from .sec_structure import SECStructure
-from .sec_entities import SECEntities
-from .store import GraphStore
+from ..config import STORAGE_CONFIG
+from ..storage import GraphStore as UnifiedGraphStore
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class LlamaIndexIntegration:
+# This class is deprecated. Use the UnifiedGraphStore from the storage module instead.
+class LlamaIndexGraphStore:
     """
-    Integration class for LlamaIndex that handles document processing and querying.
+    LlamaIndex integration for our graph store.
+    
+    This class provides a bridge between LlamaIndex's graph store interface
+    and our unified graph store implementation.
+    
+    DEPRECATED: Use the UnifiedGraphStore from the storage module instead.
     """
     
-    def __init__(
+    def __init__(self, graph_store: Optional[UnifiedGraphStore] = None):
+        """Initialize the LlamaIndex graph store integration."""
+        self.graph_store = graph_store or UnifiedGraphStore()
+        
+        # Log deprecation warning
+        logger.warning("LlamaIndexGraphStore from graphrag module is deprecated. Use UnifiedGraphStore from storage module instead.")
+    
+    def add_node(self, node: LabelledNode) -> None:
+        """Add a node to the graph store."""
+        self.graph_store.add_node(node.id, node.properties)
+    
+    def add_relation(self, relation: Relation) -> None:
+        """Add a relation to the graph store."""
+        self.graph_store.add_relation(relation.source_id, relation.target_id, relation.properties)
+    
+    def get_node(self, node_id: str) -> Optional[LabelledNode]:
+        """Get a node from the graph store."""
+        node = self.graph_store.get_node(node_id)
+        if node:
+            return LabelledNode(id=node_id, properties=node)
+        return None
+    
+    def get_relations(self, node_id: str) -> List[Relation]:
+        """Get relations for a node from the graph store."""
+        relations = self.graph_store.get_relations(node_id)
+        return [
+            Relation(source_id=r["source"], target_id=r["target"], properties=r["properties"])
+            for r in relations
+        ]
+    
+    def query(self, query: str, **kwargs) -> List[Dict[str, Any]]:
+        """Execute a query on the graph store."""
+        return self.graph_store.query(query, **kwargs)
+    
+    def vector_similarity_search(
         self,
-        neo4j_username: str = "neo4j",
-        neo4j_password: str = "password",
-        neo4j_url: str = "bolt://localhost:7687",
-        cache_dir: Optional[str] = None,
-        llm: Optional[LLM] = None,
-        embedding_model: str = "text-embedding-3-small",
-    ):
-        """Initialize the LlamaIndex integration."""
-        self.llm = llm
-        self.embedding_model = embedding_model
-        self.cache_dir = cache_dir
-        
-        # Initialize graph store
-        self.graph_store = GraphStore(
-            username=neo4j_username,
-            password=neo4j_password,
-            url=neo4j_url
-        )
-        
-        # Initialize document processors
-        self.sec_structure = SECStructure()
-        self.sec_entities = SECEntities()
-        
-        # Initialize service context
-        self.service_context = ServiceContext.from_defaults(
-            llm=self.llm,
-            embed_model=embedding_model
-        )
-        
-        # Initialize node parser
-        self.node_parser = SentenceSplitter(
-            chunk_size=1024,
-            chunk_overlap=20
-        )
-    
-    def process_documents(self, documents: List[Dict[str, Any]]) -> PropertyGraphIndex:
-        """
-        Process SEC documents and create a property graph index.
-        
-        Args:
-            documents: List of SEC documents to process
-            
-        Returns:
-            PropertyGraphIndex: The created index
-        """
-        # Create index
-        index = PropertyGraphIndex.from_documents(
-            documents,
-            service_context=self.service_context,
-            graph_store=self.graph_store,
-            node_parser=self.node_parser
-        )
-        
-        # Extract structure and entities
-        for doc in documents:
-            # Extract structure
-            structure = self.sec_structure.parse_filing_structure(doc["text"])
-            self.sec_structure.extract_sections(doc["text"])
-            
-            # Extract entities
-            entities = self.sec_entities.extract_entities(doc["text"])
-            relationships = self.sec_entities.identify_relationships(entities)
-            
-            # Add to graph store
-            for entity in entities:
-                self.graph_store.add_node(
-                    entity["id"],
-                    properties=entity
-                )
-            
-            for rel in relationships:
-                self.graph_store.add_relationship(
-                    rel["from_node"],
-                    rel["to_node"],
-                    rel["type"],
-                    properties=rel.get("properties", {})
-                )
-        
-        return index
-    
-    def query(self, query_text: str) -> str:
-        """
-        Query the document index.
-        
-        Args:
-            query_text: The query text
-            
-        Returns:
-            str: The response
-        """
-        # Create query engine
-        query_engine = RetrieverQueryEngine.from_args(
-            retriever=VectorIndexRetriever(
-                index=self.index,
-                similarity_top_k=5
-            ),
-            response_synthesizer=ResponseSynthesizer.from_args(
-                service_context=self.service_context
-            )
-        )
-        
-        # Execute query
-        response = query_engine.query(query_text)
-        return str(response) 
+        query_embedding: List[float],
+        similarity_top_k: int = 2,
+        **kwargs
+    ) -> List[Dict[str, Any]]:
+        """Perform vector similarity search."""
+        return self.graph_store.vector_similarity_search(
+            query_embedding,
+            similarity_top_k=similarity_top_k,
+            **kwargs
+        ) 

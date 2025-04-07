@@ -1,13 +1,18 @@
 """
 SEC Filing Structure Parser
 
-This module provides functionality for parsing and analyzing SEC filing structure.
+This module provides functionality for parsing and analyzing SEC filing structure,
+leveraging edgartools for document processing and maintaining graph-specific functionality.
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Tuple
 import re
+from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
+
+# Import from the installed edgar package
+from edgar import Company, Document, XBRLData
+from edgar.company_reports import TenK, TenQ, EightK
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -16,6 +21,7 @@ logger = logging.getLogger(__name__)
 class SECStructure:
     """
     Class for parsing and analyzing SEC filing structure.
+    Combines edgartools document processing with graph-specific functionality.
     """
     
     def __init__(self):
@@ -23,36 +29,44 @@ class SECStructure:
         self.sections = {}
         self.hierarchical_structure = {}
         
-        # Common SEC section patterns
-        self.section_patterns = {
-            "item_1": r"Item\s+1\.?\s*[-–]?\s*Business",
-            "item_1a": r"Item\s+1A\.?\s*[-–]?\s*Risk\s+Factors",
-            "item_2": r"Item\s+2\.?\s*[-–]?\s*Properties",
-            "item_3": r"Item\s+3\.?\s*[-–]?\s*Legal\s+Proceedings",
-            "item_4": r"Item\s+4\.?\s*[-–]?\s*Mine\s+Safety\s+Disclosures",
-            "item_5": r"Item\s+5\.?\s*[-–]?\s*Market\s+for\s+Registrant's\s+Common\s+Equity",
-            "item_6": r"Item\s+6\.?\s*[-–]?\s*Selected\s+Financial\s+Data",
-            "item_7": r"Item\s+7\.?\s*[-–]?\s*Management's\s+Discussion\s+and\s+Analysis",
-            "item_7a": r"Item\s+7A\.?\s*[-–]?\s*Quantitative\s+and\s+Qualitative\s+Disclosures",
-            "item_8": r"Item\s+8\.?\s*[-–]?\s*Financial\s+Statements\s+and\s+Supplementary\s+Data",
-            "item_9": r"Item\s+9\.?\s*[-–]?\s*Changes\s+in\s+and\s+Disagreements\s+with\s+Accountants",
-            "item_9a": r"Item\s+9A\.?\s*[-–]?\s*Controls\s+and\s+Procedures",
-            "item_9b": r"Item\s+9B\.?\s*[-–]?\s*Other\s+Information",
-            "item_10": r"Item\s+10\.?\s*[-–]?\s*Directors,\s+Executive\s+Officers",
-            "item_11": r"Item\s+11\.?\s*[-–]?\s*Executive\s+Compensation",
-            "item_12": r"Item\s+12\.?\s*[-–]?\s*Security\s+Ownership\s+of\s+Certain\s+Beneficial\s+Owners",
-            "item_13": r"Item\s+13\.?\s*[-–]?\s*Certain\s+Relationships\s+and\s+Related\s+Transactions",
-            "item_14": r"Item\s+14\.?\s*[-–]?\s*Principal\s+Accountant\s+Fees\s+and\s+Services",
-            "item_15": r"Item\s+15\.?\s*[-–]?\s*Exhibits\s+and\s+Financial\s+Statement\s+Schedules",
-            "item_16": r"Item\s+16\.?\s*[-–]?\s*Form\s+10-K\s+Summary"
+        # Map form types to their corresponding structure classes
+        self.form_structures = {
+            "10-K": TenK,
+            "10-Q": TenQ,
+            "8-K": EightK
+        }
+        
+        # Default sections for each form type
+        self.default_sections = {
+            "10-K": [
+                "Item 1", "Item 1A", "Item 1B", "Item 2", "Item 3", "Item 4",
+                "Item 5", "Item 6", "Item 7", "Item 7A", "Item 8", "Item 9",
+                "Item 9A", "Item 9B", "Item 10", "Item 11", "Item 12", "Item 13",
+                "Item 14", "Item 15"
+            ],
+            "10-Q": [
+                "Item 1", "Item 2", "Item 3", "Item 4",
+                "Item 1A", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6"
+            ],
+            "8-K": [
+                "Item 1.01", "Item 1.02", "Item 1.03", "Item 1.04",
+                "Item 2.01", "Item 2.02", "Item 2.03", "Item 2.04",
+                "Item 2.05", "Item 2.06", "Item 3.01", "Item 3.02",
+                "Item 3.03", "Item 4.01", "Item 4.02", "Item 5.01",
+                "Item 5.02", "Item 5.03", "Item 5.04", "Item 5.05",
+                "Item 5.06", "Item 5.07", "Item 5.08", "Item 6.01",
+                "Item 6.02", "Item 6.03", "Item 6.04", "Item 6.05",
+                "Item 7.01", "Item 8.01", "Item 9.01"
+            ]
         }
     
-    def parse_filing_structure(self, filing_content: str) -> Dict[str, Any]:
+    def parse_filing_structure(self, filing_content: str, form_type: str = "10-K") -> Dict[str, Any]:
         """
         Parse the structure of an SEC filing.
         
         Args:
             filing_content: The content of the SEC filing
+            form_type: The type of SEC form (e.g., "10-K", "10-Q", "8-K")
             
         Returns:
             Dict containing the parsed structure
@@ -61,65 +75,210 @@ class SECStructure:
         structure = {
             "sections": {},
             "hierarchy": {},
-            "metadata": {}
+            "metadata": {},
+            "xbrl_data": {}
         }
         
-        # Extract sections
-        for section_id, pattern in self.section_patterns.items():
-            match = re.search(pattern, filing_content, re.IGNORECASE)
-            if match:
-                start_pos = match.start()
-                # Find the next section start
-                next_pos = len(filing_content)
-                for other_pattern in self.section_patterns.values():
-                    if other_pattern != pattern:
-                        next_match = re.search(other_pattern, filing_content[start_pos+1:], re.IGNORECASE)
-                        if next_match:
-                            next_pos = min(next_pos, start_pos + 1 + next_match.start())
-                
-                # Extract section content
-                section_content = filing_content[start_pos:next_pos].strip()
-                structure["sections"][section_id] = {
-                    "start": start_pos,
-                    "end": next_pos,
-                    "content": section_content
-                }
-        
-        # Build hierarchy
-        self._build_hierarchy(structure)
+        try:
+            # Create document instance
+            doc = Document(filing_content)
+            
+            # Extract metadata from document
+            structure["metadata"] = self._extract_metadata(doc)
+            
+            # Get the appropriate sections for the form type
+            sections = self.default_sections.get(form_type, self.default_sections["10-K"])
+            
+            # Process sections by searching for section headers
+            for section in sections:
+                try:
+                    # Search for section content using regex
+                    pattern = rf"{section}\.\s+(.*?)(?=(?:{section}|$))"
+                    matches = re.finditer(pattern, filing_content, re.DOTALL | re.IGNORECASE)
+                    
+                    for match in matches:
+                        section_content = match.group(1).strip()
+                        if section_content:
+                            structure["sections"][section] = {
+                                "content": section_content,
+                                "title": section,
+                                "description": "",
+                                "tables": self._extract_tables(section_content)
+                            }
+                except Exception as e:
+                    logger.warning(f"Error processing section {section}: {e}")
+            
+            # Try to extract XBRL data if available in the document
+            if hasattr(doc, "xbrl_data"):
+                structure["xbrl_data"] = self._extract_xbrl_data(doc.xbrl_data)
+            
+            # Build hierarchy
+            self._build_hierarchy(structure)
+            
+        except Exception as e:
+            logger.error(f"Error parsing filing structure: {e}")
         
         return structure
     
-    def extract_sections(self, filing_content: str) -> Dict[str, str]:
+    def _extract_metadata(self, doc: Document) -> Dict[str, Any]:
+        """
+        Extract metadata from document.
+        
+        Args:
+            doc: The document to extract metadata from
+            
+        Returns:
+            Dict containing extracted metadata
+        """
+        metadata = {}
+        
+        try:
+            # Extract basic metadata from document attributes
+            metadata = {
+                "filing_date": getattr(doc, "filing_date", None),
+                "company_name": getattr(doc, "company_name", None),
+                "cik": getattr(doc, "cik", None),
+                "form_type": getattr(doc, "form_type", None),
+                "accession_number": getattr(doc, "accession_number", None)
+            }
+            
+            # Remove None values
+            metadata = {k: v for k, v in metadata.items() if v is not None}
+            
+        except Exception as e:
+            logger.warning(f"Error extracting metadata: {e}")
+        
+        return metadata
+    
+    def _extract_xbrl_data(self, xbrl_data: XBRLData) -> Dict[str, Any]:
+        """
+        Extract data from XBRL document.
+        
+        Args:
+            xbrl_data: The XBRL data to process
+            
+        Returns:
+            Dict containing extracted XBRL data
+        """
+        data = {}
+        
+        try:
+            # Extract available XBRL data
+            if hasattr(xbrl_data, "label_to_concept_map"):
+                data["label_to_concept_map"] = xbrl_data.label_to_concept_map
+            
+            if hasattr(xbrl_data, "calculations"):
+                data["calculations"] = xbrl_data.calculations
+                
+            if hasattr(xbrl_data, "statements_dict"):
+                data["statements_dict"] = xbrl_data.statements_dict
+                
+        except Exception as e:
+            logger.warning(f"Error extracting XBRL data: {e}")
+        
+        return data
+    
+    def _extract_tables(self, content: str) -> List[Dict[str, Any]]:
+        """
+        Extract tables from content.
+        
+        Args:
+            content: Content to extract tables from
+            
+        Returns:
+            List of dicts containing table data
+        """
+        tables = []
+        
+        try:
+            # Simple table detection using regex
+            table_pattern = r"<table.*?>(.*?)</table>"
+            matches = re.finditer(table_pattern, content, re.DOTALL)
+            
+            for i, match in enumerate(matches):
+                table_content = match.group(1)
+                tables.append({
+                    "id": f"table_{i}",
+                    "content": table_content,
+                    "rows": self._parse_table_rows(table_content)
+                })
+                
+        except Exception as e:
+            logger.warning(f"Error extracting tables: {e}")
+            
+        return tables
+    
+    def _parse_table_rows(self, table_content: str) -> List[List[str]]:
+        """
+        Parse rows from table content.
+        
+        Args:
+            table_content: HTML table content to parse
+            
+        Returns:
+            List of rows, where each row is a list of cell values
+        """
+        rows = []
+        
+        try:
+            # Extract rows
+            row_pattern = r"<tr.*?>(.*?)</tr>"
+            row_matches = re.finditer(row_pattern, table_content, re.DOTALL)
+            
+            for row_match in row_matches:
+                row_content = row_match.group(1)
+                
+                # Extract cells
+                cell_pattern = r"<t[dh].*?>(.*?)</t[dh]>"
+                cells = re.findall(cell_pattern, row_content, re.DOTALL)
+                
+                # Clean cell content
+                cells = [re.sub(r"<.*?>", "", cell).strip() for cell in cells]
+                rows.append(cells)
+                
+        except Exception as e:
+            logger.warning(f"Error parsing table rows: {e}")
+            
+        return rows
+    
+    def _build_hierarchy(self, structure: Dict[str, Any]) -> None:
+        """
+        Build hierarchical structure from sections.
+        
+        Args:
+            structure: Structure dict to update with hierarchy
+        """
+        try:
+            hierarchy = {}
+            
+            # Group sections by their base number
+            for section in structure["sections"]:
+                base = section.split(".")[0]
+                if base not in hierarchy:
+                    hierarchy[base] = []
+                hierarchy[base].append(section)
+            
+            structure["hierarchy"] = hierarchy
+            
+        except Exception as e:
+            logger.warning(f"Error building hierarchy: {e}")
+    
+    def extract_sections(self, filing_content: str, form_type: str = "10-K") -> Dict[str, str]:
         """
         Extract sections from an SEC filing.
         
         Args:
             filing_content: The content of the SEC filing
+            form_type: The type of SEC form
             
         Returns:
             Dict mapping section IDs to their content
         """
-        sections = {}
-        
-        # Extract sections using patterns
-        for section_id, pattern in self.section_patterns.items():
-            match = re.search(pattern, filing_content, re.IGNORECASE)
-            if match:
-                start_pos = match.start()
-                # Find the next section start
-                next_pos = len(filing_content)
-                for other_pattern in self.section_patterns.values():
-                    if other_pattern != pattern:
-                        next_match = re.search(other_pattern, filing_content[start_pos+1:], re.IGNORECASE)
-                        if next_match:
-                            next_pos = min(next_pos, start_pos + 1 + next_match.start())
-                
-                # Extract section content
-                section_content = filing_content[start_pos:next_pos].strip()
-                sections[section_id] = section_content
-        
-        return sections
+        structure = self.parse_filing_structure(filing_content, form_type)
+        return {
+            section_id: section_info["content"]
+            for section_id, section_info in structure["sections"].items()
+        }
     
     def get_section_content(self, section_id: str) -> Optional[str]:
         """
@@ -131,40 +290,4 @@ class SECStructure:
         Returns:
             Section content if found, None otherwise
         """
-        return self.sections.get(section_id)
-    
-    def _build_hierarchy(self, structure: Dict[str, Any]) -> None:
-        """
-        Build the hierarchical structure of the filing.
-        
-        Args:
-            structure: The filing structure to build hierarchy for
-        """
-        # Sort sections by start position
-        sorted_sections = sorted(
-            structure["sections"].items(),
-            key=lambda x: x[1]["start"]
-        )
-        
-        # Build hierarchy
-        hierarchy = {}
-        current_level = hierarchy
-        
-        for section_id, section_info in sorted_sections:
-            # Check if this is a subsection
-            if "." in section_id:
-                parent_id = section_id.rsplit(".", 1)[0]
-                if parent_id in current_level:
-                    current_level[parent_id]["subsections"][section_id] = section_info
-                else:
-                    current_level[section_id] = {
-                        "info": section_info,
-                        "subsections": {}
-                    }
-            else:
-                current_level[section_id] = {
-                    "info": section_info,
-                    "subsections": {}
-                }
-        
-        structure["hierarchy"] = hierarchy 
+        return self.sections.get(section_id) 

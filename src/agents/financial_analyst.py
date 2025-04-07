@@ -1,8 +1,8 @@
 from typing import Dict, Any, List, Optional
-from base import Agent, Goal
-from capabilities.base import Capability
-from memory.base import Memory
-from sec_filing_analyzer.llm import get_agent_config
+from ..agents.base import Agent, Goal
+from ..capabilities.base import Capability
+from ..memory.base import Memory
+from ..sec_filing_analyzer.llm import get_agent_config
 
 class FinancialAnalystAgent(Agent):
     """Agent specialized in analyzing financial statements and metrics."""
