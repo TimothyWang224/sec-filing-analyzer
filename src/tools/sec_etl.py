@@ -19,21 +19,21 @@ console = Console()
 
 class SECETLTool:
     """Tool for agents to interact with the SEC filing ETL pipeline."""
-    
+
     def __init__(self, config: Optional[ETLConfig] = None):
         """Initialize the tool.
-        
+
         Args:
             config: Optional ETL configuration
         """
         self.config = config or ETLConfig.from_env()
         self.pipeline = ETLPipeline(
-            cache_dir=self.config.cache_dir,
+            filings_dir=self.config.filings_dir,
             chunk_size=self.config.chunk_size,
             chunk_overlap=self.config.chunk_overlap,
             embedding_model=self.config.embedding_model
         )
-    
+
     def process_company(
         self,
         ticker: str,
@@ -41,12 +41,12 @@ class SECETLTool:
         filing_types: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Process SEC filings for a company.
-        
+
         Args:
             ticker: Company ticker symbol
             years: Optional list of years to process
             filing_types: Optional list of filing types to process
-            
+
         Returns:
             Dictionary containing processed filings and metadata
         """
@@ -60,7 +60,7 @@ class SECETLTool:
         except Exception as e:
             logger.error(f"Error processing company {ticker}: {str(e)}")
             raise
-    
+
     def process_companies(
         self,
         tickers: List[str],
@@ -68,12 +68,12 @@ class SECETLTool:
         filing_types: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Process SEC filings for multiple companies.
-        
+
         Args:
             tickers: List of company ticker symbols
             years: Optional list of years to process
             filing_types: Optional list of filing types to process
-            
+
         Returns:
             Dictionary containing results for each company
         """
@@ -87,13 +87,13 @@ class SECETLTool:
         except Exception as e:
             logger.error(f"Error processing companies: {str(e)}")
             raise
-    
+
     def get_company_metadata(self, ticker: str) -> Dict[str, Any]:
         """Get metadata for a company.
-        
+
         Args:
             ticker: Company ticker symbol
-            
+
         Returns:
             Dictionary containing company metadata
         """
@@ -102,13 +102,13 @@ class SECETLTool:
         except Exception as e:
             logger.error(f"Error getting metadata for {ticker}: {str(e)}")
             raise
-    
+
     def check_company_exists(self, ticker: str) -> bool:
         """Check if a company exists.
-        
+
         Args:
             ticker: Company ticker symbol
-            
+
         Returns:
             Boolean indicating if company exists
         """
@@ -116,4 +116,4 @@ class SECETLTool:
             return self.pipeline.check_company_exists(ticker)
         except Exception as e:
             logger.error(f"Error checking company {ticker}: {str(e)}")
-            raise 
+            raise

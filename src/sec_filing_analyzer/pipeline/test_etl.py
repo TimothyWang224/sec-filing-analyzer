@@ -31,11 +31,11 @@ def get_neo4j_config() -> Optional[Dict[str, Any]]:
     password = os.getenv("NEO4J_PASSWORD")
     url = os.getenv("NEO4J_URL", "bolt://localhost:7687")
     database = os.getenv("NEO4J_DATABASE", "neo4j")
-    
+
     if not all([username, password]):
         logger.info("Neo4j credentials not found, using in-memory storage")
         return None
-        
+
     return {
         "username": username,
         "password": password,
@@ -50,27 +50,27 @@ def test_nvda_2023_filings():
     if not edgar_identity:
         logger.error("EDGAR_IDENTITY environment variable not set. Please set it in your .env file.")
         return
-    
+
     logger.info(f"Using EDGAR identity: {edgar_identity}")
-    
+
     # Initialize components
     neo4j_config = get_neo4j_config()
     use_neo4j = neo4j_config is not None
-    
+
     graph_store = GraphStore(
         store_dir=STORAGE_CONFIG["graph_store_path"],
         use_neo4j=use_neo4j,
         **(neo4j_config or {})
     )
-    
+
     vector_store = LlamaIndexVectorStore(
         store_dir=STORAGE_CONFIG["vector_store_path"]
     )
     filing_processor = FilingProcessor(graph_store=graph_store, vector_store=vector_store)
     file_storage = FileStorage(
-        base_dir=ETLConfig().cache_dir.parent / "filings"
+        base_dir=ETLConfig().filings_dir
     )
-    
+
     # Initialize pipeline
     pipeline = SECFilingETLPipeline(
         graph_store=graph_store,
@@ -78,7 +78,7 @@ def test_nvda_2023_filings():
         filing_processor=filing_processor,
         file_storage=file_storage
     )
-    
+
     # Process NVDA's 2023 filings
     pipeline.process_company(
         ticker="NVDA",
@@ -86,10 +86,10 @@ def test_nvda_2023_filings():
         start_date="2023-01-01",
         end_date="2023-12-31"
     )
-    
+
     # Verify that filings were processed
     # This is a basic test - you may want to add more specific assertions
     assert True  # Replace with actual assertions based on expected outcomes
 
 if __name__ == "__main__":
-    test_nvda_2023_filings() 
+    test_nvda_2023_filings()

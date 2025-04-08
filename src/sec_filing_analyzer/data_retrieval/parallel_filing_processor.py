@@ -1,12 +1,13 @@
 """
-SEC Filing Processor
+Parallel SEC Filing Processor
 
-This module provides functionality for processing SEC filings.
+This module provides functionality for processing SEC filings in parallel.
 """
 
 import logging
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, List, Any, Optional, Union
 import numpy as np
+import concurrent.futures
 from pathlib import Path
 
 from ..storage import GraphStore, LlamaIndexVectorStore
@@ -16,9 +17,9 @@ from .file_storage import FileStorage
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class FilingProcessor:
+class ParallelFilingProcessor:
     """
-    Processor for SEC filings.
+    Parallel processor for SEC filings.
     """
 
     def __init__(
@@ -26,11 +27,15 @@ class FilingProcessor:
         graph_store: Optional[GraphStore] = None,
         vector_store: Optional[LlamaIndexVectorStore] = None,
         file_storage: Optional[FileStorage] = None,
+        max_workers: int = 4
     ):
-        """Initialize the filing processor."""
+        """Initialize the parallel filing processor."""
         self.graph_store = graph_store or GraphStore()
         self.vector_store = vector_store or LlamaIndexVectorStore()
         self.file_storage = file_storage or FileStorage()
+        self.max_workers = max_workers
+        
+        logger.info(f"Initialized parallel filing processor with {max_workers} workers")
 
     def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
         """Ensure embedding is in list format.
@@ -48,9 +53,54 @@ class FilingProcessor:
         else:
             return list(embedding)
 
+    def process_filings_parallel(
+        self, 
+        filings_data: List[Dict[str, Any]]
+    ) -> Dict[str, List[str]]:
+        """
+        Process multiple filings in parallel.
 
+        Args:
+            filings_data: List of filing data dictionaries
 
-    def process_filing(self, filing_data: Dict[str, Any]) -> Dict[str, Any]:
+        Returns:
+            Dictionary with completed and failed filing IDs
+        """
+        results = {
+            "completed": [],
+            "failed": []
+        }
+        
+        if not filings_data:
+            return results
+            
+        logger.info(f"Processing {len(filings_data)} filings in parallel")
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(filings_data))) as executor:
+            # Submit tasks
+            future_to_filing = {
+                executor.submit(self.process_filing, filing): filing.get("id", "unknown") 
+                for filing in filings_data
+            }
+            
+            # Process results as they complete
+            for future in concurrent.futures.as_completed(future_to_filing):
+                filing_id = future_to_filing[future]
+                try:
+                    result = future.result()
+                    if result:
+                        results["completed"].append(filing_id)
+                        logger.info(f"Successfully processed filing {filing_id}")
+                    else:
+                        results["failed"].append(filing_id)
+                        logger.error(f"Failed to process filing {filing_id}")
+                except Exception as e:
+                    results["failed"].append(filing_id)
+                    logger.error(f"Error processing filing {filing_id}: {str(e)}")
+        
+        return results
+
+    def process_filing(self, filing_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Process a filing and store it in the graph and vector stores.
 
@@ -100,46 +150,25 @@ class FilingProcessor:
 
                 # Add chunks to vector store if available
                 if chunks and chunk_embeddings and chunk_texts:
-                    # Generate unique IDs for each chunk, including split chunks
+                    # Generate unique IDs for each chunk
                     chunk_ids = []
                     chunk_metadata = []
                     chunk_texts_to_store = []
                     chunk_embeddings_to_store = []
 
-                    for i, (chunk, chunk_text, chunk_embedding) in enumerate(zip(chunks, chunk_texts, chunk_embeddings)):
-                        # Check if this is a split chunk
-                        is_split_chunk = False
-                        original_order = None
-
-                        if isinstance(chunk, dict):
-                            is_split_chunk = chunk.get('is_split_chunk', False)
-                            original_order = chunk.get('original_order')
-
-                        if is_split_chunk and original_order is not None:
-                            # This is a split chunk, use a more specific ID
-                            chunk_id = f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)}"
-                        else:
-                            # This is a regular chunk
-                            chunk_id = f"{filing_id}_chunk_{i}"
-
-                        # Create metadata for the chunk
+                    for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
+                        chunk_id = f"{filing_id}_chunk_{i}"
+                        
+                        # Create metadata for chunk
                         chunk_meta = metadata.copy()
                         chunk_meta.update({
-                            "chunk_id": i,
-                            "parent_filing": filing_id,
-                            "chunk_metadata": chunk if isinstance(chunk, dict) else {}
+                            "chunk_id": chunk_id,
+                            "chunk_index": i,
+                            "parent_id": filing_id,
+                            "item": chunk.get("item", ""),
+                            "is_table": chunk.get("is_table", False),
+                            "is_signature": chunk.get("is_signature", False)
                         })
-
-                        # Add relationship information for split chunks
-                        if is_split_chunk:
-                            chunk_meta.update({
-                                "is_split_chunk": True,
-                                "original_chunk_order": original_order,
-                                "split_chunk_index": chunk.get('split_chunk_index', 0) if isinstance(chunk, dict) else 0,
-                                "split_chunk_count": chunk.get('split_chunk_count', 1) if isinstance(chunk, dict) else 1,
-                                "prev_chunk_id": f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)-1}" if chunk.get('prev_chunk_order') else None,
-                                "next_chunk_id": f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)+1}" if chunk.get('next_chunk_order') else None
-                            })
 
                         # Ensure chunk embedding is a list of floats
                         chunk_embedding_list = self._ensure_list_format(chunk_embedding)
@@ -186,40 +215,19 @@ class FilingProcessor:
                 chunk_texts_to_store = []
                 chunk_embeddings_to_store = []
 
-                for i, (chunk, chunk_text, chunk_embedding) in enumerate(zip(chunks, chunk_texts, chunk_embeddings)):
-                    # Check if this is a split chunk
-                    is_split_chunk = False
-                    original_order = None
-
-                    if isinstance(chunk, dict):
-                        is_split_chunk = chunk.get('is_split_chunk', False)
-                        original_order = chunk.get('original_order')
-
-                    if is_split_chunk and original_order is not None:
-                        # This is a split chunk, use a more specific ID
-                        chunk_id = f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)}"
-                    else:
-                        # This is a regular chunk
-                        chunk_id = f"{filing_id}_chunk_{i}"
-
-                    # Create metadata for the chunk
+                for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
+                    chunk_id = f"{filing_id}_chunk_{i}"
+                    
+                    # Create metadata for chunk
                     chunk_meta = metadata.copy()
                     chunk_meta.update({
-                        "chunk_id": i,
-                        "parent_filing": filing_id,
-                        "chunk_metadata": chunk if isinstance(chunk, dict) else {}
+                        "chunk_id": chunk_id,
+                        "chunk_index": i,
+                        "parent_id": filing_id,
+                        "item": chunk.get("item", ""),
+                        "is_table": chunk.get("is_table", False),
+                        "is_signature": chunk.get("is_signature", False)
                     })
-
-                    # Add relationship information for split chunks
-                    if is_split_chunk:
-                        chunk_meta.update({
-                            "is_split_chunk": True,
-                            "original_chunk_order": original_order,
-                            "split_chunk_index": chunk.get('split_chunk_index', 0) if isinstance(chunk, dict) else 0,
-                            "split_chunk_count": chunk.get('split_chunk_count', 1) if isinstance(chunk, dict) else 1,
-                            "prev_chunk_id": f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)-1}" if chunk.get('prev_chunk_order') else None,
-                            "next_chunk_id": f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)+1}" if chunk.get('next_chunk_order') else None
-                        })
 
                     # Ensure chunk embedding is a list of floats
                     chunk_embedding_list = self._ensure_list_format(chunk_embedding)

@@ -1,0 +1,25 @@
+[
+  {
+    "id": "test_document",
+    "metadata": {
+      "title": "Test Document",
+      "author": "Test Author",
+      "date": "2023-01-01"
+    },
+    "text": "This is a test document for the vector store.",
+    "embedding": [
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1,
+      0.1
+    ],
+    "embedding_truncated": true,
+    "embedding_dimensions": 1536
+  }
+]
