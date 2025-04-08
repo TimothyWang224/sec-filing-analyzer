@@ -10,12 +10,13 @@ from typing import Dict, List, Any, Optional
 from pathlib import Path
 
 from sec_filing_analyzer.config import ETLConfig, StorageConfig
-from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
+from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
 from sec_filing_analyzer.data_retrieval import SECFilingsDownloader
 from sec_filing_analyzer.data_retrieval.parallel_filing_processor import ParallelFilingProcessor
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 from sec_filing_analyzer.data_processing.chunking import FilingChunker
 from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
+from typing import Union
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -29,19 +30,30 @@ class ParallelSECFilingETLPipeline:
     def __init__(
         self,
         graph_store: Optional[GraphStore] = None,
-        vector_store: Optional[LlamaIndexVectorStore] = None,
+        vector_store: Optional[Union[LlamaIndexVectorStore, OptimizedVectorStore]] = None,
         filing_processor: Optional[ParallelFilingProcessor] = None,
         file_storage: Optional[FileStorage] = None,
         sec_downloader: Optional[SECFilingsDownloader] = None,
         max_workers: int = 4,
         batch_size: int = 100,
-        rate_limit: float = 0.1
+        rate_limit: float = 0.1,
+        use_optimized_vector_store: bool = True
     ):
         """Initialize the parallel ETL pipeline."""
         self.graph_store = graph_store or GraphStore()
-        self.vector_store = vector_store or LlamaIndexVectorStore(
-            store_path=StorageConfig().vector_store_path
-        )
+
+        # Use optimized vector store by default
+        if vector_store is None:
+            if use_optimized_vector_store:
+                self.vector_store = OptimizedVectorStore(
+                    store_path=StorageConfig().vector_store_path
+                )
+            else:
+                self.vector_store = LlamaIndexVectorStore(
+                    store_path=StorageConfig().vector_store_path
+                )
+        else:
+            self.vector_store = vector_store
         self.file_storage = file_storage or FileStorage(
             base_dir=ETLConfig().filings_dir
         )
@@ -62,13 +74,22 @@ class ParallelSECFilingETLPipeline:
         self.embedding_generator = ParallelEmbeddingGenerator(
             model=ETLConfig().embedding_model,
             max_workers=max_workers,
-            rate_limit=rate_limit
+            rate_limit=rate_limit,
+            batch_size=batch_size,  # Use the batch size from constructor
+            max_retries=3  # Add retry logic
         )
-        
+
+        # Try to set up enhanced logging
+        try:
+            from ..utils.logging_utils import setup_logging
+            setup_logging()
+        except (ImportError, Exception) as e:
+            logger.warning(f"Could not set up enhanced logging: {e}")
+
         # Configuration
         self.max_workers = max_workers
         self.batch_size = batch_size
-        
+
         logger.info(f"Initialized parallel ETL pipeline with {max_workers} workers")
 
     def process_companies(
@@ -95,24 +116,24 @@ class ParallelSECFilingETLPipeline:
             "failed": [],
             "no_filings": []
         }
-        
+
         if not tickers:
             return results
-            
+
         logger.info(f"Processing {len(tickers)} companies in parallel")
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(tickers))) as executor:
             # Submit tasks
             future_to_ticker = {
                 executor.submit(
-                    self.process_company, 
-                    ticker, 
-                    filing_types, 
-                    start_date, 
+                    self.process_company,
+                    ticker,
+                    filing_types,
+                    start_date,
                     end_date
                 ): ticker for ticker in tickers
             }
-            
+
             # Process results as they complete
             for future in concurrent.futures.as_completed(future_to_ticker):
                 ticker = future_to_ticker[future]
@@ -130,7 +151,7 @@ class ParallelSECFilingETLPipeline:
                 except Exception as e:
                     results["failed"].append(ticker)
                     logger.error(f"Exception processing {ticker}: {str(e)}")
-        
+
         return results
 
     def process_company(
@@ -148,7 +169,7 @@ class ParallelSECFilingETLPipeline:
             filing_types: List of filing types to process
             start_date: Start date for filing range
             end_date: End date for filing range
-            
+
         Returns:
             Dictionary with processing results
         """
@@ -158,7 +179,7 @@ class ParallelSECFilingETLPipeline:
             "filings_processed": 0,
             "error": None
         }
-        
+
         try:
             # Download filings
             downloaded_filings = self.sec_downloader.download_company_filings(
@@ -167,14 +188,14 @@ class ParallelSECFilingETLPipeline:
                 start_date=start_date,
                 end_date=end_date
             )
-            
+
             if not downloaded_filings:
                 logger.warning(f"No filings found for {ticker} in the specified date range and filing types")
                 result["status"] = "no_filings"
                 return result
-            
+
             logger.info(f"Found {len(downloaded_filings)} filings for {ticker}")
-            
+
             # Process filings in parallel
             processed_filings = []
             for filing_data in downloaded_filings:
@@ -184,11 +205,11 @@ class ParallelSECFilingETLPipeline:
                         processed_filings.append(processed_filing)
                 except Exception as e:
                     logger.error(f"Error processing filing {filing_data.get('accession_number', 'unknown')}: {e}")
-            
+
             result["status"] = "completed"
             result["filings_processed"] = len(processed_filings)
             return result
-            
+
         except Exception as e:
             error_msg = f"Error processing company {ticker}: {str(e)}"
             logger.error(error_msg)
@@ -201,7 +222,7 @@ class ParallelSECFilingETLPipeline:
 
         Args:
             filing_data: The filing data to process
-            
+
         Returns:
             Processed filing data or None if processing failed
         """
@@ -211,7 +232,7 @@ class ParallelSECFilingETLPipeline:
             if not accession_number:
                 logger.error(f"Missing accession_number in filing data: {filing_data}")
                 return None
-                
+
             # Get filing content
             filing_content = self.file_storage.load_raw_filing(accession_number)
             if not filing_content:
@@ -233,15 +254,31 @@ class ParallelSECFilingETLPipeline:
             # Extract chunk texts
             chunk_texts = processed_data.get('chunk_texts', [])
 
+            # Create a filing-specific embedding generator with metadata
+            filing_embedding_generator = ParallelEmbeddingGenerator(
+                model=ETLConfig().embedding_model,
+                max_workers=self.max_workers,
+                rate_limit=self.embedding_generator.rate_limit,
+                filing_metadata=filing_data,
+                batch_size=self.batch_size,
+                max_retries=3
+            )
+
             # Generate embeddings for chunks in parallel
             logger.info(f"Generating embeddings for {len(chunk_texts)} chunks")
-            chunk_embeddings = self.embedding_generator.generate_embeddings(
-                chunk_texts, 
+            chunk_embeddings, embedding_metadata = filing_embedding_generator.generate_embeddings(
+                chunk_texts,
                 batch_size=self.batch_size
             )
 
-            # Add embeddings to processed data
+            # Add embeddings and metadata to processed data
             processed_data['chunk_embeddings'] = chunk_embeddings
+            processed_data['embedding_metadata'] = {
+                'chunk_embedding_stats': embedding_metadata,
+                'has_fallbacks': embedding_metadata.get('any_fallbacks', False),
+                'fallback_count': embedding_metadata.get('fallback_count', 0),
+                'token_usage': embedding_metadata.get('token_usage', {})
+            }
 
             # Only generate full text embedding for small documents (optional)
             text = processed_data['text']
@@ -250,16 +287,34 @@ class ParallelSECFilingETLPipeline:
                 token_count = self.filing_chunker._count_tokens(text)
                 if token_count <= 8000:  # Safe limit for embedding models
                     logger.info(f"Generating embedding for full text ({token_count} tokens)")
-                    full_text_embedding = self.embedding_generator.generate_embeddings([text])[0]
-                    processed_data['embedding'] = full_text_embedding
+                    full_text_embedding, full_text_metadata = filing_embedding_generator.generate_embeddings([text])
+                    processed_data['embedding'] = full_text_embedding[0]
+
+                    # Add full text embedding metadata
+                    processed_data['embedding_metadata']['full_text_embedding_stats'] = full_text_metadata
+                    processed_data['embedding_metadata']['full_text_has_fallback'] = full_text_metadata.get('any_fallbacks', False)
                 else:
                     logger.info(f"Skipping full text embedding due to token count ({token_count} tokens)")
                     # Use the average of chunk embeddings as a fallback
                     if chunk_embeddings:
                         import numpy as np
+                        # Filter out fallback (zero) vectors if possible
+                        if 'fallback_flags' in embedding_metadata and not all(embedding_metadata['fallback_flags']):
+                            # Get indices of non-fallback chunks
+                            valid_indices = [i for i, is_fallback in enumerate(embedding_metadata['fallback_flags']) if not is_fallback]
+                            if valid_indices:  # If we have any valid embeddings
+                                valid_embeddings = [chunk_embeddings[i] for i in valid_indices]
+                                avg_embedding = np.mean(valid_embeddings, axis=0).tolist()
+                                processed_data['embedding'] = avg_embedding
+                                logger.info(f"Using average of {len(valid_indices)} valid chunk embeddings for document embedding")
+                                processed_data['embedding_metadata']['full_text_has_fallback'] = False
+                                return
+
+                        # If all chunks are fallbacks or we couldn't filter, use all chunks
                         avg_embedding = np.mean(chunk_embeddings, axis=0).tolist()
                         processed_data['embedding'] = avg_embedding
-                        logger.info("Using average of chunk embeddings for document embedding")
+                        logger.info("Using average of all chunk embeddings for document embedding")
+                        processed_data['embedding_metadata']['full_text_has_fallback'] = True
             except Exception as e:
                 logger.warning(f"Error generating full text embedding: {e}")
                 # Continue without full text embedding
@@ -282,9 +337,9 @@ class ParallelSECFilingETLPipeline:
                     "processed_data": processed_data
                 }
             )
-            
+
             return processed_data
-            
+
         except Exception as e:
             logger.error(f"Error processing filing: {str(e)}")
             return None

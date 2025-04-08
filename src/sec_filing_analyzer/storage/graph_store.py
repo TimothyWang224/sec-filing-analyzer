@@ -942,11 +942,12 @@ class GraphStore(GraphStoreInterface):
                 logger.error(f"Error getting filing nodes from memory: {str(e)}")
                 return []
 
-    def get_filing_relationships(self, filing_id: str) -> List[Dict[str, Any]]:
+    def get_filing_relationships(self, filing_id: str, companies: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """Get all relationships for a filing.
 
         Args:
             filing_id: The filing ID
+            companies: Optional list of company tickers to filter by
 
         Returns:
             List of relationship dictionaries
@@ -954,11 +955,23 @@ class GraphStore(GraphStoreInterface):
         if self.use_neo4j:
             try:
                 with self.driver.session(database=self.database) as session:
-                    query = """
-                    MATCH (f:Filing {accession_number: $filing_id})-[r]-(related)
-                    RETURN type(r) as type, properties(r) as properties,
-                           f.accession_number as from_id, related.accession_number as to_id
-                    """
+                    # Build query with optional company filter
+                    if companies:
+                        company_list = ", ".join([f"'{c}'" for c in companies])
+                        query = f"""
+                        MATCH (c:Company)-[:FILED]->(f:Filing {{accession_number: $filing_id}})
+                        WHERE c.ticker IN [{company_list}]
+                        WITH f
+                        MATCH (f)-[r]-(related)
+                        RETURN type(r) as type, properties(r) as properties,
+                               f.accession_number as from_id, related.accession_number as to_id
+                        """
+                    else:
+                        query = """
+                        MATCH (f:Filing {accession_number: $filing_id})-[r]-(related)
+                        RETURN type(r) as type, properties(r) as properties,
+                               f.accession_number as from_id, related.accession_number as to_id
+                        """
                     result = session.run(query, filing_id=filing_id)
 
                     relationships = []
@@ -978,6 +991,21 @@ class GraphStore(GraphStoreInterface):
             try:
                 relationships = []
                 if filing_id in self.graph:
+                    # Check if we need to filter by company
+                    if companies:
+                        # Find company nodes that filed this filing
+                        filing_companies = []
+                        for node, attrs in self.graph.nodes(data=True):
+                            if attrs.get("type") == "company" and attrs.get("ticker") in companies:
+                                # Check if this company is connected to the filing
+                                if self.graph.has_edge(node, filing_id):
+                                    filing_companies.append(node)
+
+                        # If no matching companies, return empty list
+                        if not filing_companies:
+                            return []
+
+                    # Get relationships
                     for neighbor in self.graph.neighbors(filing_id):
                         edge_data = self.graph.get_edge_data(filing_id, neighbor)
                         relationships.append({
@@ -989,6 +1017,70 @@ class GraphStore(GraphStoreInterface):
                 return relationships
             except Exception as e:
                 logger.error(f"Error getting filing relationships from memory: {str(e)}")
+                return []
+
+    def get_filings_by_companies(self, companies: List[str], filing_types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """Get all filings for specified companies.
+
+        Args:
+            companies: List of company tickers to filter by
+            filing_types: Optional list of filing types to filter by (e.g., ['10-K', '10-Q'])
+
+        Returns:
+            List of filing dictionaries
+        """
+        if not companies:
+            return []
+
+        if self.use_neo4j:
+            try:
+                with self.driver.session(database=self.database) as session:
+                    company_list = ", ".join([f"'{c}'" for c in companies])
+
+                    # Add filing type filter if specified
+                    filing_type_filter = ""
+                    if filing_types:
+                        filing_type_list = ", ".join([f"'{ft}'" for ft in filing_types])
+                        filing_type_filter = f"AND f.filing_type IN [{filing_type_list}]"
+
+                    query = f"""
+                    MATCH (c:Company)-[:FILED]->(f:Filing)
+                    WHERE c.ticker IN [{company_list}] {filing_type_filter}
+                    RETURN f.accession_number as id, f.filing_type as type,
+                           f.filing_date as date, c.ticker as ticker
+                    ORDER BY f.filing_date DESC
+                    """
+
+                    result = session.run(query)
+                    return [dict(record) for record in result]
+            except Exception as e:
+                logger.error(f"Error getting filings by companies from Neo4j: {str(e)}")
+                return []
+        else:
+            # For in-memory graph
+            try:
+                filings = []
+                for node, attrs in self.graph.nodes(data=True):
+                    # Check if this is a filing node
+                    if attrs.get("type") == "filing":
+                        ticker = attrs.get("ticker")
+                        filing_type = attrs.get("filing_type")
+
+                        # Check if it matches our filters
+                        if ticker in companies:
+                            if filing_types is None or filing_type in filing_types:
+                                filings.append({
+                                    "id": node,
+                                    "type": filing_type,
+                                    "date": attrs.get("filing_date"),
+                                    "ticker": ticker
+                                })
+
+                # Sort by date (descending)
+                filings.sort(key=lambda x: x.get("date", ""), reverse=True)
+                return filings
+            except Exception as e:
+                logger.error(f"Error getting filings by companies from memory: {str(e)}")
                 return []
 
     def add_entity(
