@@ -11,7 +11,10 @@ dependencies = [
     "edgartools (>=3.14.4,<4.0.0)",
     "spacy (>=3.8.5,<4.0.0)",
     "llama-index (>=0.12.28,<0.13.0)",
-    "llama-index-graph-stores-neo4j (>=0.4.6,<0.5.0)"
+    "llama-index-graph-stores-neo4j (>=0.4.6,<0.5.0)",
+    "faiss-cpu (>=1.10.0,<2.0.0)",
+    "matplotlib (>=3.9.0,<4.0.0)",
+    "duckdb (>=1.2.2,<2.0.0)"
 ]
 
 [tool.poetry]

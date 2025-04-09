@@ -38,6 +38,7 @@ class FileStorage:
         self.cache_dir = self.base_dir / "cache"
         self.html_dir = self.base_dir / "html"
         self.xml_dir = self.base_dir / "xml"
+        self.xbrl_dir = self.base_dir / "xbrl"
 
         # Create directories
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -46,6 +47,7 @@ class FileStorage:
         self.cache_dir.mkdir(exist_ok=True)
         self.html_dir.mkdir(exist_ok=True)
         self.xml_dir.mkdir(exist_ok=True)
+        self.xbrl_dir.mkdir(exist_ok=True)
 
         logger.info(f"Initialized file storage with base directory: {self.base_dir}")
 
@@ -569,6 +571,113 @@ class FileStorage:
 
         return filings
 
+    def save_xbrl_data(
+        self,
+        filing_id: str,
+        xbrl_data: Dict[str, Any],
+        ticker: Optional[str] = None,
+        year: Optional[str] = None
+    ) -> Path:
+        """
+        Save XBRL data to disk.
+
+        Args:
+            filing_id: Unique identifier for the filing (e.g., accession number)
+            xbrl_data: XBRL data extracted from the filing
+            ticker: Optional company ticker symbol
+            year: Optional filing year
+
+        Returns:
+            Path to the saved file
+        """
+        # Extract ticker and year from xbrl_data if not provided
+        if not ticker and "ticker" in xbrl_data:
+            ticker = xbrl_data["ticker"]
+
+        if not year and "filing_date" in xbrl_data:
+            filing_date = xbrl_data.get("filing_date", "")
+            if filing_date and isinstance(filing_date, str):
+                year = filing_date.split("-")[0]
+
+        # Default values if still not available
+        ticker = ticker or "unknown"
+        year = year or datetime.now().strftime("%Y")
+
+        # Create company directory
+        company_dir = self.xbrl_dir / ticker
+        company_dir.mkdir(exist_ok=True)
+
+        # Create year directory
+        year_dir = company_dir / year
+        year_dir.mkdir(exist_ok=True)
+
+        # Create file path
+        file_path = year_dir / f"{filing_id}_xbrl.json"
+
+        # Save XBRL data
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(xbrl_data, f, indent=2, default=str)
+
+        logger.info(f"Saved XBRL data for filing {filing_id} to {file_path}")
+        return file_path
+
+    def load_xbrl_data(
+        self,
+        filing_id: str,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Load XBRL data from disk.
+
+        Args:
+            filing_id: Unique identifier for the filing
+            ticker: Optional company ticker symbol
+            year: Optional filing year
+
+        Returns:
+            XBRL data, or None if not found
+        """
+        # Try to find the filing if ticker and year are not provided
+        if not ticker or not year:
+            # Search in all directories
+            for company_dir in self.xbrl_dir.glob("*"):
+                if not company_dir.is_dir():
+                    continue
+
+                for year_dir in company_dir.glob("*"):
+                    if not year_dir.is_dir():
+                        continue
+
+                    file_path = year_dir / f"{filing_id}_xbrl.json"
+
+                    if file_path.exists():
+                        ticker = company_dir.name
+                        year = year_dir.name
+                        break
+
+                if ticker and year:
+                    break
+
+        # If still not found, return None
+        if not ticker or not year:
+            logger.warning(f"XBRL data for filing {filing_id} not found")
+            return None
+
+        # Create file path
+        file_path = self.xbrl_dir / ticker / year / f"{filing_id}_xbrl.json"
+
+        # Check if file exists
+        if not file_path.exists():
+            logger.warning(f"XBRL data for filing {filing_id} not found")
+            return None
+
+        # Load data
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return data
+
     def export_filing(
         self,
         filing_id: str,
@@ -653,6 +762,12 @@ class FileStorage:
 
         if processed_path.exists():
             shutil.copy2(processed_path, export_dir / "processed.json")
+
+        # Copy XBRL data if available
+        xbrl_path = self.xbrl_dir / ticker / year / f"{filing_id}_xbrl.json"
+
+        if xbrl_path.exists():
+            shutil.copy2(xbrl_path, export_dir / "xbrl.json")
 
         logger.info(f"Exported filing {filing_id} to {export_dir}")
         return export_dir

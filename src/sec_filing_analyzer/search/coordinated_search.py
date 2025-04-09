@@ -6,7 +6,7 @@ vector store and graph store for more comprehensive search results.
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 import time
 
 from ..storage import OptimizedVectorStore, GraphStore
@@ -42,7 +42,13 @@ class CoordinatedSearch:
         filing_types: Optional[List[str]] = None,
         top_k: int = 5,
         include_related: bool = True,
-        metadata_filter: Optional[Dict[str, Any]] = None
+        metadata_filter: Optional[Dict[str, Any]] = None,
+        date_range: Optional[Tuple[str, str]] = None,
+        sections: Optional[List[str]] = None,
+        keywords: Optional[List[str]] = None,
+        keyword_match_type: str = "any",
+        hybrid_search_weight: float = 0.5,
+        sort_by: str = "relevance"
     ) -> Dict[str, Any]:
         """Perform a coordinated search across vector and graph stores.
 
@@ -53,51 +59,64 @@ class CoordinatedSearch:
             top_k: Number of results to return
             include_related: Whether to include related documents from graph
             metadata_filter: Optional additional metadata filter
+            date_range: Optional tuple of (start_date, end_date) in format 'YYYY-MM-DD'
+            sections: Optional list of document sections to filter by
+            keywords: Optional list of keywords to search for
+            keyword_match_type: Type of keyword matching ('any', 'all', or 'exact')
+            hybrid_search_weight: Weight for hybrid search (0.0 = pure vector, 1.0 = pure keyword)
+            sort_by: How to sort results ('relevance', 'date', or 'company')
 
         Returns:
             Dictionary containing search results and performance metrics
         """
         start_time = time.time()
-        
+
         # 1. Vector search with company filter
         vector_start_time = time.time()
         vector_results = self.vector_store.search_vectors(
             query_text=query_text,
             companies=companies,
             top_k=top_k,
-            metadata_filter=metadata_filter
+            metadata_filter=metadata_filter,
+            date_range=date_range,
+            filing_types=filing_types,
+            sections=sections,
+            keywords=keywords,
+            keyword_match_type=keyword_match_type,
+            hybrid_search_weight=hybrid_search_weight,
+            sort_by=sort_by
         )
         vector_time = time.time() - vector_start_time
-        
+
         # 2. Enhance results with graph information if requested
         enhanced_results = []
         graph_time = 0
-        
+
         if include_related:
             graph_start_time = time.time()
-            
+
             for result in vector_results:
                 filing_id = result['id']
-                
+
                 # Get related documents from graph with same company filter
                 related_docs = self.graph_store.get_filing_relationships(
                     filing_id=filing_id,
                     companies=companies
                 )
-                
+
                 # Add to enhanced results
                 enhanced_results.append({
                     **result,
                     "related_documents": related_docs
                 })
-                
+
             graph_time = time.time() - graph_start_time
         else:
             enhanced_results = vector_results
-        
+
         # 3. Prepare final results
         total_time = time.time() - start_time
-        
+
         return {
             "results": enhanced_results,
             "performance": {
@@ -109,10 +128,16 @@ class CoordinatedSearch:
             "filters": {
                 "companies": companies,
                 "filing_types": filing_types,
-                "metadata": metadata_filter
+                "metadata": metadata_filter,
+                "date_range": date_range,
+                "sections": sections,
+                "keywords": keywords,
+                "keyword_match_type": keyword_match_type,
+                "hybrid_search_weight": hybrid_search_weight,
+                "sort_by": sort_by
             }
         }
-    
+
     def get_company_filings(
         self,
         companies: List[str],
@@ -131,7 +156,7 @@ class CoordinatedSearch:
             companies=companies,
             filing_types=filing_types
         )
-    
+
     def search_within_filing(
         self,
         filing_id: str,
@@ -173,12 +198,12 @@ class CoordinatedSearch:
                         break
         except Exception as e:
             logger.warning(f"Error getting filing metadata: {e}")
-        
+
         # If we found company information, use it to filter the search
         companies = None
         if filing_metadata and "ticker" in filing_metadata:
             companies = [filing_metadata["ticker"]]
-        
+
         # Search for chunks within this filing
         chunk_results = self.vector_store.search_vectors(
             query_text=query_text,
@@ -186,7 +211,7 @@ class CoordinatedSearch:
             top_k=top_k,
             metadata_filter={"original_doc_id": filing_id}
         )
-        
+
         return {
             "filing_id": filing_id,
             "filing_metadata": filing_metadata,

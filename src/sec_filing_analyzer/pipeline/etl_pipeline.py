@@ -11,14 +11,18 @@ from pathlib import Path
 
 from llama_index.embeddings.openai import OpenAIEmbedding
 
-from sec_filing_analyzer.config import ETLConfig, StorageConfig
-from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
-from sec_filing_analyzer.data_retrieval import SECFilingsDownloader, FilingProcessor
-from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
-from sec_filing_analyzer.data_processing.chunking import FilingChunker
-from sec_filing_analyzer.embeddings import EmbeddingGenerator
-from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
-from sec_filing_analyzer.data_retrieval.parallel_filing_processor import ParallelFilingProcessor
+from ..config import ETLConfig, StorageConfig
+from ..storage import GraphStore, LlamaIndexVectorStore
+from ..data_retrieval import SECFilingsDownloader, FilingProcessor
+from ..data_retrieval.file_storage import FileStorage
+from ..semantic.processing.chunking import FilingChunker
+from ..semantic.embeddings.embedding_generator import EmbeddingGenerator
+from ..semantic.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
+from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
+
+# Import the semantic and quantitative pipelines
+from .semantic_pipeline import SemanticETLPipeline
+from .quantitative_pipeline import QuantitativeETLPipeline
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -39,7 +43,10 @@ class SECFilingETLPipeline:
         max_workers: int = 4,
         batch_size: int = 100,
         rate_limit: float = 0.1,
-        use_parallel: bool = True
+        use_parallel: bool = True,
+        process_semantic: bool = True,
+        process_quantitative: bool = True,
+        db_path: Optional[str] = None
     ):
         """Initialize the ETL pipeline.
 
@@ -70,6 +77,9 @@ class SECFilingETLPipeline:
         self.batch_size = batch_size
         self.rate_limit = rate_limit
         self.use_parallel = use_parallel
+        self.process_semantic = process_semantic
+        self.process_quantitative = process_quantitative
+        self.db_path = db_path
 
         # Initialize filing processor based on parallel preference
         if use_parallel and not filing_processor:
@@ -101,6 +111,18 @@ class SECFilingETLPipeline:
         else:
             self.embedding_generator = EmbeddingGenerator(
                 model=ETLConfig().embedding_model
+            )
+
+        # Initialize the semantic and quantitative pipelines
+        if self.process_semantic:
+            self.semantic_pipeline = SemanticETLPipeline(
+                downloader=self.sec_downloader
+            )
+
+        if self.process_quantitative:
+            self.quantitative_pipeline = QuantitativeETLPipeline(
+                downloader=self.sec_downloader,
+                db_path=self.db_path
             )
 
         logger.info(f"Initialized ETL pipeline with parallel processing: {use_parallel}")
@@ -186,6 +208,80 @@ class SECFilingETLPipeline:
             logger.error(error_msg)
             result["error"] = error_msg
             return result
+
+    def process_filing(self, ticker: str, filing_type: str, filing_date: Optional[str] = None, accession_number: Optional[str] = None, force_download: bool = False) -> Dict[str, Any]:
+        """Process a single filing.
+
+        Args:
+            ticker: Company ticker symbol
+            filing_type: Type of filing (e.g., '10-K', '10-Q')
+            filing_date: Date of filing (optional)
+            accession_number: SEC accession number (optional)
+            force_download: Whether to force download even if cached
+
+        Returns:
+            Dictionary with processing results
+        """
+        try:
+            results = {}
+
+            # Process using the legacy pipeline
+            # Step 1: Download the filing
+            filing_data = self.sec_downloader.download_filing(
+                ticker=ticker,
+                filing_type=filing_type,
+                filing_date=filing_date,
+                accession_number=accession_number,
+                force_download=force_download
+            )
+
+            if not filing_data:
+                logger.error(f"Failed to download {filing_type} filing for {ticker}")
+                return {"error": f"Failed to download {filing_type} filing for {ticker}"}
+
+            # Step 2: Process the filing
+            legacy_result = self.filing_processor.process_filing(filing_data)
+            results["legacy"] = legacy_result
+
+            # Process using the semantic pipeline if enabled
+            if self.process_semantic:
+                semantic_result = self.semantic_pipeline.process_filing(
+                    ticker=ticker,
+                    filing_type=filing_type,
+                    filing_date=filing_date,
+                    accession_number=accession_number,
+                    force_download=force_download
+                )
+                results["semantic"] = semantic_result
+
+            # Process using the quantitative pipeline if enabled
+            if self.process_quantitative:
+                quantitative_result = self.quantitative_pipeline.process_filing(
+                    ticker=ticker,
+                    filing_type=filing_type,
+                    filing_date=filing_date,
+                    accession_number=accession_number,
+                    force_download=force_download
+                )
+                results["quantitative"] = quantitative_result
+
+            # Determine overall status
+            status = "success"
+            for key, result in results.items():
+                if "error" in result:
+                    status = "partial"
+                    break
+
+            return {
+                "status": status,
+                "ticker": ticker,
+                "filing_type": filing_type,
+                "results": results
+            }
+
+        except Exception as e:
+            logger.error(f"Error processing {filing_type} filing for {ticker}: {e}")
+            return {"error": str(e)}
 
     def process_filing_data(self, filing_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
