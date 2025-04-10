@@ -184,20 +184,24 @@ def get_filing_metadata(filing: Filing, ticker: str) -> Dict[str, Any]:
         if isinstance(filing_date, (datetime, date)):
             filing_date = filing_date.isoformat()
 
-        return {
+        metadata = {
             "accession_number": filing.accession_number,
+            "id": filing.accession_number,  # Add id field as a duplicate of accession_number
             "form": filing.form,
+            "filing_type": filing.form,  # Add filing_type as a duplicate of form for consistency
             "filing_date": filing_date,
             "company": filing.company,
             "ticker": ticker,
             "cik": filing.cik,
             "filing_url": filing.filing_url
         }
+        return metadata
     except Exception as e:
         logger.error(f"Error getting metadata for filing {filing.accession_number}: {e}")
         # Return basic metadata if full metadata cannot be retrieved
         return {
             "accession_number": filing.accession_number,
+            "id": filing.accession_number,  # Add id field as a duplicate of accession_number
             "form": filing.form,
             "ticker": ticker
         }

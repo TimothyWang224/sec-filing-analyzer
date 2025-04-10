@@ -97,9 +97,7 @@ class SECFilingETLPipeline:
             )
 
         # Initialize filing chunker
-        self.filing_chunker = FilingChunker(
-            max_chunk_size=1500  # Maximum tokens per chunk
-        )
+        self.filing_chunker = FilingChunker()
 
         # Initialize embedding generator based on parallel preference
         if use_parallel:
@@ -226,14 +224,24 @@ class SECFilingETLPipeline:
             results = {}
 
             # Process using the legacy pipeline
-            # Step 1: Download the filing
-            filing_data = self.sec_downloader.download_filing(
+            # Step 1: Get the filing object
+            filings = self.sec_downloader.get_filings(
                 ticker=ticker,
-                filing_type=filing_type,
-                filing_date=filing_date,
-                accession_number=accession_number,
-                force_download=force_download
+                filing_types=[filing_type],
+                start_date=filing_date,
+                end_date=filing_date,
+                limit=1
             )
+
+            if not filings:
+                logger.error(f"Failed to find {filing_type} filing for {ticker}")
+                return {"error": f"Failed to find {filing_type} filing for {ticker}"}
+
+            # Get the first filing
+            filing = filings[0]
+
+            # Download the filing
+            filing_data = self.sec_downloader.download_filing(filing, ticker)
 
             if not filing_data:
                 logger.error(f"Failed to download {filing_type} filing for {ticker}")

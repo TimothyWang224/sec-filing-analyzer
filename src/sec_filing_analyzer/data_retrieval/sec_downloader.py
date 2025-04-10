@@ -43,12 +43,70 @@ class SECFilingsDownloader:
             cache_dir=xbrl_cache_dir
         )
 
+    def get_filings(
+        self,
+        ticker: str,
+        filing_types: Optional[List[str]] = None,
+        start_date: Optional[Union[str, date]] = None,
+        end_date: Optional[Union[str, date]] = None,
+        limit: int = 10
+    ) -> List[Filing]:
+        """
+        Get SEC filings for a company.
+
+        Args:
+            ticker: Company ticker symbol
+            filing_types: List of filing types to download (e.g., ['10-K', '10-Q'])
+            start_date: Start date for filings (optional)
+            end_date: End date for filings (optional)
+            limit: Maximum number of filings to return
+
+        Returns:
+            List of Filing objects
+        """
+        try:
+            # Get the entity
+            entity = edgar_utils.get_entity(ticker)
+            if not entity:
+                logger.error(f"Entity not found: {ticker}")
+                return []
+
+            # Get filings
+            filings = []
+
+            # Handle multiple filing types
+            if filing_types:
+                for form_type in filing_types:
+                    form_filings = edgar_utils.get_filings(
+                        ticker=ticker,
+                        form_type=form_type,
+                        start_date=start_date,
+                        end_date=end_date,
+                        limit=limit
+                    )
+                    filings.extend(form_filings)
+            else:
+                # Get all filings
+                filings = edgar_utils.get_filings(
+                    ticker=ticker,
+                    start_date=start_date,
+                    end_date=end_date,
+                    limit=limit
+                )
+
+            return filings
+
+        except Exception as e:
+            logger.error(f"Error getting filings for {ticker}: {e}")
+            return []
+
     def download_company_filings(
         self,
         ticker: str,
         filing_types: Optional[List[str]] = None,
         start_date: Optional[Union[str, date]] = None,
         end_date: Optional[Union[str, date]] = None,
+        force_download: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Download all filings for a company.
@@ -58,6 +116,7 @@ class SECFilingsDownloader:
             filing_types: List of filing types to download
             start_date: Start date for filing range (YYYY-MM-DD string or date object)
             end_date: End date for filing range (YYYY-MM-DD string or date object)
+            force_download: Whether to force download filings even if they exist in cache
 
         Returns:
             List of downloaded filing metadata
@@ -81,7 +140,7 @@ class SECFilingsDownloader:
         downloaded_filings = []
         for filing in filings:
             try:
-                filing_data = self.download_filing(filing, ticker)
+                filing_data = self.download_filing(filing, ticker, force_download=force_download)
                 if filing_data:
                     downloaded_filings.append(filing_data)
             except Exception as e:
@@ -89,26 +148,30 @@ class SECFilingsDownloader:
 
         return downloaded_filings
 
-    def download_filing(self, filing: Filing, ticker: str) -> Optional[Dict[str, Any]]:
+    def download_filing(self, filing: Filing, ticker: str, force_download: bool = False) -> Optional[Dict[str, Any]]:
         """
         Download a single filing.
 
         Args:
             filing: The filing to download
             ticker: Company ticker symbol
+            force_download: Whether to force download the filing even if it exists in cache
 
         Returns:
             Dict containing filing data if successful, None otherwise
         """
         # Check if filing is already downloaded
-        cached_data = self.file_storage.load_cached_filing(filing.accession_number)
-        if cached_data:
-            logger.info(f"Using cached data for filing {filing.accession_number}")
-            # Extract metadata from cached data if available
-            if isinstance(cached_data, dict) and 'metadata' in cached_data:
-                return cached_data['metadata']
-            # If the cached data doesn't have the expected structure, create metadata from the filing object
-            return edgar_utils.get_filing_metadata(filing, ticker)
+        if not force_download:
+            cached_data = self.file_storage.load_cached_filing(filing.accession_number)
+            if cached_data:
+                logger.info(f"Using cached data for filing {filing.accession_number}")
+                # Extract metadata from cached data if available
+                if isinstance(cached_data, dict) and 'metadata' in cached_data:
+                    return cached_data['metadata']
+                # If the cached data doesn't have the expected structure, create metadata from the filing object
+                return edgar_utils.get_filing_metadata(filing, ticker)
+        else:
+            logger.info(f"Force download enabled, skipping cache for filing {filing.accession_number}")
 
         # Download filing
         try:
@@ -141,28 +204,45 @@ class SECFilingsDownloader:
                 "has_xbrl": content.get("xbrl") is not None
             })
 
+            # Ensure both id and accession_number fields are present
+            if 'accession_number' in metadata and 'id' not in metadata:
+                metadata['id'] = metadata['accession_number']
+                logger.debug(f"Added id field from accession_number: {metadata['id']}")
+            elif 'id' in metadata and 'accession_number' not in metadata:
+                metadata['accession_number'] = metadata['id']
+                logger.debug(f"Added accession_number field from id: {metadata['accession_number']}")
+
             # Save raw filing to disk
+            # Ensure we use a consistent ID for saving the filing
+            filing_id = metadata.get('accession_number')
+
+            # Save the raw filing content
             self.file_storage.save_raw_filing(
-                filing_id=filing.accession_number,
+                filing_id=filing_id,
                 content=text_content,
                 metadata=metadata
             )
 
+            # Log successful save
+            logger.info(f"Saved raw filing content for {filing_id}")
+
             # Save HTML filing to disk if available
             if html_content:
                 self.file_storage.save_html_filing(
-                    filing_id=filing.accession_number,
+                    filing_id=filing_id,
                     html_content=html_content,
                     metadata=metadata
                 )
+                logger.info(f"Saved HTML content for {filing_id}")
 
             # Save XML filing to disk if available
             if xml_content:
                 self.file_storage.save_xml_filing(
-                    filing_id=filing.accession_number,
+                    filing_id=filing_id,
                     xml_content=xml_content,
                     metadata=metadata
                 )
+                logger.info(f"Saved XML content for {filing_id}")
 
             return metadata
 

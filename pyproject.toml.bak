@@ -1,0 +1,77 @@
+[project]
+name = "sec-filing-analyzer"
+version = "0.1.0"
+description = "A multi-agent LLM system for analyzing SEC filings and providing financial insights"
+authors = [
+    {name = "Timothy Wang", email = "timothy.yi.wang@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<3.9.7 || >3.9.7,<3.13"
+dependencies = [
+    "edgartools (>=3.14.4,<4.0.0)",
+    "spacy (>=3.8.5,<4.0.0)",
+    "llama-index (>=0.12.28,<0.13.0)",
+    "llama-index-graph-stores-neo4j (>=0.4.6,<0.5.0)",
+    "faiss-cpu (>=1.10.0,<2.0.0)",
+    "matplotlib (>=3.9.0,<4.0.0)",
+    "duckdb (>=1.2.2,<2.0.0)",
+    "streamlit (>=1.30.0,<2.0.0)",
+    "plotly (>=5.15.0,<6.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "sec_filing_analyzer", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.9.7 || >3.9.7,<3.13"
+openai = "^1.12.0"
+python-dotenv = "^1.0.1"
+# Core dependencies
+llama-index-core = "^0.10.0"
+llama-index-llms-openai = "^0.1.0"
+llama-index-embeddings-openai = "^0.3.0"
+# Vector databases
+llama-index-vector-stores-chroma = "^0.1.0"
+chromadb = "^0.4.0"
+# Graph database
+neo4j = "^5.0.0"
+# SEC data retrieval
+sec-api = "^1.0.0"
+sec-edgar-downloader = "^5.0.0"
+edgar = "^7.0.0"  # edgartools
+beautifulsoup4 = "^4.11.0"
+# Utilities
+rich = "^13.0.0"
+numpy = "^1.22.0"
+tqdm = "^4.66.0"
+# NLP
+spacy = "^3.8.5"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1.0"
+black = "^24.1.0"
+isort = "^5.13.0"
+mypy = "^1.8.0"
+ruff = "^0.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true

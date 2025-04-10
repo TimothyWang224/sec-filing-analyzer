@@ -316,15 +316,19 @@ class OptimizedDuckDBStore:
                 if not filing_id or not ticker or not accession_number:
                     continue
 
+                # Format date fields properly for DuckDB
+                filing_date = self._format_date(filing.get("filing_date"))
+                fiscal_period_end_date = self._format_date(filing.get("fiscal_period_end_date"))
+
                 row = {
                     "id": filing_id,
                     "ticker": ticker,
                     "accession_number": accession_number,
                     "filing_type": filing.get("filing_type"),
-                    "filing_date": filing.get("filing_date"),
+                    "filing_date": filing_date,
                     "fiscal_year": filing.get("fiscal_year"),
                     "fiscal_quarter": filing.get("fiscal_quarter"),
-                    "fiscal_period_end_date": filing.get("fiscal_period_end_date"),
+                    "fiscal_period_end_date": fiscal_period_end_date,
                     "document_url": filing.get("document_url"),
                     "has_xbrl": filing.get("has_xbrl", True)
                 }
@@ -426,6 +430,10 @@ class OptimizedDuckDBStore:
                 # Generate a unique ID if not provided
                 fact_id = fact.get("id") or f"{filing_id}_{xbrl_tag}_{fact.get('context_id', 'default')}"
 
+                # Format date fields properly for DuckDB
+                start_date = self._format_date(fact.get("start_date"))
+                end_date = self._format_date(fact.get("end_date"))
+
                 row = {
                     "id": fact_id,
                     "filing_id": filing_id,
@@ -434,8 +442,8 @@ class OptimizedDuckDBStore:
                     "value": value,
                     "unit": fact.get("unit", "USD"),
                     "period_type": fact.get("period_type", ""),
-                    "start_date": fact.get("start_date"),
-                    "end_date": fact.get("end_date"),
+                    "start_date": start_date,
+                    "end_date": end_date,
                     "segment": fact.get("segment", ""),
                     "context_id": fact.get("context_id", "")
                 }
@@ -1010,3 +1018,61 @@ class OptimizedDuckDBStore:
         except Exception as e:
             logger.error(f"Error getting database stats: {e}")
             return {}
+
+    def _format_date(self, date_value):
+        """
+        Format a date value for DuckDB.
+
+        Args:
+            date_value: Date value to format (string, int, or None)
+
+        Returns:
+            Properly formatted date string or None
+        """
+        # Handle None, NaN, NA, etc.
+        if date_value is None:
+            return None
+
+        # Handle pandas NA values
+        import pandas as pd
+        if pd.isna(date_value):
+            return None
+
+        # Convert to string if it's not already
+        date_str = str(date_value).strip()
+
+        # If empty string or special values, return None
+        if not date_str or date_str in ['<NA>', 'nan', 'NaT', 'None', 'null', 'decimals']:
+            return None
+
+        # Check if it's just a year (e.g., "2023")
+        if date_str.isdigit() and len(date_str) == 4:
+            # For fiscal year, use the end of the year
+            return f"{date_str}-12-31"
+
+        # Check if it's already in YYYY-MM-DD format
+        if len(date_str) >= 10 and date_str[4] == '-' and date_str[7] == '-':
+            return date_str[:10]  # Return just the date part
+
+        # If it's in another format, try to parse it
+        try:
+            from datetime import datetime
+            # Try common date formats
+            for fmt in ["%Y-%m-%d", "%Y/%m/%d", "%m/%d/%Y", "%d-%m-%Y", "%Y"]:
+                try:
+                    dt = datetime.strptime(date_str, fmt)
+                    return dt.strftime("%Y-%m-%d")
+                except ValueError:
+                    continue
+        except Exception as e:
+            # Only log warnings for values that look like they might be dates
+            if any(char.isdigit() for char in date_str):
+                logger.warning(f"Error formatting date '{date_str}': {e}")
+
+        # If all else fails, return None
+        return None
+
+    def close(self):
+        """Close the database connection."""
+        if self.conn:
+            self.conn.close()

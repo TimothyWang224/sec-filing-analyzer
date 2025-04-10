@@ -1,0 +1,37 @@
+[browser]
+serverAddress = "localhost"
+gatherUsageStats = false
+serveTrailingSlash = true
+
+[theme]
+base = "light"
+
+[server]
+headless = true
+enableCORS = true
+enableXsrfProtection = false
+port = 8501
+baseUrlPath = ""
+maxUploadSize = 200
+enableWebsocketCompression = false
+
+[ui]
+hideTopBar = false
+
+[client]
+showErrorDetails = true
+toolbarMode = "auto"
+caching = false
+displayEnabled = true
+
+[runner]
+magicEnabled = true
+installTracer = true
+fixMatplotlib = true
+fastReruns = false
+
+[global]
+disableWatchdogWarning = false
+showWarningOnDirectExecution = true
+dataFrameSerialization = "arrow"
+suppressDeprecationWarnings = true

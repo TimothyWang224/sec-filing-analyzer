@@ -11,7 +11,18 @@ from typing import List, Dict, Any, Optional, Union
 import numpy as np
 from pathlib import Path
 
-from .interfaces import VectorStoreInterface
+# Define a simple interface for vector stores
+class VectorStoreInterface:
+    """Interface for vector stores."""
+
+    def add_embeddings(self, embeddings: List[List[float]], metadata_list: List[Dict[str, Any]]) -> List[str]:
+        """Add embeddings to the vector store."""
+        raise NotImplementedError
+
+    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
+        """Search for similar embeddings."""
+        raise NotImplementedError
+
 from llama_index.core import VectorStoreIndex, Document, StorageContext
 from llama_index.core.vector_stores import SimpleVectorStore
 from llama_index.core.schema import QueryBundle
@@ -21,6 +32,218 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class VectorStore(VectorStoreInterface):
+    """
+    A class for storing and retrieving vector embeddings.
+    """
+
+    def __init__(self, store_path: Optional[str] = None):
+        """
+        Initialize the vector store.
+
+        Args:
+            store_path: Path to the vector store directory
+        """
+        self.store_path = store_path or "data/vector_store"
+        self.embeddings_path = os.path.join(self.store_path, "embeddings")
+        self.metadata_path = os.path.join(self.store_path, "metadata")
+
+        # Create directories if they don't exist
+        os.makedirs(self.embeddings_path, exist_ok=True)
+        os.makedirs(self.metadata_path, exist_ok=True)
+
+        # Initialize in-memory storage
+        self.embeddings = {}
+        self.metadata = {}
+
+        logger.info(f"Initialized vector store at {self.store_path}")
+
+    def add_embeddings(self, embeddings: List[List[float]], metadata_list: List[Dict[str, Any]]) -> List[str]:
+        """
+        Add embeddings to the vector store.
+
+        Args:
+            embeddings: List of embedding vectors
+            metadata_list: List of metadata dictionaries
+
+        Returns:
+            List of IDs for the added embeddings
+        """
+        if len(embeddings) != len(metadata_list):
+            raise ValueError("Number of embeddings must match number of metadata entries")
+
+        # Generate IDs for the embeddings
+        ids = [self._generate_id(metadata) for metadata in metadata_list]
+
+        # Store embeddings and metadata
+        for i, (embedding_id, embedding, metadata) in enumerate(zip(ids, embeddings, metadata_list)):
+            # Store in memory
+            self.embeddings[embedding_id] = embedding
+            self.metadata[embedding_id] = metadata
+
+            # Store on disk
+            self._save_embedding(embedding_id, embedding)
+            self._save_metadata(embedding_id, metadata)
+
+            if i % 100 == 0 and i > 0:
+                logger.info(f"Stored {i} embeddings")
+
+        logger.info(f"Added {len(embeddings)} embeddings to vector store")
+        return ids
+
+    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search for similar embeddings.
+
+        Args:
+            query_embedding: Query embedding vector
+            top_k: Number of results to return
+
+        Returns:
+            List of dictionaries with embedding ID, similarity score, and metadata
+        """
+        # Load all embeddings if not already in memory
+        if not self.embeddings:
+            self._load_all_embeddings()
+
+        # Convert query embedding to numpy array
+        query_embedding_np = np.array(query_embedding)
+
+        # Calculate cosine similarity for all embeddings
+        similarities = {}
+        for embedding_id, embedding in self.embeddings.items():
+            embedding_np = np.array(embedding)
+            similarity = self._cosine_similarity(query_embedding_np, embedding_np)
+            similarities[embedding_id] = similarity
+
+        # Sort by similarity score (descending)
+        sorted_ids = sorted(similarities.keys(), key=lambda x: similarities[x], reverse=True)
+
+        # Get top k results
+        results = []
+        for embedding_id in sorted_ids[:top_k]:
+            metadata = self.get_metadata(embedding_id)
+            results.append({
+                "id": embedding_id,
+                "score": float(similarities[embedding_id]),
+                "metadata": metadata
+            })
+
+        return results
+
+    def _generate_id(self, metadata: Dict[str, Any]) -> str:
+        """
+        Generate a unique ID for an embedding based on its metadata.
+
+        Args:
+            metadata: Metadata dictionary
+
+        Returns:
+            Unique ID string
+        """
+        # Use filing_id and chunk_id if available
+        if "filing_id" in metadata and "chunk_id" in metadata:
+            return f"{metadata['filing_id']}_{metadata['chunk_id']}"
+
+        # Use a combination of metadata values
+        metadata_str = json.dumps(metadata, sort_keys=True)
+        import hashlib
+        return hashlib.md5(metadata_str.encode()).hexdigest()
+
+    def _save_embedding(self, embedding_id: str, embedding: List[float]) -> None:
+        """
+        Save an embedding to disk.
+
+        Args:
+            embedding_id: ID of the embedding
+            embedding: Embedding vector
+        """
+        embedding_path = os.path.join(self.embeddings_path, f"{embedding_id}.json")
+        with open(embedding_path, "w") as f:
+            json.dump(embedding, f)
+
+    def _save_metadata(self, embedding_id: str, metadata: Dict[str, Any]) -> None:
+        """
+        Save metadata to disk.
+
+        Args:
+            embedding_id: ID of the embedding
+            metadata: Metadata dictionary
+        """
+        metadata_path = os.path.join(self.metadata_path, f"{embedding_id}.json")
+        with open(metadata_path, "w") as f:
+            json.dump(metadata, f)
+
+    def get_metadata(self, embedding_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get metadata by embedding ID.
+
+        Args:
+            embedding_id: ID of the embedding
+
+        Returns:
+            Metadata dictionary or None if not found
+        """
+        # Check in-memory cache first
+        if embedding_id in self.metadata:
+            return self.metadata[embedding_id]
+
+        # Try to load from disk
+        metadata_path = os.path.join(self.metadata_path, f"{embedding_id}.json")
+        if os.path.exists(metadata_path):
+            with open(metadata_path, "r") as f:
+                metadata = json.load(f)
+
+            # Cache in memory
+            self.metadata[embedding_id] = metadata
+            return metadata
+
+        return None
+
+    def _load_all_embeddings(self) -> None:
+        """
+        Load all embeddings from disk into memory.
+        """
+        logger.info("Loading all embeddings into memory")
+
+        # Load embeddings
+        for file in os.listdir(self.embeddings_path):
+            if file.endswith(".json"):
+                embedding_id = file[:-5]  # Remove .json extension
+                embedding_path = os.path.join(self.embeddings_path, file)
+
+                with open(embedding_path, "r") as f:
+                    embedding = json.load(f)
+
+                self.embeddings[embedding_id] = embedding
+
+        # Load metadata
+        for file in os.listdir(self.metadata_path):
+            if file.endswith(".json"):
+                embedding_id = file[:-5]  # Remove .json extension
+                metadata_path = os.path.join(self.metadata_path, file)
+
+                with open(metadata_path, "r") as f:
+                    metadata = json.load(f)
+
+                self.metadata[embedding_id] = metadata
+
+        logger.info(f"Loaded {len(self.embeddings)} embeddings into memory")
+
+    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
+        """
+        Calculate cosine similarity between two vectors.
+
+        Args:
+            a: First vector
+            b: Second vector
+
+        Returns:
+            Cosine similarity score
+        """
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
 
 class PineconeVectorStore(VectorStoreInterface):
     """Pinecone implementation of vector store."""

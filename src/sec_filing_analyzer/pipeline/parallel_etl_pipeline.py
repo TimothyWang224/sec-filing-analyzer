@@ -6,8 +6,7 @@ This module provides a parallelized ETL pipeline for processing SEC filings.
 
 import logging
 import concurrent.futures
-from typing import Dict, List, Any, Optional
-from pathlib import Path
+from typing import Dict, List, Any, Optional, Union
 
 from sec_filing_analyzer.config import ETLConfig, StorageConfig
 from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
@@ -16,7 +15,7 @@ from sec_filing_analyzer.data_retrieval.parallel_filing_processor import Paralle
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 from sec_filing_analyzer.data_processing.chunking import FilingChunker
 from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
-from typing import Union
+from sec_filing_analyzer.pipeline.quantitative_pipeline import QuantitativeETLPipeline
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +36,10 @@ class ParallelSECFilingETLPipeline:
         max_workers: int = 4,
         batch_size: int = 100,
         rate_limit: float = 0.1,
-        use_optimized_vector_store: bool = True
+        use_optimized_vector_store: bool = True,
+        process_semantic: bool = True,
+        process_quantitative: bool = True,
+        db_path: Optional[str] = None
     ):
         """Initialize the parallel ETL pipeline."""
         self.graph_store = graph_store or GraphStore()
@@ -89,6 +91,16 @@ class ParallelSECFilingETLPipeline:
         # Configuration
         self.max_workers = max_workers
         self.batch_size = batch_size
+        self.process_semantic = process_semantic
+        self.process_quantitative = process_quantitative
+        self.db_path = db_path
+
+        # Initialize quantitative pipeline if needed
+        if self.process_quantitative:
+            self.quantitative_pipeline = QuantitativeETLPipeline(
+                downloader=self.sec_downloader,
+                db_path=self.db_path
+            )
 
         logger.info(f"Initialized parallel ETL pipeline with {max_workers} workers")
 
@@ -160,6 +172,8 @@ class ParallelSECFilingETLPipeline:
         filing_types: Optional[List[str]] = None,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        force_rebuild_index: bool = False,
+        force_download: bool = False
     ) -> Dict[str, Any]:
         """
         Process all filings for a company.
@@ -169,6 +183,8 @@ class ParallelSECFilingETLPipeline:
             filing_types: List of filing types to process
             start_date: Start date for filing range
             end_date: End date for filing range
+            force_rebuild_index: Whether to force rebuild the FAISS index
+            force_download: Whether to force download filings even if they exist in cache
 
         Returns:
             Dictionary with processing results
@@ -186,7 +202,8 @@ class ParallelSECFilingETLPipeline:
                 ticker=ticker,
                 filing_types=filing_types or ETLConfig().filing_types,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
+                force_download=force_download
             )
 
             if not downloaded_filings:
@@ -196,15 +213,64 @@ class ParallelSECFilingETLPipeline:
 
             logger.info(f"Found {len(downloaded_filings)} filings for {ticker}")
 
+            # If using optimized vector store, load or rebuild the index
+            if hasattr(self.vector_store, '_load_faiss_index_for_companies'):
+                # This is an OptimizedVectorStore
+                self.vector_store._load_faiss_index_for_companies([ticker], force_rebuild=force_rebuild_index)
+
             # Process filings in parallel
             processed_filings = []
-            for filing_data in downloaded_filings:
-                try:
-                    processed_filing = self.process_filing_data(filing_data)
-                    if processed_filing:
-                        processed_filings.append(processed_filing)
-                except Exception as e:
-                    logger.error(f"Error processing filing {filing_data.get('accession_number', 'unknown')}: {e}")
+
+            # Process using semantic pipeline if enabled
+            if self.process_semantic:
+                for filing_data in downloaded_filings:
+                    try:
+                        # Add accession_number if missing but id is present
+                        if 'id' in filing_data and not filing_data.get('accession_number'):
+                            filing_data['accession_number'] = filing_data['id']
+
+                        processed_filing = self.process_filing_data(filing_data)
+                        if processed_filing:
+                            processed_filings.append(processed_filing)
+                    except Exception as e:
+                        logger.error(f"Error processing filing {filing_data.get('accession_number', filing_data.get('id', 'unknown'))}: {e}")
+
+            # Process using quantitative pipeline if enabled
+            if self.process_quantitative:
+
+                # Process each filing with the quantitative pipeline
+                for filing_data in downloaded_filings:
+                    try:
+                        # Ensure both id and accession_number fields are present
+                        if 'id' in filing_data and not filing_data.get('accession_number'):
+                            filing_data['accession_number'] = filing_data['id']
+                            logger.info(f"Using id as accession_number: {filing_data['id']}")
+                        elif 'accession_number' in filing_data and not filing_data.get('id'):
+                            filing_data['id'] = filing_data['accession_number']
+                            logger.info(f"Using accession_number as id: {filing_data['accession_number']}")
+
+                        accession_number = filing_data.get('accession_number')
+
+                        # Handle filing_type/form field consistency
+                        if 'filing_type' not in filing_data and 'form' in filing_data:
+                            filing_data['filing_type'] = filing_data['form']
+                        elif 'form' not in filing_data and 'filing_type' in filing_data:
+                            filing_data['form'] = filing_data['filing_type']
+
+                        filing_type = filing_data.get('filing_type') or filing_data.get('form')
+                        filing_date = filing_data.get('filing_date')
+
+                        if accession_number and filing_type:
+                            self.quantitative_pipeline.process_filing(
+                                ticker=ticker,
+                                filing_type=filing_type,
+                                filing_date=filing_date,
+                                accession_number=accession_number
+                            )
+                    except Exception as e:
+                        # Get a reliable identifier for the filing
+                        filing_id = filing_data.get('accession_number') or filing_data.get('id') or 'unknown'
+                        logger.error(f"Error processing XBRL data for filing {filing_id}: {e}")
 
             result["status"] = "completed"
             result["filings_processed"] = len(processed_filings)
@@ -229,8 +295,19 @@ class ParallelSECFilingETLPipeline:
         try:
             # Get the accession number from the filing data
             accession_number = filing_data.get('accession_number')
+
+            # If accession_number is missing but id is present, use id as accession_number
+            if not accession_number and 'id' in filing_data:
+                accession_number = filing_data['id']
+                filing_data['accession_number'] = accession_number
+                logger.info(f"Using id as accession_number: {accession_number}")
+            # If id is missing but accession_number is present, use accession_number as id
+            elif not filing_data.get('id') and accession_number:
+                filing_data['id'] = accession_number
+                logger.info(f"Using accession_number as id: {accession_number}")
+
             if not accession_number:
-                logger.error(f"Missing accession_number in filing data: {filing_data}")
+                logger.error(f"Missing both accession_number and id in filing data: {filing_data}")
                 return None
 
             # Get filing content
