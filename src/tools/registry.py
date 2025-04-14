@@ -1,0 +1,322 @@
+"""
+Tool registry for managing tools with automatic documentation extraction.
+"""
+
+import inspect
+import re
+from typing import Dict, Any, List, Optional, Type, Callable, Union, get_type_hints
+
+class ToolRegistry:
+    """Registry for tools with automatic documentation extraction."""
+
+    _tools: Dict[str, Dict[str, Any]] = {}
+
+    @classmethod
+    def register(cls, tool_class=None, name=None, tags=None):
+        """
+        Register a tool with automatic documentation extraction.
+
+        Can be used as a decorator:
+        @ToolRegistry.register(tags=["sec"])
+        class MyTool:
+            ...
+
+        Or called directly:
+        ToolRegistry.register(MyTool, tags=["sec"])
+
+        Args:
+            tool_class: The tool class to register
+            name: Optional name override (defaults to class name)
+            tags: Optional tags for categorizing the tool
+
+        Returns:
+            The tool class (for decorator usage)
+        """
+        # Handle both decorator and direct call patterns
+        if tool_class is None:
+            # Used as a decorator with arguments
+            def decorator(cls):
+                return cls._register_tool(cls, name, tags)
+            return decorator
+        else:
+            # Called directly
+            return cls._register_tool(tool_class, name, tags)
+
+    @classmethod
+    def _register_tool(cls, tool_class, name=None, tags=None):
+        """Internal method to register a tool."""
+        # Extract name from class if not provided
+        tool_name = name or tool_class.__name__.lower().replace('tool', '')
+
+        # Extract documentation
+        description = cls._extract_description(tool_class)
+        parameters = cls._extract_parameters(tool_class)
+
+        # Extract or generate compact description
+        compact_description = getattr(tool_class, '_compact_description', None)
+        if not compact_description:
+            compact_description = description.split('.')[0]  # First sentence
+
+        # Store in registry
+        cls._tools[tool_name] = {
+            "name": tool_name,
+            "class": tool_class,
+            "description": description,
+            "compact_description": compact_description,
+            "parameters": parameters,
+            "tags": tags or []
+        }
+
+        # Add metadata to the class
+        tool_class._tool_name = tool_name
+        tool_class._tool_tags = tags or []
+        tool_class._compact_description = compact_description
+
+        return tool_class
+
+    @classmethod
+    def _extract_description(cls, tool_class) -> str:
+        """Extract description from class docstring."""
+        docstring = tool_class.__doc__ or ""
+
+        # Extract the first paragraph as the description
+        description = docstring.strip().split("\n\n")[0].strip()
+
+        return description or "No description available"
+
+    @classmethod
+    def _extract_parameters(cls, tool_class) -> Dict[str, Dict[str, Any]]:
+        """Extract parameter documentation from execute method."""
+        parameters = {}
+
+        # Get the execute method
+        if not hasattr(tool_class, 'execute'):
+            return parameters
+
+        execute_method = tool_class.execute
+
+        # Get signature of the execute method
+        signature = inspect.signature(execute_method)
+
+        # Get type hints
+        try:
+            type_hints = get_type_hints(execute_method)
+        except Exception:
+            type_hints = {}
+
+        # Extract parameter info from signature
+        for param_name, param in signature.parameters.items():
+            if param_name == 'self':
+                continue
+
+            # Get type annotation
+            param_type = "any"
+            if param_name in type_hints:
+                param_type = cls._format_type_hint(type_hints[param_name])
+            elif param.annotation != inspect.Parameter.empty:
+                param_type = cls._format_type_hint(param.annotation)
+
+            # Check if parameter has default value
+            required = param.default == inspect.Parameter.empty
+            default = None if required else param.default
+
+            # Create parameter documentation
+            parameters[param_name] = {
+                "type": param_type,
+                "description": f"Parameter {param_name}",  # Default description
+                "required": required
+            }
+
+            if default is not None and default is not inspect.Parameter.empty:
+                parameters[param_name]["default"] = default
+
+        # Extract parameter descriptions from docstring
+        docstring = execute_method.__doc__ or ""
+
+        # Try to find Args section in docstring
+        args_match = re.search(r'Args:(.*?)(?:Returns:|Raises:|$)', docstring, re.DOTALL)
+        if args_match:
+            args_section = args_match.group(1).strip()
+
+            # Extract parameter descriptions
+            param_matches = re.finditer(r'(\w+)(?:\s*\(\w+\))?\s*:\s*(.*?)(?=\n\s*\w+\s*:|$)', args_section, re.DOTALL)
+
+            for match in param_matches:
+                param_name = match.group(1).strip()
+                param_desc = match.group(2).strip()
+
+                if param_name in parameters:
+                    parameters[param_name]["description"] = param_desc
+
+        return parameters
+
+    @classmethod
+    def _format_type_hint(cls, type_hint) -> str:
+        """Format a type hint into a readable string."""
+        type_str = str(type_hint)
+
+        # Clean up typing module prefixes
+        type_str = type_str.replace('typing.', '')
+
+        # Handle common typing constructs
+        type_str = type_str.replace('Optional[', '')
+        type_str = type_str.replace(']', '')
+
+        # Handle Union types
+        if 'Union[' in type_str:
+            type_str = type_str.replace('Union[', '').replace(']', '')
+            type_str = type_str.split(',')[0].strip()  # Take first type in union
+
+        return type_str
+
+    @classmethod
+    def get(cls, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get tool documentation by name.
+
+        Args:
+            name: Name of the tool to retrieve
+
+        Returns:
+            Tool documentation if found, None otherwise
+        """
+        return cls._tools.get(name)
+
+    @classmethod
+    def list_tools(cls) -> Dict[str, Dict[str, Any]]:
+        """
+        Get all registered tools.
+
+        Returns:
+            Dictionary mapping tool names to their documentation
+        """
+        return cls._tools.copy()
+
+    @classmethod
+    def get_tool_documentation(cls, name: Optional[str] = None, format: str = "text") -> str:
+        """
+        Get formatted documentation for tools.
+
+        Args:
+            name: Optional name of specific tool to document
+            format: Format of documentation ('text', 'markdown', or 'json')
+
+        Returns:
+            Formatted documentation string
+        """
+        if name:
+            # Document specific tool
+            tool_doc = cls.get(name)
+            if not tool_doc:
+                return f"Tool '{name}' not found"
+
+            return cls._format_tool_doc(tool_doc, format)
+        else:
+            # Document all tools
+            docs = []
+            for tool_name in sorted(cls._tools.keys()):
+                docs.append(cls._format_tool_doc(cls._tools[tool_name], format))
+
+            if format == "json":
+                import json
+                return json.dumps(cls._tools, indent=2)
+            else:
+                return "\n\n".join(docs)
+
+    @classmethod
+    def get_compact_tool_documentation(cls, format: str = "text") -> str:
+        """
+        Get compact documentation for all tools.
+
+        Args:
+            format: Format of documentation ('text', 'markdown', or 'json')
+
+        Returns:
+            Formatted compact documentation string
+        """
+        if format == "json":
+            compact_tools = {}
+            for name, info in cls._tools.items():
+                compact_tools[name] = {
+                    "name": name,
+                    "description": info.get("compact_description", ""),
+                    "tags": info.get("tags", [])
+                }
+            import json
+            return json.dumps(compact_tools, indent=2)
+
+        elif format == "markdown":
+            docs = []
+            for name in sorted(cls._tools.keys()):
+                info = cls._tools[name]
+                description = info.get("compact_description", "")
+                tags = info.get("tags", [])
+                tag_str = f" *({', '.join(tags)})*" if tags else ""
+                docs.append(f"- **{name}**{tag_str}: {description}")
+
+            return "\n".join(docs)
+
+        else:  # text
+            docs = []
+            for name in sorted(cls._tools.keys()):
+                info = cls._tools[name]
+                description = info.get("compact_description", "")
+                docs.append(f"- {name}: {description}")
+
+            return "\n".join(docs)
+
+    @classmethod
+    def _format_tool_doc(cls, tool_doc: Dict[str, Any], format: str) -> str:
+        """Format a single tool's documentation."""
+        name = tool_doc["name"]
+        description = tool_doc["description"]
+        parameters = tool_doc["parameters"]
+        tags = tool_doc.get("tags", [])
+
+        if format == "markdown":
+            doc = f"## {name}\n\n"
+            if tags:
+                doc += f"*Tags: {', '.join(tags)}*\n\n"
+            doc += f"{description}\n\n"
+
+            if parameters:
+                doc += "### Parameters\n\n"
+                for param_name, param_info in parameters.items():
+                    required = "**Required**" if param_info.get("required", False) else "Optional"
+                    param_type = param_info.get("type", "any")
+                    doc += f"- `{param_name}` ({param_type}) - {param_info.get('description', '')}"
+                    doc += f" {required}.\n"
+
+                    if "default" in param_info:
+                        doc += f"  - Default: `{param_info['default']}`\n"
+
+                    if "enum" in param_info:
+                        doc += f"  - Allowed values: {', '.join([f'`{v}`' for v in param_info['enum']])}\n"
+
+            return doc
+
+        elif format == "text":
+            doc = f"TOOL: {name}\n"
+            if tags:
+                doc += f"TAGS: {', '.join(tags)}\n"
+            doc += f"DESCRIPTION: {description}\n"
+
+            if parameters:
+                doc += "PARAMETERS:\n"
+                for param_name, param_info in parameters.items():
+                    required = "Required" if param_info.get("required", False) else "Optional"
+                    param_type = param_info.get("type", "any")
+                    doc += f"  {param_name} ({param_type}): {param_info.get('description', '')}"
+                    doc += f" {required}.\n"
+
+                    if "default" in param_info:
+                        doc += f"    Default: {param_info['default']}\n"
+
+                    if "enum" in param_info:
+                        doc += f"    Allowed values: {', '.join([str(v) for v in param_info['enum']])}\n"
+
+            return doc
+
+        else:  # json
+            import json
+            return json.dumps(tool_doc, indent=2)

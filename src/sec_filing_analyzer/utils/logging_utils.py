@@ -8,15 +8,31 @@ import os
 import logging
 import traceback
 import json
+import re
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
+from collections import defaultdict
 
 # Create a custom logger for embedding errors
 embedding_logger = logging.getLogger('embedding_errors')
 
 # Ensure the logger doesn't propagate to the root logger
 embedding_logger.propagate = False
+
+def get_standard_log_dir(subdir: Optional[str] = None) -> Path:
+    """Get the standard log directory path.
+
+    Args:
+        subdir: Optional subdirectory within the logs directory
+
+    Returns:
+        Path to the standard log directory
+    """
+    base_log_dir = Path('data/logs')
+    if subdir:
+        return base_log_dir / subdir
+    return base_log_dir
 
 def setup_logging(log_dir: Optional[Path] = None) -> None:
     """Set up enhanced logging for the application.
@@ -25,7 +41,7 @@ def setup_logging(log_dir: Optional[Path] = None) -> None:
         log_dir: Directory to store log files (default: data/logs)
     """
     if log_dir is None:
-        log_dir = Path('data/logs')
+        log_dir = get_standard_log_dir()
 
     # Create log directory if it doesn't exist
     log_dir.mkdir(parents=True, exist_ok=True)

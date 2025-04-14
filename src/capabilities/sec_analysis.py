@@ -1,37 +1,37 @@
 from typing import Dict, Any, Optional
 from .base import Capability
-from agents.base import Agent
+from ..agents.base import Agent
 
 class SECAnalysisCapability(Capability):
     """Capability for analyzing SEC filings and extracting relevant information."""
-    
+
     def __init__(self):
         """Initialize the SEC analysis capability."""
         super().__init__(
             name="sec_analysis",
             description="Analyzes SEC filings to extract financial information and insights"
         )
-        
+
     async def init(self, agent: Agent, context: Dict[str, Any]) -> None:
         """
         Initialize the capability with agent and context.
-        
+
         Args:
             agent: The agent this capability belongs to
             context: Initial context for the capability
         """
         self.agent = agent
         self.context = context
-        
+
     async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the input prompt to identify SEC filing analysis needs.
-        
+
         Args:
             agent: The agent processing the prompt
             context: Current context
             prompt: Input prompt to process
-            
+
         Returns:
             Processed prompt with SEC analysis requirements
         """
@@ -43,15 +43,15 @@ class SECAnalysisCapability(Capability):
 4. Key sections to focus on
 
 Format your response as a clear, structured prompt that will guide the analysis."""
-        
+
         enhanced_prompt = await agent.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
             temperature=0.3  # Lower temperature for more focused analysis
         )
-        
+
         return enhanced_prompt
-        
+
     async def process_response(
         self,
         agent: Agent,
@@ -61,13 +61,13 @@ Format your response as a clear, structured prompt that will guide the analysis.
     ) -> Dict[str, Any]:
         """
         Process the response to include SEC filing analysis.
-        
+
         Args:
             agent: The agent processing the response
             context: Current context
             prompt: Original prompt
             response: Response to process
-            
+
         Returns:
             Processed response with SEC analysis
         """
@@ -79,13 +79,13 @@ Format your response as a clear, structured prompt that will guide the analysis.
 4. Highlight important findings
 
 Format your analysis in a clear, structured way."""
-        
+
         analysis = await agent.llm.generate(
             prompt=str(response),
             system_prompt=system_prompt,
             temperature=0.7
         )
-        
+
         return {
             **response,
             "sec_analysis": {
@@ -109,7 +109,7 @@ Format your analysis in a clear, structured way."""
                 "llm_analysis": analysis
             }
         }
-        
+
     async def process_action(
         self,
         agent: Agent,
@@ -119,13 +119,13 @@ Format your analysis in a clear, structured way."""
     ) -> Dict[str, Any]:
         """
         Process an action to include SEC filing analysis.
-        
+
         Args:
             agent: The agent processing the action
             context: Current context
             prompt: Original prompt
             action: Action to process
-            
+
         Returns:
             Processed action with SEC analysis
         """
@@ -137,13 +137,13 @@ Format your analysis in a clear, structured way."""
 4. Set success criteria
 
 Format your response as a structured action plan."""
-        
+
         enhanced_action = await agent.llm.generate(
             prompt=str(action),
             system_prompt=system_prompt,
             temperature=0.3
         )
-        
+
         return {
             **action,
             "sec_data": {
@@ -153,7 +153,7 @@ Format your response as a structured action plan."""
                 "llm_enhancement": enhanced_action
             }
         }
-        
+
     async def process_result(
         self,
         agent: Agent,
@@ -164,14 +164,14 @@ Format your response as a structured action plan."""
     ) -> Dict[str, Any]:
         """
         Process a result to include SEC filing analysis.
-        
+
         Args:
             agent: The agent processing the result
             context: Current context
             prompt: Original prompt
             action: Action that produced the result
             result: Result to process
-            
+
         Returns:
             Processed result with SEC analysis
         """
@@ -183,13 +183,13 @@ Format your response as a structured action plan."""
 4. Generate recommendations
 
 Format your analysis in a clear, structured way."""
-        
+
         analysis = await agent.llm.generate(
             prompt=str(result),
             system_prompt=system_prompt,
             temperature=0.7
         )
-        
+
         return {
             **result,
             "sec_insights": {
@@ -198,4 +198,4 @@ Format your analysis in a clear, structured way."""
                 "risk_factors": "Manageable",
                 "llm_analysis": analysis
             }
-        } 
+        }

@@ -29,6 +29,7 @@ The SEC Filing Analyzer is designed to process SEC filings (10-K, 10-Q, 8-K) and
 - [Graph Storage](graph_storage.md)
 - [XBRL Extraction](xbrl_extraction.md)
 - [DuckDB Storage](duckdb_storage.md)
+- [Logging](logging.md)
 
 ### Usage
 

@@ -263,6 +263,41 @@ The system uses intelligent chunking to process SEC filings:
 - `scripts/visualize_graph.py`: Visualize the graph database
 - `scripts/query_financial_data.py`: Query financial data from DuckDB
 
+## Logging and Visualization
+
+### Logging Structure
+
+The system uses a standardized logging structure:
+
+- All logs are stored in the `data/logs/` directory
+- Agent logs are stored in `data/logs/agents/`
+- Workflow logs are stored in `data/logs/workflows/`
+- Test logs are stored in `data/logs/tests/`
+- General logs are stored in `data/logs/general/`
+
+Logs include both plain text (`.log`) and structured JSON (`.json`) formats for easy analysis.
+
+### Log Visualization
+
+The SEC Filing Analyzer includes a powerful log visualization tool that provides interactive visualizations of agent and workflow logs:
+
+- **Timeline Visualization**: View the timeline of workflow steps and operations
+- **Timing Analysis**: Analyze execution times for tools, LLM calls, and workflow steps
+- **Tool Call Analysis**: Examine tool usage patterns and arguments
+- **LLM Interaction Analysis**: View prompts, responses, and token usage statistics
+
+#### Usage
+
+```bash
+# Launch the Log Visualizer
+python scripts/visualization/launch_log_visualizer.py
+
+# Visualize a specific log file
+python scripts/visualization/launch_log_visualizer.py --log-file data/logs/agents/FinancialAnalystAgent_20250414_125810.log
+```
+
+The visualizer supports both agent logs and workflow logs, automatically detecting the log type and displaying the appropriate visualizations. For more details, see the [Visualization README](scripts/visualization/README.md).
+
 ## License
 
 MIT
