@@ -1,4 +1,4 @@
-# SEC Filing Analyzer Roadmap
+﻿# SEC Filing Analyzer Roadmap
 
 This document outlines the planned enhancements and future development directions for the SEC Filing Analyzer project.
 
@@ -27,7 +27,7 @@ The SEC Filing Analyzer currently provides:
 
 - [ ] Implement incremental updates to avoid reprocessing existing filings
 - [ ] Add support for delta updates to FAISS indexes
-- [x] Improve error handling and recovery mechanisms
+- [ ] Improve error handling and recovery mechanisms
 - [x] Add comprehensive logging and monitoring
 - [ ] Implement data validation checks throughout the pipeline
 
@@ -126,7 +126,7 @@ The SEC Filing Analyzer currently provides:
 - [ ] Performance optimization for core components
 - [ ] Security enhancements for data access
 - [ ] Consolidate logging directories into a single location
-- [x] Standardize error handling across all components
+- [ ] Standardize error handling across all components
 - [ ] Implement comprehensive benchmarking for performance tracking
 - [ ] Create developer documentation for capability extension
 - [ ] Develop contribution guidelines for open-source collaboration

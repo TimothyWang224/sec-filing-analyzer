@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
 from ..tools.base import Tool
+from ..tools.decorator import tool
 from sec_filing_analyzer.storage import OptimizedVectorStore
 from sec_filing_analyzer.config import StorageConfig
 
@@ -17,16 +18,18 @@ from sec_filing_analyzer.config import StorageConfig
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@tool(
+    name="sec_semantic_search",
+    tags=["sec", "semantic", "search"],
+    compact_description="Search SEC filings using natural language queries"
+    # Not using schema mappings for this tool since it has a complex parameter structure
+)
 class SECSemanticSearchTool(Tool):
     """Tool for performing semantic search on SEC filings.
 
     Performs semantic search on SEC filings to find relevant information based on natural language queries.
     Use this tool to search for specific topics, concepts, or information within SEC filings.
     """
-
-    _tool_name = "sec_semantic_search"
-    _tool_tags = ["sec", "semantic", "search"]
-    _compact_description = "Search SEC filings using natural language queries"
 
     def __init__(self, vector_store_path: Optional[str] = None):
         """Initialize the SEC semantic search tool.
@@ -41,7 +44,7 @@ class SECSemanticSearchTool(Tool):
         self.vector_store_path = vector_store_path or config.vector_store_path
         self.vector_store = OptimizedVectorStore(store_path=self.vector_store_path)
 
-    async def execute(
+    async def _execute(
         self,
         query: str,
         companies: Optional[List[str]] = None,

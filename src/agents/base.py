@@ -10,6 +10,10 @@ from abc import ABC, abstractmethod
 
 from .core.agent_state import AgentState
 from .core.tool_ledger import ToolLedger
+from .core.error_handling import ToolError, ToolErrorType, ErrorClassifier, ErrorAnalyzer, ToolCircuitBreaker
+from .core.adaptive_retry import AdaptiveRetryStrategy
+from .core.alternative_tools import AlternativeToolSelector
+from .core.error_recovery import ErrorRecoveryManager
 from ..environments.base import Environment
 from ..tools.registry import ToolRegistry
 from ..tools.llm_parameter_completer import LLMParameterCompleter
@@ -117,6 +121,15 @@ class Agent(ABC):
 
         # Initialize parameter completer
         self.parameter_completer = LLMParameterCompleter(self.llm)
+
+        # Initialize error recovery manager
+        self.error_recovery_manager = ErrorRecoveryManager(
+            llm=self.llm,
+            max_retries=max_tool_retries,
+            base_delay=1.0,
+            circuit_breaker_threshold=3,
+            circuit_breaker_reset_timeout=300
+        )
 
         # Initialize environment
         self.environment = environment or Environment()
@@ -291,75 +304,45 @@ class Agent(ABC):
             self.logger.info(f"Executing tool call: {tool_name}")
             self.logger.info(f"Tool arguments: {tool_args}")
 
-            # Execute the tool call with retries
-            success = False
-            last_error = None
-            tool_result = None
-            tool_duration = 0
+            # Define a function to execute the tool
+            async def execute_tool(tool_name, args):
+                return await self.environment.execute_action({
+                    "tool": tool_name,
+                    "args": args
+                })
 
-            for retry in range(self.max_tool_retries + 1):  # +1 for initial attempt
-                tool_start_time = time.time()
-                try:
-                    if retry > 0:
-                        self.logger.info(f"Retry {retry}/{self.max_tool_retries} for tool {tool_name}")
+            # Get the current user input from state context
+            user_input = self.state.get_context().get("input", "")
 
-                    with TimingContext(f"tool_{tool_name}", category="tool", logger=self.logger):
-                        tool_result = await self.environment.execute_action({
-                            "tool": tool_name,
-                            "args": tool_args
-                        })
-
-                    tool_duration = time.time() - tool_start_time
-                    self.logger.info(f"Tool {tool_name} completed in {tool_duration:.3f}s")
-
-                    success = True
-                    break  # Exit retry loop on success
-
-                except Exception as e:
-                    tool_duration = time.time() - tool_start_time
-                    last_error = str(e)
-                    self.logger.error(f"Error executing tool call: {last_error}")
-                    self.logger.error(f"Tool {tool_name} failed after {tool_duration:.3f}s")
-
-                    # Try to fix the tool call with the parameter completer
-                    if retry < self.max_tool_retries:
-                        try:
-                            # Get the current user input from state context
-                            user_input = self.state.get_context().get("input", "")
-
-                            # Complete parameters using the LLM with error context
-                            self.logger.info(f"Attempting to fix parameters for tool: {tool_name}")
-                            self.state.update_context({"last_error": last_error})
-
-                            fixed_args = await self.parameter_completer.complete_parameters(
-                                tool_name=tool_name,
-                                partial_parameters=tool_args,
-                                user_input=user_input,
-                                context=self.state.get_context()
-                            )
-
-                            # Update tool arguments with fixed parameters
-                            if fixed_args != tool_args:
-                                self.logger.info(f"Parameters fixed: {tool_args} -> {fixed_args}")
-                                tool_args = fixed_args
-                        except Exception as fix_error:
-                            self.logger.error(f"Error fixing parameters: {str(fix_error)}")
-                            # Continue with original parameters if fixing fails
-
-                    # Continue to next retry unless we've exhausted retries
-                    if retry >= self.max_tool_retries:
-                        self.logger.error(f"Max retries ({self.max_tool_retries}) reached for tool {tool_name}")
+            # Execute the tool with comprehensive error recovery
+            tool_start_time = time.time()
+            recovery_result = await self.error_recovery_manager.execute_tool_with_recovery(
+                tool_name=tool_name,
+                tool_args=tool_args,
+                execute_func=execute_tool,
+                user_input=user_input,
+                context=self.state.get_context()
+            )
+            tool_duration = time.time() - tool_start_time
 
             # Process the result based on success/failure
-            if success:
+            if recovery_result["success"]:
                 # Create result object
                 result_obj = {
                     "tool": tool_name,
                     "args": tool_args,
-                    "result": tool_result,
+                    "result": recovery_result["result"],
                     "success": True,
                     "duration": tool_duration
                 }
+
+                # Add recovery strategy information if available
+                if "recovery_strategy" in recovery_result:
+                    result_obj["recovery_strategy"] = recovery_result["recovery_strategy"]
+
+                # Add alternative tool information if available
+                if "alternative_tool" in recovery_result:
+                    result_obj["alternative_tool"] = recovery_result["alternative_tool"]
 
                 # Add to results list
                 results.append(result_obj)
@@ -368,8 +351,12 @@ class Agent(ABC):
                 self.tool_ledger.record_tool_call(
                     tool_name=tool_name,
                     args=tool_args,
-                    result=tool_result,
-                    metadata={"duration": tool_duration, "retries": retry}
+                    result=recovery_result["result"],
+                    metadata={
+                        "duration": tool_duration,
+                        "retries": recovery_result.get("retries", 0),
+                        "recovery_strategy": recovery_result.get("recovery_strategy", None)
+                    }
                 )
 
                 # Add to agent memory for future reference
@@ -377,18 +364,40 @@ class Agent(ABC):
                     "type": "tool_result",
                     "tool": tool_name,
                     "args": tool_args,
-                    "result": tool_result,
-                    "timestamp": datetime.now().isoformat()
+                    "result": recovery_result["result"],
+                    "timestamp": datetime.now().isoformat(),
+                    "recovery_info": {
+                        "strategy": recovery_result.get("recovery_strategy", None),
+                        "alternative_tool": recovery_result.get("alternative_tool", None)
+                    }
                 })
             else:
+                # Get error information
+                error = recovery_result["error"]
+                error_message = error.message if hasattr(error, "message") else str(error)
+                error_type = error.error_type.value if hasattr(error, "error_type") else "unknown_error"
+
+                # Get user-friendly error message
+                user_message = recovery_result.get("user_message", error_message)
+
                 # Create error result object
                 error_obj = {
                     "tool": tool_name,
                     "args": tool_args,
-                    "error": last_error,
+                    "error": error_message,
+                    "error_type": error_type,
+                    "user_message": user_message,
                     "success": False,
                     "duration": tool_duration
                 }
+
+                # Add suggestions if available
+                if "suggestions" in recovery_result:
+                    error_obj["suggestions"] = recovery_result["suggestions"]
+
+                # Add circuit status if available
+                if "circuit_status" in recovery_result:
+                    error_obj["circuit_status"] = recovery_result["circuit_status"]
 
                 # Add to results list
                 results.append(error_obj)
@@ -397,8 +406,12 @@ class Agent(ABC):
                 self.tool_ledger.record_tool_call(
                     tool_name=tool_name,
                     args=tool_args,
-                    error=last_error,
-                    metadata={"duration": tool_duration, "retries": retry}
+                    error=error_message,
+                    metadata={
+                        "duration": tool_duration,
+                        "error_type": error_type,
+                        "recovery_attempted": recovery_result.get("recovery_attempted", False)
+                    }
                 )
 
                 # Add to agent memory for future reference
@@ -406,8 +419,12 @@ class Agent(ABC):
                     "type": "tool_error",
                     "tool": tool_name,
                     "args": tool_args,
-                    "error": last_error,
-                    "timestamp": datetime.now().isoformat()
+                    "error": error_message,
+                    "error_type": error_type,
+                    "user_message": user_message,
+                    "timestamp": datetime.now().isoformat(),
+                    "recovery_attempted": recovery_result.get("recovery_attempted", False),
+                    "suggestions": recovery_result.get("suggestions", [])
                 })
 
         return results

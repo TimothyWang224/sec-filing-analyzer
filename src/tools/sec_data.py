@@ -1,21 +1,24 @@
 from typing import Dict, Any, List, Optional
 from .base import Tool
+from .decorator import tool
 
+@tool(
+    name="sec_data",
+    tags=["sec", "data"],
+    compact_description="Retrieve raw SEC filing data by ticker and filing type"
+    # Not using schema mappings for this tool since it has a custom parameter structure
+)
 class SECDataTool(Tool):
     """Tool for retrieving and processing SEC filing data.
 
     Use this tool to retrieve raw SEC filing data for a specific company and filing type.
     """
 
-    _tool_name = "sec_data"
-    _tool_tags = ["sec", "data"]
-    _compact_description = "Retrieve raw SEC filing data by ticker and filing type"
-
     def __init__(self):
         """Initialize the SEC data tool."""
         super().__init__()
 
-    async def execute(
+    async def _execute(
         self,
         ticker: str,
         filing_type: Optional[str] = None,

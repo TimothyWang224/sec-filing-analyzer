@@ -21,6 +21,8 @@ These parameters control how tools are executed:
 
 - **`max_tool_retries`**: Number of times to retry a failed tool call before reporting failure. Default: 2
 - **`tools_per_iteration`**: Number of tools to execute per iteration. Default: 1 (single tool call approach)
+- **`circuit_breaker_threshold`**: Number of consecutive failures before opening the circuit. Default: 3
+- **`circuit_breaker_reset_timeout`**: Time in seconds before attempting to reset the circuit. Default: 300
 
 ### Runtime Parameters
 
@@ -84,6 +86,37 @@ The agent uses a Tool Ledger to track tool calls and their results:
 - Formats previous tool results for inclusion in prompts
 - Tracks retry information for failed tool calls
 
+## Error Handling
+
+The agent uses a comprehensive error handling system to recover from tool call failures:
+
+### Error Classification
+
+Errors are classified into different types based on their cause:
+
+- **Parameter Error**: Invalid or missing parameters
+- **Network Error**: Network connectivity issues
+- **Authentication Error**: Authentication/authorization issues
+- **Rate Limit Error**: Rate limiting or quota issues
+- **Data Error**: Data not found or invalid data
+- **System Error**: Internal system errors
+- **Unknown Error**: Unclassified errors
+
+### Recovery Strategies
+
+Different recovery strategies are applied based on the error type:
+
+- **Parameter Fixing**: Attempts to fix parameter errors using the LLM
+- **Adaptive Retry**: Retries failed tool calls with appropriate backoff strategies
+- **Circuit Breaking**: Prevents repeated calls to failing tools
+- **Alternative Tools**: Suggests alternative tools when a primary tool fails
+
+### User Feedback
+
+The error handling system provides user-friendly error messages and suggestions for fixing common errors. This helps users understand and resolve issues more effectively.
+
+For more details, see the [Error Handling](error_handling.md) documentation.
+
 ## Example Configuration
 
 ```python
@@ -92,14 +125,16 @@ agent = QASpecialistAgent(
     max_planning_iterations=1,
     max_execution_iterations=2,
     max_refinement_iterations=1,
-    
+
     # Tool execution parameters
     max_tool_retries=2,
     tools_per_iteration=1,
-    
+    circuit_breaker_threshold=3,
+    circuit_breaker_reset_timeout=300,
+
     # Runtime parameters
     max_duration_seconds=180,
-    
+
     # Termination parameters
     enable_dynamic_termination=True,
     min_confidence_threshold=0.8

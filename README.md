@@ -66,6 +66,8 @@ The system uses an agent-based architecture for analysis:
    - Agents can use various tools to gather and analyze data
    - Tool calls are tracked in a Tool Ledger for reference
    - Single tool call approach reduces parameter confusion
+   - Robust error handling with adaptive retry strategies
+   - Circuit breaker pattern prevents cascading failures
 
 3. **Specialized Agents**:
    - QA Specialist for answering questions

@@ -10,22 +10,32 @@ from typing import Dict, Any, List, Optional, Tuple, Union
 from datetime import datetime
 
 from ..tools.base import Tool
+from ..tools.decorator import tool
 from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@tool(
+    name="sec_financial_data",
+    tags=["sec", "financial", "data"],
+    compact_description="Query financial metrics and facts from SEC filings",
+    db_schema="financial_facts",
+    parameter_mappings={
+        "ticker": "ticker",
+        "metric": "metric_name",
+        "start_date": "period_start_date",
+        "end_date": "period_end_date",
+        "filing_type": "filing_type"
+    }
+)
 class SECFinancialDataTool(Tool):
     """Tool for querying financial data from SEC filings.
 
     Retrieves structured financial data from SEC filings, such as revenue, profit, and other financial metrics.
     Use this tool when you need specific financial figures or time series data.
     """
-
-    _tool_name = "sec_financial_data"
-    _tool_tags = ["sec", "financial", "data"]
-    _compact_description = "Query financial metrics and facts from SEC filings"
 
     def __init__(self, db_path: Optional[str] = None):
         """Initialize the SEC financial data tool.
@@ -39,7 +49,7 @@ class SECFinancialDataTool(Tool):
         self.db_path = db_path or "data/financial_data.duckdb"
         self.db_store = OptimizedDuckDBStore(db_path=self.db_path)
 
-    async def execute(
+    async def _execute(
         self,
         query_type: str,
         parameters: Optional[Dict[str, Any]] = None

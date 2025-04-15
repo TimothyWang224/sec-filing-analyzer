@@ -4,12 +4,20 @@ Tool registry for managing tools with automatic documentation extraction.
 
 import inspect
 import re
-from typing import Dict, Any, List, Optional, Type, Callable, Union, get_type_hints
+import logging
+from typing import Dict, Any, Optional, get_type_hints
+
+from .schema_registry import SchemaRegistry
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ToolRegistry:
     """Registry for tools with automatic documentation extraction."""
 
     _tools: Dict[str, Dict[str, Any]] = {}
+    _schema_mappings: Dict[str, Dict[str, str]] = {}
 
     @classmethod
     def register(cls, tool_class=None, name=None, tags=None):
@@ -47,6 +55,21 @@ class ToolRegistry:
         """Internal method to register a tool."""
         # Extract name from class if not provided
         tool_name = name or tool_class.__name__.lower().replace('tool', '')
+
+        # Check for schema information in the class
+        db_schema = getattr(tool_class, '_db_schema', None)
+        parameter_mappings = getattr(tool_class, '_parameter_mappings', None)
+
+        # Register schema mappings if provided
+        if db_schema and parameter_mappings:
+            if tool_name not in cls._schema_mappings:
+                cls._schema_mappings[tool_name] = {}
+
+            cls._schema_mappings[tool_name].update(parameter_mappings)
+
+            # Register mappings with the SchemaRegistry
+            for param_name, field_name in parameter_mappings.items():
+                SchemaRegistry.register_field_mapping(db_schema, param_name, field_name)
 
         # Extract documentation
         description = cls._extract_description(tool_class)
@@ -191,6 +214,70 @@ class ToolRegistry:
             Dictionary mapping tool names to their documentation
         """
         return cls._tools.copy()
+
+    @classmethod
+    def get_schema_mappings(cls, tool_name: str) -> Dict[str, str]:
+        """
+        Get schema mappings for a tool.
+
+        Args:
+            tool_name: Name of the tool
+
+        Returns:
+            Dictionary mapping parameter names to field names
+        """
+        return cls._schema_mappings.get(tool_name, {})
+
+    @classmethod
+    def validate_schema_mappings(cls, tool_name: str) -> tuple[bool, list[str]]:
+        """
+        Validate schema mappings for a tool.
+
+        Args:
+            tool_name: Name of the tool
+
+        Returns:
+            Tuple of (is_valid, error_messages)
+        """
+        if tool_name not in cls._tools:
+            return False, [f"Tool '{tool_name}' not found"]
+
+        if tool_name not in cls._schema_mappings:
+            return True, []  # No mappings to validate
+
+        tool_class = cls._tools[tool_name]["class"]
+        db_schema = getattr(tool_class, '_db_schema', None)
+
+        if not db_schema:
+            return False, [f"Tool '{tool_name}' has mappings but no database schema"]
+
+        # Validate mappings against the schema
+        errors = []
+        for param_name, field_name in cls._schema_mappings[tool_name].items():
+            field_info = SchemaRegistry.get_field_info(db_schema, field_name)
+            if not field_info:
+                errors.append(f"Field '{field_name}' not found in schema '{db_schema}'")
+
+        return len(errors) == 0, errors
+
+    @classmethod
+    def validate_all_schema_mappings(cls) -> tuple[bool, dict[str, list[str]]]:
+        """
+        Validate all schema mappings.
+
+        Returns:
+            Tuple of (all_valid, {tool_name: error_messages})
+        """
+        all_valid = True
+        all_errors = {}
+
+        for tool_name in cls._schema_mappings:
+            is_valid, errors = cls.validate_schema_mappings(tool_name)
+            if not is_valid:
+                all_valid = False
+                all_errors[tool_name] = errors
+
+        return all_valid, all_errors
 
     @classmethod
     def get_tool_documentation(cls, name: Optional[str] = None, format: str = "text") -> str:

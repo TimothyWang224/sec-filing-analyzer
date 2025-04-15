@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Any, List, Optional, Union
 
 from ..tools.base import Tool
+from ..tools.decorator import tool
 from sec_filing_analyzer.storage import GraphStore
 from sec_filing_analyzer.config import StorageConfig
 
@@ -16,16 +17,18 @@ from sec_filing_analyzer.config import StorageConfig
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@tool(
+    name="sec_graph_query",
+    tags=["sec", "graph", "query"],
+    compact_description="Query relationships between companies, filings, and entities"
+    # Not using schema mappings for this tool since it has a nested parameter structure
+)
 class SECGraphQueryTool(Tool):
     """Tool for querying the SEC filing graph database.
 
     Queries the graph database for structural information about SEC filings, companies, and their relationships.
     Use this tool to find connections between entities or to retrieve structured information about filings.
     """
-
-    _tool_name = "sec_graph_query"
-    _tool_tags = ["sec", "graph", "query"]
-    _compact_description = "Query relationships between companies, filings, and entities"
 
     def __init__(
         self,
@@ -60,7 +63,7 @@ class SECGraphQueryTool(Tool):
             database=database
         )
 
-    async def execute(
+    async def _execute(
         self,
         query_type: str,
         parameters: Optional[Dict[str, Any]] = None
