@@ -7,6 +7,7 @@ from .risk_analyst import RiskAnalystAgent
 from .qa_specialist import QASpecialistAgent
 from ..capabilities.base import Capability
 from ..capabilities.time_awareness import TimeAwarenessCapability
+from ..capabilities.planning import PlanningCapability
 from ..environments.financial import FinancialEnvironment
 
 class FinancialDiligenceCoordinator(Agent):
@@ -72,6 +73,17 @@ class FinancialDiligenceCoordinator(Agent):
         if not has_time_awareness:
             self.capabilities.append(TimeAwarenessCapability())
 
+        # Add PlanningCapability if not already present
+        has_planning = any(isinstance(cap, PlanningCapability) for cap in self.capabilities)
+        if not has_planning:
+            self.capabilities.append(PlanningCapability(
+                enable_dynamic_replanning=True,
+                enable_step_reflection=True,
+                min_steps_before_reflection=2,
+                max_plan_steps=10,
+                plan_detail_level="high"
+            ))
+
         # Initialize specialized agents
         self.financial_analyst = FinancialAnalystAgent(
             environment=self.environment,
@@ -115,25 +127,69 @@ class FinancialDiligenceCoordinator(Agent):
                 if not await capability.start_agent_loop(self, {"input": user_input}):
                     break
 
-            # Determine which specialized agents to run based on the input
-            agent_selection = await self._select_agents(user_input)
+            # Check if we have a plan from the planning capability
+            planning_context = self.state.get_context().get("planning", {})
+            current_step = planning_context.get("current_step", {})
 
-            financial_analysis = None
-            risk_analysis = None
-            qa_response = None
+            # If we have a plan with a current step, follow it
+            if current_step:
+                print(f"Executing plan step: {current_step.get('description')}")
 
-            # Run selected agents
-            if agent_selection.get("financial_analyst", False):
-                print("Running Financial Analyst Agent...")
-                financial_analysis = await self.financial_analyst.run(user_input)
+                # If the step specifies an agent, run that agent
+                if "agent" in current_step:
+                    agent_name = current_step.get("agent")
+                    print(f"Running {agent_name} as specified in the plan...")
 
-            if agent_selection.get("risk_analyst", False):
-                print("Running Risk Analyst Agent...")
-                risk_analysis = await self.risk_analyst.run(user_input)
+                    financial_analysis = None
+                    risk_analysis = None
+                    qa_response = None
 
-            if agent_selection.get("qa_specialist", False):
-                print("Running QA Specialist Agent...")
-                qa_response = await self.qa_specialist.run(user_input)
+                    if agent_name == "financial_analyst":
+                        financial_analysis = await self.financial_analyst.run(user_input)
+                    elif agent_name == "risk_analyst":
+                        risk_analysis = await self.risk_analyst.run(user_input)
+                    elif agent_name == "qa_specialist":
+                        qa_response = await self.qa_specialist.run(user_input)
+                else:
+                    # If no specific agent is specified, determine which agents to run
+                    agent_selection = await self._select_agents(user_input)
+
+                    financial_analysis = None
+                    risk_analysis = None
+                    qa_response = None
+
+                    # Run selected agents
+                    if agent_selection.get("financial_analyst", False):
+                        print("Running Financial Analyst Agent...")
+                        financial_analysis = await self.financial_analyst.run(user_input)
+
+                    if agent_selection.get("risk_analyst", False):
+                        print("Running Risk Analyst Agent...")
+                        risk_analysis = await self.risk_analyst.run(user_input)
+
+                    if agent_selection.get("qa_specialist", False):
+                        print("Running QA Specialist Agent...")
+                        qa_response = await self.qa_specialist.run(user_input)
+            else:
+                # If we don't have a plan or current step, fall back to the original behavior
+                agent_selection = await self._select_agents(user_input)
+
+                financial_analysis = None
+                risk_analysis = None
+                qa_response = None
+
+                # Run selected agents
+                if agent_selection.get("financial_analyst", False):
+                    print("Running Financial Analyst Agent...")
+                    financial_analysis = await self.financial_analyst.run(user_input)
+
+                if agent_selection.get("risk_analyst", False):
+                    print("Running Risk Analyst Agent...")
+                    risk_analysis = await self.risk_analyst.run(user_input)
+
+                if agent_selection.get("qa_specialist", False):
+                    print("Running QA Specialist Agent...")
+                    qa_response = await self.qa_specialist.run(user_input)
 
             # Generate comprehensive report
             diligence_report = await self._generate_diligence_report(

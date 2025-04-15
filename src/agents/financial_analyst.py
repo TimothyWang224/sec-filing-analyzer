@@ -2,8 +2,12 @@ import json
 import re
 from typing import Dict, Any, List, Optional
 from .base import Agent, Goal
+from .task_queue import TaskQueue, Task
+from .task_parser import TaskParser
 from ..capabilities.base import Capability
 from ..capabilities.time_awareness import TimeAwarenessCapability
+from ..capabilities.planning import PlanningCapability
+from ..capabilities.multi_task_planning import MultiTaskPlanningCapability
 from ..environments.financial import FinancialEnvironment
 
 class FinancialAnalystAgent(Agent):
@@ -69,6 +73,17 @@ class FinancialAnalystAgent(Agent):
         if not has_time_awareness:
             self.capabilities.append(TimeAwarenessCapability())
 
+        # Add MultiTaskPlanningCapability if not already present
+        has_planning = any(isinstance(cap, (PlanningCapability, MultiTaskPlanningCapability)) for cap in self.capabilities)
+        if not has_planning:
+            self.capabilities.append(MultiTaskPlanningCapability(
+                enable_dynamic_replanning=True,
+                enable_step_reflection=True,
+                min_steps_before_reflection=1,
+                max_plan_steps=5,
+                plan_detail_level="medium"
+            ))
+
     async def run(self, user_input: str, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """
         Run the financial analyst agent.
@@ -85,22 +100,69 @@ class FinancialAnalystAgent(Agent):
             for item in memory:
                 self.state.add_memory_item(item)
 
+        # Parse tasks from user input
+        task_parser = TaskParser(self.llm)
+        task_queue = await task_parser.parse_tasks(user_input)
+
+        # Find the MultiTaskPlanningCapability
+        multi_task_planning = None
+        for capability in self.capabilities:
+            if isinstance(capability, MultiTaskPlanningCapability):
+                multi_task_planning = capability
+                multi_task_planning.set_task_queue(task_queue)
+                break
+
+        # Initialize context with task queue
+        context = {
+            "input": user_input,
+            "task_queue": task_queue
+        }
+
         # Initialize capabilities
         for capability in self.capabilities:
-            await capability.init(self, {"input": user_input})
+            await capability.init(self, context)
 
+        # Initialize results container with a task map to avoid duplicates
+        task_results = {}
+        all_results = {
+            "input": user_input,
+            "tasks": [],
+            "completed_tasks": 0,
+            "total_tasks": len(task_queue.get_all_tasks())
+        }
+
+        # Main agent loop
         while not self.should_terminate():
             # Start of loop capabilities
             for capability in self.capabilities:
-                if not await capability.start_agent_loop(self, {"input": user_input}):
+                if not await capability.start_agent_loop(self, context):
                     break
 
-            # Process the input and generate analysis
-            analysis_result = await self._analyze_financials(user_input)
+            # Get the current task
+            current_task = task_queue.get_current_task()
+
+            # If there's no current task, we're done
+            if not current_task:
+                break
+
+            # Check if we have a plan from the planning capability
+            planning_context = self.state.get_context().get("planning", {})
+            current_step = planning_context.get("current_step", {})
+
+            # If we have a plan with a current step, follow it
+            if current_step:
+                print(f"Executing plan step: {current_step.get('description')}")
+
+                # Process the input and generate analysis based on the current step
+                analysis_result = await self._analyze_financials(current_task.input_text, current_step)
+            else:
+                # If we don't have a plan or current step, fall back to the original behavior
+                analysis_result = await self._analyze_financials(current_task.input_text)
 
             # Add result to memory
             self.add_to_memory({
                 "type": "financial_analysis",
+                "task_id": current_task.task_id,
                 "content": analysis_result
             })
 
@@ -108,26 +170,65 @@ class FinancialAnalystAgent(Agent):
             for capability in self.capabilities:
                 analysis_result = await capability.process_result(
                     self,
-                    {"input": user_input},
-                    user_input,
-                    {"type": "financial_analysis"},
+                    context,
+                    current_task.input_text,
+                    {"type": "financial_analysis", "task_id": current_task.task_id},
                     analysis_result
                 )
 
+            # Store the result for this task in the task_results dictionary to avoid duplicates
+            task_results[current_task.task_id] = {
+                "task_id": current_task.task_id,
+                "input": current_task.input_text,
+                "result": analysis_result,
+                "status": current_task.status
+            }
+
+            # Update the completed tasks count
+            all_results["completed_tasks"] = len(task_queue.get_completed_tasks())
+
             self.increment_iteration()
 
-        return {
-            "status": "completed",
-            "analysis": analysis_result,
-            "memory": self.get_memory()
-        }
+        # Prepare final results
+        completed_tasks = task_queue.get_completed_tasks()
+        pending_tasks = task_queue.get_pending_tasks()
+        failed_tasks = task_queue.get_failed_tasks()
 
-    async def _analyze_financials(self, input: str) -> Dict[str, Any]:
+        # Convert task_results dictionary to a list for the final output
+        all_results["tasks"] = list(task_results.values())
+        all_results["status"] = "completed" if not pending_tasks else "partial"
+        all_results["completed_tasks"] = len(completed_tasks)
+        all_results["pending_tasks"] = len(pending_tasks)
+        all_results["failed_tasks"] = len(failed_tasks)
+        all_results["total_tasks"] = len(task_queue.get_all_tasks())
+
+        # Filter memory to remove duplicates
+        filtered_memory = []
+        memory_task_plans = {}
+
+        for item in self.get_memory():
+            # For plan items, only keep the latest plan for each task
+            if item.get("type") == "plan" and "task_id" in item:
+                task_id = item["task_id"]
+                memory_task_plans[task_id] = item
+            # For other items, keep them all
+            else:
+                filtered_memory.append(item)
+
+        # Add the latest plan for each task to the filtered memory
+        filtered_memory.extend(memory_task_plans.values())
+
+        all_results["memory"] = filtered_memory
+
+        return all_results
+
+    async def _analyze_financials(self, input: str, current_step: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Analyze financial data based on input.
 
         Args:
             input: Input to analyze (e.g., ticker symbol or company name)
+            current_step: Optional current step from a plan
 
         Returns:
             Dictionary containing analysis results
@@ -141,19 +242,49 @@ class FinancialAnalystAgent(Agent):
             financial_results = None
             semantic_results = None
 
-            # Process the input using LLM-driven tool calling
-            tool_results = await self.process_with_llm_tools(input)
+            # If we have a current step with a specific tool, use that
+            if current_step and "tool" in current_step:
+                tool_name = current_step.get("tool")
+                tool_params = current_step.get("parameters", {})
 
-            # Extract results from tool calls
-            for result in tool_results.get("results", []):
-                if result.get("success", False):
-                    tool_name = result.get("tool")
-                    tool_result = result.get("result", {})
+                print(f"Using tool specified in plan: {tool_name}")
 
+                try:
+                    # Execute the tool directly
+                    result = await self.environment.execute_action({
+                        "tool": tool_name,
+                        "args": tool_params
+                    })
+
+                    # Store the result based on the tool type
                     if tool_name == "sec_financial_data":
-                        financial_results = tool_result
+                        financial_results = result
                     elif tool_name == "sec_semantic_search":
-                        semantic_results = tool_result
+                        semantic_results = result
+
+                except Exception as e:
+                    print(f"Error executing planned tool {tool_name}: {str(e)}")
+                    # Fall back to LLM-driven tool calling
+                    tool_results = await self.process_with_llm_tools(input)
+            else:
+                # Process the input using LLM-driven tool calling
+                tool_results = await self.process_with_llm_tools(input)
+
+                # Extract results from tool calls
+                for result in tool_results.get("results", []):
+                    if result.get("success", False):
+                        tool_name = result.get("tool")
+                        tool_result = result.get("result", {})
+
+                        if tool_name == "sec_financial_data":
+                            financial_results = tool_result
+                        elif tool_name == "sec_semantic_search":
+                            semantic_results = tool_result
+
+            # Process the analysis based on the current step if available
+            focus_area = None
+            if current_step:
+                focus_area = current_step.get("description", "")
 
             # Parse the financial data
             financial_metrics = []
@@ -178,6 +309,13 @@ class FinancialAnalystAgent(Agent):
                     })
 
             # Generate financial analysis using the LLM
+            # If we have a focus area from the plan, include it in the prompt
+            focus_instruction = ""
+            if current_step:
+                focus_area = current_step.get("description", "")
+                if focus_area:
+                    focus_instruction = f"\nFocus specifically on: {focus_area}"
+
             analysis_prompt = f"""
             Based on the following financial data for {input}, provide a comprehensive financial analysis:
 
@@ -185,7 +323,7 @@ class FinancialAnalystAgent(Agent):
             {json.dumps(financial_metrics, indent=2) if financial_metrics else "No financial metrics available."}
 
             Financial Context from SEC Filings:
-            {json.dumps(financial_context, indent=2) if financial_context else "No financial context available."}
+            {json.dumps(financial_context, indent=2) if financial_context else "No financial context available."}{focus_instruction}
 
             Please provide:
             1. Key financial metrics analysis

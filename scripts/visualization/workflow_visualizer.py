@@ -144,6 +144,7 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
     tool_pattern = r"Executing tool call \d+/\d+: ([^ ]+)"
     tool_args_pattern = r"Tool arguments: (.+)"
     step_pattern = r"Step: ([^-]+) - (.*)"
+    plan_step_pattern = r"Current step \((\d+)/(\d+)\): (.*)"
     llm_prompt_pattern = r"LLM Prompt: (.+)"
     llm_response_pattern = r"LLM Response: tokens=(\d+) \(prompt=(\d+), completion=(\d+)\)"
     llm_content_pattern = r"LLM Content: (.+)"
@@ -155,13 +156,62 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             with open(json_log_path, 'r') as f:
                 json_data = json.load(f)
                 workflow_metadata.update({
-                    "workflow_id": json_data.get("workflow_id", ""),
+                    "workflow_id": json_data.get("workflow_id", "") or json_data.get("session_id", ""),
                     "start_time": json_data.get("start_time"),
                     "end_time": json_data.get("end_time"),
                     "status": json_data.get("status", "unknown")
                 })
-        except (json.JSONDecodeError, FileNotFoundError):
-            pass
+
+                # Extract planning information from logs
+                if "logs" in json_data:
+                    # Track plan steps by their ID to avoid duplication
+                    plan_steps = {}
+
+                    for log_entry in json_data["logs"]:
+                        if log_entry.get("type") == "memory":
+                            for memory_item in log_entry.get("memory_items", []):
+                                if memory_item.get("type") == "plan":
+                                    plan_content = memory_item.get("content", {})
+                                    timestamp = datetime.fromisoformat(log_entry.get("timestamp").replace("Z", "+00:00"))
+
+                                    for step in plan_content.get("steps", []):
+                                        step_id = step.get('step_id')
+                                        step_key = f"Plan Step {step_id}"
+
+                                        # Create or update the step entry
+                                        if step_key not in plan_steps or step.get("status") != "pending":
+                                            # Check for completed_at timestamp
+                                            completed_at = None
+                                            if step.get("status") == "completed" and "completed_at" in step:
+                                                try:
+                                                    completed_at = datetime.fromisoformat(step.get("completed_at").replace("Z", "+00:00"))
+                                                except (ValueError, AttributeError):
+                                                    pass
+
+                                            # Use the earliest timestamp for the step
+                                            # If this step already exists, use its timestamp
+                                            step_timestamp = timestamp
+                                            if step_key in plan_steps:
+                                                step_timestamp = plan_steps[step_key]["timestamp"]
+
+                                            plan_steps[step_key] = {
+                                                "timestamp": step_timestamp,
+                                                "type": "step",
+                                                "step": step_key,
+                                                "details": step.get("description", ""),
+                                                "status": step.get("status", "pending"),
+                                                "tool": step.get("tool", ""),
+                                                "agent": step.get("agent", ""),
+                                                "completed_at": completed_at,
+                                                "message": f"Plan Step {step_id}: {step.get('description')}",
+                                                "level": "INFO",
+                                                "logger": workflow_metadata["workflow_id"]
+                                            }
+
+                    # Add the unique plan steps to log entries
+                    log_entries.extend(plan_steps.values())
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            st.error(f"Error parsing JSON log file: {e}")
 
     # Parse the log file
     with open(log_file_path, 'r') as f:
@@ -238,6 +288,22 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                     "type": "step",
                     "step": current_step,
                     "details": step_details.strip(),
+                    "message": message,
+                    "level": level,
+                    "logger": logger_name
+                })
+                continue
+
+            # Parse planning steps
+            plan_step_match = re.search(plan_step_pattern, message)
+            if plan_step_match:
+                step_num, total_steps, step_description = plan_step_match.groups()
+                current_step = f"Plan Step {step_num}"
+                log_entries.append({
+                    "timestamp": timestamp,
+                    "type": "step",
+                    "step": current_step,
+                    "details": step_description.strip(),
                     "message": message,
                     "level": level,
                     "logger": logger_name
@@ -336,7 +402,14 @@ if step_entries:
 
     # Add end times (estimated as the start of the next step or current time)
     step_df["end_time"] = step_df["timestamp"].shift(-1)
+
+    # Set end time to current time for steps without an end time
     step_df.loc[step_df["end_time"].isna(), "end_time"] = pd.Timestamp.now()
+
+    # Calculate duration for each step (for visualization purposes only)
+    # Note: This is an estimate for the Gantt chart. Accurate durations for completed steps
+    # are calculated separately in the Timing Analysis section
+    step_df["duration"] = (step_df["end_time"] - step_df["timestamp"]).dt.total_seconds()
 
     # Create a Gantt chart
     fig = px.timeline(
@@ -345,7 +418,7 @@ if step_entries:
         x_end="end_time",
         y="step",
         color="step",
-        hover_data=["details"],
+        hover_data=["details", "duration", "status", "tool", "agent"],
         title="Workflow Steps Timeline"
     )
 
@@ -371,10 +444,33 @@ if step_entries:
 
     # Display step details in a table
     st.subheader("Step Details")
-    step_table = step_df[["step", "details", "timestamp"]].rename(
-        columns={"timestamp": "Start Time"}
+
+    # Include status, tool, agent, and duration if available
+    display_columns = ["step", "details", "timestamp", "duration"]
+    if "status" in step_df.columns:
+        display_columns.append("status")
+    if "tool" in step_df.columns:
+        display_columns.append("tool")
+    if "agent" in step_df.columns:
+        display_columns.append("agent")
+
+    step_table = step_df[display_columns].rename(
+        columns={"timestamp": "Start Time", "duration": "Duration (seconds)"}
     )
     st.dataframe(step_table, use_container_width=True)
+
+    # Add a bar chart showing duration of each step
+    if len(step_df) > 0:
+        st.subheader("Step Duration Analysis")
+        fig = px.bar(
+            step_df,
+            x="step",
+            y="duration",
+            color="status" if "status" in step_df.columns else None,
+            title="Duration of Each Step",
+            labels={"duration": "Duration (seconds)", "step": "Step"}
+        )
+        st.plotly_chart(fig, use_container_width=True)
 else:
     st.info("No workflow steps found in the log file.")
 
@@ -383,6 +479,35 @@ st.header("Timing Analysis")
 
 # Filter for timing entries
 timing_entries = [entry for entry in log_entries if entry["type"] == "timing"]
+
+# Add plan step timing information to timing entries
+if step_entries:
+    step_df = pd.DataFrame(step_entries)
+    step_df["timestamp"] = pd.to_datetime(step_df["timestamp"])
+
+    # Use completed_at timestamp for completed steps if available
+    if "completed_at" in step_df.columns:
+        # Convert completed_at to datetime
+        step_df["completed_at"] = pd.to_datetime(step_df["completed_at"])
+
+        # For steps with completed_at, calculate duration using completed_at
+        mask = ~step_df["completed_at"].isna()
+        for idx, row in step_df[mask].iterrows():
+            # Add a timing entry for each completed step
+            timing_entries.append({
+                "timestamp": row["timestamp"],
+                "type": "timing",
+                "category": "plan_step",
+                "operation": row["step"],
+                "duration": (row["completed_at"] - row["timestamp"]).total_seconds(),
+                "message": f"Plan step execution: {row['details']}",
+                "level": "INFO",
+                "logger": row.get("logger", "workflow"),
+                "status": row.get("status", "completed"),
+                "tool": row.get("tool", ""),
+                "agent": row.get("agent", "")
+            })
+
 if timing_entries:
     timing_df = pd.DataFrame(timing_entries)
     timing_df["timestamp"] = pd.to_datetime(timing_df["timestamp"])
@@ -402,6 +527,36 @@ if timing_entries:
         labels={"duration": "Duration (seconds)", "category": "Category"}
     )
     st.plotly_chart(fig, use_container_width=True)
+
+    # Add a section specifically for plan step timing
+    plan_step_timing = timing_df[timing_df["category"] == "plan_step"]
+    if not plan_step_timing.empty:
+        st.subheader("Plan Step Timing")
+
+        # Create a bar chart of plan step durations
+        fig = px.bar(
+            plan_step_timing,
+            x="operation",
+            y="duration",
+            color="status" if "status" in plan_step_timing.columns else None,
+            title="Plan Step Execution Duration",
+            labels={"duration": "Duration (seconds)", "operation": "Step"}
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Display plan step timing details
+        display_columns = ["operation", "duration", "timestamp"]
+        if "status" in plan_step_timing.columns:
+            display_columns.append("status")
+        if "tool" in plan_step_timing.columns:
+            display_columns.append("tool")
+        if "agent" in plan_step_timing.columns:
+            display_columns.append("agent")
+
+        step_timing_table = plan_step_timing[display_columns].rename(
+            columns={"operation": "Step", "duration": "Duration (seconds)", "timestamp": "Start Time"}
+        )
+        st.dataframe(step_timing_table, use_container_width=True)
 
     # Add end times for operations
     timing_df["end_time"] = timing_df.apply(lambda row: row["timestamp"] + pd.Timedelta(seconds=row["duration"]), axis=1)
