@@ -14,6 +14,7 @@ from datetime import datetime
 
 from .base import Capability
 from ..agents.base import Agent
+from ..tools.tool_parameter_helper import validate_tool_parameters, generate_tool_parameter_prompt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -93,7 +94,7 @@ class PlanningCapability(Capability):
     async def start_agent_loop(self, agent: Agent, context: Dict[str, Any]) -> bool:
         """
         Called at the start of each agent loop iteration.
-        Creates a plan if one doesn't exist yet.
+        Creates a plan if one doesn't exist yet and manages phase transitions.
 
         Args:
             agent: The agent
@@ -118,8 +119,13 @@ class PlanningCapability(Capability):
                 "plan": self.current_plan,
                 "current_step": self.current_plan["steps"][0] if self.current_plan["steps"] else None,
                 "completed_steps": [],
-                "plan_status": "in_progress"
+                "plan_status": "in_progress",
+                "phase": agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning"
             }
+
+        # Update the planning context with the current phase
+        if "planning" in context and hasattr(agent.state, 'current_phase'):
+            context["planning"]["phase"] = agent.state.current_phase
 
             # Log the plan
             logger.info(f"Created plan with {len(self.current_plan['steps'])} steps")
@@ -170,15 +176,18 @@ class PlanningCapability(Capability):
                 "plan": self.current_plan,
                 "current_step": self.current_plan["steps"][self.current_step_index] if self.current_step_index < len(self.current_plan["steps"]) else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"]
+                "plan_status": self.current_plan["status"],
+                "phase": agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning"
             }
 
         # If we have a plan, add the current step to the prompt
         if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
             current_step = self.current_plan["steps"][self.current_step_index]
+            current_phase = agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning"
 
             # Add planning context to the prompt
-            enhanced_prompt = f"{prompt}\n\nCurrent Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
+            enhanced_prompt = f"{prompt}\n\nCurrent Phase: {current_phase.upper()}\n"
+            enhanced_prompt += f"Current Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
             enhanced_prompt += f"- Description: {current_step['description']}\n"
 
             if "tool" in current_step:
@@ -189,6 +198,21 @@ class PlanningCapability(Capability):
 
             if "dependencies" in current_step and current_step["dependencies"]:
                 enhanced_prompt += "- Dependencies: " + ", ".join([str(dep) for dep in current_step["dependencies"]]) + "\n"
+
+            # Add phase-specific guidance
+            if current_phase == "planning":
+                enhanced_prompt += "\nIn the PLANNING phase, focus on understanding the task and creating a detailed plan.\n"
+                enhanced_prompt += "Analyze the question carefully and identify the key information needed.\n"
+            elif current_phase == "execution":
+                enhanced_prompt += "\nIn the EXECUTION phase, focus on gathering data and generating an initial answer.\n"
+                enhanced_prompt += "Use the appropriate tools to collect the necessary information.\n"
+            elif current_phase == "refinement":
+                enhanced_prompt += "\nIn the REFINEMENT phase, focus on improving the answer quality.\n"
+                enhanced_prompt += "Make the answer more concise, accurate, and directly responsive to the question.\n"
+
+            # Add previous tool results from the tool ledger
+            if hasattr(agent, 'tool_ledger'):
+                enhanced_prompt += "\n" + agent.tool_ledger.format_for_prompt(limit=3)
 
             return enhanced_prompt
 
@@ -227,11 +251,22 @@ class PlanningCapability(Capability):
 
             # If the current step recommends a specific tool, suggest it
             if "tool" in current_step and "tool" not in action:
-                action["tool"] = current_step["tool"]
+                tool_name = current_step["tool"]
+                action["tool"] = tool_name
 
             # If the current step has specific parameters, suggest them
             if "parameters" in current_step and "args" not in action:
-                action["args"] = current_step["parameters"]
+                tool_name = current_step.get("tool")
+                parameters = current_step["parameters"]
+
+                # Validate and fix parameters if a tool is specified
+                if tool_name:
+                    validation_result = validate_tool_parameters(tool_name, parameters)
+                    if validation_result["errors"]:
+                        logger.warning(f"Parameter validation errors for {tool_name}: {validation_result['errors']}")
+                    action["args"] = validation_result["parameters"]
+                else:
+                    action["args"] = parameters
 
             # Add plan context to the action
             action["plan_context"] = {
@@ -438,6 +473,11 @@ Return your plan in the exact JSON format requested."""
 
         available_agents = ["financial_analyst", "risk_analyst", "qa_specialist"]
 
+        # Create tool parameter documentation
+        tool_parameter_docs = ""
+        for tool_name in available_tools:
+            tool_parameter_docs += generate_tool_parameter_prompt(tool_name) + "\n\n"
+
         # Create the prompt
         prompt = f"""
 Based on the following user request, create a detailed step-by-step plan:
@@ -446,6 +486,9 @@ User Request: {user_input}
 
 Available Tools: {', '.join(available_tools)}
 Available Agents: {', '.join(available_agents)}
+
+Tool Parameter Documentation:
+{tool_parameter_docs}
 
 For SEC filing analysis, typical steps include:
 1. Retrieving relevant documents or data

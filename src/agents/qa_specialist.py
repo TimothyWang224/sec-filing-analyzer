@@ -11,13 +11,25 @@ class QASpecialistAgent(Agent):
     def __init__(
         self,
         capabilities: Optional[List[Capability]] = None,
-        max_iterations: int = 1,
+        # Agent iteration parameters
+        max_iterations: int = 1,  # Legacy parameter, still used for backward compatibility
+        max_planning_iterations: int = 1,
+        max_execution_iterations: int = 2,
+        max_refinement_iterations: int = 1,
+        # Tool execution parameters
+        max_tool_retries: int = 2,
+        tools_per_iteration: int = 1,
+        # Runtime parameters
         max_duration_seconds: int = 180,
-        environment: Optional[FinancialEnvironment] = None,
+        # LLM parameters
         llm_model: str = "gpt-4o-mini",
         llm_temperature: float = 0.7,
         llm_max_tokens: int = 4000,
-        max_tool_calls: int = 3
+        # Environment
+        environment: Optional[FinancialEnvironment] = None,
+        # Termination parameters
+        enable_dynamic_termination: bool = False,
+        min_confidence_threshold: float = 0.8
     ):
         """
         Initialize the QA specialist agent.
@@ -51,13 +63,25 @@ class QASpecialistAgent(Agent):
         super().__init__(
             goals=goals,
             capabilities=capabilities,
+            # Agent iteration parameters
             max_iterations=max_iterations,
+            max_planning_iterations=max_planning_iterations,
+            max_execution_iterations=max_execution_iterations,
+            max_refinement_iterations=max_refinement_iterations,
+            # Tool execution parameters
+            max_tool_retries=max_tool_retries,
+            tools_per_iteration=tools_per_iteration,
+            # Runtime parameters
             max_duration_seconds=max_duration_seconds,
+            # LLM parameters
             llm_model=llm_model,
             llm_temperature=llm_temperature,
             llm_max_tokens=llm_max_tokens,
+            # Environment
             environment=environment,
-            max_tool_calls=max_tool_calls
+            # Termination parameters
+            enable_dynamic_termination=enable_dynamic_termination,
+            min_confidence_threshold=min_confidence_threshold
         )
 
         # Initialize environment
@@ -91,14 +115,60 @@ class QASpecialistAgent(Agent):
         # Log the start of processing
         self.logger.info(f"Processing question: {user_input}")
 
-        while not self.should_terminate():
+        # Set initial phase to planning
+        self.state.set_phase('planning')
+        self.logger.info(f"Starting planning phase")
+
+        # Execute the agent loop through all phases
+        answer = None
+
+        # Phase 1: Planning
+        while not self.should_terminate() and self.state.current_phase == 'planning':
             # Start of loop capabilities
             for capability in self.capabilities:
                 if not await capability.start_agent_loop(self, {"input": user_input}):
                     break
 
+            # In planning phase, we focus on understanding the question and creating a plan
+            self.logger.info(f"Planning how to answer: {user_input}")
+
+            # Parse the question to extract key information
+            question_analysis = self._parse_question(user_input)
+
+            # Add analysis to memory
+            self.add_to_memory({
+                "type": "question_analysis",
+                "content": question_analysis
+            })
+
+            # Process with capabilities
+            for capability in self.capabilities:
+                await capability.process_result(
+                    self,
+                    {"input": user_input},
+                    user_input,
+                    {"type": "question_analysis"},
+                    question_analysis
+                )
+
+            self.increment_iteration()
+
+            # If we've done enough planning, move to execution phase
+            if self.state.phase_iterations['planning'] >= self.max_planning_iterations:
+                self.state.set_phase('execution')
+                self.logger.info(f"Moving to execution phase")
+
+        # Phase 2: Execution
+        while not self.should_terminate() and self.state.current_phase == 'execution':
+            # Start of loop capabilities
+            for capability in self.capabilities:
+                if not await capability.start_agent_loop(self, {"input": user_input}):
+                    break
+
+            # In execution phase, we gather data and generate an initial answer
+            self.logger.info(f"Executing data gathering for: {user_input}")
+
             # Process the input and generate answer
-            self.logger.info(f"Generating answer for: {user_input}")
             answer = await self._generate_answer(user_input)
 
             # Add result to memory
@@ -119,13 +189,63 @@ class QASpecialistAgent(Agent):
 
             self.increment_iteration()
 
+            # If we've done enough execution, move to refinement phase
+            if self.state.phase_iterations['execution'] >= self.max_execution_iterations:
+                self.state.set_phase('refinement')
+                self.logger.info(f"Moving to refinement phase")
+
+        # Phase 3: Refinement
+        while not self.should_terminate() and self.state.current_phase == 'refinement':
+            # Start of loop capabilities
+            for capability in self.capabilities:
+                if not await capability.start_agent_loop(self, {"input": user_input}):
+                    break
+
+            # In refinement phase, we improve the answer
+            self.logger.info(f"Refining answer for: {user_input}")
+
+            # Get the current answer from memory
+            memory_items = self.get_memory()
+            qa_responses = [item for item in memory_items if item.get("type") == "qa_response"]
+
+            if qa_responses:
+                current_answer = qa_responses[-1].get("content", {})
+
+                # Refine the answer
+                refined_answer = await self._refine_answer(user_input, current_answer)
+
+                # Add refined result to memory
+                self.add_to_memory({
+                    "type": "qa_response",
+                    "content": refined_answer
+                })
+
+                # Process result with capabilities
+                for capability in self.capabilities:
+                    refined_answer = await capability.process_result(
+                        self,
+                        {"input": user_input},
+                        user_input,
+                        {"type": "qa_response"},
+                        refined_answer
+                    )
+
+                answer = refined_answer
+
+            self.increment_iteration()
+
+            # If we've done enough refinement, we're done
+            if self.state.phase_iterations['refinement'] >= self.max_refinement_iterations:
+                break
+
         # Log the completion of processing
-        self.logger.info(f"Result: Keys: {list(answer.keys())}")
+        self.logger.info(f"Result: Keys: {list(answer.keys()) if answer else []}")
 
         result = {
             "status": "completed",
             "answer": answer,
-            "memory": self.get_memory()
+            "memory": self.get_memory(),
+            "phase_iterations": self.state.phase_iterations
         }
 
         return result
@@ -271,6 +391,72 @@ class QASpecialistAgent(Agent):
                 "answer": "I encountered an error while processing your question. Please try again or rephrase your question.",
                 "explanation": f"Error details: {str(e)}"
             }
+
+    async def _refine_answer(self, question: str, current_answer: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Refine the current answer to improve its quality.
+
+        Args:
+            question: The original question
+            current_answer: The current answer to refine
+
+        Returns:
+            Refined answer
+        """
+        try:
+            # Extract the current answer text and supporting data
+            answer_text = current_answer.get("answer", "")
+            supporting_data = current_answer.get("supporting_data", {})
+            question_analysis = current_answer.get("question_analysis", {})
+
+            # Generate a refinement prompt
+            refinement_prompt = f"""
+            I need to refine the following answer to the question: "{question}"
+
+            Current answer: "{answer_text}"
+
+            Please improve this answer by:
+            1. Making it more concise and direct
+            2. Ensuring it fully addresses the question
+            3. Adding any missing context or clarifications
+            4. Improving the explanation of financial concepts if present
+            5. Ensuring numerical data is presented clearly
+
+            Please provide only the refined answer text.
+            """
+
+            # Generate the refined answer using the LLM
+            refined_text = await self.llm.generate(prompt=refinement_prompt)
+
+            # Create the refined answer object
+            refined_answer = current_answer.copy()
+            refined_answer["answer"] = refined_text.strip()
+            refined_answer["refinement_iteration"] = refined_answer.get("refinement_iteration", 0) + 1
+
+            # Add confidence score if dynamic termination is enabled
+            if self.enable_dynamic_termination:
+                confidence_prompt = f"""
+                On a scale of 0.0 to 1.0, how confident are you that the following answer fully and accurately addresses the question: "{question}"
+
+                Answer: "{refined_text.strip()}"
+
+                Please respond with only a number between 0.0 and 1.0.
+                """
+
+                confidence_response = await self.llm.generate(prompt=confidence_prompt)
+                try:
+                    confidence = float(confidence_response.strip())
+                    refined_answer["confidence"] = min(max(confidence, 0.0), 1.0)  # Ensure it's between 0 and 1
+                except ValueError:
+                    refined_answer["confidence"] = 0.5  # Default if parsing fails
+
+            return refined_answer
+
+        except Exception as e:
+            self.logger.error(f"Error refining answer: {str(e)}")
+            # Return the original answer with an error note
+            current_answer["refinement_error"] = str(e)
+            return current_answer
 
     def _parse_question(self, question: str) -> Dict[str, Any]:
         """

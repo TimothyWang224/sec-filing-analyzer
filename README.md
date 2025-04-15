@@ -28,7 +28,7 @@ A comprehensive tool for analyzing SEC filings using graph databases and vector 
 
 ## Architecture
 
-The system uses a modular architecture with separate pipelines for semantic and quantitative data processing:
+The system uses a modular architecture with separate pipelines for semantic and quantitative data processing, as well as an agent-based architecture for analysis:
 
 ### Semantic Data Processing
 
@@ -52,6 +52,28 @@ The system uses a modular architecture with separate pipelines for semantic and 
 ### Unified ETL Pipeline
 
 The system provides a unified ETL pipeline that can process both semantic and quantitative data, or either one separately, depending on the user's needs.
+
+### Agent Architecture
+
+The system uses an agent-based architecture for analysis:
+
+1. **Phase-Based Execution**:
+   - Planning phase for understanding tasks and creating plans
+   - Execution phase for gathering data and generating initial answers
+   - Refinement phase for improving answer quality
+
+2. **Tool Integration**:
+   - Agents can use various tools to gather and analyze data
+   - Tool calls are tracked in a Tool Ledger for reference
+   - Single tool call approach reduces parameter confusion
+
+3. **Specialized Agents**:
+   - QA Specialist for answering questions
+   - Financial Analyst for financial analysis
+   - Risk Analyst for risk assessment
+   - Coordinator for orchestrating complex tasks
+
+For more details, see the [Agent Parameters and Phases](docs/agent_parameters.md) documentation.
 
 ## Setup
 

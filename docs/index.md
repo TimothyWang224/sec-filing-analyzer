@@ -31,6 +31,13 @@ The SEC Filing Analyzer is designed to process SEC filings (10-K, 10-Q, 8-K) and
 - [DuckDB Storage](duckdb_storage.md)
 - [Logging](logging.md)
 
+### Agent Architecture
+
+- [Agent Parameters and Phases](agent_parameters.md)
+- [Tool Ledger](tool_ledger.md)
+- [Planning Capability](planning_capability.md)
+- [Parameter Completion](parameter_completion.md)
+
 ### Usage
 
 - [Processing Filings](processing_filings.md)

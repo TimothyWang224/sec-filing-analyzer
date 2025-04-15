@@ -14,6 +14,7 @@ from .base import Capability
 from .planning import PlanningCapability
 from ..agents.base import Agent
 from ..agents.task_queue import TaskQueue, Task
+from ..tools.tool_parameter_helper import validate_tool_parameters, generate_tool_parameter_prompt
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -178,6 +179,66 @@ class MultiTaskPlanningCapability(PlanningCapability):
             logger.info(f"Current step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}): {current_step['description']}")
 
         return True
+
+    async def process_action(
+        self,
+        agent: Agent,
+        context: Dict[str, Any],
+        action: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Process an action to align with the current plan step.
+
+        Args:
+            agent: The agent processing the action
+            context: Current context
+            action: Action to process
+
+        Returns:
+            Processed action aligned with the plan
+        """
+        # Ensure planning context exists
+        if "planning" not in context and self.current_plan:
+            context["planning"] = {
+                "has_plan": True,
+                "plan": self.current_plan,
+                "current_step": self.current_plan["steps"][self.current_step_index] if self.current_step_index < len(self.current_plan["steps"]) else None,
+                "completed_steps": self.completed_steps.copy(),
+                "plan_status": self.current_plan["status"],
+                "task_queue": self.task_queue
+            }
+
+        # If we have a plan and a current step, enhance the action
+        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
+            current_step = self.current_plan["steps"][self.current_step_index]
+
+            # If the current step recommends a specific tool, suggest it
+            if "tool" in current_step and "tool" not in action:
+                tool_name = current_step["tool"]
+                action["tool"] = tool_name
+
+            # If the current step has specific parameters, suggest them
+            if "parameters" in current_step and "args" not in action:
+                tool_name = current_step.get("tool")
+                parameters = current_step["parameters"]
+
+                # Validate and fix parameters if a tool is specified
+                if tool_name:
+                    validation_result = validate_tool_parameters(tool_name, parameters)
+                    if validation_result["errors"]:
+                        logger.warning(f"Parameter validation errors for {tool_name}: {validation_result['errors']}")
+                    action["args"] = validation_result["parameters"]
+                else:
+                    action["args"] = parameters
+
+            # Add plan context to the action
+            action["plan_context"] = {
+                "step_id": current_step["step_id"],
+                "description": current_step["description"],
+                "task_id": self.task_queue.get_current_task().task_id if self.task_queue and self.task_queue.has_current_task() else None
+            }
+
+        return action
 
     async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """

@@ -9,8 +9,10 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
 from .core.agent_state import AgentState
+from .core.tool_ledger import ToolLedger
 from ..environments.base import Environment
 from ..tools.registry import ToolRegistry
+from ..tools.llm_parameter_completer import LLMParameterCompleter
 from sec_filing_analyzer.llm import BaseLLM, OpenAILLM
 from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
 from ..sec_filing_analyzer.utils.timing import timed_function, TimingContext
@@ -30,13 +32,25 @@ class Agent(ABC):
         self,
         goals: List[Goal],
         capabilities: List[Any] = None,
-        max_iterations: int = 3,
+        # Agent iteration parameters
+        max_iterations: int = 3,  # Legacy parameter, still used for backward compatibility
+        max_planning_iterations: int = 2,
+        max_execution_iterations: int = 3,
+        max_refinement_iterations: int = 1,
+        # Tool execution parameters
+        max_tool_retries: int = 2,
+        tools_per_iteration: int = 1,  # Default to 1 for single tool call approach
+        # Runtime parameters
         max_duration_seconds: int = 180,
+        # LLM parameters
         llm_model: str = "gpt-4o-mini",
         llm_temperature: float = 0.7,
         llm_max_tokens: int = 4000,
+        # Environment
         environment: Optional[Environment] = None,
-        max_tool_calls: int = 3
+        # Termination parameters
+        enable_dynamic_termination: bool = False,
+        min_confidence_threshold: float = 0.8
     ):
         """
         Initialize an agent with its goals and capabilities.
@@ -44,22 +58,55 @@ class Agent(ABC):
         Args:
             goals: List of goals the agent aims to achieve
             capabilities: List of capabilities that extend agent behavior
-            max_iterations: Maximum number of action loops
+
+            # Agent iteration parameters
+            max_iterations: Legacy parameter for backward compatibility
+            max_planning_iterations: Maximum iterations for the planning phase
+            max_execution_iterations: Maximum iterations for the execution phase
+            max_refinement_iterations: Maximum iterations for result refinement
+
+            # Tool execution parameters
+            max_tool_retries: Number of times to retry a failed tool call
+            tools_per_iteration: Number of tools to execute per iteration
+
+            # Runtime parameters
             max_duration_seconds: Maximum runtime in seconds
+
+            # LLM parameters
             llm_model: LLM model to use
             llm_temperature: Temperature for LLM generation
             llm_max_tokens: Maximum tokens for LLM generation
+
+            # Environment
             environment: Optional environment to use
-            max_tool_calls: Maximum number of tool calls per iteration
+
+            # Termination parameters
+            enable_dynamic_termination: Whether to allow early termination
+            min_confidence_threshold: Minimum confidence score for satisfactory results
         """
         self.goals = goals
         self.capabilities = capabilities or []
-        self.max_iterations = max_iterations
-        self.max_duration_seconds = max_duration_seconds
-        self.max_tool_calls = max_tool_calls
 
-        # Initialize state
+        # Set iteration parameters
+        self.max_iterations = max_iterations  # Legacy parameter
+        self.max_planning_iterations = max_planning_iterations
+        self.max_execution_iterations = max_execution_iterations
+        self.max_refinement_iterations = max_refinement_iterations
+
+        # Set tool execution parameters
+        self.max_tool_retries = max_tool_retries
+        self.tools_per_iteration = tools_per_iteration
+
+        # Set runtime parameters
+        self.max_duration_seconds = max_duration_seconds
+
+        # Set termination parameters
+        self.enable_dynamic_termination = enable_dynamic_termination
+        self.min_confidence_threshold = min_confidence_threshold
+
+        # Initialize state and tool ledger
         self.state = AgentState()
+        self.tool_ledger = ToolLedger()
 
         # Initialize LLM
         self.llm = OpenAILLM(
@@ -67,6 +114,9 @@ class Agent(ABC):
             temperature=llm_temperature,
             max_tokens=llm_max_tokens
         )
+
+        # Initialize parameter completer
+        self.parameter_completer = LLMParameterCompleter(self.llm)
 
         # Initialize environment
         self.environment = environment or Environment()
@@ -87,6 +137,9 @@ class Agent(ABC):
         Returns:
             List of tool call specifications
         """
+        # Store the input text in the agent state for parameter completion
+        self.state.update_context({"input": input_text})
+
         # Get compact tool documentation
         compact_tool_docs = ToolRegistry.get_compact_tool_documentation(format="text")
 
@@ -192,60 +245,169 @@ class Agent(ABC):
     @timed_function(category="tool_execution")
     async def execute_tool_calls(self, tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Execute a list of tool calls.
+        Execute tool calls based on the tools_per_iteration parameter.
 
         Args:
             tool_calls: List of tool call specifications
 
         Returns:
-            List of tool call results
+            List containing the results of the executed tool calls
         """
         results = []
-        start_time = time.time()
-        self.logger.info(f"Starting execution of {len(tool_calls)} tool calls")
 
-        for i, tool_call in enumerate(tool_calls):
-            if i >= self.max_tool_calls:
-                self.logger.warning(f"Reached maximum number of tool calls ({self.max_tool_calls}). Skipping remaining calls.")
-                break
+        # If no tool calls, return empty results
+        if not tool_calls:
+            return results
 
+        # Limit the number of tool calls to execute based on tools_per_iteration
+        tool_calls_to_execute = tool_calls[:self.tools_per_iteration]
+
+        for tool_call in tool_calls_to_execute:
             tool_name = tool_call.get("tool")
             tool_args = tool_call.get("args", {})
 
-            # Execute the tool call with timing
-            tool_start_time = time.time()
+            # Complete tool parameters using the parameter completer
             try:
-                self.logger.info(f"Executing tool call {i+1}/{len(tool_calls)}: {tool_name}")
-                self.logger.info(f"Tool arguments: {tool_args}")
+                # Get the current user input from state context
+                user_input = self.state.get_context().get("input", "")
 
-                with TimingContext(f"tool_{tool_name}", category="tool", logger=self.logger):
-                    result = await self.environment.execute_action({
-                        "tool": tool_name,
-                        "args": tool_args
-                    })
+                # Complete parameters using the LLM
+                self.logger.info(f"Completing parameters for tool: {tool_name}")
+                completed_args = await self.parameter_completer.complete_parameters(
+                    tool_name=tool_name,
+                    partial_parameters=tool_args,
+                    user_input=user_input,
+                    context=self.state.get_context()
+                )
 
-                tool_duration = time.time() - tool_start_time
-                self.logger.info(f"Tool {tool_name} completed in {tool_duration:.3f}s")
+                # Update tool arguments with completed parameters
+                if completed_args != tool_args:
+                    self.logger.info(f"Parameters completed: {tool_args} -> {completed_args}")
+                    tool_args = completed_args
+            except Exception as e:
+                self.logger.error(f"Error completing parameters: {str(e)}")
+                # Continue with original parameters if completion fails
 
-                results.append({
+            self.logger.info(f"Executing tool call: {tool_name}")
+            self.logger.info(f"Tool arguments: {tool_args}")
+
+            # Execute the tool call with retries
+            success = False
+            last_error = None
+            tool_result = None
+            tool_duration = 0
+
+            for retry in range(self.max_tool_retries + 1):  # +1 for initial attempt
+                tool_start_time = time.time()
+                try:
+                    if retry > 0:
+                        self.logger.info(f"Retry {retry}/{self.max_tool_retries} for tool {tool_name}")
+
+                    with TimingContext(f"tool_{tool_name}", category="tool", logger=self.logger):
+                        tool_result = await self.environment.execute_action({
+                            "tool": tool_name,
+                            "args": tool_args
+                        })
+
+                    tool_duration = time.time() - tool_start_time
+                    self.logger.info(f"Tool {tool_name} completed in {tool_duration:.3f}s")
+
+                    success = True
+                    break  # Exit retry loop on success
+
+                except Exception as e:
+                    tool_duration = time.time() - tool_start_time
+                    last_error = str(e)
+                    self.logger.error(f"Error executing tool call: {last_error}")
+                    self.logger.error(f"Tool {tool_name} failed after {tool_duration:.3f}s")
+
+                    # Try to fix the tool call with the parameter completer
+                    if retry < self.max_tool_retries:
+                        try:
+                            # Get the current user input from state context
+                            user_input = self.state.get_context().get("input", "")
+
+                            # Complete parameters using the LLM with error context
+                            self.logger.info(f"Attempting to fix parameters for tool: {tool_name}")
+                            self.state.update_context({"last_error": last_error})
+
+                            fixed_args = await self.parameter_completer.complete_parameters(
+                                tool_name=tool_name,
+                                partial_parameters=tool_args,
+                                user_input=user_input,
+                                context=self.state.get_context()
+                            )
+
+                            # Update tool arguments with fixed parameters
+                            if fixed_args != tool_args:
+                                self.logger.info(f"Parameters fixed: {tool_args} -> {fixed_args}")
+                                tool_args = fixed_args
+                        except Exception as fix_error:
+                            self.logger.error(f"Error fixing parameters: {str(fix_error)}")
+                            # Continue with original parameters if fixing fails
+
+                    # Continue to next retry unless we've exhausted retries
+                    if retry >= self.max_tool_retries:
+                        self.logger.error(f"Max retries ({self.max_tool_retries}) reached for tool {tool_name}")
+
+            # Process the result based on success/failure
+            if success:
+                # Create result object
+                result_obj = {
                     "tool": tool_name,
                     "args": tool_args,
-                    "result": result,
+                    "result": tool_result,
                     "success": True,
                     "duration": tool_duration
-                })
+                }
 
-            except Exception as e:
-                tool_duration = time.time() - tool_start_time
-                self.logger.error(f"Error executing tool call: {str(e)}")
-                self.logger.error(f"Tool {tool_name} failed after {tool_duration:.3f}s")
+                # Add to results list
+                results.append(result_obj)
 
-                results.append({
+                # Record in tool ledger
+                self.tool_ledger.record_tool_call(
+                    tool_name=tool_name,
+                    args=tool_args,
+                    result=tool_result,
+                    metadata={"duration": tool_duration, "retries": retry}
+                )
+
+                # Add to agent memory for future reference
+                self.add_to_memory({
+                    "type": "tool_result",
                     "tool": tool_name,
                     "args": tool_args,
-                    "error": str(e),
+                    "result": tool_result,
+                    "timestamp": datetime.now().isoformat()
+                })
+            else:
+                # Create error result object
+                error_obj = {
+                    "tool": tool_name,
+                    "args": tool_args,
+                    "error": last_error,
                     "success": False,
                     "duration": tool_duration
+                }
+
+                # Add to results list
+                results.append(error_obj)
+
+                # Record in tool ledger
+                self.tool_ledger.record_tool_call(
+                    tool_name=tool_name,
+                    args=tool_args,
+                    error=last_error,
+                    metadata={"duration": tool_duration, "retries": retry}
+                )
+
+                # Add to agent memory for future reference
+                self.add_to_memory({
+                    "type": "tool_error",
+                    "tool": tool_name,
+                    "args": tool_args,
+                    "error": last_error,
+                    "timestamp": datetime.now().isoformat()
                 })
 
         return results
@@ -333,8 +495,54 @@ class Agent(ABC):
         return self.state.get_memory()
 
     def should_terminate(self) -> bool:
-        """Check if the agent should terminate based on iteration count or duration."""
-        return self.state.current_iteration >= self.max_iterations
+        """
+        Check if the agent should terminate based on iteration count, duration, or result quality.
+
+        This method considers:
+        1. Current iteration count vs. max_iterations (legacy parameter)
+        2. Current phase and its specific iteration limit
+        3. Dynamic termination based on result quality (if enabled)
+        4. Maximum runtime duration
+
+        Returns:
+            True if the agent should terminate, False otherwise
+        """
+        # Check iteration count (legacy parameter)
+        if self.state.current_iteration >= self.max_iterations:
+            self.logger.info(f"Terminating: Reached max iterations ({self.max_iterations})")
+            return True
+
+        # Check phase-specific iteration limits
+        if hasattr(self.state, 'current_phase'):
+            phase = self.state.current_phase
+            if phase == 'planning' and self.state.current_iteration >= self.max_planning_iterations:
+                self.logger.info(f"Terminating: Reached max planning iterations ({self.max_planning_iterations})")
+                return True
+            elif phase == 'execution' and self.state.current_iteration >= self.max_execution_iterations:
+                self.logger.info(f"Terminating: Reached max execution iterations ({self.max_execution_iterations})")
+                return True
+            elif phase == 'refinement' and self.state.current_iteration >= self.max_refinement_iterations:
+                self.logger.info(f"Terminating: Reached max refinement iterations ({self.max_refinement_iterations})")
+                return True
+
+        # Check dynamic termination based on result quality
+        if self.enable_dynamic_termination and self.state.current_iteration > 0:
+            # Get the latest memory item
+            memory = self.get_memory()
+            if memory:
+                latest_item = memory[-1]
+                if 'confidence' in latest_item and latest_item['confidence'] >= self.min_confidence_threshold:
+                    self.logger.info(f"Terminating: Reached confidence threshold ({latest_item['confidence']})")
+                    return True
+
+        # Check maximum runtime duration
+        if hasattr(self.state, 'start_time'):
+            elapsed_time = time.time() - self.state.start_time
+            if elapsed_time >= self.max_duration_seconds:
+                self.logger.info(f"Terminating: Reached max duration ({elapsed_time:.1f}s)")
+                return True
+
+        return False
 
     def increment_iteration(self):
         """Increment the current iteration counter."""
