@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union, Type
 import json
 import re
 import logging
@@ -18,8 +18,16 @@ from ..environments.base import Environment
 from ..tools.registry import ToolRegistry
 from ..tools.llm_parameter_completer import LLMParameterCompleter
 from sec_filing_analyzer.llm import BaseLLM, OpenAILLM
+from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
 from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
 from ..sec_filing_analyzer.utils.timing import timed_function, TimingContext
+
+# Try to import the ConfigProvider
+try:
+    from sec_filing_analyzer.config import ConfigProvider, AgentConfig
+    HAS_CONFIG_PROVIDER = True
+except ImportError:
+    HAS_CONFIG_PROVIDER = False
 
 logger = logging.getLogger(__name__)
 
@@ -37,24 +45,26 @@ class Agent(ABC):
         goals: List[Goal],
         capabilities: List[Any] = None,
         # Agent iteration parameters
-        max_iterations: int = 3,  # Legacy parameter, still used for backward compatibility
-        max_planning_iterations: int = 2,
-        max_execution_iterations: int = 3,
-        max_refinement_iterations: int = 1,
+        max_iterations: Optional[int] = None,  # Legacy parameter, still used for backward compatibility
+        max_planning_iterations: Optional[int] = None,
+        max_execution_iterations: Optional[int] = None,
+        max_refinement_iterations: Optional[int] = None,
         # Tool execution parameters
-        max_tool_retries: int = 2,
-        tools_per_iteration: int = 1,  # Default to 1 for single tool call approach
+        max_tool_retries: Optional[int] = None,
+        tools_per_iteration: Optional[int] = None,  # Default to 1 for single tool call approach
         # Runtime parameters
-        max_duration_seconds: int = 180,
+        max_duration_seconds: Optional[int] = None,
         # LLM parameters
-        llm_model: str = "gpt-4o-mini",
-        llm_temperature: float = 0.7,
-        llm_max_tokens: int = 4000,
+        llm_model: Optional[str] = None,
+        llm_temperature: Optional[float] = None,
+        llm_max_tokens: Optional[int] = None,
         # Environment
         environment: Optional[Environment] = None,
         # Termination parameters
-        enable_dynamic_termination: bool = False,
-        min_confidence_threshold: float = 0.8
+        enable_dynamic_termination: Optional[bool] = None,
+        min_confidence_threshold: Optional[float] = None,
+        # Agent type for configuration
+        agent_type: Optional[str] = None
     ):
         """
         Initialize an agent with its goals and capabilities.
@@ -91,22 +101,30 @@ class Agent(ABC):
         self.goals = goals
         self.capabilities = capabilities or []
 
-        # Set iteration parameters
-        self.max_iterations = max_iterations  # Legacy parameter
-        self.max_planning_iterations = max_planning_iterations
-        self.max_execution_iterations = max_execution_iterations
-        self.max_refinement_iterations = max_refinement_iterations
+        # Get configuration based on agent type if available
+        config = self._get_config(agent_type)
 
-        # Set tool execution parameters
-        self.max_tool_retries = max_tool_retries
-        self.tools_per_iteration = tools_per_iteration
+        # Set iteration parameters with fallbacks
+        self.max_iterations = max_iterations if max_iterations is not None else config.get("max_iterations", 3)  # Legacy parameter
+        self.max_planning_iterations = max_planning_iterations if max_planning_iterations is not None else config.get("max_planning_iterations", 2)
+        self.max_execution_iterations = max_execution_iterations if max_execution_iterations is not None else config.get("max_execution_iterations", 3)
+        self.max_refinement_iterations = max_refinement_iterations if max_refinement_iterations is not None else config.get("max_refinement_iterations", 1)
 
-        # Set runtime parameters
-        self.max_duration_seconds = max_duration_seconds
+        # Set tool execution parameters with fallbacks
+        self.max_tool_retries = max_tool_retries if max_tool_retries is not None else config.get("max_tool_retries", 2)
+        self.tools_per_iteration = tools_per_iteration if tools_per_iteration is not None else config.get("tools_per_iteration", 1)
 
-        # Set termination parameters
-        self.enable_dynamic_termination = enable_dynamic_termination
-        self.min_confidence_threshold = min_confidence_threshold
+        # Set runtime parameters with fallbacks
+        self.max_duration_seconds = max_duration_seconds if max_duration_seconds is not None else config.get("max_duration_seconds", 180)
+
+        # Set termination parameters with fallbacks
+        self.enable_dynamic_termination = enable_dynamic_termination if enable_dynamic_termination is not None else config.get("enable_dynamic_termination", False)
+        self.min_confidence_threshold = min_confidence_threshold if min_confidence_threshold is not None else config.get("min_confidence_threshold", 0.8)
+
+        # Get LLM parameters with fallbacks
+        llm_model = llm_model if llm_model is not None else config.get("model", config.get("llm_model", "gpt-4o-mini"))
+        llm_temperature = llm_temperature if llm_temperature is not None else config.get("temperature", config.get("llm_temperature", 0.7))
+        llm_max_tokens = llm_max_tokens if llm_max_tokens is not None else config.get("max_tokens", config.get("llm_max_tokens", 4000))
 
         # Initialize state and tool ledger
         self.state = AgentState()
@@ -125,7 +143,7 @@ class Agent(ABC):
         # Initialize error recovery manager
         self.error_recovery_manager = ErrorRecoveryManager(
             llm=self.llm,
-            max_retries=max_tool_retries,
+            max_retries=self.max_tool_retries,
             base_delay=1.0,
             circuit_breaker_threshold=3,
             circuit_breaker_reset_timeout=300
@@ -139,6 +157,44 @@ class Agent(ABC):
 
         # Set up basic logging
         self.logger = self._setup_basic_logger()
+
+    def _get_config(self, agent_type: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get configuration for this agent.
+
+        Args:
+            agent_type: Type of agent to get configuration for
+
+        Returns:
+            Dictionary containing agent configuration
+        """
+        # Try to use ConfigProvider if available
+        if HAS_CONFIG_PROVIDER:
+            try:
+                if agent_type:
+                    return ConfigProvider.get_agent_config(agent_type)
+                else:
+                    # Use the class name as the agent type if not specified
+                    class_name = self.__class__.__name__
+                    # Convert CamelCase to snake_case and remove 'Agent' suffix
+                    agent_type = re.sub(r'(?<!^)(?=[A-Z])', '_', class_name).lower()
+                    agent_type = agent_type.replace('_agent', '')
+                    return ConfigProvider.get_agent_config(agent_type)
+            except Exception as e:
+                logger.warning(f"Error getting config from ConfigProvider: {str(e)}")
+
+        # Try to use LLMConfigFactory if available
+        try:
+            if agent_type:
+                return LLMConfigFactory.create_config(agent_type)
+            else:
+                # Use default config
+                return {}
+        except Exception as e:
+            logger.warning(f"Error getting config from LLMConfigFactory: {str(e)}")
+
+        # Return empty config as fallback
+        return {}
 
     async def select_tools(self, input_text: str) -> List[Dict[str, Any]]:
         """

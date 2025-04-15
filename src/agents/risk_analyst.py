@@ -1,5 +1,4 @@
 import json
-import re
 from typing import Dict, Any, List, Optional
 from .base import Agent, Goal
 from ..capabilities.base import Capability
@@ -13,24 +12,24 @@ class RiskAnalystAgent(Agent):
         self,
         capabilities: Optional[List[Capability]] = None,
         # Agent iteration parameters
-        max_iterations: int = 1,  # Legacy parameter, still used for backward compatibility
-        max_planning_iterations: int = 1,
-        max_execution_iterations: int = 2,
-        max_refinement_iterations: int = 1,
+        max_iterations: Optional[int] = None,  # Legacy parameter, still used for backward compatibility
+        max_planning_iterations: Optional[int] = None,
+        max_execution_iterations: Optional[int] = None,
+        max_refinement_iterations: Optional[int] = None,
         # Tool execution parameters
-        max_tool_retries: int = 2,
-        tools_per_iteration: int = 1,
+        max_tool_retries: Optional[int] = None,
+        tools_per_iteration: Optional[int] = None,
         # Runtime parameters
-        max_duration_seconds: int = 180,
+        max_duration_seconds: Optional[int] = None,
         # LLM parameters
-        llm_model: str = "gpt-4o-mini",
-        llm_temperature: float = 0.3,
-        llm_max_tokens: int = 1000,
+        llm_model: Optional[str] = None,
+        llm_temperature: Optional[float] = None,
+        llm_max_tokens: Optional[int] = None,
         # Environment
         environment: Optional[FinancialEnvironment] = None,
         # Termination parameters
-        enable_dynamic_termination: bool = False,
-        min_confidence_threshold: float = 0.8
+        enable_dynamic_termination: Optional[bool] = None,
+        min_confidence_threshold: Optional[float] = None
     ):
         """
         Initialize the risk analyst agent.
@@ -60,7 +59,7 @@ class RiskAnalystAgent(Agent):
             )
         ]
 
-        # Initialize the base agent
+        # Initialize the base agent with agent type for configuration
         super().__init__(
             goals=goals,
             capabilities=capabilities,
@@ -82,7 +81,9 @@ class RiskAnalystAgent(Agent):
             environment=environment,
             # Termination parameters
             enable_dynamic_termination=enable_dynamic_termination,
-            min_confidence_threshold=min_confidence_threshold
+            min_confidence_threshold=min_confidence_threshold,
+            # Agent type for configuration
+            agent_type="risk_analyst"
         )
 
         # Initialize environment
@@ -325,7 +326,8 @@ class RiskAnalystAgent(Agent):
             # Extract the current analysis text and risk factors
             analysis_text = current_analysis.get("analysis", "")
             risk_factors = current_analysis.get("risk_factors", {})
-            risk_trends = current_analysis.get("risk_trends", [])
+            # risk_trends data is extracted for potential future use but not currently used
+            _ = current_analysis.get("risk_trends", [])
             recommendations = current_analysis.get("recommendations", [])
 
             # Generate a refinement prompt
@@ -439,6 +441,7 @@ class RiskAnalystAgent(Agent):
 
             # Initialize results containers
             semantic_results = None
+            # graph_results will be populated if graph queries are used
             graph_results = None
 
             # Process the input using LLM-driven tool calling
@@ -453,6 +456,7 @@ class RiskAnalystAgent(Agent):
                     if tool_name == "sec_semantic_search":
                         semantic_results = tool_result
                     elif tool_name == "sec_graph_query":
+                        # Store graph results for potential future use
                         graph_results = tool_result
 
             # Extract relevant text from semantic search

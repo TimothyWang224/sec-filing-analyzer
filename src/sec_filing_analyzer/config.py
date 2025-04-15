@@ -4,10 +4,11 @@ Unified Configuration
 Configuration settings for the SEC Filing Analyzer project.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union, Type, TypeVar
 import os
+import json
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict, field
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -71,7 +72,7 @@ class AgentConfig:
     min_confidence_threshold: float = 0.8
 
     # LLM parameters
-    llm_model: str = os.getenv("DEFAULT_LLM_MODEL", "gpt-4o-mini")
+    llm_model: str = os.getenv("DEFAULT_LLM_MODEL", "gpt-4.1-nano")
     llm_temperature: float = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.7"))
     llm_max_tokens: int = int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "4000"))
 
@@ -90,7 +91,7 @@ class AgentConfig:
             max_duration_seconds=int(os.getenv("AGENT_MAX_DURATION_SECONDS", "180")),
             enable_dynamic_termination=os.getenv("AGENT_ENABLE_DYNAMIC_TERMINATION", "false").lower() == "true",
             min_confidence_threshold=float(os.getenv("AGENT_MIN_CONFIDENCE_THRESHOLD", "0.8")),
-            llm_model=os.getenv("DEFAULT_LLM_MODEL", "gpt-4o-mini"),
+            llm_model=os.getenv("DEFAULT_LLM_MODEL", "gpt-4.1-nano"),
             llm_temperature=float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.7")),
             llm_max_tokens=int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "4000"))
         )
@@ -102,7 +103,7 @@ class ETLConfig:
     # Data retrieval settings
     filings_dir: Path = Path("data/filings")
     filing_types: List[str] = None
-    max_retries: int = 3
+    max_retries: int = 2
     timeout: int = 30
 
     # Document processing settings
@@ -151,11 +152,127 @@ class ETLConfig:
             rate_limit=float(os.getenv("RATE_LIMIT", "0.1"))
         )
 
+# Type variable for configuration classes
+T = TypeVar('T')
+
+class ConfigProvider:
+    """Unified configuration provider for the SEC Filing Analyzer."""
+
+    # Configuration instances
+    _neo4j_config: Optional[Neo4jConfig] = None
+    _storage_config: Optional[StorageConfig] = None
+    _etl_config: Optional[ETLConfig] = None
+    _agent_config: Optional[AgentConfig] = None
+
+    # Agent-specific configurations from llm_config.py
+    _agent_specific_configs: Dict[str, Dict[str, Any]] = {}
+
+    # External configuration file path
+    _external_config_path: Optional[Path] = None
+
+    @classmethod
+    def initialize(cls, config_path: Optional[str] = None) -> None:
+        """Initialize the configuration provider."""
+        # Set external config path if provided
+        if config_path:
+            cls._external_config_path = Path(config_path)
+        else:
+            # Default to data/config/etl_config.json
+            cls._external_config_path = Path("data/config/etl_config.json")
+
+        # Initialize configuration instances
+        cls._neo4j_config = Neo4jConfig()
+        cls._storage_config = StorageConfig()
+        cls._etl_config = ETLConfig.from_env()
+        cls._agent_config = AgentConfig.from_env()
+
+        # Load agent-specific configurations from llm_config.py
+        try:
+            from sec_filing_analyzer.llm.llm_config import AGENT_CONFIGS
+            cls._agent_specific_configs = AGENT_CONFIGS
+        except ImportError:
+            print("Warning: Could not import agent-specific configurations from llm_config.py")
+
+    @classmethod
+    def get_config(cls, config_type: Type[T]) -> T:
+        """Get a configuration instance by type."""
+        if not cls._neo4j_config:
+            cls.initialize()
+
+        if config_type == Neo4jConfig:
+            return cls._neo4j_config  # type: ignore
+        elif config_type == StorageConfig:
+            return cls._storage_config  # type: ignore
+        elif config_type == ETLConfig:
+            return cls._etl_config  # type: ignore
+        elif config_type == AgentConfig:
+            return cls._agent_config  # type: ignore
+        else:
+            raise ValueError(f"Unknown configuration type: {config_type}")
+
+    @classmethod
+    def get_agent_config(cls, agent_type: str) -> Dict[str, Any]:
+        """Get configuration for a specific agent type."""
+        if not cls._agent_config:
+            cls.initialize()
+
+        # Start with base agent config
+        config = asdict(cls._agent_config)
+
+        # Apply agent-specific config if available
+        if agent_type in cls._agent_specific_configs:
+            agent_specific = cls._agent_specific_configs[agent_type]
+
+            # Update with agent-specific values
+            for key, value in agent_specific.items():
+                config[key] = value
+
+        # Apply external config if available
+        if cls._external_config_path and cls._external_config_path.exists():
+            try:
+                with open(cls._external_config_path, 'r') as f:
+                    external_config = json.load(f)
+
+                if 'agent' in external_config:
+                    # Update with external values
+                    for key, value in external_config['agent'].items():
+                        config[key] = value
+            except Exception as e:
+                print(f"Warning: Could not load external config: {str(e)}")
+
+        return config
+
+    @classmethod
+    def get_all_agent_types(cls) -> List[str]:
+        """Get all available agent types."""
+        if not cls._agent_specific_configs:
+            cls.initialize()
+
+        return list(cls._agent_specific_configs.keys())
+
+    @classmethod
+    def validate_config(cls, config: Dict[str, Any], config_type: str) -> bool:
+        """Validate a configuration dictionary."""
+        if config_type == 'agent':
+            required_fields = {
+                'max_iterations', 'max_planning_iterations', 'max_execution_iterations',
+                'max_refinement_iterations', 'llm_model', 'llm_temperature', 'llm_max_tokens'
+            }
+            return all(field in config for field in required_fields)
+        elif config_type == 'etl':
+            required_fields = {'filings_dir', 'filing_types', 'max_retries', 'timeout'}
+            return all(field in config for field in required_fields)
+        else:
+            return True  # No validation for other types yet
+
 # Create global configuration instances
 neo4j_config = Neo4jConfig()
 storage_config = StorageConfig()
 etl_config = ETLConfig.from_env()
 agent_config = AgentConfig.from_env()
+
+# Initialize the configuration provider
+ConfigProvider.initialize()
 
 # Export configuration dictionaries for backward compatibility
 NEO4J_CONFIG: Dict[str, Any] = {

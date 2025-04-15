@@ -1,4 +1,5 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
+import os
 
 # Base configuration shared across all LLMs
 BASE_CONFIG = {
@@ -166,6 +167,16 @@ def get_agent_config(agent_type: str) -> Dict[str, Any]:
         raise ValueError(f"Unknown agent type: {agent_type}")
     return AGENT_CONFIGS[agent_type].copy()  # Return a copy to prevent modification
 
+
+def get_agent_types() -> List[str]:
+    """
+    Get all available agent types.
+
+    Returns:
+        List of agent type names
+    """
+    return list(AGENT_CONFIGS.keys())
+
 class LLMConfigFactory:
     """Factory for creating and managing LLM configurations."""
 
@@ -197,6 +208,33 @@ class LLMConfigFactory:
         config.update(overrides)
 
         return config
+
+    @staticmethod
+    def create_config_from_provider(agent_type: str, **overrides) -> Dict[str, Any]:
+        """
+        Create a configuration for a specific agent type using the ConfigProvider.
+
+        Args:
+            agent_type: Type of agent to create configuration for
+            **overrides: Configuration overrides to apply
+
+        Returns:
+            Dictionary containing the LLM configuration
+
+        Raises:
+            ValueError: If agent_type is not found in configurations
+        """
+        try:
+            from sec_filing_analyzer.config import ConfigProvider
+            config = ConfigProvider.get_agent_config(agent_type)
+
+            # Apply any overrides
+            config.update(overrides)
+
+            return config
+        except ImportError:
+            # Fall back to the old method if ConfigProvider is not available
+            return LLMConfigFactory.create_config(agent_type, **overrides)
 
     @staticmethod
     def get_available_models() -> Dict[str, str]:
@@ -238,7 +276,13 @@ class LLMConfigFactory:
         Returns:
             Dictionary containing recommended configuration
         """
-        base_config = LLMConfigFactory.create_config(agent_type)
+        # Try to use the ConfigProvider first
+        try:
+            from sec_filing_analyzer.config import ConfigProvider
+            base_config = ConfigProvider.get_agent_config(agent_type)
+        except ImportError:
+            # Fall back to the old method if ConfigProvider is not available
+            base_config = LLMConfigFactory.create_config(agent_type)
 
         # Adjust configuration based on task complexity
         if task_complexity == "high":

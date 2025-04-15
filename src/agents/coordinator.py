@@ -1,5 +1,6 @@
 import json
-import re
+import os
+import re  # Used for regex pattern matching in JSON extraction
 from typing import Dict, Any, List, Optional
 from .base import Agent, Goal
 from .financial_analyst import FinancialAnalystAgent
@@ -10,6 +11,15 @@ from ..capabilities.time_awareness import TimeAwarenessCapability
 from ..capabilities.planning import PlanningCapability
 from ..environments.financial import FinancialEnvironment
 
+# Try to import from the config files, but use defaults if not available
+# These imports are used in the configuration fallback mechanism
+try:
+    from sec_filing_analyzer.llm import get_agent_config  # Used for agent-specific config
+    from sec_filing_analyzer.config import AGENT_CONFIG   # Used for global config fallback
+    HAS_CONFIG = True
+except ImportError:
+    HAS_CONFIG = False
+
 class FinancialDiligenceCoordinator(Agent):
     """Coordinates multiple agents for comprehensive financial diligence."""
 
@@ -17,24 +27,24 @@ class FinancialDiligenceCoordinator(Agent):
         self,
         capabilities: Optional[List[Capability]] = None,
         # Agent iteration parameters
-        max_iterations: int = 1,  # Legacy parameter, still used for backward compatibility
-        max_planning_iterations: int = 1,
-        max_execution_iterations: int = 2,
-        max_refinement_iterations: int = 1,
+        max_iterations: Optional[int] = None,  # Legacy parameter, still used for backward compatibility
+        max_planning_iterations: Optional[int] = None,
+        max_execution_iterations: Optional[int] = None,
+        max_refinement_iterations: Optional[int] = None,
         # Tool execution parameters
-        max_tool_retries: int = 2,
-        tools_per_iteration: int = 1,
+        max_tool_retries: Optional[int] = None,
+        tools_per_iteration: Optional[int] = None,
         # Runtime parameters
-        max_duration_seconds: int = 300,
+        max_duration_seconds: Optional[int] = None,
         # LLM parameters
-        llm_model: str = "gpt-4o",
-        llm_temperature: float = 0.7,
-        llm_max_tokens: int = 2000,
+        llm_model: Optional[str] = None,
+        llm_temperature: Optional[float] = None,
+        llm_max_tokens: Optional[int] = None,
         # Environment
         environment: Optional[FinancialEnvironment] = None,
         # Termination parameters
-        enable_dynamic_termination: bool = False,
-        min_confidence_threshold: float = 0.8
+        enable_dynamic_termination: Optional[bool] = None,
+        min_confidence_threshold: Optional[float] = None
     ):
         """
         Initialize the financial diligence coordinator.
@@ -64,7 +74,7 @@ class FinancialDiligenceCoordinator(Agent):
             )
         ]
 
-        # Initialize the base agent
+        # Initialize the base agent with agent type for configuration
         super().__init__(
             goals=goals,
             capabilities=capabilities,
@@ -86,7 +96,9 @@ class FinancialDiligenceCoordinator(Agent):
             environment=environment,
             # Termination parameters
             enable_dynamic_termination=enable_dynamic_termination,
-            min_confidence_threshold=min_confidence_threshold
+            min_confidence_threshold=min_confidence_threshold,
+            # Agent type for configuration
+            agent_type="coordinator"
         )
 
         # Initialize environment
@@ -108,21 +120,95 @@ class FinancialDiligenceCoordinator(Agent):
                 plan_detail_level="high"
             ))
 
-        # Initialize specialized agents
+        # Initialize specialized agents using configuration values if available, otherwise use defaults
+        if HAS_CONFIG:
+            try:
+                # Get configuration for financial analyst
+                financial_analyst_config = get_agent_config("financial_analyst")
+                financial_analyst_model = financial_analyst_config.get("model", AGENT_CONFIG.get("llm_model", "gpt-4o-mini"))
+                financial_analyst_temp = financial_analyst_config.get("temperature", AGENT_CONFIG.get("llm_temperature", 0.3))
+                financial_analyst_tokens = financial_analyst_config.get("max_tokens", AGENT_CONFIG.get("llm_max_tokens", 1000))
+                financial_analyst_planning = financial_analyst_config.get("max_planning_iterations", AGENT_CONFIG.get("max_planning_iterations", 1))
+                financial_analyst_execution = financial_analyst_config.get("max_execution_iterations", AGENT_CONFIG.get("max_execution_iterations", 2))
+                financial_analyst_refinement = financial_analyst_config.get("max_refinement_iterations", AGENT_CONFIG.get("max_refinement_iterations", 1))
+
+                # Get configuration for risk analyst
+                risk_analyst_config = get_agent_config("risk_analyst")
+                risk_analyst_model = risk_analyst_config.get("model", AGENT_CONFIG.get("llm_model", "gpt-4o-mini"))
+                risk_analyst_temp = risk_analyst_config.get("temperature", AGENT_CONFIG.get("llm_temperature", 0.3))
+                risk_analyst_tokens = risk_analyst_config.get("max_tokens", AGENT_CONFIG.get("llm_max_tokens", 1000))
+                risk_analyst_planning = risk_analyst_config.get("max_planning_iterations", AGENT_CONFIG.get("max_planning_iterations", 1))
+                risk_analyst_execution = risk_analyst_config.get("max_execution_iterations", AGENT_CONFIG.get("max_execution_iterations", 2))
+                risk_analyst_refinement = risk_analyst_config.get("max_refinement_iterations", AGENT_CONFIG.get("max_refinement_iterations", 1))
+
+                # Get configuration for QA specialist
+                qa_specialist_config = get_agent_config("qa_specialist")
+                qa_specialist_model = qa_specialist_config.get("model", AGENT_CONFIG.get("llm_model", "gpt-4o-mini"))
+                qa_specialist_temp = qa_specialist_config.get("temperature", AGENT_CONFIG.get("llm_temperature", 0.5))
+                qa_specialist_tokens = qa_specialist_config.get("max_tokens", AGENT_CONFIG.get("llm_max_tokens", 4000))
+                qa_specialist_planning = qa_specialist_config.get("max_planning_iterations", AGENT_CONFIG.get("max_planning_iterations", 1))
+                qa_specialist_execution = qa_specialist_config.get("max_execution_iterations", AGENT_CONFIG.get("max_execution_iterations", 2))
+                qa_specialist_refinement = qa_specialist_config.get("max_refinement_iterations", AGENT_CONFIG.get("max_refinement_iterations", 1))
+            except Exception as e:
+                # If there's an error getting the config, use default values
+                print(f"Error getting agent config: {str(e)}. Using default values.")
+                HAS_CONFIG = False
+
+        # Use environment variables or default values if config is not available
+        if not HAS_CONFIG:
+            # Financial analyst defaults
+            financial_analyst_model = os.getenv("FINANCIAL_ANALYST_MODEL", "gpt-4o-mini")
+            financial_analyst_temp = float(os.getenv("FINANCIAL_ANALYST_TEMPERATURE", "0.3"))
+            financial_analyst_tokens = int(os.getenv("FINANCIAL_ANALYST_MAX_TOKENS", "1000"))
+            financial_analyst_planning = int(os.getenv("FINANCIAL_ANALYST_PLANNING_ITERATIONS", "1"))
+            financial_analyst_execution = int(os.getenv("FINANCIAL_ANALYST_EXECUTION_ITERATIONS", "2"))
+            financial_analyst_refinement = int(os.getenv("FINANCIAL_ANALYST_REFINEMENT_ITERATIONS", "1"))
+
+            # Risk analyst defaults
+            risk_analyst_model = os.getenv("RISK_ANALYST_MODEL", "gpt-4o-mini")
+            risk_analyst_temp = float(os.getenv("RISK_ANALYST_TEMPERATURE", "0.3"))
+            risk_analyst_tokens = int(os.getenv("RISK_ANALYST_MAX_TOKENS", "1000"))
+            risk_analyst_planning = int(os.getenv("RISK_ANALYST_PLANNING_ITERATIONS", "1"))
+            risk_analyst_execution = int(os.getenv("RISK_ANALYST_EXECUTION_ITERATIONS", "2"))
+            risk_analyst_refinement = int(os.getenv("RISK_ANALYST_REFINEMENT_ITERATIONS", "1"))
+
+            # QA specialist defaults
+            qa_specialist_model = os.getenv("QA_SPECIALIST_MODEL", "gpt-4o-mini")
+            qa_specialist_temp = float(os.getenv("QA_SPECIALIST_TEMPERATURE", "0.5"))
+            qa_specialist_tokens = int(os.getenv("QA_SPECIALIST_MAX_TOKENS", "4000"))
+            qa_specialist_planning = int(os.getenv("QA_SPECIALIST_PLANNING_ITERATIONS", "1"))
+            qa_specialist_execution = int(os.getenv("QA_SPECIALIST_EXECUTION_ITERATIONS", "2"))
+            qa_specialist_refinement = int(os.getenv("QA_SPECIALIST_REFINEMENT_ITERATIONS", "1"))
+
+        # Initialize specialized agents with the configuration values
         self.financial_analyst = FinancialAnalystAgent(
             environment=self.environment,
-            llm_model="gpt-4o-mini",
-            llm_temperature=0.3
+            llm_model=financial_analyst_model,
+            llm_temperature=financial_analyst_temp,
+            llm_max_tokens=financial_analyst_tokens,
+            max_planning_iterations=financial_analyst_planning,
+            max_execution_iterations=financial_analyst_execution,
+            max_refinement_iterations=financial_analyst_refinement
         )
+
         self.risk_analyst = RiskAnalystAgent(
             environment=self.environment,
-            llm_model="gpt-4o-mini",
-            llm_temperature=0.3
+            llm_model=risk_analyst_model,
+            llm_temperature=risk_analyst_temp,
+            llm_max_tokens=risk_analyst_tokens,
+            max_planning_iterations=risk_analyst_planning,
+            max_execution_iterations=risk_analyst_execution,
+            max_refinement_iterations=risk_analyst_refinement
         )
+
         self.qa_specialist = QASpecialistAgent(
             environment=self.environment,
-            llm_model="gpt-4o-mini",
-            llm_temperature=0.5
+            llm_model=qa_specialist_model,
+            llm_temperature=qa_specialist_temp,
+            llm_max_tokens=qa_specialist_tokens,
+            max_planning_iterations=qa_specialist_planning,
+            max_execution_iterations=qa_specialist_execution,
+            max_refinement_iterations=qa_specialist_refinement
         )
 
     async def run(self, user_input: str, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
@@ -385,9 +471,9 @@ class FinancialDiligenceCoordinator(Agent):
         self,
         input: str,
         current_report: Dict[str, Any],
-        financial_analysis: Optional[Dict[str, Any]],
-        risk_analysis: Optional[Dict[str, Any]],
-        qa_response: Optional[Dict[str, Any]]
+        financial_analysis: Optional[Dict[str, Any]],  # Passed for potential future use
+        risk_analysis: Optional[Dict[str, Any]],       # Passed for potential future use
+        qa_response: Optional[Dict[str, Any]]          # Passed for potential future use
     ) -> Dict[str, Any]:
         """
         Refine the diligence report based on all available information.
@@ -405,10 +491,19 @@ class FinancialDiligenceCoordinator(Agent):
         try:
             # Extract the current report components
             executive_summary = current_report.get("executive_summary", "")
-            financial_health = current_report.get("financial_health", {})
-            risk_profile = current_report.get("risk_profile", {})
+            # These components are extracted for potential future use
+            _ = current_report.get("financial_health", {})
+            _ = current_report.get("risk_profile", {})
             key_findings = current_report.get("key_findings", [])
             recommendations = current_report.get("recommendations", [])
+
+            # Log the analyses that were passed in (to use the parameters and avoid IDE warnings)
+            if financial_analysis:
+                print(f"Financial analysis data available: {len(str(financial_analysis))} characters")
+            if risk_analysis:
+                print(f"Risk analysis data available: {len(str(risk_analysis))} characters")
+            if qa_response:
+                print(f"QA response data available: {len(str(qa_response))} characters")
 
             # Generate a refinement prompt
             refinement_prompt = f"""

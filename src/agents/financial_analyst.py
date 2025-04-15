@@ -1,8 +1,7 @@
 import json
-import re
+import os
 from typing import Dict, Any, List, Optional
 from .base import Agent, Goal
-from .task_queue import TaskQueue, Task
 from .task_parser import TaskParser
 from ..capabilities.base import Capability
 from ..capabilities.time_awareness import TimeAwarenessCapability
@@ -17,24 +16,24 @@ class FinancialAnalystAgent(Agent):
         self,
         capabilities: Optional[List[Capability]] = None,
         # Agent iteration parameters
-        max_iterations: int = 1,  # Legacy parameter, still used for backward compatibility
-        max_planning_iterations: int = 1,
-        max_execution_iterations: int = 2,
-        max_refinement_iterations: int = 1,
+        max_iterations: Optional[int] = None,  # Legacy parameter, still used for backward compatibility
+        max_planning_iterations: Optional[int] = None,
+        max_execution_iterations: Optional[int] = None,
+        max_refinement_iterations: Optional[int] = None,
         # Tool execution parameters
-        max_tool_retries: int = 2,
-        tools_per_iteration: int = 1,
+        max_tool_retries: Optional[int] = None,
+        tools_per_iteration: Optional[int] = None,
         # Runtime parameters
-        max_duration_seconds: int = 180,
+        max_duration_seconds: Optional[int] = None,
         # LLM parameters
-        llm_model: str = "gpt-4o-mini",
-        llm_temperature: float = 0.3,
-        llm_max_tokens: int = 1000,
+        llm_model: Optional[str] = None,
+        llm_temperature: Optional[float] = None,
+        llm_max_tokens: Optional[int] = None,
         # Environment
         environment: Optional[FinancialEnvironment] = None,
         # Termination parameters
-        enable_dynamic_termination: bool = False,
-        min_confidence_threshold: float = 0.8
+        enable_dynamic_termination: Optional[bool] = None,
+        min_confidence_threshold: Optional[float] = None
     ):
         """
         Initialize the financial analyst agent.
@@ -64,7 +63,7 @@ class FinancialAnalystAgent(Agent):
             )
         ]
 
-        # Initialize the base agent
+        # Initialize the base agent with agent type for configuration
         super().__init__(
             goals=goals,
             capabilities=capabilities,
@@ -86,7 +85,9 @@ class FinancialAnalystAgent(Agent):
             environment=environment,
             # Termination parameters
             enable_dynamic_termination=enable_dynamic_termination,
-            min_confidence_threshold=min_confidence_threshold
+            min_confidence_threshold=min_confidence_threshold,
+            # Agent type for configuration
+            agent_type="financial_analyst"
         )
 
         # Initialize environment
@@ -358,7 +359,8 @@ class FinancialAnalystAgent(Agent):
             # Extract the current analysis text and metrics
             analysis_text = current_analysis.get("analysis", "")
             metrics = current_analysis.get("metrics", {})
-            trends = current_analysis.get("trends", [])
+            # trends data is extracted for potential future use but not currently used
+            _ = current_analysis.get("trends", [])
             insights = current_analysis.get("insights", [])
 
             # Generate a refinement prompt
