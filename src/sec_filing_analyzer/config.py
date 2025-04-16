@@ -4,12 +4,17 @@ Unified Configuration
 Configuration settings for the SEC Filing Analyzer project.
 """
 
-from typing import Dict, Any, List, Optional, Union, Type, TypeVar
+from typing import Dict, Any, List, Optional, Union, Type, TypeVar, Set
 import os
 import json
+import glob
+import logging
 from pathlib import Path
 from dataclasses import dataclass, asdict, field
 from dotenv import load_dotenv
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -121,6 +126,10 @@ class ETLConfig:
     process_quantitative: bool = True
     db_path: str = "data/financial_data.duckdb"
 
+    # Processing flags
+    process_semantic: bool = True
+    delay_between_companies: int = 1
+
     def __post_init__(self):
         """Initialize configuration after creation."""
         # Set default filing types if not specified
@@ -149,7 +158,86 @@ class ETLConfig:
             use_parallel=os.getenv("USE_PARALLEL", "true").lower() == "true",
             max_workers=int(os.getenv("MAX_WORKERS", "4")),
             batch_size=int(os.getenv("BATCH_SIZE", "100")),
-            rate_limit=float(os.getenv("RATE_LIMIT", "0.1"))
+            rate_limit=float(os.getenv("RATE_LIMIT", "0.1")),
+            process_semantic=os.getenv("PROCESS_SEMANTIC", "true").lower() == "true",
+            process_quantitative=os.getenv("PROCESS_QUANTITATIVE", "true").lower() == "true",
+            delay_between_companies=int(os.getenv("DELAY_BETWEEN_COMPANIES", "1"))
+        )
+
+@dataclass
+class VectorStoreConfig:
+    """Configuration for vector store."""
+
+    # Vector store type and path
+    type: str = "optimized"  # optimized, flat, etc.
+    path: Path = Path("data/vector_store")
+
+    # Index parameters
+    index_type: str = "hnsw"  # hnsw, flat, ivf, etc.
+    use_gpu: bool = False
+
+    # HNSW parameters
+    hnsw_m: int = 32
+    hnsw_ef_construction: int = 400
+    hnsw_ef_search: int = 200
+
+    # IVF parameters
+    ivf_nlist: Optional[int] = None
+    ivf_nprobe: Optional[int] = None
+
+    @classmethod
+    def from_env(cls) -> "VectorStoreConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            type=os.getenv("VECTOR_STORE_TYPE", "optimized"),
+            path=Path(os.getenv("VECTOR_STORE_PATH", "data/vector_store")),
+            index_type=os.getenv("VECTOR_INDEX_TYPE", "hnsw"),
+            use_gpu=os.getenv("VECTOR_USE_GPU", "false").lower() == "true",
+            hnsw_m=int(os.getenv("VECTOR_HNSW_M", "32")),
+            hnsw_ef_construction=int(os.getenv("VECTOR_HNSW_EF_CONSTRUCTION", "400")),
+            hnsw_ef_search=int(os.getenv("VECTOR_HNSW_EF_SEARCH", "200")),
+            ivf_nlist=int(os.getenv("VECTOR_IVF_NLIST", "0")) or None,
+            ivf_nprobe=int(os.getenv("VECTOR_IVF_NPROBE", "0")) or None
+        )
+
+@dataclass
+class StreamlitConfig:
+    """Configuration for Streamlit applications."""
+
+    # Server settings
+    port: int = 8501
+    headless: bool = True
+    enable_cors: bool = True
+    enable_xsrf_protection: bool = False
+    max_upload_size: int = 200
+    base_url_path: str = ""
+
+    # UI settings
+    theme_base: str = "light"
+    hide_top_bar: bool = False
+    show_error_details: bool = True
+    toolbar_mode: str = "auto"
+
+    # Performance settings
+    caching: bool = False
+    gather_usage_stats: bool = False
+
+    @classmethod
+    def from_env(cls) -> "StreamlitConfig":
+        """Create configuration from environment variables."""
+        return cls(
+            port=int(os.getenv("STREAMLIT_PORT", "8501")),
+            headless=os.getenv("STREAMLIT_HEADLESS", "true").lower() == "true",
+            enable_cors=os.getenv("STREAMLIT_ENABLE_CORS", "true").lower() == "true",
+            enable_xsrf_protection=os.getenv("STREAMLIT_ENABLE_XSRF_PROTECTION", "false").lower() == "true",
+            max_upload_size=int(os.getenv("STREAMLIT_MAX_UPLOAD_SIZE", "200")),
+            base_url_path=os.getenv("STREAMLIT_BASE_URL_PATH", ""),
+            theme_base=os.getenv("STREAMLIT_THEME_BASE", "light"),
+            hide_top_bar=os.getenv("STREAMLIT_HIDE_TOP_BAR", "false").lower() == "true",
+            show_error_details=os.getenv("STREAMLIT_SHOW_ERROR_DETAILS", "true").lower() == "true",
+            toolbar_mode=os.getenv("STREAMLIT_TOOLBAR_MODE", "auto"),
+            caching=os.getenv("STREAMLIT_CACHING", "false").lower() == "true",
+            gather_usage_stats=os.getenv("STREAMLIT_GATHER_USAGE_STATS", "false").lower() == "true"
         )
 
 # Type variable for configuration classes
@@ -163,15 +251,23 @@ class ConfigProvider:
     _storage_config: Optional[StorageConfig] = None
     _etl_config: Optional[ETLConfig] = None
     _agent_config: Optional[AgentConfig] = None
+    _vector_store_config: Optional[VectorStoreConfig] = None
+    _streamlit_config: Optional[StreamlitConfig] = None
 
     # Agent-specific configurations from llm_config.py
     _agent_specific_configs: Dict[str, Dict[str, Any]] = {}
 
+    # Tool schemas
+    _tool_schemas: Dict[str, Dict[str, Any]] = {}
+
     # External configuration file path
     _external_config_path: Optional[Path] = None
 
+    # Schema directory path
+    _schema_dir: Optional[Path] = None
+
     @classmethod
-    def initialize(cls, config_path: Optional[str] = None) -> None:
+    def initialize(cls, config_path: Optional[str] = None, schema_dir: Optional[str] = None) -> None:
         """Initialize the configuration provider."""
         # Set external config path if provided
         if config_path:
@@ -180,18 +276,30 @@ class ConfigProvider:
             # Default to data/config/etl_config.json
             cls._external_config_path = Path("data/config/etl_config.json")
 
+        # Set schema directory path if provided
+        if schema_dir:
+            cls._schema_dir = Path(schema_dir)
+        else:
+            # Default to data/schemas
+            cls._schema_dir = Path("data/schemas")
+
         # Initialize configuration instances
         cls._neo4j_config = Neo4jConfig()
         cls._storage_config = StorageConfig()
         cls._etl_config = ETLConfig.from_env()
         cls._agent_config = AgentConfig.from_env()
+        cls._vector_store_config = VectorStoreConfig.from_env()
+        cls._streamlit_config = StreamlitConfig.from_env()
 
         # Load agent-specific configurations from llm_config.py
         try:
             from sec_filing_analyzer.llm.llm_config import AGENT_CONFIGS
             cls._agent_specific_configs = AGENT_CONFIGS
         except ImportError:
-            print("Warning: Could not import agent-specific configurations from llm_config.py")
+            logger.warning("Could not import agent-specific configurations from llm_config.py")
+
+        # Load tool schemas
+        cls._load_tool_schemas()
 
     @classmethod
     def get_config(cls, config_type: Type[T]) -> T:
@@ -207,6 +315,10 @@ class ConfigProvider:
             return cls._etl_config  # type: ignore
         elif config_type == AgentConfig:
             return cls._agent_config  # type: ignore
+        elif config_type == VectorStoreConfig:
+            return cls._vector_store_config  # type: ignore
+        elif config_type == StreamlitConfig:
+            return cls._streamlit_config  # type: ignore
         else:
             raise ValueError(f"Unknown configuration type: {config_type}")
 
@@ -251,6 +363,66 @@ class ConfigProvider:
         return list(cls._agent_specific_configs.keys())
 
     @classmethod
+    def get_tool_schema(cls, tool_name: str) -> Optional[Dict[str, Any]]:
+        """Get schema for a specific tool."""
+        if not cls._tool_schemas:
+            cls._load_tool_schemas()
+
+        return cls._tool_schemas.get(tool_name)
+
+    @classmethod
+    def get_all_tool_schemas(cls) -> Dict[str, Dict[str, Any]]:
+        """Get all tool schemas."""
+        if not cls._tool_schemas:
+            cls._load_tool_schemas()
+
+        return cls._tool_schemas.copy()
+
+    @classmethod
+    def _load_tool_schemas(cls) -> None:
+        """Load tool parameter schemas from JSON files."""
+        if not cls._schema_dir:
+            cls._schema_dir = Path("data/schemas")
+
+        # Create schema directory if it doesn't exist
+        if not cls._schema_dir.exists():
+            cls._schema_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created schema directory: {cls._schema_dir}")
+
+        # Load schemas from JSON files
+        schemas = {}
+        for schema_file in cls._schema_dir.glob("*.json"):
+            try:
+                with open(schema_file, 'r') as f:
+                    schema = json.load(f)
+                    tool_name = schema_file.stem
+                    schemas[tool_name] = schema
+                    logger.debug(f"Loaded schema for tool: {tool_name}")
+            except Exception as e:
+                logger.warning(f"Error loading schema from {schema_file}: {str(e)}")
+
+        # If no schemas were found, try to load from the tool_parameter_helper.py file
+        if not schemas:
+            try:
+                from src.tools.tool_parameter_helper import TOOL_PARAMETER_SCHEMAS
+                schemas = TOOL_PARAMETER_SCHEMAS
+                logger.info("Loaded schemas from tool_parameter_helper.py")
+
+                # Save schemas to JSON files for future use
+                for tool_name, schema in schemas.items():
+                    schema_file = cls._schema_dir / f"{tool_name}.json"
+                    try:
+                        with open(schema_file, 'w') as f:
+                            json.dump(schema, f, indent=2)
+                        logger.debug(f"Saved schema for tool: {tool_name}")
+                    except Exception as e:
+                        logger.warning(f"Error saving schema to {schema_file}: {str(e)}")
+            except ImportError:
+                logger.warning("Could not import TOOL_PARAMETER_SCHEMAS from tool_parameter_helper.py")
+
+        cls._tool_schemas = schemas
+
+    @classmethod
     def validate_config(cls, config: Dict[str, Any], config_type: str) -> bool:
         """Validate a configuration dictionary."""
         if config_type == 'agent':
@@ -262,6 +434,12 @@ class ConfigProvider:
         elif config_type == 'etl':
             required_fields = {'filings_dir', 'filing_types', 'max_retries', 'timeout'}
             return all(field in config for field in required_fields)
+        elif config_type == 'vector_store':
+            required_fields = {'type', 'path', 'index_type'}
+            return all(field in config for field in required_fields)
+        elif config_type == 'streamlit':
+            required_fields = {'port', 'headless', 'enable_cors'}
+            return all(field in config for field in required_fields)
         else:
             return True  # No validation for other types yet
 
@@ -270,6 +448,8 @@ neo4j_config = Neo4jConfig()
 storage_config = StorageConfig()
 etl_config = ETLConfig.from_env()
 agent_config = AgentConfig.from_env()
+vector_store_config = VectorStoreConfig.from_env()
+streamlit_config = StreamlitConfig.from_env()
 
 # Initialize the configuration provider
 ConfigProvider.initialize()

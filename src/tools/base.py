@@ -8,6 +8,14 @@ from .schema_registry import SchemaRegistry
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Try to import the ConfigProvider
+try:
+    from sec_filing_analyzer.config import ConfigProvider
+    HAS_CONFIG_PROVIDER = True
+except ImportError:
+    HAS_CONFIG_PROVIDER = False
+    logger.warning("Could not import ConfigProvider. Tool schemas will be loaded from registry only.")
+
 # Re-export the register_tool decorator from ToolRegistry
 register_tool = ToolRegistry.register
 
@@ -72,12 +80,25 @@ class Tool(ABC):
         Returns:
             True if arguments are valid, False otherwise
         """
-        # Get parameter info from registry
-        tool_info = ToolRegistry.get(self.name)
-        if not tool_info:
-            return True  # Can't validate if not registered
+        # Try to get parameter info from ConfigProvider first
+        parameters = {}
+        if HAS_CONFIG_PROVIDER:
+            try:
+                # Get schema from ConfigProvider
+                schema = ConfigProvider.get_tool_schema(self.name)
+                if schema:
+                    parameters = schema
+                    logger.debug(f"Using schema from ConfigProvider for {self.name}")
+            except Exception as e:
+                logger.warning(f"Error getting schema from ConfigProvider: {str(e)}")
 
-        parameters = tool_info.get("parameters", {})
+        # Fall back to registry if no schema was found
+        if not parameters:
+            tool_info = ToolRegistry.get(self.name)
+            if not tool_info:
+                return True  # Can't validate if not registered
+
+            parameters = tool_info.get("parameters", {})
 
         # Check required parameters
         for param_name, param_info in parameters.items():
@@ -101,10 +122,25 @@ class Tool(ABC):
         if not db_schema:
             return kwargs
 
-        # Get parameter mappings
-        param_mappings = getattr(self.__class__, '_parameter_mappings', {})
+        # Try to get parameter mappings from ConfigProvider first
+        param_mappings = {}
+        if HAS_CONFIG_PROVIDER:
+            try:
+                # Get schema registry from ConfigProvider
+                schema_registry = ConfigProvider.get_config(SchemaRegistry)
+                if schema_registry:
+                    # Get mappings for this schema
+                    param_mappings = schema_registry.get_field_mappings(db_schema)
+                    if param_mappings:
+                        logger.debug(f"Using parameter mappings from ConfigProvider for {db_schema}")
+            except Exception as e:
+                logger.warning(f"Error getting parameter mappings from ConfigProvider: {str(e)}")
+
+        # Fall back to class attribute if no mappings were found
         if not param_mappings:
-            return kwargs
+            param_mappings = getattr(self.__class__, '_parameter_mappings', {})
+            if not param_mappings:
+                return kwargs
 
         # Resolve parameters
         resolved_params = kwargs.copy()
