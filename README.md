@@ -102,6 +102,28 @@ For more details, see the [Agent Parameters and Phases](docs/agent_parameters.md
    python -m sec_filing_analyzer.init_db
    ```
 
+## Running the Application
+
+To run the Streamlit application:
+
+### On Windows
+
+Simply run the batch file in the project root:
+
+```
+run_app.bat
+```
+
+### On macOS/Linux
+
+Run the Python launcher script:
+
+```
+python run_app.py
+```
+
+For more detailed instructions, see [RUNNING.md](RUNNING.md).
+
 ## Usage
 
 ### Unified Pipeline

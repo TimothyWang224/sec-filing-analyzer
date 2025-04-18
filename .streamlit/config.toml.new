@@ -1,0 +1,29 @@
+[browser]
+serverAddress = "localhost"
+gatherUsageStats = false
+
+[theme]
+base = "light"
+
+[server]
+headless = true
+enableCORS = true
+enableXsrfProtection = false
+port = 8501
+baseUrlPath = ""
+maxUploadSize = 200
+
+[ui]
+hideTopBar = false
+
+[client]
+showErrorDetails = true
+toolbarMode = "auto"
+
+[runner]
+magicEnabled = true
+fastReruns = false
+
+[global]
+showWarningOnDirectExecution = true
+suppressDeprecationWarnings = true

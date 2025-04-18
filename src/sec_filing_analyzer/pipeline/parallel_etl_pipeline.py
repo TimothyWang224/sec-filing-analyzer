@@ -14,7 +14,7 @@ from sec_filing_analyzer.data_retrieval import SECFilingsDownloader
 from sec_filing_analyzer.data_retrieval.parallel_filing_processor import ParallelFilingProcessor
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 from sec_filing_analyzer.data_processing.chunking import FilingChunker
-from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
+from sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
 from sec_filing_analyzer.pipeline.quantitative_pipeline import QuantitativeETLPipeline
 
 # Setup logging
@@ -52,7 +52,8 @@ class ParallelSECFilingETLPipeline:
                 )
             else:
                 self.vector_store = LlamaIndexVectorStore(
-                    store_path=StorageConfig().vector_store_path
+                    store_path=StorageConfig().vector_store_path,
+                    lazy_load=True  # Use lazy loading to avoid rebuilding the index on startup
                 )
         else:
             self.vector_store = vector_store
@@ -73,12 +74,12 @@ class ParallelSECFilingETLPipeline:
         self.filing_chunker = FilingChunker(
             max_chunk_size=1500  # Maximum tokens per chunk
         )
-        self.embedding_generator = ParallelEmbeddingGenerator(
+        self.embedding_generator = RobustEmbeddingGenerator(
             model=ETLConfig().embedding_model,
-            max_workers=max_workers,
+            max_tokens_per_chunk=8000,  # Safe limit below the 8192 max
             rate_limit=rate_limit,
             batch_size=batch_size,  # Use the batch size from constructor
-            max_retries=3  # Add retry logic
+            max_retries=5  # Increased retry logic
         )
 
         # Try to set up enhanced logging
@@ -332,21 +333,28 @@ class ParallelSECFilingETLPipeline:
             chunk_texts = processed_data.get('chunk_texts', [])
 
             # Create a filing-specific embedding generator with metadata
-            filing_embedding_generator = ParallelEmbeddingGenerator(
+            filing_embedding_generator = RobustEmbeddingGenerator(
                 model=ETLConfig().embedding_model,
-                max_workers=self.max_workers,
+                max_tokens_per_chunk=8000,  # Safe limit below the 8192 max
                 rate_limit=self.embedding_generator.rate_limit,
                 filing_metadata=filing_data,
                 batch_size=self.batch_size,
-                max_retries=3
+                max_retries=5  # Increased retry logic
             )
 
             # Generate embeddings for chunks in parallel
             logger.info(f"Generating embeddings for {len(chunk_texts)} chunks")
-            chunk_embeddings, embedding_metadata = filing_embedding_generator.generate_embeddings(
+            chunk_embeddings_result = filing_embedding_generator.generate_embeddings(
                 chunk_texts,
                 batch_size=self.batch_size
             )
+
+            # Handle both tuple return (embeddings, metadata) and direct embeddings return
+            if isinstance(chunk_embeddings_result, tuple) and len(chunk_embeddings_result) == 2:
+                chunk_embeddings, embedding_metadata = chunk_embeddings_result
+            else:
+                chunk_embeddings = chunk_embeddings_result
+                embedding_metadata = {"any_fallbacks": False, "fallback_count": 0}
 
             # Add embeddings and metadata to processed data
             processed_data['chunk_embeddings'] = chunk_embeddings
@@ -364,7 +372,14 @@ class ParallelSECFilingETLPipeline:
                 token_count = self.filing_chunker._count_tokens(text)
                 if token_count <= 8000:  # Safe limit for embedding models
                     logger.info(f"Generating embedding for full text ({token_count} tokens)")
-                    full_text_embedding, full_text_metadata = filing_embedding_generator.generate_embeddings([text])
+                    full_text_result = filing_embedding_generator.generate_embeddings([text])
+
+                    # Handle both tuple return (embeddings, metadata) and direct embeddings return
+                    if isinstance(full_text_result, tuple) and len(full_text_result) == 2:
+                        full_text_embedding, full_text_metadata = full_text_result
+                    else:
+                        full_text_embedding = full_text_result
+                        full_text_metadata = {"any_fallbacks": False, "fallback_count": 0}
                     processed_data['embedding'] = full_text_embedding[0]
 
                     # Add full text embedding metadata

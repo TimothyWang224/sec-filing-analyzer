@@ -25,7 +25,8 @@ class QuantitativeETLPipeline:
         self,
         downloader: Optional[SECFilingsDownloader] = None,
         xbrl_extractor: Optional[EdgarXBRLToDuckDBExtractor] = None,
-        db_path: Optional[str] = None
+        db_path: Optional[str] = None,
+        read_only: bool = True
     ):
         """
         Initialize the quantitative ETL pipeline.
@@ -34,9 +35,14 @@ class QuantitativeETLPipeline:
             downloader: SEC filings downloader
             xbrl_extractor: XBRL to DuckDB extractor
             db_path: Path to the DuckDB database file
+            read_only: Whether to open the database in read-only mode
         """
         self.downloader = downloader or SECFilingsDownloader()
-        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(db_path=db_path)
+        # Pass read_only parameter to the XBRL extractor
+        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(
+            db_path=db_path,
+            read_only=read_only
+        )
 
         logger.info("Initialized quantitative ETL pipeline")
 

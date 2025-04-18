@@ -35,11 +35,11 @@ class ParallelEmbeddingGenerator:
         self,
         model: str = "text-embedding-3-small",
         max_workers: int = 4,
-        rate_limit: float = 0.1,
+        rate_limit: float = 0.5,  # Increased default rate limit to avoid 429 errors
         filing_metadata: Optional[Dict[str, Any]] = None,
-        max_retries: int = 3,
-        retry_base_delay: float = 1.0,
-        batch_size: int = 50
+        max_retries: int = 5,  # Increased max retries
+        retry_base_delay: float = 2.0,  # Increased base delay
+        batch_size: int = 25  # Reduced batch size to avoid rate limiting
     ):
         """Initialize the parallel embedding generator.
 
@@ -102,7 +102,11 @@ class ParallelEmbeddingGenerator:
 
         if time_since_last < self.rate_limit:
             time_to_wait = self.rate_limit - time_since_last
-            time.sleep(time_to_wait)
+            # Add a small random jitter to avoid synchronized requests
+            jitter = random.uniform(0, 0.2)
+            total_wait = time_to_wait + jitter
+            logger.debug(f"Rate limiting: waiting {total_wait:.2f} seconds")
+            time.sleep(total_wait)
 
         self.last_request_time = time.time()
 
@@ -138,7 +142,12 @@ class ParallelEmbeddingGenerator:
                 self._apply_rate_limit()
 
                 # Get embeddings
-                batch_embeddings = self.embed_model.get_text_embedding_batch(batch)
+                # Ensure batch is properly formatted for the OpenAI API
+                # The API expects a list of strings, not None or other types
+                sanitized_batch = [str(text) if text is not None else "" for text in batch]
+
+                # Use the LlamaIndex embedding model to get embeddings
+                batch_embeddings = self.embed_model.get_text_embedding_batch(sanitized_batch)
 
                 # Update token usage stats
                 self.token_usage["total_tokens"] += estimated_tokens

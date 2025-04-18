@@ -39,7 +39,7 @@ def get_entity(ticker: str) -> Any:
 
 def get_filings(
     ticker: str,
-    form_type: Optional[str] = None,
+    form_type: Optional[Union[str, List[str]]] = None,
     start_date: Optional[Union[str, date]] = None,
     end_date: Optional[Union[str, date]] = None,
     limit: Optional[int] = None
@@ -49,7 +49,7 @@ def get_filings(
 
     Args:
         ticker: Company ticker symbol
-        form_type: Optional filing type (e.g., "10-K", "10-Q", "8-K")
+        form_type: Optional filing type (e.g., "10-K", "10-Q", "8-K") or list of filing types
         start_date: Optional start date for filtering (YYYY-MM-DD string or date object)
         end_date: Optional end date for filtering (YYYY-MM-DD string or date object)
         limit: Optional maximum number of filings to return
@@ -80,18 +80,28 @@ def get_filings(
 
         # Get filings using edgar's built-in filtering
         # Note: The edgar library doesn't support the limit parameter directly
-        filings = entity.get_filings(form=form_type, date=date_param)
+        all_filings = []
+
+        # Handle multiple filing types if provided as a list
+        if isinstance(form_type, list) and form_type:
+            for ft in form_type:
+                filings = entity.get_filings(form=ft, date=date_param)
+                if filings:
+                    all_filings.extend(filings)
+        else:
+            # Single form type or None
+            all_filings = entity.get_filings(form=form_type, date=date_param)
 
         # If no filings found, log a warning
-        if not filings:
+        if not all_filings:
             logger.warning(f"No filings found for {ticker} with form {form_type} in date range")
             return []
 
         # Apply limit if specified
-        if limit and len(filings) > limit:
-            filings = filings[:limit]
+        if limit and len(all_filings) > limit:
+            all_filings = all_filings[:limit]
 
-        return filings
+        return all_filings
     except Exception as e:
         logger.error(f"Error getting filings for ticker {ticker}: {e}")
         raise ValueError(f"Failed to get filings for ticker {ticker}: {str(e)}")

@@ -151,12 +151,16 @@ class LlamaIndexVectorStore:
     Stores both embeddings and text chunks for full LlamaIndex functionality.
     """
 
-    def __init__(self, store_path: Optional[str] = None):
+    def __init__(self, store_path: Optional[str] = None, force_rebuild: bool = False, lazy_load: bool = True):
         """Initialize the vector store.
 
         Args:
             store_path: Optional path to store the vector store data
+            force_rebuild: Whether to force rebuilding the index even if it exists
+            lazy_load: Whether to defer loading the index until it's needed (default: True)
         """
+        self.force_rebuild = force_rebuild
+        self.lazy_load = lazy_load
         self.store_path = Path(store_path) if store_path else Path("data/vector_store")
         self.store_path.mkdir(parents=True, exist_ok=True)
 
@@ -165,11 +169,13 @@ class LlamaIndexVectorStore:
         self.text_dir = self.store_path / "text"
         self.embeddings_dir = self.store_path / "embeddings"
         self.index_dir = self.store_path / "index"
+        self.by_company_dir = self.store_path / "by_company"
 
         self.metadata_dir.mkdir(parents=True, exist_ok=True)
         self.text_dir.mkdir(parents=True, exist_ok=True)
         self.embeddings_dir.mkdir(parents=True, exist_ok=True)
         self.index_dir.mkdir(parents=True, exist_ok=True)
+        self.by_company_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize in-memory storage for metadata and text
         self.metadata_store = self._load_metadata_store()
@@ -185,10 +191,11 @@ class LlamaIndexVectorStore:
         # Create an empty index - we'll add documents directly to the vector store
         self.index = None
 
-        # Try to load existing index
-        self._load_or_create_index()
+        # Only load the index if not using lazy loading
+        if not self.lazy_load:
+            self._load_or_create_index(force_rebuild=self.force_rebuild)
 
-        logger.info(f"Initialized LlamaIndex vector store at {self.store_path}")
+        logger.info(f"Initialized LlamaIndex vector store at {self.store_path} with lazy_load={lazy_load}")
 
     def upsert_vectors(
         self,
@@ -288,9 +295,10 @@ class LlamaIndexVectorStore:
         try:
             logger.info(f"Searching for documents matching: {query_vector}")
 
-            # Make sure we have an index
+            # Make sure we have an index (lazy loading)
             if self.index is None:
-                self._load_or_create_index()
+                logger.info("Lazy loading index for search operation")
+                self._load_or_create_index(force_rebuild=False)
 
             if self.index is None:
                 logger.error("Failed to create or load index")
@@ -642,12 +650,16 @@ class LlamaIndexVectorStore:
         except Exception as e:
             logger.error(f"Error deleting vectors: {str(e)}")
 
-    def _load_or_create_index(self) -> None:
-        """Load existing index or create a new one."""
+    def _load_or_create_index(self, force_rebuild: bool = False) -> None:
+        """Load existing index or create a new one.
+
+        Args:
+            force_rebuild: Whether to force rebuilding the index even if it exists
+        """
         try:
-            # Check if index exists
+            # Check if index exists and we're not forcing a rebuild
             index_path = self.index_dir / "index"
-            if index_path.exists():
+            if index_path.exists() and not force_rebuild:
                 logger.info(f"Loading existing index from {index_path}")
                 self.index = VectorStoreIndex.from_vector_store(
                     vector_store=self.vector_store,
@@ -655,6 +667,9 @@ class LlamaIndexVectorStore:
                 )
                 logger.info("Successfully loaded existing index")
             else:
+                # If we're forcing a rebuild, log it
+                if force_rebuild and index_path.exists():
+                    logger.info("Force rebuilding index even though it exists")
                 # Create a new index with the documents we have
                 logger.info("Creating new index from existing documents")
                 documents = []

@@ -1,3 +1,0 @@
-@echo off
-echo Launching DuckDB CLI...
-poetry run python src/scripts/duckdb_cli.py --interactive %*

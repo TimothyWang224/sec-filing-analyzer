@@ -457,6 +457,23 @@ class LlamaIndexVectorStore:
                         limited_meta['is_table'] = chunk_meta['is_table']
 
                 # Create node
+                # Ensure embedding is a flat list of floats, not a list of lists
+                if vector and isinstance(vector, list) and len(vector) > 0 and isinstance(vector[0], list):
+                    # This is a list of lists, we need to flatten it
+                    logger.warning(f"Embedding for {id_} is a list of lists, flattening it")
+                    import numpy as np
+                    # Use the first embedding in the list
+                    vector = vector[0]
+
+                # Ensure vector is a list of floats
+                if not isinstance(vector, list):
+                    try:
+                        vector = list(vector)
+                    except Exception as e:
+                        logger.error(f"Could not convert embedding to list: {e}")
+                        # Use a zero vector as fallback
+                        vector = [0.0] * 1536
+
                 node = Document(
                     text=text,
                     embedding=vector,

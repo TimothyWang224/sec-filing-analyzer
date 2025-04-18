@@ -8,6 +8,15 @@ import logging
 from typing import Dict, List, Optional, Any
 import pandas as pd
 import duckdb
+import os
+from pathlib import Path
+
+# Add the project root to the Python path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+# Import the DuckDB manager
+from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Set up logging
 logging.basicConfig(
@@ -21,23 +30,31 @@ class ImprovedDuckDBStore:
     An interface to store and query financial data using the improved DuckDB schema.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100):
+    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
         """Initialize the improved DuckDB financial store.
 
         Args:
             db_path: Path to the DuckDB database file
             batch_size: Size of batches for bulk operations
+            read_only: Whether to open the database in read-only mode
         """
         self.db_path = db_path or "data/financial_data.duckdb"
         self.batch_size = batch_size
-        self.conn = duckdb.connect(self.db_path)
-        logger.info(f"Initialized improved DuckDB financial store at {self.db_path}")
+        self.read_only = read_only
+
+        # Use the DuckDB manager to get a connection with the appropriate mode
+        if read_only:
+            self.conn = duckdb_manager.get_read_only_connection(self.db_path)
+            logger.info(f"Initialized improved DuckDB financial store at {self.db_path} in read-only mode")
+        else:
+            self.conn = duckdb_manager.get_read_write_connection(self.db_path)
+            logger.info(f"Initialized improved DuckDB financial store at {self.db_path} in read-write mode")
 
     def close(self):
         """Close the database connection."""
-        if hasattr(self, 'conn') and self.conn:
-            self.conn.close()
-            logger.info("Closed database connection")
+        # We don't actually close the connection since it's managed by the DuckDB manager
+        # The DuckDB manager will handle connection pooling and closing when appropriate
+        logger.info("Connection managed by DuckDB manager - not explicitly closing")
 
     def __del__(self):
         """Destructor to ensure connection is closed."""

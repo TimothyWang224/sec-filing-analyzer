@@ -1,0 +1,285 @@
+{
+  "input_format_tests": {
+    "normal_text": {
+      "success": true,
+      "error": null,
+      "token_count": 6,
+      "text_length": 22,
+      "embedding_length": 1536
+    },
+    "empty_string": {
+      "success": false,
+      "error": "BadRequestError: Error code: 400 - {'error': {'message': \"'$.input' is invalid. Please check the API reference: https://platform.openai.com/docs/api-reference.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+      "token_count": 0,
+      "text_length": 0,
+      "embedding_length": null
+    },
+    "none_value": {
+      "success": false,
+      "error": "BadRequestError: Error code: 400 - {'error': {'message': \"'$.input' is invalid. Please check the API reference: https://platform.openai.com/docs/api-reference.\", 'type': 'invalid_request_error', 'param': None, 'code': None}}",
+      "token_count": 0,
+      "text_length": 0,
+      "embedding_length": null
+    },
+    "special_chars": {
+      "success": true,
+      "error": null,
+      "token_count": 14,
+      "text_length": 37,
+      "embedding_length": 1536
+    },
+    "unicode": {
+      "success": true,
+      "error": null,
+      "token_count": 14,
+      "text_length": 30,
+      "embedding_length": 1536
+    },
+    "very_long": {
+      "success": true,
+      "error": null,
+      "token_count": 3001,
+      "text_length": 11000,
+      "embedding_length": 1536
+    },
+    "with_newlines": {
+      "success": true,
+      "error": null,
+      "token_count": 13,
+      "text_length": 38,
+      "embedding_length": 1536
+    },
+    "with_tabs": {
+      "success": true,
+      "error": null,
+      "token_count": 6,
+      "text_length": 25,
+      "embedding_length": 1536
+    },
+    "with_null_bytes": {
+      "success": true,
+      "error": null,
+      "token_count": 6,
+      "text_length": 20,
+      "embedding_length": 1536
+    },
+    "with_control_chars": {
+      "success": true,
+      "error": null,
+      "token_count": 10,
+      "text_length": 29,
+      "embedding_length": 1536
+    },
+    "json_string": {
+      "success": true,
+      "error": null,
+      "token_count": 6,
+      "text_length": 16,
+      "embedding_length": 1536
+    },
+    "html": {
+      "success": true,
+      "error": null,
+      "token_count": 17,
+      "text_length": 47,
+      "embedding_length": 1536
+    },
+    "xml": {
+      "success": true,
+      "error": null,
+      "token_count": 12,
+      "text_length": 33,
+      "embedding_length": 1536
+    }
+  },
+  "large_text_tests": {
+    "original_token_count": 20001,
+    "num_chunks": 6,
+    "chunk_results": [
+      {
+        "success": true,
+        "error": null,
+        "token_count": 4000,
+        "text_length": 12799,
+        "embedding_length": 1536
+      },
+      {
+        "success": true,
+        "error": null,
+        "token_count": 4000,
+        "text_length": 12800,
+        "embedding_length": 1536
+      },
+      {
+        "success": true,
+        "error": null,
+        "token_count": 4000,
+        "text_length": 12800,
+        "embedding_length": 1536
+      },
+      {
+        "success": true,
+        "error": null,
+        "token_count": 4000,
+        "text_length": 12800,
+        "embedding_length": 1536
+      },
+      {
+        "success": true,
+        "error": null,
+        "token_count": 4000,
+        "text_length": 12800,
+        "embedding_length": 1536
+      },
+      {
+        "success": true,
+        "error": null,
+        "token_count": 1,
+        "text_length": 1,
+        "embedding_length": 1536
+      }
+    ]
+  },
+  "batch_tests_small": {
+    "success": true,
+    "error": null,
+    "total_texts": 30,
+    "batch_size": 5,
+    "token_counts": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "text_lengths": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7
+    ],
+    "successful_embeddings": 30
+  },
+  "batch_tests_large": {
+    "success": true,
+    "error": null,
+    "total_texts": 30,
+    "batch_size": 20,
+    "token_counts": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "text_lengths": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7
+    ],
+    "successful_embeddings": 30
+  }
+}

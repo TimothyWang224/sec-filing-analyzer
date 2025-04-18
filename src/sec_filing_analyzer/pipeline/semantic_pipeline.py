@@ -10,8 +10,9 @@ from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
 
 from ..data_retrieval.sec_downloader import SECFilingsDownloader
-from ..semantic.processing.chunking import DocumentChunker
+from ..data_processing.chunking import FilingChunker
 from ..semantic.embeddings.embedding_generator import EmbeddingGenerator
+from ..semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
 from ..semantic.storage.vector_store import VectorStore
 
 # Configure logging
@@ -26,7 +27,7 @@ class SemanticETLPipeline:
     def __init__(
         self,
         downloader: Optional[SECFilingsDownloader] = None,
-        chunker: Optional[DocumentChunker] = None,
+        chunker: Optional[FilingChunker] = None,
         embedding_generator: Optional[EmbeddingGenerator] = None,
         vector_store: Optional[VectorStore] = None,
         chunk_size: int = 1500,
@@ -37,15 +38,15 @@ class SemanticETLPipeline:
 
         Args:
             downloader: SEC filings downloader
-            chunker: Document chunker
+            chunker: Document chunker (FilingChunker instance)
             embedding_generator: Embedding generator
             vector_store: Vector store
             chunk_size: Size of document chunks
             chunk_overlap: Overlap between chunks
         """
         self.downloader = downloader or SECFilingsDownloader()
-        self.chunker = chunker or DocumentChunker()
-        self.embedding_generator = embedding_generator or EmbeddingGenerator()
+        self.chunker = chunker or FilingChunker(max_chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self.embedding_generator = embedding_generator or RobustEmbeddingGenerator()
         self.vector_store = vector_store or VectorStore()
 
         logger.info("Initialized semantic ETL pipeline")
@@ -109,7 +110,25 @@ class SemanticETLPipeline:
                 return {"error": f"Failed to chunk {filing_type} filing for {ticker}"}
 
             # Step 3: Generate embeddings
-            embeddings = self.embedding_generator.generate_embeddings([chunk.text for chunk in chunks])
+            # Extract text from chunks based on the format
+            chunk_texts = []
+            for chunk in chunks:
+                if isinstance(chunk, dict) and "text" in chunk:
+                    # FilingChunker format
+                    chunk_texts.append(chunk["text"])
+                elif hasattr(chunk, "text"):
+                    # Old DocumentChunker format
+                    chunk_texts.append(chunk.text)
+                else:
+                    logger.warning(f"Unexpected chunk format: {type(chunk)}")
+                    continue
+
+            # Generate embeddings with the robust generator
+            embeddings, embedding_metadata = self.embedding_generator.generate_embeddings(chunk_texts)
+
+            # Log any fallbacks
+            if embedding_metadata.get("any_fallbacks", False):
+                logger.warning(f"Some embeddings used fallbacks: {embedding_metadata.get('fallback_count', 0)}/{len(chunk_texts)}")
 
             if not embeddings:
                 logger.error(f"Failed to generate embeddings for {filing_type} filing for {ticker}")
@@ -118,14 +137,30 @@ class SemanticETLPipeline:
             # Step 4: Store in vector store
             metadata_list = []
             for i, chunk in enumerate(chunks):
+                # Extract metadata based on the format
+                if isinstance(chunk, dict) and "text" in chunk:
+                    # FilingChunker format
+                    chunk_text = chunk["text"]
+                    chunk_metadata = chunk.get("metadata", {})
+                    section = chunk_metadata.get("section", "")
+                    page = chunk_metadata.get("page", 0)
+                elif hasattr(chunk, "text") and hasattr(chunk, "metadata"):
+                    # Old DocumentChunker format
+                    chunk_text = chunk.text
+                    section = chunk.metadata.get("section", "")
+                    page = chunk.metadata.get("page", 0)
+                else:
+                    logger.warning(f"Skipping chunk with unexpected format: {type(chunk)}")
+                    continue
+
                 metadata = {
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "filing_type": filing_type,
                     "chunk_id": i,
-                    "chunk_text": chunk.text,
-                    "section": chunk.metadata.get("section", ""),
-                    "page": chunk.metadata.get("page", 0)
+                    "chunk_text": chunk_text,
+                    "section": section,
+                    "page": page
                 }
                 metadata_list.append(metadata)
 

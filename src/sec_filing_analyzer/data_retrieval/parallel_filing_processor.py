@@ -34,7 +34,7 @@ class ParallelFilingProcessor:
         self.vector_store = vector_store or LlamaIndexVectorStore()
         self.file_storage = file_storage or FileStorage()
         self.max_workers = max_workers
-        
+
         logger.info(f"Initialized parallel filing processor with {max_workers} workers")
 
     def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
@@ -46,15 +46,30 @@ class ParallelFilingProcessor:
         Returns:
             List of floats representing the embedding
         """
+        if embedding is None:
+            # Return a zero vector if embedding is None
+            logger.warning("Embedding is None, returning zero vector")
+            return [0.0] * 1536
+
         if isinstance(embedding, np.ndarray):
             return embedding.tolist()
         elif isinstance(embedding, list):
+            # Check if this is a list of lists
+            if len(embedding) > 0 and isinstance(embedding[0], list):
+                # This is a list of lists, use the first embedding
+                logger.warning("Embedding is a list of lists, using the first embedding")
+                return embedding[0]
             return embedding
         else:
-            return list(embedding)
+            try:
+                return list(embedding)
+            except Exception as e:
+                logger.error(f"Could not convert embedding to list: {e}")
+                # Return a zero vector as fallback
+                return [0.0] * 1536
 
     def process_filings_parallel(
-        self, 
+        self,
         filings_data: List[Dict[str, Any]]
     ) -> Dict[str, List[str]]:
         """
@@ -70,19 +85,19 @@ class ParallelFilingProcessor:
             "completed": [],
             "failed": []
         }
-        
+
         if not filings_data:
             return results
-            
+
         logger.info(f"Processing {len(filings_data)} filings in parallel")
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(filings_data))) as executor:
             # Submit tasks
             future_to_filing = {
-                executor.submit(self.process_filing, filing): filing.get("id", "unknown") 
+                executor.submit(self.process_filing, filing): filing.get("id", "unknown")
                 for filing in filings_data
             }
-            
+
             # Process results as they complete
             for future in concurrent.futures.as_completed(future_to_filing):
                 filing_id = future_to_filing[future]
@@ -97,7 +112,7 @@ class ParallelFilingProcessor:
                 except Exception as e:
                     results["failed"].append(filing_id)
                     logger.error(f"Error processing filing {filing_id}: {str(e)}")
-        
+
         return results
 
     def process_filing(self, filing_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -150,6 +165,11 @@ class ParallelFilingProcessor:
 
                 # Add chunks to vector store if available
                 if chunks and chunk_embeddings and chunk_texts:
+                    # Check if chunk_embeddings is a dict (from embedding_metadata)
+                    if isinstance(chunk_embeddings, dict):
+                        logger.warning(f"chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing.")
+                        return processed_data
+
                     # Generate unique IDs for each chunk
                     chunk_ids = []
                     chunk_metadata = []
@@ -158,7 +178,7 @@ class ParallelFilingProcessor:
 
                     for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
                         chunk_id = f"{filing_id}_chunk_{i}"
-                        
+
                         # Create metadata for chunk
                         chunk_meta = metadata.copy()
                         chunk_meta.update({
@@ -209,34 +229,40 @@ class ParallelFilingProcessor:
 
             # Add chunks to vector store if available
             if chunks and chunk_embeddings and chunk_texts:
-                # Generate unique IDs for each chunk, including split chunks
-                chunk_ids = []
-                chunk_metadata = []
-                chunk_texts_to_store = []
-                chunk_embeddings_to_store = []
+                # Check if chunk_embeddings is a dict (from embedding_metadata)
+                if isinstance(chunk_embeddings, dict):
+                    logger.warning(f"chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing.")
+                    # Continue without chunk processing
+                    pass
+                else:
+                    # Generate unique IDs for each chunk, including split chunks
+                    chunk_ids = []
+                    chunk_metadata = []
+                    chunk_texts_to_store = []
+                    chunk_embeddings_to_store = []
 
-                for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
-                    chunk_id = f"{filing_id}_chunk_{i}"
-                    
-                    # Create metadata for chunk
-                    chunk_meta = metadata.copy()
-                    chunk_meta.update({
-                        "chunk_id": chunk_id,
-                        "chunk_index": i,
-                        "parent_id": filing_id,
-                        "item": chunk.get("item", ""),
-                        "is_table": chunk.get("is_table", False),
-                        "is_signature": chunk.get("is_signature", False)
-                    })
+                    for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
+                        chunk_id = f"{filing_id}_chunk_{i}"
 
-                    # Ensure chunk embedding is a list of floats
-                    chunk_embedding_list = self._ensure_list_format(chunk_embedding)
+                        # Create metadata for chunk
+                        chunk_meta = metadata.copy()
+                        chunk_meta.update({
+                            "chunk_id": chunk_id,
+                            "chunk_index": i,
+                            "parent_id": filing_id,
+                            "item": chunk.get("item", ""),
+                            "is_table": chunk.get("is_table", False),
+                            "is_signature": chunk.get("is_signature", False)
+                        })
 
-                    # Add to our lists
-                    chunk_ids.append(chunk_id)
-                    chunk_metadata.append(chunk_meta)
-                    chunk_texts_to_store.append(chunk_text)
-                    chunk_embeddings_to_store.append(chunk_embedding_list)
+                        # Ensure chunk embedding is a list of floats
+                        chunk_embedding_list = self._ensure_list_format(chunk_embedding)
+
+                        # Add to our lists
+                        chunk_ids.append(chunk_id)
+                        chunk_metadata.append(chunk_meta)
+                        chunk_texts_to_store.append(chunk_text)
+                        chunk_embeddings_to_store.append(chunk_embedding_list)
 
                 # Add chunks to vector store with their text
                 self.vector_store.upsert_vectors(

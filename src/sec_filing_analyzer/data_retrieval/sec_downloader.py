@@ -107,6 +107,7 @@ class SECFilingsDownloader:
         start_date: Optional[Union[str, date]] = None,
         end_date: Optional[Union[str, date]] = None,
         force_download: bool = False,
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
         Download all filings for a company.
@@ -117,16 +118,16 @@ class SECFilingsDownloader:
             start_date: Start date for filing range (YYYY-MM-DD string or date object)
             end_date: End date for filing range (YYYY-MM-DD string or date object)
             force_download: Whether to force download filings even if they exist in cache
+            limit: Maximum number of filings to download (None for no limit)
 
         Returns:
             List of downloaded filing metadata
         """
         # Use standardized utility to get filings
-        form_type = filing_types[0] if filing_types else None
         try:
             filings = edgar_utils.get_filings(
                 ticker=ticker,
-                form_type=form_type,
+                form_type=filing_types,  # Pass the entire list of filing types
                 start_date=start_date,
                 end_date=end_date
             )
@@ -135,6 +136,11 @@ class SECFilingsDownloader:
         except Exception as e:
             logger.error(f"Error retrieving filings for {ticker}: {e}")
             return []
+
+        # Apply limit if specified
+        if limit is not None and limit > 0:
+            logger.info(f"Limiting to {limit} filings")
+            filings = filings[:limit]
 
         # Download each filing
         downloaded_filings = []

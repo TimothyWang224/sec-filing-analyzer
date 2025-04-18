@@ -9,6 +9,15 @@ import logging
 from typing import Dict, Any, List, Optional
 import duckdb
 import pandas as pd
+import os
+from pathlib import Path
+
+# Add the project root to the Python path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+# Import the DuckDB manager
+from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,18 +28,27 @@ class OptimizedDuckDBStore:
     An optimized interface to store and query financial data using DuckDB with batch operations.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100):
+    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
         """Initialize the optimized DuckDB financial store.
 
         Args:
             db_path: Path to the DuckDB database file
             batch_size: Size of batches for bulk operations
+            read_only: Whether to open the database in read-only mode
         """
         self.db_path = db_path or "data/financial_data.duckdb"
         self.batch_size = batch_size
-        self.conn = duckdb.connect(self.db_path)
-        self._initialize_schema()
-        logger.info(f"Initialized optimized DuckDB financial store at {self.db_path}")
+        self.read_only = read_only
+
+        # Use the DuckDB manager to get a connection with the appropriate mode
+        if read_only:
+            self.conn = duckdb_manager.get_read_only_connection(self.db_path)
+            logger.info(f"Initialized optimized DuckDB financial store at {self.db_path} in read-only mode")
+        else:
+            self.conn = duckdb_manager.get_read_write_connection(self.db_path)
+            # Initialize schema only in read-write mode
+            self._initialize_schema()
+            logger.info(f"Initialized optimized DuckDB financial store at {self.db_path} in read-write mode")
 
     def _initialize_schema(self):
         """Initialize the database schema."""

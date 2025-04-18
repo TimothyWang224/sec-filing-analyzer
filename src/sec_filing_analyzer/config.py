@@ -124,7 +124,8 @@ class ETLConfig:
 
     # XBRL extraction settings
     process_quantitative: bool = True
-    db_path: str = "data/financial_data.duckdb"
+    db_path: str = "data/db_backup/improved_financial_data.duckdb"
+    db_read_only: bool = True  # Default to read-only mode for database access
 
     # Processing flags
     process_semantic: bool = True

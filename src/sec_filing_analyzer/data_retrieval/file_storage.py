@@ -4,10 +4,9 @@ File Storage Module
 This module provides functionality for saving and loading SEC filings to/from disk.
 """
 
-import os
 import json
 import logging
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import shutil
 from datetime import datetime
@@ -441,6 +440,49 @@ class FileStorage:
             "metadata": metadata
         }
 
+    def get_processed_filing_path(
+        self,
+        filing_id: str,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None
+    ) -> Optional[Path]:
+        """
+        Get the path to a processed filing on disk.
+
+        Args:
+            filing_id: Unique identifier for the filing
+            ticker: Optional company ticker symbol
+            year: Optional filing year
+
+        Returns:
+            Path to the processed filing, or None if not found
+        """
+        # Try to find the filing if ticker and year are not provided
+        if not ticker or not year:
+            # Search in all directories
+            for company_dir in self.processed_dir.glob("*"):
+                if not company_dir.is_dir():
+                    continue
+
+                for year_dir in company_dir.glob("*"):
+                    if not year_dir.is_dir():
+                        continue
+
+                    file_path = year_dir / f"{filing_id}_processed.json"
+
+                    if file_path.exists():
+                        return file_path
+
+        # If ticker and year are provided, check directly
+        if ticker and year:
+            file_path = self.processed_dir / ticker / year / f"{filing_id}_processed.json"
+            if file_path.exists():
+                return file_path
+
+        # Not found
+        logger.warning(f"Processed filing {filing_id} not found")
+        return None
+
     def load_processed_filing(
         self,
         filing_id: str,
@@ -458,38 +500,11 @@ class FileStorage:
         Returns:
             Processed filing data, or None if not found
         """
-        # Try to find the filing if ticker and year are not provided
-        if not ticker or not year:
-            # Search in all directories
-            for company_dir in self.processed_dir.glob("*"):
-                if not company_dir.is_dir():
-                    continue
+        # Get the file path
+        file_path = self.get_processed_filing_path(filing_id, ticker, year)
 
-                for year_dir in company_dir.glob("*"):
-                    if not year_dir.is_dir():
-                        continue
-
-                    file_path = year_dir / f"{filing_id}_processed.json"
-
-                    if file_path.exists():
-                        ticker = company_dir.name
-                        year = year_dir.name
-                        break
-
-                if ticker and year:
-                    break
-
-        # If still not found, return None
-        if not ticker or not year:
-            logger.warning(f"Processed filing {filing_id} not found")
-            return None
-
-        # Create file path
-        file_path = self.processed_dir / ticker / year / f"{filing_id}_processed.json"
-
-        # Check if file exists
-        if not file_path.exists():
-            logger.warning(f"Processed filing {filing_id} not found")
+        # If not found, return None
+        if not file_path:
             return None
 
         # Load data

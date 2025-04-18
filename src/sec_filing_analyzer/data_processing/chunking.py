@@ -22,26 +22,35 @@ logger = logging.getLogger(__name__)
 
 class FilingChunker:
     """
-    Handles chunking of SEC filings into semantically meaningful segments.
-    Primarily uses edgartools' understanding of filing structure, with token-based
+    Handles chunking of documents into semantically meaningful segments.
+
+    For SEC filings, it primarily uses edgartools' understanding of filing structure, with token-based
     splitting only as a fallback for chunks that exceed the embedding model's context window.
+
+    For generic documents, it provides a simple token-based chunking method that respects token limits
+    and adds appropriate metadata for embedding and retrieval.
+
+    This class consolidates the functionality of both the original FilingChunker and DocumentChunker
+    classes, providing a unified interface for all document chunking needs.
     """
 
-    def __init__(self, max_chunk_size: int = 1500):
+    def __init__(self, max_chunk_size: int = 1500, chunk_overlap: int = 200):
         """
         Initialize the FilingChunker.
 
         Args:
             max_chunk_size: Maximum number of tokens per chunk (default: 1500)
                             Smaller chunks provide better retrieval precision
+            chunk_overlap: Number of tokens to overlap between chunks (default: 200)
         """
         self.max_chunk_size = max_chunk_size
+        self.chunk_overlap = chunk_overlap
         self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI's encoding
 
         # Initialize token splitter for handling large chunks
         self.token_splitter = TokenTextSplitter(
             chunk_size=max_chunk_size,
-            chunk_overlap=200
+            chunk_overlap=chunk_overlap
         )
 
         # Initialize embedding model
@@ -443,6 +452,38 @@ class FilingChunker:
             result["error"] = str(e)
 
         return result
+
+    def chunk_document(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Generic method to chunk any document into smaller pieces for embedding.
+        This method is compatible with the DocumentChunker interface and is used by the semantic pipeline.
+
+        Args:
+            text: The document text
+
+        Returns:
+            List of chunk dictionaries with text and metadata
+        """
+        if not text:
+            return []
+
+        # Split the document into chunks
+        chunk_texts = self.token_splitter.split_text(text)
+
+        # Create chunk objects with metadata
+        chunks = []
+        for i, chunk_text in enumerate(chunk_texts):
+            chunk = {
+                "text": chunk_text,
+                "metadata": {
+                    "chunk_index": i,
+                    "total_chunks": len(chunk_texts),
+                    "token_count": len(self.tokenizer.encode(chunk_text))
+                }
+            }
+            chunks.append(chunk)
+
+        return chunks
 
     def _add_chunk_relationships(self, chunks: List[Dict[str, Any]]) -> None:
         """
