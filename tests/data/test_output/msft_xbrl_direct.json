@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "filing_id": "MSFT_10-K_2022",
+    "ticker": "MSFT",
+    "accession_number": "0001564590-22-026876",
+    "filing_date": "2022-07-28",
+    "filing_type": "10-K",
+    "filing_url": "https://www.sec.gov/Archives/edgar/data/789019/000156459022026876/msft-10k_20220630.htm",
+    "company": "MICROSOFT CORPORATION"
+  },
+  "facts": [],
+  "statements": {
+    "income_statement": {
+      "name": "StatementCOMPREHENSIVEINCOMESTATEMENTS",
+      "label": "Statement Of Income And Comprehensive Income",
+      "periods": [
+        "2022",
+        "2021",
+        "2020"
+      ]
+    },
+    "balance_sheet": {
+      "name": "StatementBALANCESHEETSParenthetical",
+      "label": "Statement Of Financial Position",
+      "periods": [
+        "2022",
+        "2021",
+        "2020",
+        "2019"
+      ]
+    },
+    "cash_flow": {
+      "name": "StatementCASHFLOWSSTATEMENTS",
+      "label": "Statement Of Cash Flows",
+      "periods": [
+        "2022",
+        "2021",
+        "2020"
+      ]
+    },
+    "equity": {
+      "name": "StatementSTOCKHOLDERSEQUITYSTATEMENTS",
+      "label": "Statement Of Stockholders Equity",
+      "periods": [
+        "2022",
+        "2021",
+        "2020",
+        "2019"
+      ]
+    }
+  }
+}
