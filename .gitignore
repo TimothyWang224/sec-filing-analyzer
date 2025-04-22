@@ -21,7 +21,8 @@ wheels/
 *.egg
 
 # Virtual Environment
-.env
+*.env
+*.env.*
 .venv
 env/
 venv/
@@ -45,3 +46,9 @@ htmlcov/
 # OS specific
 .DS_Store
 Thumbs.db 
+
+# Local data stores
+data/
+vector_store/
+*.duckdb
+*.db
