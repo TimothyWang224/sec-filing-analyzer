@@ -107,19 +107,19 @@ st.sidebar.header("Explorer Navigation")
 logger.info("Setting up sidebar navigation")
 explorer_type = st.sidebar.radio(
     "Select Explorer",
-    ["Vector Store Explorer", "Graph Explorer"]
+    ["Semantic Search", "Graph Explorer"]
 )
 logger.info(f"Selected explorer type: {explorer_type}")
 
 # Main content
-if explorer_type == "Vector Store Explorer":
-    st.header("Vector Store Explorer")
-    logger.info("Entering Vector Store Explorer section")
+if explorer_type == "Semantic Search":
+    st.header("Semantic Search")
+    logger.info("Entering Semantic Search section")
 
     # Check if imports were successful
     if not config_imports_successful:
-        logger.warning("Vector Store Explorer requires the SEC Filing Analyzer package")
-        st.error("Vector Store Explorer requires the SEC Filing Analyzer package.")
+        logger.warning("Semantic Search requires the SEC Filing Analyzer package")
+        st.error("Semantic Search requires the SEC Filing Analyzer package.")
         st.info("Please make sure the package is installed correctly using 'poetry install'.")
     else:
         # Vector store path

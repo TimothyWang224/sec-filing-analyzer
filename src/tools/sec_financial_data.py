@@ -75,6 +75,9 @@ class SECFinancialDataTool(Tool):
                 return self._query_financial_facts(parameters)
             elif query_type == "company_info":
                 return self._query_company_info(parameters)
+            elif query_type == "companies":
+                # Alias for company_info with no ticker (returns all companies)
+                return self._query_company_info({})
             elif query_type == "metrics":
                 return self._query_metrics(parameters)
             elif query_type == "time_series":
@@ -245,6 +248,7 @@ class SECFinancialDataTool(Tool):
         valid_query_types = [
             "financial_facts",
             "company_info",
+            "companies",  # Alias for company_info with no ticker
             "metrics",
             "time_series",
             "financial_ratios",

@@ -124,6 +124,20 @@ python run_app.py
 
 For more detailed instructions, see [RUNNING.md](RUNNING.md).
 
+## Project Organization
+
+The project is organized as follows:
+
+- **Root Directory**: Contains only essential files like `run_app.py` and `run_app.bat`
+- **src/**: Contains the main source code for the application
+- **scripts/**: Contains utility scripts and tools
+  - **scripts/tools/**: Utility tools like the DuckDB Explorer
+  - **scripts/tests/**: Test scripts for various components
+- **tests/**: Contains unit and integration tests
+- **data/**: Contains data files and databases
+- **docs/**: Contains documentation
+- **archive/**: Contains archived files that are no longer needed but kept for reference
+
 ## Usage
 
 ### Unified Pipeline

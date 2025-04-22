@@ -78,6 +78,7 @@ FINANCIAL_ANALYST_CONFIG = {
 }
 
 # Risk Analyst configuration
+
 # Uses GPT-4o-mini for systematic risk assessment
 RISK_ANALYST_CONFIG = {
     # LLM parameters

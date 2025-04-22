@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
 
 from sec_filing_analyzer.llm import BaseLLM
+from ..utils.json_utils import safe_parse_json, repair_json
 from .tool_parameter_helper import get_tool_parameter_schema, validate_tool_parameters
 
 # Configure logging
@@ -69,6 +70,9 @@ class LLMParameterCompleter:
         if context and "last_error" in context:
             error_message = context["last_error"]
 
+        # Back-fill required parameters from context if possible
+        fixed_parameters = self._backfill_required_parameters(tool_name, fixed_parameters, context)
+
         # If there are no errors and no error message, return the fixed parameters
         if not validation_result["errors"] and not error_message:
             return fixed_parameters
@@ -89,11 +93,12 @@ Return only the completed parameters as a JSON object.
             response = await self.llm.generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
-                temperature=0.2  # Low temperature for more deterministic extraction
+                temperature=0.2,  # Low temperature for more deterministic extraction
+                json_mode=True  # Force the model to return valid JSON
             )
 
             # Parse completed parameters from response
-            completed_parameters = self._parse_parameters(response, fixed_parameters)
+            completed_parameters = await self._parse_parameters(response, fixed_parameters)
 
             # Apply special handling for specific tools
             if tool_name == "sec_financial_data":
@@ -102,6 +107,10 @@ Return only the completed parameters as a JSON object.
                 )
             elif tool_name == "sec_semantic_search":
                 completed_parameters = await self._enhance_sec_semantic_search_parameters(
+                    completed_parameters, user_input, context
+                )
+            elif tool_name == "sec_graph_query":
+                completed_parameters = await self._enhance_sec_graph_query_parameters(
                     completed_parameters, user_input, context
                 )
 
@@ -147,6 +156,25 @@ Previous Error:
 Please fix the parameters to address this error.
 """
 
+        # Check if we had identical errors in previous attempts
+        identical_errors_section = ""
+        if context and context.get("identical_errors", False):
+            identical_errors_section = """
+
+IMPORTANT: Previous attempts to fix this parameter have failed with identical errors.
+Pay special attention to the schema requirements and ensure all required fields are present.
+"""
+
+        # Include full tool schema if available
+        tool_schema_section = ""
+        if context and "tool_schema" in context:
+            tool_schema_str = json.dumps(context.get("tool_schema", {}), indent=2)
+            tool_schema_section = f"""
+
+Complete Tool Schema:
+{tool_schema_str}
+"""
+
         return f"""
 User Input: {user_input}
 
@@ -159,7 +187,7 @@ Current Parameters:
 {partial_params_str}
 
 Parameter Errors:
-{errors_str}{error_section}
+{errors_str}{error_section}{identical_errors_section}{tool_schema_section}
 
 Please complete the parameters based on the user input and schema.
 Extract any relevant information from the user input to fill in missing parameters.
@@ -170,26 +198,16 @@ For metrics, identify specific financial metrics mentioned.
 Return only the completed parameters as a JSON object.
 """
 
-    def _parse_parameters(self, response: str, default_parameters: Dict[str, Any]) -> Dict[str, Any]:
+    async def _parse_parameters(self, response: str, default_parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Parse parameters from LLM response."""
-        # Extract JSON object from response
-        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
-        if json_match:
-            json_str = json_match.group(1)
-        else:
-            # Try to find any JSON-like structure
-            json_match = re.search(r'\{\s*".*"\s*:.*\}', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-            else:
-                json_str = response
-
         try:
-            # Clean up the JSON string
-            json_str = re.sub(r'```.*?```', '', json_str, flags=re.DOTALL)
+            # First try to parse using the safe_parse_json utility
+            completed_parameters = safe_parse_json(response, default_value={}, expected_type="object")
 
-            # Parse the JSON
-            completed_parameters = json.loads(json_str)
+            # If parsing failed and we have an LLM instance, try to repair
+            if not completed_parameters and hasattr(self, 'llm'):
+                logger.info("Attempting to repair JSON parameters")
+                completed_parameters = await repair_json(response, self.llm, default_value={}, expected_type="object")
 
             # Merge with default parameters
             merged_parameters = default_parameters.copy()
@@ -208,6 +226,84 @@ Return only the completed parameters as a JSON object.
                 self._deep_update(target[key], value)
             else:
                 target[key] = value
+
+    def _backfill_required_parameters(self, tool_name: str, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Back-fill required parameters from context."""
+        if not context:
+            return parameters
+
+        # Create a copy of the parameters to avoid modifying the original
+        enhanced_params = parameters.copy()
+
+        # Handle sec_graph_query tool specifically
+        if tool_name == "sec_graph_query":
+            query_type = enhanced_params.get("query_type")
+
+            # For related_companies query, ensure ticker parameter is present
+            if query_type == "related_companies":
+                # Initialize parameters dict if it doesn't exist
+                if "parameters" not in enhanced_params:
+                    enhanced_params["parameters"] = {}
+                elif enhanced_params["parameters"] is None:
+                    enhanced_params["parameters"] = {}
+
+                # If ticker is missing, try to get it from context
+                if "ticker" not in enhanced_params["parameters"]:
+                    # Check if we have company info in context
+                    if "company_info" in context and "ticker" in context["company_info"]:
+                        enhanced_params["parameters"]["ticker"] = context["company_info"]["ticker"]
+                    # Check if we have tool results with companies
+                    elif "tool_results" in context:
+                        for result in context["tool_results"]:
+                            if result.get("tool") == "sec_financial_data" and result.get("success", False):
+                                # Look for companies query result
+                                if result.get("result", {}).get("query_type") == "companies":
+                                    companies = result.get("result", {}).get("results", [])
+                                    if companies and len(companies) > 0:
+                                        # Use the first company ticker
+                                        enhanced_params["parameters"]["ticker"] = companies[0].get("ticker")
+                                        break
+
+        return enhanced_params
+
+    async def _enhance_sec_graph_query_parameters(
+        self,
+        parameters: Dict[str, Any],
+        user_input: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Enhance parameters for the sec_graph_query tool."""
+        enhanced_params = parameters.copy()
+
+        # Ensure parameters is a dictionary
+        if "parameters" not in enhanced_params:
+            enhanced_params["parameters"] = {}
+        elif enhanced_params["parameters"] is None:
+            enhanced_params["parameters"] = {}
+
+        # Extract company information
+        company_info = await self._extract_company_info(user_input, context)
+        if company_info.get("ticker") and "ticker" not in enhanced_params["parameters"]:
+            enhanced_params["parameters"]["ticker"] = company_info["ticker"]
+
+        # If we have a query_type but no parameters, try to extract relevant information
+        query_type = enhanced_params.get("query_type")
+        if query_type:
+            # For related_companies, ensure we have a ticker
+            if query_type == "related_companies" and "ticker" not in enhanced_params["parameters"]:
+                # If we still don't have a ticker, try to get it from previous tool results
+                if context and "tool_results" in context:
+                    for result in context["tool_results"]:
+                        if result.get("tool") == "sec_financial_data" and result.get("success", False):
+                            # Look for companies query result
+                            if result.get("result", {}).get("query_type") == "companies":
+                                companies = result.get("result", {}).get("results", [])
+                                if companies and len(companies) > 0:
+                                    # Use the first company ticker
+                                    enhanced_params["parameters"]["ticker"] = companies[0].get("ticker")
+                                    break
+
+        return enhanced_params
 
     async def _enhance_sec_financial_data_parameters(
         self,
@@ -305,27 +401,18 @@ Return only the extracted information as a JSON object.
         response = await self.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            temperature=0.2
+            temperature=0.2,
+            json_mode=True  # Force the model to return valid JSON
         )
 
         try:
-            # Extract JSON object from response
-            json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(1)
-            else:
-                # Try to find any JSON-like structure
-                json_match = re.search(r'\{\s*".*"\s*:.*\}', response, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(0)
-                else:
-                    json_str = response
+            # Parse the JSON using our safe_parse_json utility
+            company_info = safe_parse_json(response, default_value={}, expected_type="object")
 
-            # Clean up the JSON string
-            json_str = re.sub(r'```.*?```', '', json_str, flags=re.DOTALL)
-
-            # Parse the JSON
-            company_info = json.loads(json_str)
+            # If parsing failed and we have an LLM instance, try to repair
+            if not company_info:
+                logger.info("Attempting to repair JSON company info")
+                company_info = await repair_json(response, self.llm, default_value={}, expected_type="object")
 
             # If we have a company name but no ticker, try to resolve the ticker
             if company_info.get("company_name") and not company_info.get("ticker"):
@@ -418,7 +505,8 @@ Return only the ticker symbol as a string.
         response = await self.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            temperature=0.2
+            temperature=0.2,
+            json_mode=False  # Don't use JSON mode for ticker resolution (we want a simple string)
         )
 
         # Extract ticker from response
@@ -580,27 +668,18 @@ Return only the extracted metrics as a JSON array.
             response = await self.llm.generate(
                 prompt=prompt,
                 system_prompt=system_prompt,
-                temperature=0.2
+                temperature=0.2,
+                json_mode=True  # Force the model to return valid JSON
             )
 
             try:
-                # Extract JSON array from response
-                json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(1)
-                else:
-                    # Try to find any JSON-like structure
-                    json_match = re.search(r'\[\s*".*"\s*\]', response, re.DOTALL)
-                    if json_match:
-                        json_str = json_match.group(0)
-                    else:
-                        json_str = response
+                # Parse the JSON using our safe_parse_json utility
+                metrics = safe_parse_json(response, default_value=[], expected_type="array")
 
-                # Clean up the JSON string
-                json_str = re.sub(r'```.*?```', '', json_str, flags=re.DOTALL)
-
-                # Parse the JSON
-                metrics = json.loads(json_str)
+                # If parsing failed, try to repair
+                if not metrics:
+                    logger.info("Attempting to repair JSON metrics")
+                    metrics = await repair_json(response, self.llm, default_value=[], expected_type="array")
             except Exception as e:
                 logger.error(f"Error extracting financial metrics: {str(e)}")
                 # Default to Revenue and NetIncome if extraction fails

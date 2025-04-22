@@ -29,7 +29,12 @@ class PlanningCapability(Capability):
         enable_step_reflection: bool = True,
         min_steps_before_reflection: int = 2,
         max_plan_steps: int = 10,
-        plan_detail_level: str = "high"  # "low", "medium", "high"
+        plan_detail_level: str = "high",  # "low", "medium", "high"
+        planning_instructions: Optional[str] = None,
+        is_coordinator: bool = False,
+        respect_existing_plan: bool = True,
+        max_planning_iterations: int = 1,  # Cap planning iterations to reduce token usage
+        enable_plan_caching: bool = True  # Enable plan caching to avoid regenerating plans
     ):
         """
         Initialize the planning capability.
@@ -40,6 +45,9 @@ class PlanningCapability(Capability):
             min_steps_before_reflection: Minimum steps to execute before reflecting
             max_plan_steps: Maximum number of steps in a plan
             plan_detail_level: Level of detail in the generated plan
+            planning_instructions: Optional custom instructions for plan generation
+            is_coordinator: Whether this capability belongs to a coordinator agent
+            respect_existing_plan: Whether to respect an existing plan from a coordinator
         """
         super().__init__(
             name="planning",
@@ -50,6 +58,9 @@ class PlanningCapability(Capability):
         self.min_steps_before_reflection = min_steps_before_reflection
         self.max_plan_steps = max_plan_steps
         self.plan_detail_level = plan_detail_level
+        self.planning_instructions = planning_instructions
+        self.is_coordinator = is_coordinator
+        self.respect_existing_plan = respect_existing_plan
 
         # Plan state
         self.current_plan = None
@@ -58,6 +69,10 @@ class PlanningCapability(Capability):
         self.step_results = {}
         self.plan_created_at = None
         self.last_reflection_at = None
+        self.plan_owner = "coordinator" if is_coordinator else "agent"
+        self.max_planning_iterations = max_planning_iterations
+        self.enable_plan_caching = enable_plan_caching
+        self.plan_cache = {}  # Cache plans by user input
 
     async def init(self, agent: Agent, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -103,10 +118,65 @@ class PlanningCapability(Capability):
         Returns:
             Whether to continue the loop
         """
-        # If we don't have a plan yet, create one
+        # Check if we have a plan from a coordinator in the context
+        coordinator_plan = None
+        if self.respect_existing_plan and not self.is_coordinator:
+            # Look for a plan in memory from the coordinator
+            memory = agent.get_memory() if hasattr(agent, 'get_memory') else []
+            for item in memory:
+                if item.get("type") == "execution_plan" and "content" in item:
+                    coordinator_plan = item["content"]
+                    logger.info("Found coordinator plan in memory")
+                    break
+
+        # If we don't have a plan yet, create one or use the coordinator's plan
         if not self.current_plan:
             user_input = context.get("input", "")
-            self.current_plan = await self._create_plan(user_input)
+
+            # Check if we have a cached plan for this input
+            if self.enable_plan_caching and user_input in self.plan_cache:
+                logger.info("Using cached plan for this input")
+                self.current_plan = self.plan_cache[user_input]
+            elif coordinator_plan and self.respect_existing_plan and not self.is_coordinator:
+                # Use the coordinator's plan
+                logger.info("Using coordinator's plan instead of creating a new one")
+                self.current_plan = {
+                    "goal": coordinator_plan.get("task_objective", f"Process: {user_input}"),
+                    "steps": [],
+                    "status": "in_progress",
+                    "created_at": datetime.now().isoformat(),
+                    "owner": "coordinator",
+                    "can_modify": False
+                }
+
+                # Convert coordinator plan format to our plan format
+                if "steps" in coordinator_plan:
+                    for i, step in enumerate(coordinator_plan.get("steps", [])):
+                        self.current_plan["steps"].append({
+                            "step_id": i + 1,
+                            "description": step.get("description", f"Step {i+1}"),
+                            "tool": step.get("tool"),
+                            "parameters": step.get("parameters", {}),
+                            "dependencies": step.get("dependencies", []),
+                            "status": "pending"
+                        })
+                else:
+                    # Create a single step from the task objective
+                    self.current_plan["steps"] = [{
+                        "step_id": 1,
+                        "description": coordinator_plan.get("task_objective", "Execute task"),
+                        "status": "pending"
+                    }]
+            else:
+                # Create a new plan
+                self.current_plan = await self._create_plan(user_input)
+                self.current_plan["owner"] = self.plan_owner
+                self.current_plan["can_modify"] = self.is_coordinator or not self.respect_existing_plan
+
+                # Cache the plan if caching is enabled
+                if self.enable_plan_caching:
+                    self.plan_cache[user_input] = self.current_plan.copy()
+
             self.plan_created_at = datetime.now()
 
             # Initialize planning context
@@ -120,7 +190,9 @@ class PlanningCapability(Capability):
                 "current_step": self.current_plan["steps"][0] if self.current_plan["steps"] else None,
                 "completed_steps": [],
                 "plan_status": "in_progress",
-                "phase": agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning"
+                "phase": agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning",
+                "plan_owner": self.current_plan.get("owner", self.plan_owner),
+                "can_modify": self.current_plan.get("can_modify", True)
             }
 
         # Update the planning context with the current phase
@@ -249,6 +321,37 @@ class PlanningCapability(Capability):
         if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
             current_step = self.current_plan["steps"][self.current_step_index]
 
+            # Check if all dependencies for this step are satisfied
+            dependencies_satisfied = self._check_dependencies(current_step)
+            if not dependencies_satisfied:
+                # If dependencies are not satisfied, log a warning and modify the action
+                missing_deps = self._get_missing_dependencies(current_step)
+                logger.warning(f"Dependencies not satisfied for step {current_step['step_id']}: {missing_deps}")
+
+                # If the action is trying to use a tool that depends on previous steps,
+                # modify it to get the missing dependency data first
+                if "tool" in action:
+                    # Find a step that would satisfy the dependency
+                    dependency_step = self._find_dependency_step(missing_deps[0] if missing_deps else None)
+                    if dependency_step and "tool" in dependency_step:
+                        # Replace the current tool with the dependency tool
+                        logger.info(f"Replacing tool {action.get('tool')} with dependency tool {dependency_step['tool']}")
+                        action["tool"] = dependency_step["tool"]
+                        if "parameters" in dependency_step:
+                            tool_name = dependency_step["tool"]
+                            parameters = dependency_step["parameters"]
+                            validation_result = validate_tool_parameters(tool_name, parameters)
+                            action["args"] = validation_result["parameters"]
+
+                        # Add dependency context to the action
+                        action["dependency_context"] = {
+                            "original_step_id": current_step["step_id"],
+                            "dependency_step_id": dependency_step["step_id"],
+                            "missing_dependencies": missing_deps
+                        }
+
+                        return action
+
             # If the current step recommends a specific tool, suggest it
             if "tool" in current_step and "tool" not in action:
                 tool_name = current_step["tool"]
@@ -275,6 +378,59 @@ class PlanningCapability(Capability):
             }
 
         return action
+
+    def _check_dependencies(self, step: Dict[str, Any]) -> bool:
+        """Check if all dependencies for a step are satisfied."""
+        if "dependencies" not in step or not step["dependencies"]:
+            return True  # No dependencies to satisfy
+
+        # Check each dependency
+        for dep_id in step["dependencies"]:
+            # Find the dependency step in completed steps
+            dep_satisfied = False
+            for completed_step in self.completed_steps:
+                if completed_step["step_id"] == dep_id:
+                    dep_satisfied = True
+                    break
+
+            if not dep_satisfied:
+                return False  # At least one dependency is not satisfied
+
+        return True  # All dependencies are satisfied
+
+    def _get_missing_dependencies(self, step: Dict[str, Any]) -> List[int]:
+        """Get a list of missing dependencies for a step."""
+        missing_deps = []
+
+        if "dependencies" not in step or not step["dependencies"]:
+            return missing_deps  # No dependencies to check
+
+        # Check each dependency
+        for dep_id in step["dependencies"]:
+            # Find the dependency step in completed steps
+            dep_satisfied = False
+            for completed_step in self.completed_steps:
+                if completed_step["step_id"] == dep_id:
+                    dep_satisfied = True
+                    break
+
+            if not dep_satisfied:
+                missing_deps.append(dep_id)
+
+        return missing_deps
+
+    def _find_dependency_step(self, dep_id: Optional[int]) -> Optional[Dict[str, Any]]:
+        """Find a step that would satisfy a dependency."""
+        if dep_id is None:
+            return None
+
+        # Look for the dependency step in the plan
+        if self.current_plan and "steps" in self.current_plan:
+            for step in self.current_plan["steps"]:
+                if step["step_id"] == dep_id:
+                    return step
+
+        return None
 
     async def process_result(
         self,
@@ -333,8 +489,9 @@ class PlanningCapability(Capability):
                 (not self.last_reflection_at or
                  len(self.completed_steps) - self.last_reflection_at >= self.min_steps_before_reflection)):
 
-                # Reflect on the plan and potentially update it
-                if self.enable_dynamic_replanning:
+                # Reflect on the plan and potentially update it if allowed
+                can_modify = self.current_plan.get("can_modify", True)
+                if self.enable_dynamic_replanning and can_modify:
                     updated_plan = await self._reflect_and_update_plan(
                         self.current_plan,
                         self.completed_steps,
@@ -347,6 +504,10 @@ class PlanningCapability(Capability):
                         logger.info("Plan updated based on reflection")
                         self.current_plan = updated_plan
 
+                        # Preserve ownership and modification settings
+                        self.current_plan["owner"] = self.plan_owner
+                        self.current_plan["can_modify"] = can_modify
+
                         # Update context with the new plan
                         context["planning"]["plan"] = self.current_plan
 
@@ -355,6 +516,8 @@ class PlanningCapability(Capability):
                             "type": "updated_plan",
                             "content": self.current_plan
                         })
+                elif not can_modify and self.enable_dynamic_replanning:
+                    logger.info("Plan reflection skipped - plan is not modifiable (owned by coordinator)")
 
                 # Update last reflection time
                 self.last_reflection_at = len(self.completed_steps)
@@ -479,7 +642,24 @@ Return your plan in the exact JSON format requested."""
             tool_parameter_docs += generate_tool_parameter_prompt(tool_name) + "\n\n"
 
         # Create the prompt
-        prompt = f"""
+        if self.planning_instructions:
+            # Use custom planning instructions if provided
+            prompt = f"""
+Based on the following user request, create a detailed step-by-step plan:
+
+User Request: {user_input}
+
+Available Tools: {', '.join(available_tools)}
+Available Agents: {', '.join(available_agents)}
+
+Tool Parameter Documentation:
+{tool_parameter_docs}
+
+{self.planning_instructions}
+"""
+        else:
+            # Use default planning instructions
+            prompt = f"""
 Based on the following user request, create a detailed step-by-step plan:
 
 User Request: {user_input}

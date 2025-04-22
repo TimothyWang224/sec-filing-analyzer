@@ -8,6 +8,8 @@ from datetime import datetime
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
+from ..utils.json_utils import safe_parse_json, repair_json
+
 from .core.agent_state import AgentState
 from .core.tool_ledger import ToolLedger
 from .core.error_handling import ToolError, ToolErrorType, ErrorClassifier, ErrorAnalyzer, ToolCircuitBreaker
@@ -209,6 +211,27 @@ class Agent(ABC):
         # Store the input text in the agent state for parameter completion
         self.state.update_context({"input": input_text})
 
+        # Check if we have a plan and should respect it
+        if hasattr(self, 'state') and hasattr(self.state, 'get_context'):
+            planning_context = self.state.get_context().get("planning", {})
+            current_plan = planning_context.get("plan", {})
+            current_step = planning_context.get("current_step", {})
+
+            # If we have a plan that we can't modify and a current step with a tool
+            if current_plan and not current_plan.get("can_modify", True) and current_step:
+                self.logger.info("Using tools from coordinator's plan instead of selecting new ones")
+
+                # Extract tool from the current step
+                tool_name = current_step.get("tool")
+                if tool_name:
+                    # Create a tool call from the plan step
+                    tool_calls = [{
+                        "tool": tool_name,
+                        "args": current_step.get("parameters", {})
+                    }]
+                    self.logger.info(f"Using tool from plan: {tool_name}")
+                    return tool_calls
+
         # Get compact tool documentation
         compact_tool_docs = ToolRegistry.get_compact_tool_documentation(format="text")
 
@@ -244,11 +267,12 @@ class Agent(ABC):
             initial_response = await self.llm.generate(
                 prompt=initial_prompt,
                 system_prompt=system_prompt,
-                temperature=0.2
+                temperature=0.2,
+                json_mode=True  # Force the model to return valid JSON
             )
 
             # Parse tool calls from response
-            initial_tool_calls = self._parse_tool_calls(initial_response)
+            initial_tool_calls = await self._parse_tool_calls(initial_response)
             self.logger.info(f"Initial tool selection: {initial_tool_calls}")
 
             # Process tool detail requests
@@ -296,11 +320,12 @@ class Agent(ABC):
                 details_response = await self.llm.generate(
                     prompt=details_prompt,
                     system_prompt=system_prompt,
-                    temperature=0.2
+                    temperature=0.2,
+                    json_mode=True  # Force the model to return valid JSON
                 )
 
                 # Parse final tool calls
-                detailed_tool_calls = self._parse_tool_calls(details_response)
+                detailed_tool_calls = await self._parse_tool_calls(details_response)
                 self.logger.info(f"Detailed tool selection: {detailed_tool_calls}")
 
                 # Add detailed tool calls to final list
@@ -512,26 +537,21 @@ class Agent(ABC):
 
         return agent_logger
 
-    def _parse_tool_calls(self, response: str) -> List[Dict[str, Any]]:
+    async def _parse_tool_calls(self, response: str) -> List[Dict[str, Any]]:
         """Parse tool calls from LLM response."""
-        # Extract JSON array from response
-        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
-        if not json_match:
-            json_match = re.search(r'\[\s*\{.*\}\s*\]', response, re.DOTALL)
-
-        if json_match:
-            json_str = json_match.group(1)
-        else:
-            # Try to find any JSON-like structure
-            json_str = response
-
+        # First try to parse using the safe_parse_json utility
         try:
-            # Clean up the JSON string
-            json_str = re.sub(r'```.*?```', '', json_str, flags=re.DOTALL)
-            json_str = re.sub(r'[^\[\{\}\]"\':,\.\-\w\s]', '', json_str)
+            # Use safe_parse_json with expected type "array"
+            tool_calls = safe_parse_json(response, default_value=[], expected_type="array")
 
-            # Parse the JSON
-            tool_calls = json.loads(json_str)
+            # If parsing failed and we have an LLM instance, try to repair
+            if not tool_calls and hasattr(self, 'llm'):
+                # Create a repair function that uses the agent's LLM
+                async def repair_with_agent_llm(text, expected_type):
+                    return await repair_json(text, self.llm, default_value=[], expected_type=expected_type)
+
+                # Try to repair and parse again
+                tool_calls = await repair_with_agent_llm(response, "array")
 
             # Validate tool calls
             validated_calls = []
@@ -540,6 +560,7 @@ class Agent(ABC):
                     validated_calls.append(call)
 
             return validated_calls
+
         except Exception as e:
             self.logger.error(f"Error parsing tool calls: {str(e)}")
             self.logger.error(f"Response: {response}")
@@ -634,6 +655,21 @@ class Agent(ABC):
         """
         process_start_time = time.time()
         self.logger.info(f"Processing input: {input_text[:100]}{'...' if len(input_text) > 100 else ''}")
+
+        # Update the agent's context with the input text
+        try:
+            # Try direct assignment first
+            self.state.context["input"] = input_text
+
+            # If update_context method exists, use it as well
+            if hasattr(self.state, 'update_context'):
+                self.state.update_context({"input": input_text})
+        except Exception as e:
+            self.logger.error(f"Error updating context: {str(e)}")
+            # Fallback: create context if it doesn't exist
+            if not hasattr(self.state, 'context'):
+                self.state.context = {}
+                self.state.context["input"] = input_text
 
         # 1. Select tools to call
         tool_selection_start = time.time()

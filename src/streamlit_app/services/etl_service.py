@@ -155,14 +155,24 @@ class ETLService:
         """Initialize the storage sync manager."""
         try:
             # Initialize configuration
+            logger.info("Initializing configuration for sync manager")
             ConfigProvider.initialize()
             etl_config = ConfigProvider.get_config(ETLConfig)
             storage_config = ConfigProvider.get_config(StorageConfig)
 
+            logger.info(f"ETL config db_path: {etl_config.db_path}")
+            logger.info(f"ETL config db_read_only: {etl_config.db_read_only}")
+            logger.info(f"Storage config vector_store_path: {storage_config.vector_store_path}")
+            logger.info(f"Storage config filings_dir: {etl_config.filings_dir}")
+
             # Check if we already have a read-write connection to the database
+            logger.info("Checking for existing database connections")
             from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
+            self.duckdb_manager = duckdb_manager  # Store reference to duckdb_manager for later use
             read_write_key = f"{etl_config.db_path}:False"
             read_only = etl_config.db_read_only
+
+            logger.info(f"Active connections: {list(duckdb_manager._active_connections.keys())}")
 
             # If we're trying to open in read-only mode but already have a read-write connection,
             # we need to use read-write mode to avoid connection conflicts
@@ -170,7 +180,22 @@ class ETLService:
                 logger.info(f"Using read-write mode for sync manager because a read-write connection already exists")
                 read_only = False
 
+            # Make sure the database directory exists
+            import os
+            db_dir = os.path.dirname(etl_config.db_path)
+            logger.info(f"Ensuring database directory exists: {db_dir}")
+            os.makedirs(db_dir, exist_ok=True)
+
+            # Check if the database file exists
+            db_exists = os.path.exists(etl_config.db_path)
+            logger.info(f"Database file exists: {db_exists}")
+
+            # Force close any existing connections to the database
+            logger.info(f"Forcing close of all connections to {etl_config.db_path} before initializing sync manager")
+            duckdb_manager.force_close_all_connections(etl_config.db_path)
+
             # Initialize enhanced sync manager
+            logger.info("Creating EnhancedStorageSyncManager instance")
             self.sync_manager = EnhancedStorageSyncManager(
                 db_path=etl_config.db_path,  # Use db_path from ETLConfig instead of StorageConfig
                 vector_store_path=storage_config.vector_store_path,
@@ -178,10 +203,27 @@ class ETLService:
                 read_only=read_only  # Use adjusted read_only value
             )
 
+            # Store the database path for later use
+            self.db_path = etl_config.db_path
+
             logger.info("Storage sync manager initialized successfully")
         except Exception as e:
             logger.error(f"Error initializing storage sync manager: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             self.sync_manager = None
+            self.db_path = None
+            self.duckdb_manager = None
+
+    def _close_write_connection(self) -> None:
+        """Close the write connection to the database."""
+        if hasattr(self, 'duckdb_manager') and self.duckdb_manager and hasattr(self, 'db_path') and self.db_path:
+            try:
+                # Close the read-write connection to the database
+                self.duckdb_manager.close_connection(self.db_path, read_only=False)
+                logger.info(f"Closed read-write connection to {self.db_path}")
+            except Exception as e:
+                logger.error(f"Error closing read-write connection to {self.db_path}: {e}")
 
     def create_job(
         self,
@@ -388,6 +430,9 @@ class ETLService:
             # Complete job
             job.complete(results)
 
+            # Close the write connection to free up the database for other tools
+            self._close_write_connection()
+
         except Exception as e:
             # Log error
             error_msg = f"Error running ETL job: {str(e)}"
@@ -399,6 +444,9 @@ class ETLService:
             job.fail(str(e))
 
         finally:
+            # Close the write connection to free up the database for other tools
+            self._close_write_connection()
+
             # Clear active job
             self.active_job_id = None
 
@@ -451,6 +499,42 @@ class ETLService:
 
         return self.jobs.get(self.active_job_id)
 
+    def force_initialize_sync_manager(self) -> bool:
+        """
+        Force initialization of the storage sync manager.
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Log the current state
+            logger.info(f"Current sync_manager state: {self.sync_manager is not None}")
+
+            # Close any existing sync manager
+            if self.sync_manager:
+                try:
+                    logger.info("Closing existing sync manager")
+                    self.sync_manager.close()
+                except Exception as e:
+                    logger.warning(f"Error closing existing sync manager: {e}")
+
+            # Initialize the sync manager
+            logger.info("Calling _initialize_sync_manager()")
+            self._initialize_sync_manager()
+
+            # Check if initialization was successful
+            if self.sync_manager:
+                logger.info("Successfully forced initialization of storage sync manager")
+                return True
+            else:
+                logger.error("Failed to force initialize storage sync manager")
+                return False
+        except Exception as e:
+            logger.error(f"Error forcing initialization of storage sync manager: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return False
+
     def sync_storage(self) -> Dict[str, Any]:
         """
         Synchronize storage systems.
@@ -458,14 +542,25 @@ class ETLService:
         Returns:
             Dictionary with synchronization results
         """
+        logger.info("sync_storage method called")
+
+        # Check if sync manager is initialized
         if not self.sync_manager:
-            logger.error("Storage sync manager not initialized")
-            return {"error": "Storage sync manager not initialized"}
+            logger.warning("Storage sync manager not initialized, attempting to initialize...")
+            if not self.force_initialize_sync_manager():
+                logger.error("Failed to initialize storage sync manager")
+                return {"error": "Storage sync manager not initialized"}
+            else:
+                logger.info("Successfully initialized sync manager")
+        else:
+            logger.info("Sync manager already initialized")
 
         try:
             # Sync all storage systems using the enhanced sync manager
             # This already includes path and status updates
+            logger.info("Calling sync_manager.sync_all()")
             results = self.sync_manager.sync_all()
+            logger.info(f"sync_all() returned: {results}")
 
             # Add a user-friendly message based on the sync status
             if results.get('overall_status') == 'success':
@@ -478,9 +573,14 @@ class ETLService:
                 results["message"] = "Storage synchronization failed."
                 results["error"] = "Failed to synchronize storage systems."
 
+            # Close the write connection to free up the database for other tools
+            self._close_write_connection()
+
             return results
         except Exception as e:
             logger.error(f"Error synchronizing storage: {e}")
+            # Make sure to close the connection even if there's an error
+            self._close_write_connection()
             return {"error": str(e)}
 
     def get_inventory_summary(self) -> Dict[str, Any]:
@@ -495,9 +595,18 @@ class ETLService:
             return {"error": "Storage sync manager not initialized"}
 
         try:
-            return self.sync_manager.get_inventory_summary()
+            # Get the inventory summary
+            summary = self.sync_manager.get_inventory_summary()
+
+            # Close the write connection to free up the database for other tools
+            # This is a read operation, but we'll close any write connections that might exist
+            self._close_write_connection()
+
+            return summary
         except Exception as e:
             logger.error(f"Error getting inventory summary: {e}")
+            # Make sure to close the connection even if there's an error
+            self._close_write_connection()
             return {"error": str(e)}
 
     def estimate_filings_count(

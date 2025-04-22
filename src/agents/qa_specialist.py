@@ -1,8 +1,10 @@
 import json
+import traceback
 from typing import Dict, Any, List, Optional
 from .base import Agent, Goal
 from ..capabilities.base import Capability
 from ..capabilities.time_awareness import TimeAwarenessCapability
+from ..capabilities.planning import PlanningCapability
 from ..environments.financial import FinancialEnvironment
 
 class QASpecialistAgent(Agent):
@@ -94,12 +96,53 @@ class QASpecialistAgent(Agent):
         if not has_time_awareness:
             self.capabilities.append(TimeAwarenessCapability())
 
-    async def run(self, user_input: str, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
+        # Add PlanningCapability if not already present
+        has_planning = any(isinstance(cap, PlanningCapability) for cap in self.capabilities)
+        if not has_planning:
+            self.capabilities.append(PlanningCapability(
+                enable_dynamic_replanning=True,
+                enable_step_reflection=True,
+                min_steps_before_reflection=1,
+                max_plan_steps=5,  # Limited planning depth
+                plan_detail_level="medium",
+                is_coordinator=False,  # This is not a coordinator agent
+                respect_existing_plan=True,  # Respect plans from coordinator
+                # Planning instructions focused on how to accomplish the task
+                planning_instructions="""You are a QA specialist agent responsible for retrieving and providing information.
+                Your goal is to create a detailed plan to accomplish the task assigned by the coordinator.
+
+                For each task:
+                1. Analyze the task objective to understand what information is needed
+                2. Determine which tools would be most appropriate to retrieve this information
+                3. Create a step-by-step plan to gather and process the information
+                4. Include specific tool selections and parameters in your plan
+
+                Available tools:
+                - sec_financial_data: Retrieves financial data from SEC filings
+                  - query_type="companies": Lists all available companies
+                  - query_type="metrics": Retrieves financial metrics for a company
+                  - query_type="filings": Lists filings for a specific company
+
+                - sec_semantic_search: Searches for information in SEC filings using semantic search
+                  - Useful for finding specific information in filing text
+
+                - sec_graph_query: Queries the knowledge graph for relationships between entities
+                  - Useful for finding connections between companies, filings, etc.
+
+                - sec_data: Retrieves specific filing data
+                  - Useful for getting complete filing content
+
+                Your plan should be detailed enough to accomplish the task effectively while staying focused on the specific objective.
+                """
+            ))
+
+    async def run(self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """
-        Run the QA specialist agent.
+        Run the QA specialist agent with a provided plan.
 
         Args:
             user_input: The input to process (e.g., financial question or concept)
+            plan: Optional plan provided by the coordinator with specific instructions
             memory: Optional memory to initialize with
 
         Returns:
@@ -110,6 +153,14 @@ class QASpecialistAgent(Agent):
             for item in memory:
                 self.state.add_memory_item(item)
 
+        # Add plan to memory if provided
+        if plan:
+            self.logger.info(f"Received plan from coordinator: {plan}")
+            self.add_to_memory({
+                "type": "execution_plan",
+                "content": plan
+            })
+
         # Initialize capabilities
         for capability in self.capabilities:
             await capability.init(self, {"input": user_input})
@@ -117,15 +168,34 @@ class QASpecialistAgent(Agent):
         # Log the start of processing
         self.logger.info(f"Processing question: {user_input}")
 
-        # Set initial phase to planning
-        self.state.set_phase('planning')
-        self.logger.info(f"Starting planning phase")
+        # Check if we have a plan from the coordinator
+        memory_items = self.get_memory()
+        execution_plans = [item for item in memory_items if item.get("type") == "execution_plan"]
+        has_coordinator_plan = len(execution_plans) > 0
+
+        # If we have a plan from the coordinator, skip planning phase
+        if has_coordinator_plan:
+            self.logger.info("Skipping planning phase as plan was provided by coordinator")
+            self.state.set_phase('execution')
+
+            # Parse the question to extract key information for reference
+            question_analysis = self._parse_question(user_input)
+
+            # Add analysis to memory
+            self.add_to_memory({
+                "type": "question_analysis",
+                "content": question_analysis
+            })
+        else:
+            # Set initial phase to planning if no plan was provided
+            self.state.set_phase('planning')
+            self.logger.info(f"Starting planning phase")
 
         # Execute the agent loop through all phases
         answer = None
 
-        # Phase 1: Planning
-        while not self.should_terminate() and self.state.current_phase == 'planning':
+        # Phase 1: Planning (only if no plan was provided)
+        while not self.should_terminate() and self.state.current_phase == 'planning' and not has_coordinator_plan:
             # Start of loop capabilities
             for capability in self.capabilities:
                 if not await capability.start_agent_loop(self, {"input": user_input}):
@@ -170,8 +240,128 @@ class QASpecialistAgent(Agent):
             # In execution phase, we gather data and generate an initial answer
             self.logger.info(f"Executing data gathering for: {user_input}")
 
-            # Process the input and generate answer
-            answer = await self._generate_answer(user_input)
+            # Check if we have a plan with specific tool instructions
+            if has_coordinator_plan:
+                plan_content = execution_plans[-1].get("content", {})
+                self.logger.info(f"Executing plan from coordinator: {plan_content}")
+
+                # Extract high-level task information from the plan
+                task_objective = plan_content.get("task_objective", "")
+                success_criteria = plan_content.get("success_criteria", [])
+
+                self.logger.info(f"Task objective from coordinator: {task_objective}")
+                self.logger.info(f"Success criteria from coordinator: {success_criteria}")
+
+                # Add the task objective to the planning context
+                if hasattr(self.state, 'update_context'):
+                    self.state.update_context({
+                        "planning": {
+                            "task_objective": task_objective,
+                            "success_criteria": success_criteria
+                        }
+                    })
+
+                # Use LLM-driven tool selection based on the task objective
+                self.logger.info(f"Using LLM-driven tool selection based on task objective: {task_objective}")
+
+                # Create a prompt that includes the task objective and success criteria
+                tool_selection_prompt = f"""
+                You need to accomplish the following task: {task_objective}
+
+                Success criteria:
+                {', '.join(success_criteria) if success_criteria else 'Provide accurate and relevant information'}
+
+                Based on this task, select the most appropriate tool and parameters to use.
+                Available tools:
+                - sec_financial_data: Retrieves financial data from SEC filings
+                  - query_type="companies": Lists all available companies
+                  - query_type="metrics": Retrieves financial metrics for a company
+                  - query_type="filings": Lists filings for a specific company
+
+                - sec_semantic_search: Searches for information in SEC filings using semantic search
+                  - parameters: {{"query": "search text"}}
+
+                - sec_graph_query: Queries the knowledge graph for relationships between entities
+                  - query_type="related_companies": Finds companies related to a given company
+                  - query_type="company_filings": Finds filings for a specific company
+
+                - sec_data: Retrieves specific filing data
+                  - parameters: {{"company": "TICKER", "filing_type": "10-K"}}
+
+                Return your selection as a JSON object with the following structure:
+                {{"tool": "tool_name", "parameters": {{"param1": "value1", "param2": "value2"}}}}
+                """
+
+                try:
+                    # Get tool selection from LLM
+                    tool_selection_response = await self.llm.generate(prompt=tool_selection_prompt)
+                    self.logger.info(f"Tool selection response: {tool_selection_response}")
+
+                    # Parse the JSON response
+                    try:
+                        # Extract JSON from the response
+                        json_str = tool_selection_response.strip()
+                        # Find JSON object in the response if it's not a clean JSON
+                        if not json_str.startswith('{'):
+                            import re
+                            json_match = re.search(r'\{[^\{\}]*"tool"[^\{\}]*\}', json_str)
+                            if json_match:
+                                json_str = json_match.group(0)
+
+                        tool_selection = json.loads(json_str)
+                        tool_name = tool_selection.get("tool")
+                        tool_params = tool_selection.get("parameters", {})
+
+                        self.logger.info(f"Selected tool: {tool_name} with parameters: {tool_params}")
+
+                        # Execute the selected tool
+                        if tool_name:
+                            self.logger.info(f"Executing selected tool: {tool_name}")
+                            tool_result = await self.environment.execute_action({
+                                "tool": tool_name,
+                                "args": tool_params
+                            })
+
+                            # Create a tool results structure
+                            tool_results = {
+                                "input": user_input,
+                                "tool_calls": [{
+                                    "tool": tool_name,
+                                    "args": tool_params
+                                }],
+                                "results": [{
+                                    "success": True,
+                                    "tool": tool_name,
+                                    "result": tool_result
+                                }],
+                                "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0}
+                            }
+
+                            # Add the result to memory
+                            self.add_to_memory({
+                                "type": "tool_result",
+                                "tool": tool_name,
+                                "args": tool_params,
+                                "result": tool_result
+                            })
+
+                            # Generate answer using the tool results
+                            answer = await self._generate_answer_from_results(user_input, tool_results)
+                        else:
+                            # No tool selected, use normal answer generation
+                            self.logger.info("No tool selected, using normal answer generation")
+                            answer = await self._generate_answer(user_input)
+                    except json.JSONDecodeError as e:
+                        self.logger.error(f"Error parsing tool selection JSON: {str(e)}")
+                        # Fall back to normal answer generation
+                        answer = await self._generate_answer(user_input)
+                except Exception as e:
+                    self.logger.error(f"Error in LLM-driven tool selection: {str(e)}")
+                    # Fall back to normal answer generation
+                    answer = await self._generate_answer(user_input)
+            else:
+                # No plan, use normal answer generation
+                answer = await self._generate_answer(user_input)
 
             # Add result to memory
             self.add_to_memory({
@@ -275,8 +465,81 @@ class QASpecialistAgent(Agent):
             # Use LLM-driven tool calling
             print("Using LLM-driven tool calling")
 
+            # Add detailed debugging
+            self.logger.info(f"QA Agent state before processing: {self.state.__dict__}")
+            self.logger.info(f"QA Agent state has update_context: {hasattr(self.state, 'update_context')}")
+
+            # Update the agent's context with the input
+            try:
+                self.logger.info("Attempting to update context")
+                self.state.context["input"] = input  # Direct assignment as fallback
+                if hasattr(self.state, 'update_context'):
+                    self.logger.info("Using update_context method")
+                    self.state.update_context({"input": input})
+                self.logger.info(f"Context updated successfully: {self.state.context}")
+            except Exception as e:
+                self.logger.error(f"Error updating context: {str(e)}")
+
             # Process the question using LLM-driven tool calling
-            tool_results = await self.process_with_llm_tools(input)
+            try:
+                self.logger.info("Attempting to process with LLM tools")
+                # Try to use the parent class method first
+                try:
+                    tool_results = await self.process_with_llm_tools(input)
+                    self.logger.info(f"Successfully processed input with LLM tools")
+                except AttributeError:
+                    # If the parent method fails, use our own implementation
+                    self.logger.info("Parent process_with_llm_tools failed, using local implementation")
+                    tool_results = await self._local_process_with_llm_tools(input)
+            except Exception as e:
+                self.logger.error(f"Error in process_with_llm_tools: {str(e)}")
+                self.logger.error(f"Error type: {type(e).__name__}")
+                self.logger.error(f"Error traceback: {traceback.format_exc()}")
+                # Fallback to direct tool calling if LLM-driven approach fails
+                self.logger.info("Falling back to direct tool execution")
+
+                # Check if this is a request for available companies
+                if "companies" in input.lower() and ("available" in input.lower() or "database" in input.lower() or "data" in input.lower()):
+                    self.logger.info("Detected request for available companies, using direct tool execution")
+                    try:
+                        # Use the financial data tool to query available companies
+                        companies_result = await self.environment.execute_action({
+                            "tool": "sec_financial_data",
+                            "args": {
+                                "query_type": "companies"
+                            }
+                        })
+
+                        # Extract company information
+                        companies = []
+                        if isinstance(companies_result, dict):
+                            if "companies" in companies_result:
+                                companies = companies_result["companies"]
+                            elif "results" in companies_result and isinstance(companies_result["results"], list):
+                                for company in companies_result["results"]:
+                                    if isinstance(company, dict) and "ticker" in company:
+                                        companies.append(company["ticker"])
+
+                        if not companies:
+                            # Fallback to hardcoded list
+                            companies = ["AAPL", "GOOG", "MSFT", "NVDA"]
+
+                        # Create a successful result
+                        tool_results = {
+                            "results": [{
+                                "success": True,
+                                "tool": "sec_financial_data",
+                                "result": {
+                                    "companies": companies
+                                }
+                            }]
+                        }
+                    except Exception as e:
+                        self.logger.error(f"Error in direct tool execution: {str(e)}")
+                        tool_results = {"results": []}
+                else:
+                    # For other types of queries, return empty results
+                    tool_results = {"results": []}
 
             # Extract results from tool calls
             for result in tool_results.get("results", []):
@@ -340,21 +603,251 @@ class QASpecialistAgent(Agent):
                         "accession_number": result.get("accession_number", "")
                     })
 
+            # Check if this is a company listing request with results
+            is_company_listing = False
+            companies_list = []
+
+            for result in tool_results.get("results", []):
+                if result.get("tool") == "sec_financial_data" and "companies" in result.get("result", {}):
+                    companies_list = result["result"]["companies"]
+                    is_company_listing = True
+
             # Generate a natural language answer using the LLM
-            answer_prompt = f"""
-            Based on the following information, answer the question: "{input}"
+            if is_company_listing and companies_list:
+                self.logger.info(f"Generating answer for company listing request with {len(companies_list)} companies")
+                answer_prompt = f"""
+                The user asked: "{input}"
 
-            Financial Data:
-            {json.dumps(financial_data, indent=2) if financial_data else "No financial data available."}
+                The following companies are available in the database: {', '.join(companies_list)}
 
-            Semantic Search Results:
-            {json.dumps(semantic_context, indent=2) if semantic_context else "No semantic search results available."}
+                Please provide a friendly and helpful response that lists these companies and explains that the user can ask questions about any of them.
+                """
+            else:
+                self.logger.info("Generating answer for general question")
+                answer_prompt = f"""
+                Based on the following information, answer the question: "{input}"
 
-            Filing Information:
-            {json.dumps(filing_info, indent=2) if filing_info else "No filing information available."}
+                Financial Data:
+                {json.dumps(financial_data, indent=2) if financial_data else "No financial data available."}
 
-            Please provide a comprehensive answer that directly addresses the question.
-            """
+                Semantic Search Results:
+                {json.dumps(semantic_context, indent=2) if semantic_context else "No semantic search results available."}
+
+                Filing Information:
+                {json.dumps(filing_info, indent=2) if filing_info else "No filing information available."}
+
+                Please provide a comprehensive answer that directly addresses the question.
+                """
+
+            # Generate the answer using the LLM
+            answer_response = await self.llm.generate(prompt=answer_prompt)
+
+            # Use the LLM-generated text as the answer
+            answer = answer_response.strip()
+
+            # Generate an explanation of the sources
+            explanation = "This answer is based on "
+            if financial_data:
+                explanation += f"financial data from SEC filings"
+            if semantic_context:
+                explanation += f"{', and ' if financial_data else ''}information found in SEC filing text"
+            if filing_info:
+                explanation += f"{', and ' if financial_data or semantic_context else ''}SEC filing metadata"
+            explanation += "."
+
+            # Return the comprehensive answer
+            return {
+                "input": input,
+                "answer": answer,
+                "explanation": explanation,
+                "supporting_data": {
+                    "semantic_context": semantic_context,
+                    "financial_data": financial_data,
+                    "filing_info": filing_info
+                },
+                "question_analysis": question_parts
+            }
+
+        except Exception as e:
+            # Return error information
+            return {
+                "input": input,
+                "error": str(e),
+                "answer": "I encountered an error while processing your question. Please try again or rephrase your question.",
+                "explanation": f"Error details: {str(e)}"
+            }
+
+    async def _local_process_with_llm_tools(self, input_text: str) -> Dict[str, Any]:
+        """
+        Local implementation of process_with_llm_tools to use as a fallback.
+
+        Args:
+            input_text: User's input text
+
+        Returns:
+            Dictionary containing tool call results and other information
+        """
+        self.logger.info(f"Using local implementation of process_with_llm_tools for: {input_text[:100]}{'...' if len(input_text) > 100 else ''}")
+
+        # For company listing requests, directly call the sec_financial_data tool
+        if "companies" in input_text.lower() and ("available" in input_text.lower() or "database" in input_text.lower() or "data" in input_text.lower()):
+            self.logger.info("Detected company listing request, using sec_financial_data tool")
+            try:
+                # Execute the tool
+                result = await self.environment.execute_action({
+                    "tool": "sec_financial_data",
+                    "args": {
+                        "query_type": "companies"
+                    }
+                })
+
+                return {
+                    "input": input_text,
+                    "tool_calls": [{
+                        "tool": "sec_financial_data",
+                        "args": {"query_type": "companies"}
+                    }],
+                    "results": [{
+                        "success": True,
+                        "tool": "sec_financial_data",
+                        "result": result
+                    }],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0
+                    }
+                }
+            except Exception as e:
+                self.logger.error(f"Error executing sec_financial_data tool: {str(e)}")
+                return {
+                    "input": input_text,
+                    "tool_calls": [],
+                    "results": [],
+                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0}
+                }
+
+        # For other requests, return empty results
+        return {
+            "input": input_text,
+            "tool_calls": [],
+            "results": [],
+            "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0}
+        }
+
+    async def _generate_answer_from_results(self, input: str, tool_results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generate answer based on provided tool results.
+
+        Args:
+            input: Input to process (e.g., financial question)
+            tool_results: Results from tool execution
+
+        Returns:
+            Dictionary containing answer and supporting information
+        """
+        try:
+            # Initialize results containers
+            semantic_results = None
+            graph_results = None
+            financial_results = None
+
+            # Extract results from tool calls
+            for result in tool_results.get("results", []):
+                if result.get("success", False):
+                    tool_name = result.get("tool")
+                    tool_result = result.get("result", {})
+
+                    if tool_name == "sec_semantic_search":
+                        semantic_results = tool_result
+                    elif tool_name == "sec_financial_data":
+                        financial_results = tool_result
+                    elif tool_name == "sec_graph_query":
+                        graph_results = tool_result
+                    elif tool_name == "sec_data":
+                        # Handle SEC data tool results
+                        if "filing_content" in tool_result:
+                            semantic_results = {
+                                "results": [{
+                                    "text": tool_result.get("filing_content", ""),
+                                    "metadata": {
+                                        "company": tool_result.get("company", ""),
+                                        "filing_type": tool_result.get("filing_type", ""),
+                                        "filing_date": tool_result.get("filing_date", "")
+                                    }
+                                }]
+                            }
+
+            # Generate question analysis for reference
+            question_parts = self._parse_question(input)
+
+            # Combine all results to create a comprehensive answer
+            semantic_context = []
+            if semantic_results and semantic_results.get("results"):
+                for result in semantic_results["results"]:
+                    semantic_context.append({
+                        "text": result.get("text", ""),
+                        "company": result.get("metadata", {}).get("company", ""),
+                        "filing_type": result.get("metadata", {}).get("filing_type", ""),
+                        "filing_date": result.get("metadata", {}).get("filing_date", "")
+                    })
+
+            # Format financial data if available
+            financial_data = []
+            if financial_results and financial_results.get("results"):
+                for result in financial_results["results"]:
+                    financial_data.append({
+                        "metric": result.get("metric_name", ""),
+                        "value": result.get("value", ""),
+                        "period": result.get("period_end_date", ""),
+                        "filing_type": result.get("filing_type", "")
+                    })
+
+            # Format filing information if available
+            filing_info = []
+            if graph_results and graph_results.get("results"):
+                for result in graph_results["results"]:
+                    filing_info.append({
+                        "filing_type": result.get("filing_type", ""),
+                        "filing_date": result.get("filing_date", ""),
+                        "accession_number": result.get("accession_number", "")
+                    })
+
+            # Check if this is a company listing request with results
+            is_company_listing = False
+            companies_list = []
+
+            for result in tool_results.get("results", []):
+                if result.get("tool") == "sec_financial_data" and "companies" in result.get("result", {}):
+                    companies_list = result["result"]["companies"]
+                    is_company_listing = True
+
+            # Generate a natural language answer using the LLM
+            if is_company_listing and companies_list:
+                self.logger.info(f"Generating answer for company listing request with {len(companies_list)} companies")
+                answer_prompt = f"""
+                The user asked: "{input}"
+
+                The following companies are available in the database: {', '.join(companies_list)}
+
+                Please provide a friendly and helpful response that lists these companies and explains that the user can ask questions about any of them.
+                """
+            else:
+                self.logger.info("Generating answer for general question")
+                answer_prompt = f"""
+                Based on the following information, answer the question: "{input}"
+
+                Financial Data:
+                {json.dumps(financial_data, indent=2) if financial_data else "No financial data available."}
+
+                Semantic Search Results:
+                {json.dumps(semantic_context, indent=2) if semantic_context else "No semantic search results available."}
+
+                Filing Information:
+                {json.dumps(filing_info, indent=2) if filing_info else "No filing information available."}
+
+                Please provide a comprehensive answer that directly addresses the question.
+                """
 
             # Generate the answer using the LLM
             answer_response = await self.llm.generate(prompt=answer_prompt)

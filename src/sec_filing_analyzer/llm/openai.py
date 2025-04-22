@@ -49,9 +49,22 @@ class OpenAILLM(BaseLLM):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        json_mode: bool = False,
         **kwargs: Any
     ) -> str:
-        """Generate a response using OpenAI's API."""
+        """Generate a response using OpenAI's API.
+
+        Args:
+            prompt: The user prompt to generate a response for
+            system_prompt: Optional system prompt to set context
+            temperature: Controls randomness in the output (0.0 to 1.0)
+            max_tokens: Maximum number of tokens to generate
+            json_mode: If True, forces the model to return valid JSON
+            **kwargs: Additional provider-specific parameters
+
+        Returns:
+            The generated response as a string
+        """
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -59,17 +72,25 @@ class OpenAILLM(BaseLLM):
 
         # Log the request details
         token_estimate = len(prompt.split()) // 4  # Rough estimate
-        logger.debug(f"LLM Request: model={self.model}, tokens~{token_estimate}, temp={temperature}")
+        logger.debug(f"LLM Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, json_mode={json_mode}")
+
+        # Prepare API call parameters
+        api_params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            **kwargs
+        }
+
+        # Add response_format for JSON mode if requested
+        if json_mode:
+            api_params["response_format"] = {"type": "json_object"}
+            logger.debug("Using JSON response format")
 
         # Time the API call specifically
         with TimingContext("openai_api_call", category="api", logger=logger):
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
-            )
+            response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
         completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else "unknown"
@@ -87,9 +108,22 @@ class OpenAILLM(BaseLLM):
         system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        json_mode: bool = False,
         **kwargs: Any
     ) -> AsyncGenerator[str, None]:
-        """Generate a streaming response using OpenAI's API."""
+        """Generate a streaming response using OpenAI's API.
+
+        Args:
+            prompt: The user prompt to generate a response for
+            system_prompt: Optional system prompt to set context
+            temperature: Controls randomness in the output (0.0 to 1.0)
+            max_tokens: Maximum number of tokens to generate
+            json_mode: If True, forces the model to return valid JSON
+            **kwargs: Additional provider-specific parameters
+
+        Yields:
+            Chunks of the generated response as strings
+        """
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
@@ -97,21 +131,29 @@ class OpenAILLM(BaseLLM):
 
         # Log the request details
         token_estimate = len(prompt.split()) // 4  # Rough estimate
-        logger.debug(f"LLM Stream Request: model={self.model}, tokens~{token_estimate}, temp={temperature}")
+        logger.debug(f"LLM Stream Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, json_mode={json_mode}")
 
         start_time = time.time()
         chunk_count = 0
         total_chars = 0
 
-        # Start the stream
-        stream = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=True,
+        # Prepare API call parameters
+        api_params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
             **kwargs
-        )
+        }
+
+        # Add response_format for JSON mode if requested
+        if json_mode:
+            api_params["response_format"] = {"type": "json_object"}
+            logger.debug("Using JSON response format for streaming")
+
+        # Start the stream
+        stream = self.client.chat.completions.create(**api_params)
 
         # Process the stream
         async for chunk in stream:

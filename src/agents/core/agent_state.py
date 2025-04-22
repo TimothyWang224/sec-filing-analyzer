@@ -40,6 +40,15 @@ class AgentState:
         """
         self.context[key] = value
 
+    def update_context(self, updates: Dict[str, Any]) -> None:
+        """
+        Update the agent's context with multiple key-value pairs.
+
+        Args:
+            updates: Dictionary of context updates
+        """
+        self.context.update(updates)
+
     def get_memory(self) -> List[Dict[str, Any]]:
         """Get the agent's memory."""
         return self.memory

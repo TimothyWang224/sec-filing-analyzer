@@ -24,8 +24,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Get logger
 logger = logging.getLogger(__name__)
 
 class StorageSyncManager:
@@ -90,6 +89,7 @@ class StorageSyncManager:
         results = {
             "vector_store": {"found": 0, "added": 0, "updated": 0, "errors": 0},
             "file_system": {"found": 0, "added": 0, "updated": 0, "errors": 0},
+            "mismatches": {"detected": 0, "fixed": 0},
             "total_filings": 0
         }
 
@@ -100,6 +100,32 @@ class StorageSyncManager:
         # Sync file system
         fs_results = self.sync_file_system()
         results["file_system"] = fs_results
+
+        # Update filing paths
+        self.update_filing_paths()
+
+        # Update processing status
+        self.update_processing_status()
+
+        # Detect and fix mismatches
+        mismatch_results = self.detect_and_fix_mismatches(auto_fix=True)
+
+        # Count detected mismatches
+        detected = 0
+        if "mismatches" in mismatch_results:
+            for category in mismatch_results["mismatches"]:
+                for subcategory in mismatch_results["mismatches"][category]:
+                    detected += len(mismatch_results["mismatches"][category][subcategory])
+
+        # Count fixed mismatches
+        fixed = 0
+        if "fixes" in mismatch_results:
+            for category in mismatch_results["fixes"]:
+                if category != "errors":
+                    fixed += len(mismatch_results["fixes"][category])
+
+        results["mismatches"]["detected"] = detected
+        results["mismatches"]["fixed"] = fixed
 
         # Get total filings count
         total = self.conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0]
@@ -114,7 +140,11 @@ class StorageSyncManager:
         Returns:
             Dictionary with synchronization results
         """
-        results = {"found": 0, "added": 0, "updated": 0, "errors": 0}
+        results = {}
+        results["found"] = 0
+        results["added"] = 0
+        results["updated"] = 0
+        results["errors"] = 0
 
         try:
             # Check if vector store exists
@@ -122,14 +152,24 @@ class StorageSyncManager:
                 logger.warning(f"Vector store path {self.vector_store_path} does not exist")
                 return results
 
-            # Check if company directory exists
-            company_dir = self.vector_store_path / "by_company"
-            if not company_dir.exists():
-                logger.warning(f"Company directory {company_dir} does not exist")
+            # Check if embeddings directory exists
+            embeddings_dir = self.vector_store_path / "embeddings"
+            if not embeddings_dir.exists():
+                logger.warning(f"Embeddings directory {embeddings_dir} does not exist")
                 return results
 
-            # Get all companies in the vector store
-            companies = [d.name for d in company_dir.iterdir() if d.is_dir()]
+            # Get all embedding files in the vector store
+            embedding_files = list(embeddings_dir.glob("*.npy"))
+            logger.info(f"Found {len(embedding_files)} embedding files in vector store")
+
+            # Extract company tickers from embedding filenames
+            companies = set()
+            for emb_file in embedding_files:
+                filename = emb_file.stem
+                if "_" in filename:
+                    ticker = filename.split("_")[0]
+                    companies.add(ticker)
+
             logger.info(f"Found {len(companies)} companies in vector store")
 
             # Process each company
@@ -138,17 +178,15 @@ class StorageSyncManager:
                 if ticker.startswith("TEST"):
                     continue
 
-                company_path = company_dir / ticker
-
-                # Get all embedding files for this company
-                embedding_files = list(company_path.glob("*.npy"))
-                logger.info(f"Found {len(embedding_files)} embedding files for {ticker}")
-
                 # Track accession numbers found
                 accession_numbers = set()
 
+                # Get all embedding files for this company from the embeddings directory
+                company_embedding_files = [f for f in embedding_files if f.stem.startswith(f"{ticker}_")]
+                logger.info(f"Found {len(company_embedding_files)} embedding files for {ticker}")
+
                 # Process each embedding file
-                for emb_file in embedding_files:
+                for emb_file in company_embedding_files:
                     try:
                         # Extract accession number from filename
                         filename = emb_file.stem
@@ -157,83 +195,89 @@ class StorageSyncManager:
                         if "_chunk_" in filename:
                             continue
 
-                        # Extract accession number
-                        accession_number = filename
-                        accession_numbers.add(accession_number)
+                        # Extract accession number from filename (format: TICKER_ACCESSION_NUMBER)
+                        parts = filename.split("_", 1)
+                        if len(parts) > 1:
+                            # Skip test files or files that don't match the expected format
+                            if parts[0].lower() == "test" or not self._is_valid_accession_number(parts[1]):
+                                logger.info(f"Skipping test or invalid file: {filename}")
+                                continue
 
-                        results["found"] += 1
+                            accession_number = parts[1]
+                            accession_numbers.add(accession_number)
+                            results["found"] += 1
 
-                        # Check if this filing is already in DuckDB
-                        existing = self.conn.execute(
-                            "SELECT filing_id, document_url, fiscal_period FROM filings WHERE accession_number = ?",
-                            [accession_number]
-                        ).fetchone()
+                            # Check if this filing is already in DuckDB
+                            existing = self.conn.execute(
+                                "SELECT filing_id, document_url, fiscal_period FROM filings WHERE accession_number = ?",
+                                [accession_number]
+                            ).fetchone()
 
-                        if existing:
-                            # Update fiscal period if needed
-                            if existing[2] != "Q3":  # Q3 represents embedded status
-                                self.conn.execute(
-                                    """
-                                    UPDATE filings
-                                    SET fiscal_period = 'Q3', updated_at = CURRENT_TIMESTAMP
-                                    WHERE accession_number = ?
-                                    """,
-                                    [accession_number]
-                                )
-                                results["updated"] += 1
-                        else:
-                            # Try to get metadata from vector store
-                            metadata_path = self.vector_store_path / "metadata" / f"{filename}.json"
-                            if metadata_path.exists():
-                                with open(metadata_path, "r") as f:
-                                    metadata = json.load(f)
-
-                                # Extract filing information
-                                filing_type = metadata.get("filing_type", "unknown")
-                                filing_date = metadata.get("filing_date", "2000-01-01")
-
-                                # Generate a filing ID
-                                filing_id = f"{ticker}_{accession_number}"
-
-                                # Get company_id
-                                company_id = self._get_company_id(ticker)
-
-                                # Add to DuckDB
-                                self.conn.execute(
-                                    """
-                                    INSERT INTO filings (
-                                        filing_id, company_id, accession_number, filing_type, filing_date,
-                                        fiscal_period, created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                                    """,
-                                    [len(str(filing_id)), company_id, accession_number, filing_type, filing_date, "Q3"]
-                                )
-
-                                # Make sure company exists
-                                self._ensure_company_exists(ticker)
-
-                                results["added"] += 1
+                            if existing:
+                                # Update fiscal period if needed
+                                if existing[2] != "Q3":  # Q3 represents embedded status
+                                    self.conn.execute(
+                                        """
+                                        UPDATE filings
+                                        SET fiscal_period = 'Q3', updated_at = CURRENT_TIMESTAMP
+                                        WHERE accession_number = ?
+                                        """,
+                                        [accession_number]
+                                    )
+                                    results["updated"] += 1
                             else:
-                                # No metadata, create minimal record
-                                filing_id = f"{ticker}_{accession_number}"
+                                # Try to get metadata from vector store
+                                metadata_path = self.vector_store_path / "metadata" / f"{filename}.json"
+                                if metadata_path.exists():
+                                    with open(metadata_path, "r") as f:
+                                        metadata = json.load(f)
 
-                                # Get company_id
-                                company_id = self._get_company_id(ticker)
+                                    # Extract filing information
+                                    filing_type = metadata.get("filing_type", "unknown")
+                                    filing_date = metadata.get("filing_date", "2000-01-01")
 
-                                # Add to DuckDB with minimal information
-                                self.conn.execute(
-                                    """
-                                    INSERT INTO filings (
-                                        filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
-                                    ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                                    """,
-                                    [len(str(filing_id)), company_id, accession_number, "Q3"]
-                                )
+                                    # Generate a filing ID
+                                    filing_id = f"{ticker}_{accession_number}"
 
-                                # Make sure company exists
-                                self._ensure_company_exists(ticker)
+                                    # Get company_id
+                                    company_id = self._get_company_id(ticker)
 
-                                results["added"] += 1
+                                    # Add to DuckDB
+                                    self.conn.execute(
+                                        """
+                                        INSERT INTO filings (
+                                            id, filing_id, company_id, accession_number, filing_type, filing_date,
+                                            fiscal_period, created_at, updated_at
+                                        ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                                        """,
+                                        [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, filing_type, filing_date, "Q3"]
+                                    )
+
+                                    # Make sure company exists
+                                    self._ensure_company_exists(ticker)
+
+                                    results["added"] += 1
+                                else:
+                                    # No metadata, create minimal record
+                                    filing_id = f"{ticker}_{accession_number}"
+
+                                    # Get company_id
+                                    company_id = self._get_company_id(ticker)
+
+                                    # Add to DuckDB with minimal information
+                                    self.conn.execute(
+                                        """
+                                        INSERT INTO filings (
+                                            id, filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
+                                        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                                        """,
+                                        [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"]
+                                    )
+
+                                    # Make sure company exists
+                                    self._ensure_company_exists(ticker)
+
+                                    results["added"] += 1
 
                     except Exception as e:
                         logger.error(f"Error processing embedding file {emb_file}: {e}")
@@ -253,7 +297,11 @@ class StorageSyncManager:
         Returns:
             Dictionary with synchronization results
         """
-        results = {"found": 0, "added": 0, "updated": 0, "errors": 0}
+        results = {}
+        results["found"] = 0
+        results["added"] = 0
+        results["updated"] = 0
+        results["errors"] = 0
 
         try:
             # Check if filings directory exists
@@ -358,11 +406,11 @@ class StorageSyncManager:
                             self.conn.execute(
                                 """
                                 INSERT INTO filings (
-                                    filing_id, company_id, accession_number, filing_type, filing_date,
+                                    id, filing_id, company_id, accession_number, filing_type, filing_date,
                                     document_url, fiscal_period, created_at, updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                 """,
-                                [filing_id, company_id, accession_number, filing_type, filing_date,
+                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, filing_type, filing_date,
                                  str(file_path), "Q1"]
                             )
 
@@ -378,6 +426,23 @@ class StorageSyncManager:
         except Exception as e:
             logger.error(f"Error processing directory {directory}: {e}")
             results["errors"] += 1
+
+    def _is_valid_accession_number(self, accession_number: str) -> bool:
+        """
+        Check if a string is a valid accession number.
+
+        Args:
+            accession_number: String to check
+
+        Returns:
+            True if the string is a valid accession number, False otherwise
+        """
+        # Check if the string is in the format 0000XXXXXX-YY-NNNNNN
+        if "-" in accession_number and len(accession_number) >= 18:
+            parts = accession_number.split("-")
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit() and parts[2].isdigit():
+                return True
+        return False
 
     def _extract_accession_number(self, filename: str) -> Optional[str]:
         """
@@ -432,6 +497,10 @@ class StorageSyncManager:
 
         # Try to extract date from filename
         filename = file_path.stem
+
+        # Remove any suffix like _processed, _metadata, etc.
+        if "_" in filename:
+            filename = filename.split("_")[0]
 
         # Check if filename is an accession number
         if "-" in filename and len(filename) >= 18:
@@ -552,27 +621,21 @@ class StorageSyncManager:
         Returns:
             Dictionary with update results
         """
-        results = {"updated": 0, "errors": 0, "not_found": 0}
+        results = {}
+        results["updated"] = 0
+        results["errors"] = 0
+        results["not_found"] = 0
 
         try:
             # Get all filings without a local file path
             filings = self.conn.execute(
                 """
                 SELECT
-                    CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'id')
-                        THEN id
-                        ELSE filing_id
-                    END as id,
-                    CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'ticker')
-                        THEN ticker
-                        ELSE (SELECT c.ticker FROM companies c WHERE c.company_id = filings.company_id)
-                    END as ticker,
+                    filing_id,
+                    (SELECT c.ticker FROM companies c WHERE c.company_id = filings.company_id LIMIT 1) as ticker,
                     accession_number
                 FROM filings
-                WHERE (
-                    (EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'local_file_path') AND local_file_path IS NULL) OR
-                    (NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'local_file_path'))
-                )
+                WHERE local_file_path IS NULL
                 """
             ).fetchdf()
 
@@ -595,7 +658,7 @@ class StorageSyncManager:
                     self.conn.execute(
                         """
                         UPDATE filings
-                        SET local_file_path = ?, last_updated = CURRENT_TIMESTAMP
+                        SET local_file_path = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE accession_number = ?
                         """,
                         [str(file_path), accession_number]
@@ -669,24 +732,19 @@ class StorageSyncManager:
         Returns:
             Dictionary with update results
         """
-        results = {"updated": 0, "errors": 0}
+        results = {}
+        results["updated"] = 0
+        results["errors"] = 0
 
         try:
             # Get all filings with null fiscal period
             filings = self.conn.execute(
                 """
                 SELECT
-                    CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id')
-                        THEN filing_id
-                        ELSE id
-                    END as filing_id,
+                    filing_id,
                     accession_number
                 FROM filings
-                WHERE (
-                    (EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'fiscal_period') AND fiscal_period IS NULL) OR
-                    (EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'fiscal_period') AND fiscal_period IS NULL AND fiscal_quarter IS NOT NULL) OR
-                    (NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'fiscal_period'))
-                )
+                WHERE fiscal_period IS NULL
                 """
             ).fetchdf()
 
@@ -703,18 +761,10 @@ class StorageSyncManager:
                     """
                     SELECT c.ticker
                     FROM filings f
-                    JOIN companies c ON
-                        CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'company_id')
-                            THEN f.company_id = c.company_id
-                            ELSE f.ticker = c.ticker
-                        END
-                    WHERE
-                        CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id')
-                            THEN f.filing_id = ?
-                            ELSE f.id = ?
-                        END
+                    JOIN companies c ON f.company_id = c.company_id
+                    WHERE f.filing_id = ?
                     """,
-                    [filing['filing_id'], filing['filing_id']]
+                    [filing['filing_id']]
                 ).fetchone()
 
                 if not company_info:
@@ -743,18 +793,10 @@ class StorageSyncManager:
                     """
                     UPDATE filings
                     SET fiscal_period = ?,
-                        updated_at = CASE
-                            WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'updated_at')
-                                THEN CASE WHEN updated_at IS NOT NULL THEN CURRENT_TIMESTAMP ELSE created_at END
-                            ELSE NULL
-                        END
-                    WHERE
-                        CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id')
-                            THEN filing_id = ?
-                            ELSE id = ?
-                        END
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE filing_id = ?
                     """,
-                    [fiscal_period, filing['filing_id'], filing['filing_id']]
+                    [fiscal_period, filing['filing_id']]
                 )
 
                 results["updated"] += 1
@@ -783,7 +825,7 @@ class StorageSyncManager:
             return "missing"
 
         # Check if embedding exists
-        embedding_path = self.vector_store_path / "by_company" / ticker / f"{accession_number}.npy"
+        embedding_path = self.vector_store_path / "embeddings" / f"{ticker}_{accession_number}.npy"
         if embedding_path.exists():
             return "embedded"
 
@@ -875,6 +917,316 @@ class StorageSyncManager:
             logger.error(f"Error getting inventory summary: {e}")
             return {"error": str(e)}
 
+    def detect_and_fix_mismatches(self, auto_fix: bool = False) -> Dict[str, Any]:
+        """
+        Detect and optionally fix mismatches between the database and file system.
+
+        This method identifies several types of mismatches:
+        1. Companies in the file system but not in the database
+        2. Companies in the database but with no files on disk
+        3. Filings on disk but not in the database
+        4. Filings in the database but not on disk
+        5. Embeddings that exist but aren't properly tracked in the database
+
+        Args:
+            auto_fix: Whether to automatically fix the mismatches
+
+        Returns:
+            Dictionary with mismatch detection and fix results
+        """
+        results = {
+            "mismatches": {
+                "companies": {
+                    "in_files_not_in_db": [],
+                    "in_db_not_in_files": []
+                },
+                "filings": {
+                    "in_files_not_in_db": [],
+                    "in_db_not_in_files": []
+                },
+                "embeddings": {
+                    "exist_but_not_tracked": []
+                }
+            },
+            "fixes": {
+                "companies_added": [],
+                "filings_added": [],
+                "filings_updated": [],
+                "errors": []
+            }
+        }
+
+        try:
+            # 1. Get companies from the database
+            db_companies = self.conn.execute("""
+                SELECT ticker FROM companies
+            """).fetchdf()
+            db_company_tickers = set(db_companies['ticker'].tolist() if not db_companies.empty else [])
+
+            # 2. Get companies from the file system
+            file_company_tickers = set()
+
+            # Check raw filings directory
+            raw_dir = self.filings_dir / "raw"
+            if raw_dir.exists():
+                file_company_tickers.update([d.name for d in raw_dir.iterdir() if d.is_dir()])
+
+            # Check vector store embeddings directory
+            embeddings_dir = self.vector_store_path / "embeddings"
+            if embeddings_dir.exists():
+                # Extract company tickers from embedding filenames
+                for emb_file in embeddings_dir.glob("*.npy"):
+                    filename = emb_file.stem
+                    if "_" in filename:
+                        ticker = filename.split("_")[0]
+                        file_company_tickers.add(ticker)
+
+            # 3. Find mismatches in companies
+            companies_in_files_not_in_db = file_company_tickers - db_company_tickers
+            companies_in_db_not_in_files = db_company_tickers - file_company_tickers
+
+            results["mismatches"]["companies"]["in_files_not_in_db"] = list(companies_in_files_not_in_db)
+            results["mismatches"]["companies"]["in_db_not_in_files"] = list(companies_in_db_not_in_files)
+
+            # 4. Auto-fix: Add missing companies to the database
+            if auto_fix and companies_in_files_not_in_db:
+                for ticker in companies_in_files_not_in_db:
+                    try:
+                        company_id = self._get_company_id(ticker)
+                        results["fixes"]["companies_added"].append(ticker)
+                    except Exception as e:
+                        results["fixes"]["errors"].append(f"Error adding company {ticker}: {str(e)}")
+
+            # 5. Get filings from the database
+            db_filings = self.conn.execute("""
+                SELECT f.accession_number, c.ticker
+                FROM filings_new f
+                JOIN companies c ON f.company_id = c.company_id
+            """).fetchdf()
+
+            db_filings_dict = {}
+            if not db_filings.empty:
+                for _, row in db_filings.iterrows():
+                    ticker = row['ticker']
+                    accession_number = row['accession_number']
+                    if ticker not in db_filings_dict:
+                        db_filings_dict[ticker] = set()
+                    db_filings_dict[ticker].add(accession_number)
+
+            # 6. Get filings from the file system
+            file_filings_dict = {}
+
+            # Check raw filings directory
+            if raw_dir.exists():
+                for ticker_dir in raw_dir.iterdir():
+                    if ticker_dir.is_dir():
+                        ticker = ticker_dir.name
+                        if ticker not in file_filings_dict:
+                            file_filings_dict[ticker] = set()
+
+                        # Get all files in this directory and subdirectories
+                        for file_path in ticker_dir.glob("**/*.*"):
+                            if file_path.is_file():
+                                # Extract accession number from filename
+                                accession_number = self._extract_accession_number(file_path.stem)
+                                if accession_number:
+                                    file_filings_dict[ticker].add(accession_number)
+
+            # 7. Get embeddings from the vector store
+            embedding_filings_dict = {}
+
+            # Check vector store embeddings directory
+            embeddings_dir = self.vector_store_path / "embeddings"
+            if embeddings_dir.exists():
+                # Extract company tickers and accession numbers from embedding filenames
+                for emb_file in embeddings_dir.glob("*.npy"):
+                    filename = emb_file.stem
+                    # Skip chunk embeddings
+                    if "_chunk_" in filename:
+                        continue
+                    if "_" in filename:
+                        parts = filename.split("_", 1)
+                        if len(parts) > 1:
+                            ticker = parts[0]
+                            accession_number = parts[1]
+                            if ticker not in embedding_filings_dict:
+                                embedding_filings_dict[ticker] = set()
+                            embedding_filings_dict[ticker].add(accession_number)
+
+            # 8. Find mismatches in filings
+            for ticker in set(list(file_filings_dict.keys()) + list(db_filings_dict.keys())):
+                db_filings_for_ticker = db_filings_dict.get(ticker, set())
+                file_filings_for_ticker = file_filings_dict.get(ticker, set())
+
+                # Filings in files but not in DB
+                filings_in_files_not_in_db = file_filings_for_ticker - db_filings_for_ticker
+                for accession_number in filings_in_files_not_in_db:
+                    results["mismatches"]["filings"]["in_files_not_in_db"].append({
+                        "ticker": ticker,
+                        "accession_number": accession_number
+                    })
+
+                # Filings in DB but not in files
+                filings_in_db_not_in_files = db_filings_for_ticker - file_filings_for_ticker
+                for accession_number in filings_in_db_not_in_files:
+                    results["mismatches"]["filings"]["in_db_not_in_files"].append({
+                        "ticker": ticker,
+                        "accession_number": accession_number
+                    })
+
+            # 9. Find embeddings that exist but aren't properly tracked
+            for ticker in embedding_filings_dict:
+                db_filings_for_ticker = db_filings_dict.get(ticker, set())
+                embedding_filings_for_ticker = embedding_filings_dict.get(ticker, set())
+
+                for accession_number in embedding_filings_for_ticker:
+                    # Check if this filing is in the database
+                    if accession_number in db_filings_for_ticker:
+                        # Check if it's marked as embedded
+                        is_embedded = self.conn.execute("""
+                            SELECT 1 FROM filings f
+                            JOIN companies c ON f.company_id = c.company_id
+                            WHERE c.ticker = ? AND f.accession_number = ? AND f.fiscal_period = 'Q3'
+                        """, [ticker, accession_number]).fetchone() is not None
+
+                        if not is_embedded:
+                            results["mismatches"]["embeddings"]["exist_but_not_tracked"].append({
+                                "ticker": ticker,
+                                "accession_number": accession_number
+                            })
+                    else:
+                        # Embedding exists but filing is not in DB
+                        results["mismatches"]["embeddings"]["exist_but_not_tracked"].append({
+                            "ticker": ticker,
+                            "accession_number": accession_number
+                        })
+
+            # 10. Auto-fix: Add missing filings to the database
+            if auto_fix:
+                # Add companies first if needed
+                for ticker in companies_in_files_not_in_db:
+                    if ticker not in results["fixes"]["companies_added"]:
+                        try:
+                            company_id = self._get_company_id(ticker)
+                            results["fixes"]["companies_added"].append(ticker)
+                        except Exception as e:
+                            results["fixes"]["errors"].append(f"Error adding company {ticker}: {str(e)}")
+
+                # Add missing filings
+                for filing_info in results["mismatches"]["filings"]["in_files_not_in_db"]:
+                    ticker = filing_info["ticker"]
+                    accession_number = filing_info["accession_number"]
+
+                    try:
+                        # Find the file
+                        file_path = self._find_filing_file(ticker, accession_number)
+
+                        if file_path:
+                            # Extract filing type and date
+                            filing_type, filing_date = self._extract_filing_info(file_path, ticker)
+
+                            # Get company_id
+                            company_id = self._get_company_id(ticker)
+
+                            # Generate a filing ID
+                            max_id = self.conn.execute("SELECT MAX(filing_id) FROM filings").fetchone()[0]
+                            filing_id = 1 if max_id is None else max_id + 1
+
+                            # Determine processing status
+                            status = self._determine_processing_status(ticker, accession_number)
+
+                            # Map status to fiscal period
+                            status_map = {
+                                "downloaded": "Q1",
+                                "processed": "Q2",
+                                "embedded": "Q3",
+                                "xbrl_processed": "Q4",
+                                "error": "FY",
+                                "unknown": None
+                            }
+                            fiscal_period = status_map.get(status, None)
+
+                            # Add to DuckDB
+                            self.conn.execute(
+                                """
+                                INSERT INTO filings (
+                                    id, filing_id, company_id, accession_number, filing_type, filing_date,
+                                    document_url, fiscal_period, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                                """,
+                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, filing_type, filing_date,
+                                 str(file_path), fiscal_period]
+                            )
+
+                            results["fixes"]["filings_added"].append({
+                                "ticker": ticker,
+                                "accession_number": accession_number
+                            })
+                    except Exception as e:
+                        results["fixes"]["errors"].append(
+                            f"Error adding filing {ticker}/{accession_number}: {str(e)}"
+                        )
+
+                # Update filings with embeddings that aren't tracked
+                for filing_info in results["mismatches"]["embeddings"]["exist_but_not_tracked"]:
+                    ticker = filing_info["ticker"]
+                    accession_number = filing_info["accession_number"]
+
+                    try:
+                        # Check if filing exists in database
+                        existing = self.conn.execute("""
+                            SELECT 1 FROM filings f
+                            JOIN companies c ON f.company_id = c.company_id
+                            WHERE c.ticker = ? AND f.accession_number = ?
+                        """, [ticker, accession_number]).fetchone()
+
+                        if existing:
+                            # Update fiscal period to indicate embedding exists
+                            self.conn.execute("""
+                                UPDATE filings
+                                SET fiscal_period = 'Q3', updated_at = CURRENT_TIMESTAMP
+                                WHERE accession_number = ? AND
+                                      company_id = (SELECT company_id FROM companies WHERE ticker = ?)
+                            """, [accession_number, ticker])
+
+                            results["fixes"]["filings_updated"].append({
+                                "ticker": ticker,
+                                "accession_number": accession_number
+                            })
+                        else:
+                            # Filing doesn't exist, add it
+                            # Get company_id
+                            company_id = self._get_company_id(ticker)
+
+                            # Generate a filing ID
+                            max_id = self.conn.execute("SELECT MAX(filing_id) FROM filings").fetchone()[0]
+                            filing_id = 1 if max_id is None else max_id + 1
+
+                            # Add to DuckDB with minimal information
+                            self.conn.execute(
+                                """
+                                INSERT INTO filings (
+                                    id, filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
+                                ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                                """,
+                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"]
+                            )
+
+                            results["fixes"]["filings_added"].append({
+                                "ticker": ticker,
+                                "accession_number": accession_number
+                            })
+                    except Exception as e:
+                        results["fixes"]["errors"].append(
+                            f"Error updating filing {ticker}/{accession_number}: {str(e)}"
+                        )
+
+            return results
+
+        except Exception as e:
+            logger.error(f"Error detecting and fixing mismatches: {e}")
+            return {"error": str(e)}
+
 
 # Command-line interface
 if __name__ == "__main__":
@@ -886,7 +1238,8 @@ if __name__ == "__main__":
     parser.add_argument("--filings-dir", default="data/filings", help="Path to filings directory")
     parser.add_argument("--graph-store-dir", default="data/graph_store", help="Path to graph store directory")
     parser.add_argument("--action", choices=["sync-all", "sync-vector-store", "sync-file-system",
-                                            "update-paths", "update-status", "summary"],
+                                            "update-paths", "update-status", "summary", "detect-mismatches",
+                                            "fix-mismatches"],
                         default="sync-all", help="Action to perform")
 
     args = parser.parse_args()
@@ -917,6 +1270,12 @@ if __name__ == "__main__":
         print(json.dumps(results, indent=2))
     elif args.action == "summary":
         results = sync_manager.get_inventory_summary()
+        print(json.dumps(results, indent=2))
+    elif args.action == "detect-mismatches":
+        results = sync_manager.detect_and_fix_mismatches(auto_fix=False)
+        print(json.dumps(results, indent=2))
+    elif args.action == "fix-mismatches":
+        results = sync_manager.detect_and_fix_mismatches(auto_fix=True)
         print(json.dumps(results, indent=2))
 
     # Close connection

@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 from .base import Agent, Goal
 from ..capabilities.base import Capability
 from ..capabilities.time_awareness import TimeAwarenessCapability
+from ..capabilities.planning import PlanningCapability
 from ..environments.financial import FinancialEnvironment
 
 class RiskAnalystAgent(Agent):
@@ -94,12 +95,47 @@ class RiskAnalystAgent(Agent):
         if not has_time_awareness:
             self.capabilities.append(TimeAwarenessCapability())
 
-    async def run(self, user_input: str, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
+        # Add PlanningCapability if not already present
+        has_planning = any(isinstance(cap, PlanningCapability) for cap in self.capabilities)
+        if not has_planning:
+            self.capabilities.append(PlanningCapability(
+                enable_dynamic_replanning=True,
+                enable_step_reflection=True,
+                min_steps_before_reflection=1,
+                max_plan_steps=5,  # Limited planning depth
+                plan_detail_level="medium",
+                # Planning instructions focused on how to accomplish the task
+                planning_instructions="""You are a risk analyst agent responsible for identifying and assessing risks.
+                Your goal is to create a detailed plan to accomplish the task assigned by the coordinator.
+
+                For each task:
+                1. Analyze the task objective to understand what risk assessment is needed
+                2. Determine which tools would be most appropriate to gather risk information
+                3. Create a step-by-step plan to identify, assess, and analyze risks
+                4. Include specific tool selections and parameters in your plan
+
+                Available tools:
+                - sec_semantic_search: Searches for information in SEC filings using semantic search
+                  - Useful for finding risk factors and disclosures in filing text
+                  - Try searching for terms like "risk factors", "uncertainties", "challenges"
+
+                - sec_graph_query: Queries the knowledge graph for relationships between entities
+                  - Useful for finding connections between companies, filings, etc.
+
+                - sec_financial_data: Retrieves financial data from SEC filings
+                  - Useful for assessing financial risks
+
+                Your plan should be detailed enough to accomplish the task effectively while staying focused on the specific objective.
+                """
+            ))
+
+    async def run(self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """
-        Run the risk analyst agent.
+        Run the risk analyst agent with a provided high-level task.
 
         Args:
             user_input: The input to process (e.g., company name or risk assessment request)
+            plan: Optional high-level task from the coordinator
             memory: Optional memory to initialize with
 
         Returns:
@@ -109,6 +145,29 @@ class RiskAnalystAgent(Agent):
         if memory:
             for item in memory:
                 self.state.add_memory_item(item)
+
+        # Add plan to memory if provided
+        if plan:
+            self.logger.info(f"Received high-level task from coordinator: {plan}")
+            self.add_to_memory({
+                "type": "high_level_task",
+                "content": plan
+            })
+
+            # Extract task objective and success criteria
+            task_objective = plan.get("task_objective", "")
+            success_criteria = plan.get("success_criteria", [])
+
+            # Add to planning context
+            if hasattr(self.state, 'update_context'):
+                self.state.update_context({
+                    "planning": {
+                        "high_level_task": {
+                            "objective": task_objective,
+                            "success_criteria": success_criteria
+                        }
+                    }
+                })
 
         # Initialize capabilities
         for capability in self.capabilities:

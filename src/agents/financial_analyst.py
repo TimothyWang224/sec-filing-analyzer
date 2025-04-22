@@ -109,12 +109,13 @@ class FinancialAnalystAgent(Agent):
                 plan_detail_level="medium"
             ))
 
-    async def run(self, user_input: str, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
+    async def run(self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
         """
-        Run the financial analyst agent.
+        Run the financial analyst agent with a provided high-level task.
 
         Args:
             user_input: The input to process (e.g., ticker symbol or analysis request)
+            plan: Optional high-level task from the coordinator
             memory: Optional memory to initialize with
 
         Returns:
@@ -124,6 +125,29 @@ class FinancialAnalystAgent(Agent):
         if memory:
             for item in memory:
                 self.state.add_memory_item(item)
+
+        # Add plan to memory if provided
+        if plan:
+            self.logger.info(f"Received high-level task from coordinator: {plan}")
+            self.add_to_memory({
+                "type": "high_level_task",
+                "content": plan
+            })
+
+            # Extract task objective and success criteria
+            task_objective = plan.get("task_objective", "")
+            success_criteria = plan.get("success_criteria", [])
+
+            # Add to planning context
+            if hasattr(self.state, 'update_context'):
+                self.state.update_context({
+                    "planning": {
+                        "high_level_task": {
+                            "objective": task_objective,
+                            "success_criteria": success_criteria
+                        }
+                    }
+                })
 
         # Parse tasks from user input
         task_parser = TaskParser(self.llm)

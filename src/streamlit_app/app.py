@@ -5,17 +5,34 @@ Main entry point for the SEC Filing Analyzer Streamlit application.
 """
 
 import streamlit as st
+# Set page config first (must be the first Streamlit command)
+st.set_page_config(
+    page_title="SEC Filing Analyzer",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import os
 import sys
 from pathlib import Path
 import logging
+import threading
+import queue
+import time
+
+# Add the project root to the Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+# Import terminal output component
+from src.streamlit_app.components.terminal_output import TerminalOutputCapture
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sec_filing_analyzer_app")
 
-# Add the project root to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Start capturing terminal output
+TerminalOutputCapture.start_capture()
 
 # Import configuration
 from sec_filing_analyzer.config import ConfigProvider, StreamlitConfig
@@ -23,13 +40,7 @@ from sec_filing_analyzer.config import ConfigProvider, StreamlitConfig
 # Import utility functions
 from src.streamlit_app.utils import launch_duckdb_ui
 
-# Set page config
-st.set_page_config(
-    page_title="SEC Filing Analyzer",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Page config is already set at the top of the file
 
 # Initialize configuration
 ConfigProvider.initialize()
@@ -52,21 +63,31 @@ st.sidebar.info("""
 
 Use the navigation menu at the top of the sidebar to access different pages:
 - **app**: This dashboard
-- **agent workflow**: Interact with intelligent agents
+- **etl_data_inventory**: View companies and filings in the system (Primary)
+- **etl_pipeline**: Run data extraction pipelines
+- **agent_workflow**: Interact with intelligent agents
+- **data_explorer**: Explore extracted data
+- **data_management**: Manage data across storage systems
 - **configuration**: Configure system settings
-- **data explorer**: Explore extracted data
-- **etl pipeline**: Run data extraction pipelines
 """)
 
 # Main dashboard content
 st.header("Dashboard")
 st.write("Welcome to the SEC Filing Analyzer dashboard.")
 
+# Add a terminal output component to the sidebar
+with st.sidebar.expander("Terminal Output", expanded=False):
+    # Import display_terminal_output
+    from src.streamlit_app.components.terminal_output import display_terminal_output
+
+    # Display the terminal output
+    display_terminal_output("Global Terminal Output", height=400)
+
 # System status
 st.subheader("System Status")
 
 # Check if DuckDB database exists
-db_path = "data/financial_data.duckdb"
+db_path = "data/db_backup/improved_financial_data.duckdb"
 db_exists = os.path.exists(db_path)
 
 # Check if vector store exists
@@ -90,19 +111,19 @@ st.subheader("Quick Actions")
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
+    if st.button("ETL Data Inventory", use_container_width=True):
+        # Use Streamlit's built-in page navigation
+        st.switch_page("pages/etl_data_inventory.py")
+
+with col2:
     if st.button("Run ETL Pipeline", use_container_width=True):
         # Use Streamlit's built-in page navigation
         st.switch_page("pages/etl_pipeline.py")
 
-with col2:
+with col3:
     if st.button("Start Agent Workflow", use_container_width=True):
         # Use Streamlit's built-in page navigation
         st.switch_page("pages/agent_workflow.py")
-
-with col3:
-    if st.button("Explore Data", use_container_width=True):
-        # Use Streamlit's built-in page navigation
-        st.switch_page("pages/data_explorer.py")
 
 with col4:
     if st.button("Open DuckDB UI", use_container_width=True):

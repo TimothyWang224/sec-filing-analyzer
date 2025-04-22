@@ -5,6 +5,14 @@ This page shows what companies and filings are currently stored in the system.
 """
 
 import streamlit as st
+# Set page config first (must be the first Streamlit command)
+st.set_page_config(
+    page_title="ETL Data Inventory",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import pandas as pd
 import os
 import sys
@@ -13,6 +21,12 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import duckdb
 import time
+
+# Add the project root to the Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
+# Import terminal output component
+from streamlit_app.components.terminal_output import TerminalOutputCapture, display_terminal_output, run_with_output_capture
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
@@ -26,15 +40,7 @@ from src.streamlit_app.services import get_etl_service
 # Import the DuckDB manager
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('etl_data_inventory.log')
-    ]
-)
+# Configure logger
 logger = logging.getLogger('etl_data_inventory')
 
 # Log startup information
@@ -45,13 +51,7 @@ logger.info(f"Current directory: {os.getcwd()}")
 # Initialize the ETL service
 etl_service = get_etl_service()
 
-# Set page config
-st.set_page_config(
-    page_title="ETL Data Inventory",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Page config is already set at the top of the file
 
 # Initialize session state for refresh tracking
 if 'last_data_load' not in st.session_state:
@@ -102,6 +102,26 @@ This page shows what companies and filings are currently stored in the system.
 Use this to see what data is available and identify what new data to add.
 """)
 
+# Add DuckDB UI button at the top of the page
+top_col1, top_col2 = st.columns([8, 4])
+
+with top_col1:
+    st.markdown("### Database Access")
+    st.markdown("Access the DuckDB database to explore the data using the native DuckDB UI.")
+
+with top_col2:
+    # Button to launch DuckDB UI
+    if st.button("🌐 Launch DuckDB UI", key="top_launch_duckdb_ui", use_container_width=True, help="Launch the native DuckDB UI in a new browser tab"):
+        # Log the button click
+        logger.info("Launch DuckDB UI button clicked")
+
+        # Launch DuckDB UI
+        from src.streamlit_app.utils import launch_duckdb_ui
+        launch_duckdb_ui()
+
+# Add a separator
+st.markdown("---")
+
 # Function to get data from DuckDB
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _refresh_id=None):
@@ -120,8 +140,8 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
         logger.info(f"Retrieved {len(companies_df)} companies from DuckDB")
 
         # Get filings with improved schema
-        # First check if the table exists and what columns it has
-        table_info = conn.execute("PRAGMA table_info(filings)").fetchdf()
+        # First check if the filings_new table exists and what columns it has
+        table_info = conn.execute("PRAGMA table_info(filings_new)").fetchdf()
         column_names = table_info['name'].tolist() if not table_info.empty else []
 
         # Build a query based on available columns
@@ -315,8 +335,23 @@ def get_inventory_summary(_refresh_id=None):
 def sync_storage():
     """Synchronize storage systems."""
     try:
-        # Sync storage using ETL service
-        results = etl_service.sync_storage()
+        # First, ensure the ETL service is properly initialized
+        if not etl_service:
+            logger.error("ETL service not initialized")
+            return {"error": "ETL service not initialized"}
+
+        # Check if sync manager is initialized, and force initialize if needed
+        if not etl_service.sync_manager:
+            logger.warning("Storage sync manager not initialized, attempting to force initialize...")
+            if not etl_service.force_initialize_sync_manager():
+                logger.error("Failed to initialize storage sync manager")
+                return {"error": "Failed to initialize storage sync manager"}
+            else:
+                logger.info("Successfully forced initialization of storage sync manager")
+
+        # Sync storage using ETL service with output capture
+        logger.info("Starting storage synchronization...")
+        results = run_with_output_capture(etl_service.sync_storage)
         logger.info(f"Storage synchronization completed: {results}")
         return results
     except Exception as e:
@@ -504,10 +539,9 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
             refresh_data()
 
     with col5:
-        # Add DuckDB UI button
-        if st.button("🔍 Open DuckDB UI", key="open_duckdb_ui", help="Open the DuckDB UI in a new browser tab"):
-            # Launch DuckDB UI using the utility function
-            launch_duckdb_ui()
+        # Add refresh button for data summary
+        if st.button("🔄 Refresh Data", key="refresh_data_button", use_container_width=True, help="Refresh the data to see the latest changes"):
+            refresh_data()
 
     summary_col1, summary_col2, summary_col3 = st.columns(3)
 
@@ -687,7 +721,8 @@ with inventory_tabs[0]:
             if 'ticker' in filing:
                 ticker = filing['ticker']
             elif 'company_id' in filing:
-                ticker = filing['company_id']
+                # Convert company_id to string if it's used as a ticker
+                ticker = str(filing['company_id'])
 
             if ticker:
                 if ticker not in company_filings:
@@ -794,7 +829,8 @@ with inventory_tabs[1]:
                     if 'ticker' in filing:
                         ticker = filing['ticker']
                     elif 'company_id' in filing:
-                        ticker = filing['company_id']
+                        # Convert company_id to string if it's used as a ticker
+                        ticker = str(filing['company_id'])
                     else:
                         # Skip this filing if we can't identify the company
                         continue
@@ -900,7 +936,8 @@ with inventory_tabs[2]:
                     if 'ticker' in filing:
                         ticker = filing['ticker']
                     elif 'company_id' in filing:
-                        ticker = filing['company_id']
+                        # Convert company_id to string if it's used as a ticker
+                        ticker = str(filing['company_id'])
                     else:
                         # Skip this filing if we can't identify the company
                         continue
@@ -1373,23 +1410,65 @@ with data_mgmt_tabs[0]:
 
     # Add a button to sync storage
     if st.button("Synchronize Storage", type="primary"):
+        # Display terminal output component
+        terminal_container = display_terminal_output("Synchronization Output", height=400)
+
         # Show a spinner while syncing
         with st.spinner("Synchronizing storage systems..."):
-            # Sync storage
+            # Sync storage with output capture
             results = sync_storage()
 
             # Display results
             if "error" in results:
                 st.error(f"Error synchronizing storage: {results['error']}")
+                st.info("Try refreshing the page and attempting synchronization again. If the issue persists, check the logs for more details.")
             elif "warning" in results:
                 st.success("Storage synchronization partially completed!")
                 st.warning(results["warning"])
                 if "message" in results:
                     st.info(results["message"])
+
+                # Show detailed component results if available
+                if "vector_store" in results:
+                    with st.expander("Vector Store Synchronization Details"):
+                        st.write(f"Found: {results['vector_store'].get('found', 0)}")
+                        st.write(f"Added: {results['vector_store'].get('added', 0)}")
+                        st.write(f"Updated: {results['vector_store'].get('updated', 0)}")
+                        st.write(f"Errors: {results['vector_store'].get('errors', 0)}")
+
+                if "file_system" in results:
+                    with st.expander("File System Synchronization Details"):
+                        st.write(f"Found: {results['file_system'].get('found', 0)}")
+                        st.write(f"Added: {results['file_system'].get('added', 0)}")
+                        st.write(f"Updated: {results['file_system'].get('updated', 0)}")
+                        st.write(f"Errors: {results['file_system'].get('errors', 0)}")
             else:
                 st.success("Storage synchronization completed successfully!")
                 if "message" in results:
                     st.info(results["message"])
+
+                # Show detailed component results
+                if "vector_store" in results:
+                    with st.expander("Vector Store Synchronization Details"):
+                        st.write(f"Found: {results['vector_store'].get('found', 0)}")
+                        st.write(f"Added: {results['vector_store'].get('added', 0)}")
+                        st.write(f"Updated: {results['vector_store'].get('updated', 0)}")
+                        st.write(f"Errors: {results['vector_store'].get('errors', 0)}")
+
+                if "file_system" in results:
+                    with st.expander("File System Synchronization Details"):
+                        st.write(f"Found: {results['file_system'].get('found', 0)}")
+                        st.write(f"Added: {results['file_system'].get('added', 0)}")
+                        st.write(f"Updated: {results['file_system'].get('updated', 0)}")
+                        st.write(f"Errors: {results['file_system'].get('errors', 0)}")
+
+                # Show total filings count
+                if "total_filings" in results:
+                    st.info(f"Total filings in database: {results['total_filings']}")
+
+                # Refresh the data after successful synchronization
+                st.info("Refreshing data to show the latest changes...")
+                refresh_data()
 
                 # Display summary
                 st.subheader("Synchronization Results")
