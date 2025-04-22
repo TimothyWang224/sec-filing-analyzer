@@ -35,12 +35,12 @@ class OpenAILLM(LLM):
         self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
-        
+
         # Use provided API key or get from environment
         api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OpenAI API key not provided and OPENAI_API_KEY environment variable not set")
-        
+
         self.client = OpenAI(api_key=api_key)
 
     async def generate(
@@ -50,6 +50,7 @@ class OpenAILLM(LLM):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         stop: Optional[Union[str, List[str]]] = None,
+        json_mode: bool = False,
         **kwargs
     ) -> str:
         """
@@ -61,6 +62,7 @@ class OpenAILLM(LLM):
             temperature: Optional temperature parameter (0-1)
             max_tokens: Optional maximum number of tokens to generate
             stop: Optional stop sequences
+            json_mode: If True, forces the model to return valid JSON
             **kwargs: Additional model-specific parameters
 
         Returns:
@@ -69,23 +71,30 @@ class OpenAILLM(LLM):
         # Use provided parameters or fall back to instance defaults
         temperature = temperature if temperature is not None else self.temperature
         max_tokens = max_tokens if max_tokens is not None else self.max_tokens
-        
+
         # Prepare messages
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        
-        # Call the OpenAI API
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stop=stop,
+
+        # Prepare API call parameters
+        api_params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stop": stop,
             **kwargs
-        )
-        
+        }
+
+        # Add response_format for JSON mode if requested
+        if json_mode:
+            api_params["response_format"] = {"type": "json_object"}
+
+        # Call the OpenAI API
+        response = self.client.chat.completions.create(**api_params)
+
         # Extract and return the generated text
         return response.choices[0].message.content
 
@@ -114,22 +123,23 @@ class OpenAILLM(LLM):
         """
         # Add JSON instructions to the prompt
         json_prompt = f"{prompt}\n\nRespond with a JSON object that matches this schema:\n{json.dumps(output_schema, indent=2)}"
-        
+
         # Add JSON instructions to the system prompt
         if system_prompt:
             system_prompt = f"{system_prompt}\nYou must respond with a valid JSON object that matches the specified schema."
         else:
             system_prompt = "You must respond with a valid JSON object that matches the specified schema."
-        
-        # Generate text
+
+        # Generate text with JSON mode enabled
         response_text = await self.generate(
             prompt=json_prompt,
             system_prompt=system_prompt,
             temperature=temperature,
             max_tokens=max_tokens,
+            json_mode=True,  # Force the model to return valid JSON
             **kwargs
         )
-        
+
         # Extract JSON from the response
         try:
             # Try to parse the entire response as JSON
@@ -142,7 +152,7 @@ class OpenAILLM(LLM):
                     return json.loads(json_match.group(1))
                 except json.JSONDecodeError:
                     pass
-            
+
             # Try another common pattern
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
@@ -150,6 +160,6 @@ class OpenAILLM(LLM):
                     return json.loads(json_match.group(0))
                 except json.JSONDecodeError:
                     pass
-            
+
             # If all extraction attempts fail, raise an error
             raise ValueError(f"Failed to extract valid JSON from LLM response: {response_text}")

@@ -9,10 +9,172 @@ import logging
 import traceback
 import json
 import re
+import threading
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Set
 from collections import defaultdict
+
+# Global variable to store the current session ID
+_current_session_id = None
+_session_id_lock = threading.Lock()
+
+
+def get_current_session_id() -> Optional[str]:
+    """Get the current session ID.
+
+    Returns:
+        Current session ID or None if not set
+    """
+    return _current_session_id
+
+
+def set_current_session_id(session_id: str) -> None:
+    """Set the current session ID.
+
+    Args:
+        session_id: Session ID to set as current
+    """
+    global _current_session_id
+    with _session_id_lock:
+        _current_session_id = session_id
+
+
+class SessionLogger:
+    """Centralized logger for managing session-wide logging across multiple agents.
+
+    This class provides a way to aggregate logs from multiple agents into a single file
+    while maintaining individual agent logs for backward compatibility.
+
+    Usage:
+        # Get or create a session logger
+        session_logger = SessionLogger.get_logger(session_id)
+
+        # Register an agent with the session
+        session_logger.register_agent(agent_name, agent_logger)
+
+        # Log a message to the session log
+        session_logger.log(level, message, agent_name)
+    """
+
+    # Class-level storage for session loggers
+    _loggers: Dict[str, 'SessionLogger'] = {}
+    _lock = threading.Lock()
+
+    @classmethod
+    def get_logger(cls, session_id: Optional[str] = None) -> 'SessionLogger':
+        """Get or create a session logger for the given session ID.
+
+        Args:
+            session_id: Unique identifier for the session. If None, uses the current session ID.
+
+        Returns:
+            SessionLogger instance for the session
+        """
+        # If no session_id provided, use the current one
+        if session_id is None:
+            session_id = get_current_session_id()
+            if session_id is None:
+                # Generate a new session ID if none exists
+                session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+                set_current_session_id(session_id)
+
+        with cls._lock:
+            if session_id not in cls._loggers:
+                cls._loggers[session_id] = SessionLogger(session_id)
+            return cls._loggers[session_id]
+
+    def __init__(self, session_id: str):
+        """Initialize a new session logger.
+
+        Args:
+            session_id: Unique identifier for the session
+        """
+        self.session_id = session_id
+        self.agents: Set[str] = set()
+        self.logger = logging.getLogger(f"session.{session_id}")
+
+        # Set up logging to file
+        log_dir = get_standard_log_dir("sessions")
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create log file
+        log_file = log_dir / f"session_{session_id}.log"
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+
+        # Create formatter
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+
+        # Add handler to logger
+        self.logger.setLevel(logging.INFO)
+        self.logger.addHandler(file_handler)
+
+        # Log session start
+        self.logger.info(f"Session {session_id} started")
+
+    def register_agent(self, agent_name: str, agent_logger: Optional[logging.Logger] = None) -> None:
+        """Register an agent with this session.
+
+        Args:
+            agent_name: Name of the agent
+            agent_logger: Optional logger instance for the agent
+        """
+        self.agents.add(agent_name)
+        self.logger.info(f"Agent {agent_name} joined session {self.session_id}")
+
+        # If agent_logger is provided, add a handler to forward logs to the session log
+        if agent_logger:
+            # Create a handler that forwards logs to the session logger
+            class SessionLogHandler(logging.Handler):
+                def __init__(self, session_logger, agent_name):
+                    super().__init__()
+                    self.session_logger = session_logger
+                    self.agent_name = agent_name
+
+                def emit(self, record):
+                    # Forward the log record to the session logger
+                    self.session_logger.log(
+                        record.levelno,
+                        record.getMessage(),
+                        self.agent_name
+                    )
+
+            # Add the handler to the agent logger
+            handler = SessionLogHandler(self, agent_name)
+            handler.setLevel(logging.INFO)
+            agent_logger.addHandler(handler)
+
+    def log(self, level: int, message: str, agent_name: str) -> None:
+        """Log a message to the session log.
+
+        Args:
+            level: Logging level (e.g., logging.INFO)
+            message: Message to log
+            agent_name: Name of the agent that generated the message
+        """
+        self.logger.log(level, f"[{agent_name}] {message}")
+
+
+def get_session_log_path(session_id: Optional[str] = None) -> Path:
+    """Get the path to the consolidated log file for a session.
+
+    Args:
+        session_id: Session ID to get the log path for. If None, uses the current session ID.
+
+    Returns:
+        Path to the session log file
+    """
+    if session_id is None:
+        session_id = get_current_session_id()
+        if session_id is None:
+            # Generate a new session ID if none exists
+            session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+            set_current_session_id(session_id)
+
+    log_dir = get_standard_log_dir("sessions")
+    return log_dir / f"session_{session_id}.log"
 
 # Create a custom logger for embedding errors
 embedding_logger = logging.getLogger('embedding_errors')

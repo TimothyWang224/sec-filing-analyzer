@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-from typing import Any, AsyncGenerator, Optional
+from typing import Any, AsyncGenerator, Optional, List, Dict, Union
 
 import openai
 from dotenv import load_dotenv
@@ -166,3 +166,91 @@ class OpenAILLM(BaseLLM):
         # Log completion info
         duration = time.time() - start_time
         logger.info(f"LLM Stream completed: chunks={chunk_count}, chars={total_chars}, time={duration:.2f}s, rate={total_chars/duration:.1f} chars/sec")
+
+    @timed_function(category="llm_function_call")
+    async def generate_with_functions(
+        self,
+        prompt: str,
+        functions: List[Dict[str, Any]],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        function_call: Optional[Union[str, Dict[str, str]]] = None,
+        **kwargs: Any
+    ) -> Dict[str, Any]:
+        """Generate a response using OpenAI's function calling API.
+
+        Args:
+            prompt: The user prompt to generate a response for
+            functions: List of function definitions in OpenAI format
+            system_prompt: Optional system prompt to set context
+            temperature: Controls randomness in the output (0.0 to 1.0)
+            max_tokens: Maximum number of tokens to generate
+            function_call: Optional control over function calling behavior
+                - "auto": Let the model decide whether to call a function
+                - "none": Don't call a function
+                - {"name": "function_name"}: Call the specified function
+            **kwargs: Additional provider-specific parameters
+
+        Returns:
+            Dictionary containing the response and function call information
+        """
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        # Log the request details
+        token_estimate = len(prompt.split()) // 4  # Rough estimate
+        logger.debug(f"LLM Function Call Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, functions={len(functions)}")
+
+        # Prepare API call parameters
+        api_params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "tools": [{
+                "type": "function",
+                "function": function
+            } for function in functions],
+            **kwargs
+        }
+
+        # Add function_call parameter if provided
+        if function_call:
+            if isinstance(function_call, str):
+                api_params["tool_choice"] = function_call
+            elif isinstance(function_call, dict) and "name" in function_call:
+                api_params["tool_choice"] = {
+                    "type": "function",
+                    "function": {"name": function_call["name"]}
+                }
+
+        # Time the API call specifically
+        with TimingContext("openai_api_call", category="api", logger=logger):
+            response = self.client.chat.completions.create(**api_params)
+
+        # Log completion info
+        completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else "unknown"
+        prompt_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else "unknown"
+        total_tokens = response.usage.total_tokens if hasattr(response, 'usage') else "unknown"
+
+        logger.info(f"LLM Function Call Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
+
+        # Extract response content and function call information
+        message = response.choices[0].message
+        result = {
+            "content": message.content or "",
+        }
+
+        # Extract function call information if available
+        if hasattr(message, 'tool_calls') and message.tool_calls:
+            tool_call = message.tool_calls[0]
+            if tool_call.type == "function":
+                result["function_call"] = {
+                    "name": tool_call.function.name,
+                    "arguments": tool_call.function.arguments
+                }
+
+        return result

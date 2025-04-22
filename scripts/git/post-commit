@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+# Post-commit hook to automatically push changes to GitHub after each commit
+#
+
+# Get the current branch name
+BRANCH=$(git symbolic-ref --short HEAD)
+
+echo "Auto-pushing changes to GitHub ($BRANCH)..."
+git push origin $BRANCH
+
+# Check if push was successful
+if [ $? -eq 0 ]; then
+    echo "Successfully pushed changes to GitHub."
+else
+    echo "Failed to push changes to GitHub. You may need to push manually."
+    echo "Try running: git push origin $BRANCH"
+fi

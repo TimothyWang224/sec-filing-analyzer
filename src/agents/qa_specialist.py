@@ -293,22 +293,54 @@ class QASpecialistAgent(Agent):
                 """
 
                 try:
-                    # Get tool selection from LLM
-                    tool_selection_response = await self.llm.generate(prompt=tool_selection_prompt)
-                    self.logger.info(f"Tool selection response: {tool_selection_response}")
+                    # Define the tool selection function
+                    tool_selection_function = {
+                        "name": "select_tool",
+                        "description": "Select the most appropriate tool to answer the user's question",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "tool": {
+                                    "type": "string",
+                                    "description": "The name of the tool to use",
+                                    "enum": ["sec_financial_data", "sec_semantic_search", "sec_graph_query", "sec_data"]
+                                },
+                                "parameters": {
+                                    "type": "object",
+                                    "description": "Parameters for the selected tool"
+                                }
+                            },
+                            "required": ["tool"]
+                        }
+                    }
 
-                    # Parse the JSON response
+                    # Use function calling to get tool selection
+                    self.logger.info("Using function calling for tool selection")
+                    response = await self.llm.generate_with_functions(
+                        prompt=tool_selection_prompt,
+                        functions=[tool_selection_function],
+                        function_call={"name": "select_tool"},  # Force the model to call this function
+                        temperature=0.2  # Lower temperature for more deterministic tool selection
+                    )
+
+                    self.logger.info(f"Function call response: {response}")
+
+                    # Check if we have a function call in the response
+                    if "function_call" not in response:
+                        self.logger.warning("No function call in response, falling back to normal answer generation")
+                        answer = await self._generate_answer(user_input)
+                        continue
+
+                    # Extract function call information
+                    function_call = response["function_call"]
+                    self.logger.info(f"Function call: {function_call}")
+
+                    # Parse the arguments JSON
                     try:
-                        # Extract JSON from the response
-                        json_str = tool_selection_response.strip()
-                        # Find JSON object in the response if it's not a clean JSON
-                        if not json_str.startswith('{'):
-                            import re
-                            json_match = re.search(r'\{[^\{\}]*"tool"[^\{\}]*\}', json_str)
-                            if json_match:
-                                json_str = json_match.group(0)
+                        tool_selection = json.loads(function_call["arguments"])
+                        self.logger.info(f"Parsed tool selection: {tool_selection}")
 
-                        tool_selection = json.loads(json_str)
+                        # Extract tool name and parameters
                         tool_name = tool_selection.get("tool")
                         tool_params = tool_selection.get("parameters", {})
 

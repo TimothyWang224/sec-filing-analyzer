@@ -21,7 +21,7 @@ from ..tools.registry import ToolRegistry
 from ..tools.llm_parameter_completer import LLMParameterCompleter
 from sec_filing_analyzer.llm import BaseLLM, OpenAILLM
 from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
-from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
+from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir, SessionLogger, get_current_session_id, set_current_session_id
 from ..sec_filing_analyzer.utils.timing import timed_function, TimingContext
 
 # Try to import the ConfigProvider
@@ -155,7 +155,14 @@ class Agent(ABC):
         self.environment = environment or Environment()
 
         # Set up session ID for logging
-        self.session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+        current_session_id = get_current_session_id()
+        if current_session_id:
+            # Use the existing session ID if available
+            self.session_id = current_session_id
+        else:
+            # Generate a new session ID and set it as current
+            self.session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+            set_current_session_id(self.session_id)
 
         # Set up basic logging
         self.logger = self._setup_basic_logger()
@@ -534,6 +541,10 @@ class Agent(ABC):
             file_handler = logging.FileHandler(log_dir / f"{self.__class__.__name__}_{self.session_id}.log")
             file_handler.setFormatter(formatter)
             agent_logger.addHandler(file_handler)
+
+            # Register with session logger for consolidated logging
+            session_logger = SessionLogger.get_logger(self.session_id)
+            session_logger.register_agent(self.__class__.__name__, agent_logger)
 
         return agent_logger
 

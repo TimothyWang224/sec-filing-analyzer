@@ -134,7 +134,11 @@ def initialize_coordinator_agent():
         # Create capabilities
         capabilities = [
             TimeAwarenessCapability(),
-            LoggingCapability(),
+            LoggingCapability(
+                include_prompts=True,  # Enable logging of LLM prompts
+                include_responses=True,  # Enable logging of LLM responses
+                max_content_length=10000  # Increase max content length to capture full responses
+            ),
             PlanningCapability(
                 enable_dynamic_replanning=True,
                 enable_step_reflection=True,
