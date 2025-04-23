@@ -18,6 +18,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 try:
     from sec_filing_analyzer.config import ConfigProvider
     from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
+    # Import tools module to ensure all tools are registered via module-level side effects
+    # This is necessary because the tool registration happens when the module is imported
+    import sec_filing_analyzer.tools
     from src.agents import FinancialDiligenceCoordinator
     from src.environments import FinancialEnvironment
     from src.capabilities import TimeAwarenessCapability, LoggingCapability, PlanningCapability

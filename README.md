@@ -58,9 +58,10 @@ The system provides a unified ETL pipeline that can process both semantic and qu
 The system uses an agent-based architecture for analysis:
 
 1. **Phase-Based Execution**:
-   - Planning phase for understanding tasks and creating plans
-   - Execution phase for gathering data and generating initial answers
-   - Refinement phase for improving answer quality
+   - **Planning phase**: Understands tasks and creates structured plans (controlled by `max_planning_iterations`)
+   - **Execution phase**: Gathers data and generates initial answers through tool calls (controlled by `max_execution_iterations`)
+   - **Refinement phase**: Improves answer quality and presentation (controlled by `max_refinement_iterations`)
+   - Overall execution limited by `max_iterations` across all phases
 
 2. **Tool Integration**:
    - Agents can use various tools to gather and analyze data

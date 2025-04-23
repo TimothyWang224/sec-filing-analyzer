@@ -27,7 +27,7 @@ class OptimizedDuckDBStore:
             batch_size: Size of batches for bulk operations
             read_only: Whether to open the database in read-only mode
         """
-        self.db_path = db_path or "data/financial_data.duckdb"
+        self.db_path = db_path or "data/db_backup/financial_data.duckdb"
         self.batch_size = batch_size
         self.read_only = read_only
 

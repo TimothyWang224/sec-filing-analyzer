@@ -348,6 +348,11 @@ Return only the completed parameters as a JSON object.
         """Enhance parameters for the sec_semantic_search tool."""
         enhanced_params = parameters.copy()
 
+        # Ensure query parameter is always provided
+        if "query" not in enhanced_params:
+            enhanced_params["query"] = user_input
+            logger.info(f"Added missing query parameter to sec_semantic_search tool: {user_input}")
+
         # Extract company information
         company_info = await self._extract_company_info(user_input, context)
         if company_info.get("ticker") and "companies" not in enhanced_params:

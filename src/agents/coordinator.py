@@ -185,9 +185,10 @@ class FinancialDiligenceCoordinator(Agent):
         qa_specialist_model = "gpt-4o-mini"
         qa_specialist_temp = 0.5
         qa_specialist_tokens = 4000
+        qa_specialist_max_iterations = 5  # Increased from 3 to 5 for more complex queries
         qa_specialist_planning = 1
-        qa_specialist_execution = 5  # Increased from 2 to 5
-        qa_specialist_refinement = 2  # Increased from 1 to 2
+        qa_specialist_execution = 5  # Increased from 2 to 5 to allow more tool calls
+        qa_specialist_refinement = 2  # Increased from 1 to 2 for better answer refinement
 
         # Try to use configuration values if available
         use_config = False
@@ -247,6 +248,7 @@ class FinancialDiligenceCoordinator(Agent):
             qa_specialist_model = os.getenv("QA_SPECIALIST_MODEL", "gpt-4o-mini")
             qa_specialist_temp = float(os.getenv("QA_SPECIALIST_TEMPERATURE", "0.5"))
             qa_specialist_tokens = int(os.getenv("QA_SPECIALIST_MAX_TOKENS", "4000"))
+            qa_specialist_max_iterations = int(os.getenv("QA_SPECIALIST_MAX_ITERATIONS", "5"))  # Increased from 3 to 5
             qa_specialist_planning = int(os.getenv("QA_SPECIALIST_PLANNING_ITERATIONS", "1"))
             qa_specialist_execution = int(os.getenv("QA_SPECIALIST_EXECUTION_ITERATIONS", "5"))  # Increased from 2 to 5
             qa_specialist_refinement = int(os.getenv("QA_SPECIALIST_REFINEMENT_ITERATIONS", "2"))  # Increased from 1 to 2
@@ -277,6 +279,7 @@ class FinancialDiligenceCoordinator(Agent):
             llm_model=qa_specialist_model,
             llm_temperature=qa_specialist_temp,
             llm_max_tokens=qa_specialist_tokens,
+            max_iterations=qa_specialist_max_iterations,  # Added max_iterations parameter
             max_planning_iterations=qa_specialist_planning,
             max_execution_iterations=qa_specialist_execution,
             max_refinement_iterations=qa_specialist_refinement

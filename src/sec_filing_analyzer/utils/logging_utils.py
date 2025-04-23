@@ -154,7 +154,20 @@ class SessionLogger:
             message: Message to log
             agent_name: Name of the agent that generated the message
         """
-        self.logger.log(level, f"[{agent_name}] {message}")
+        # Check if this is a tool result message
+        if "Tool result:" in message or "Tool arguments:" in message:
+            # Format tool-related messages with clear separation
+            formatted_message = f"[{agent_name}] {message}"
+            # Add separator lines for better readability in logs
+            if "Tool result:" in message:
+                self.logger.log(level, "-" * 40)  # Add separator before tool result
+                self.logger.log(level, formatted_message)
+                self.logger.log(level, "-" * 40)  # Add separator after tool result
+            else:
+                self.logger.log(level, formatted_message)
+        else:
+            # Log normal messages
+            self.logger.log(level, f"[{agent_name}] {message}")
 
 
 def get_session_log_path(session_id: Optional[str] = None) -> Path:

@@ -107,10 +107,13 @@ class Agent(ABC):
         config = self._get_config(agent_type)
 
         # Set iteration parameters with fallbacks
-        self.max_iterations = max_iterations if max_iterations is not None else config.get("max_iterations", 3)  # Legacy parameter
+        self.max_iterations = max_iterations if max_iterations is not None else config.get("max_iterations", None)  # Legacy parameter
         self.max_planning_iterations = max_planning_iterations if max_planning_iterations is not None else config.get("max_planning_iterations", 2)
         self.max_execution_iterations = max_execution_iterations if max_execution_iterations is not None else config.get("max_execution_iterations", 3)
         self.max_refinement_iterations = max_refinement_iterations if max_refinement_iterations is not None else config.get("max_refinement_iterations", 1)
+
+        # Compute effective max iterations
+        self.max_iterations_effective = self._compute_effective_max_iterations()
 
         # Set tool execution parameters with fallbacks
         self.max_tool_retries = max_tool_retries if max_tool_retries is not None else config.get("max_tool_retries", 2)
@@ -166,6 +169,9 @@ class Agent(ABC):
 
         # Set up basic logging
         self.logger = self._setup_basic_logger()
+
+        # Log effective max iterations
+        self.logger.info(f"Effective max iterations: {self.max_iterations_effective} (derived from planning={self.max_planning_iterations}, execution={self.max_execution_iterations}, refinement={self.max_refinement_iterations})")
 
     def _get_config(self, agent_type: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -385,12 +391,18 @@ class Agent(ABC):
                 if completed_args != tool_args:
                     self.logger.info(f"Parameters completed: {tool_args} -> {completed_args}")
                     tool_args = completed_args
+
+                # Special handling for specific tools to ensure required parameters are present
+                if tool_name == "sec_semantic_search" and "query" not in tool_args:
+                    self.logger.info("Adding missing query parameter to sec_semantic_search tool")
+                    # Use the user input as the default query if not provided
+                    tool_args["query"] = user_input
             except Exception as e:
                 self.logger.error(f"Error completing parameters: {str(e)}")
                 # Continue with original parameters if completion fails
 
             self.logger.info(f"Executing tool call: {tool_name}")
-            self.logger.info(f"Tool arguments: {tool_args}")
+            self.logger.info(f"Tool arguments: {json.dumps(tool_args, indent=2)}")
 
             # Define a function to execute the tool
             async def execute_tool(tool_name, args):
@@ -431,6 +443,19 @@ class Agent(ABC):
                 # Add alternative tool information if available
                 if "alternative_tool" in recovery_result:
                     result_obj["alternative_tool"] = recovery_result["alternative_tool"]
+
+                # Log the tool result
+                try:
+                    # Format the result for logging
+                    result_str = json.dumps(recovery_result["result"], indent=2)
+                    if len(result_str) > 1000:
+                        # Truncate long results
+                        result_str = result_str[:997] + "..."
+                    self.logger.info(f"Tool result: {result_str}")
+                except Exception as e:
+                    # Handle non-serializable results
+                    self.logger.info(f"Tool result: {str(recovery_result['result'])}")
+                    self.logger.warning(f"Could not serialize tool result: {str(e)}")
 
                 # Add to results list
                 results.append(result_obj)
@@ -486,6 +511,11 @@ class Agent(ABC):
                 # Add circuit status if available
                 if "circuit_status" in recovery_result:
                     error_obj["circuit_status"] = recovery_result["circuit_status"]
+
+                # Log the error
+                self.logger.error(f"Tool error: {error_message}")
+                if "suggestions" in recovery_result:
+                    self.logger.info(f"Error suggestions: {recovery_result['suggestions']}")
 
                 # Add to results list
                 results.append(error_obj)
@@ -548,6 +578,25 @@ class Agent(ABC):
 
         return agent_logger
 
+    def _compute_effective_max_iterations(self) -> int:
+        """Compute the effective max iterations based on phase iterations."""
+        # If max_iterations is explicitly set, use it
+        if self.max_iterations is not None:
+            return self.max_iterations
+
+        # Otherwise, compute from phase iterations with a small buffer
+        phase_sum = (
+            self.max_planning_iterations +
+            self.max_execution_iterations +
+            self.max_refinement_iterations
+        )
+
+        # Add a small buffer (10%) to account for potential phase transitions
+        # or other edge cases, with a minimum of 1 extra iteration
+        buffer = max(1, int(phase_sum * 0.1))
+
+        return phase_sum + buffer
+
     async def _parse_tool_calls(self, response: str) -> List[Dict[str, Any]]:
         """Parse tool calls from LLM response."""
         # First try to parse using the safe_parse_json utility
@@ -604,7 +653,7 @@ class Agent(ABC):
         Check if the agent should terminate based on iteration count, duration, or result quality.
 
         This method considers:
-        1. Current iteration count vs. max_iterations (legacy parameter)
+        1. Current iteration count vs. max_iterations_effective (derived from phase iterations or legacy max_iterations)
         2. Current phase and its specific iteration limit
         3. Dynamic termination based on result quality (if enabled)
         4. Maximum runtime duration
@@ -612,9 +661,9 @@ class Agent(ABC):
         Returns:
             True if the agent should terminate, False otherwise
         """
-        # Check iteration count (legacy parameter)
-        if self.state.current_iteration >= self.max_iterations:
-            self.logger.info(f"Terminating: Reached max iterations ({self.max_iterations})")
+        # Check iteration count against effective max iterations
+        if self.state.current_iteration >= self.max_iterations_effective:
+            self.logger.info(f"Terminating: Reached max iterations ({self.state.current_iteration}/{self.max_iterations_effective})")
             return True
 
         # Check phase-specific iteration limits

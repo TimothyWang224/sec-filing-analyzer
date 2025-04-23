@@ -8,12 +8,28 @@ The agent architecture uses several parameters to control its behavior. These pa
 
 ### Agent Iteration Parameters
 
-These parameters control how many iterations the agent performs in each phase:
+These parameters control how many iterations the agent performs in each phase and are crucial for balancing thoroughness with efficiency:
 
-- **`max_iterations`**: Legacy parameter for backward compatibility. Controls the total number of iterations across all phases.
-- **`max_planning_iterations`**: Maximum iterations for the planning phase. Default: 1
-- **`max_execution_iterations`**: Maximum iterations for the execution phase. Default: 2
-- **`max_refinement_iterations`**: Maximum iterations for result refinement. Default: 1
+- **`max_iterations`**: Legacy parameter that used to control the total number of iterations. Still supported for backward compatibility but no longer directly exposed in the configuration. If explicitly set, it overrides the computed effective max iterations.
+  - Default: Not explicitly set (derived from phase iterations)
+  - Recommended: Don't set directly; configure phase-specific limits instead
+
+- **`max_iterations_effective`**: The actual parameter used to control the total number of iterations. Automatically computed from the phase-specific iteration limits unless `max_iterations` is explicitly set. When `current_iteration >= max_iterations_effective`, the agent terminates regardless of which phase it's in.
+  - Computation: `max_iterations if explicitly_set else (sum_of_phase_iterations + small_buffer)`
+  - Default: Derived from phase iterations (e.g., 8 for QA Specialist from 1+5+2)
+  - The small buffer (10% of the sum, minimum 1) provides extra safety margin
+
+- **`max_planning_iterations`**: Maximum iterations for the planning phase. During planning, the agent analyzes the input, extracts key information, and creates a structured plan. When `phase_iterations['planning'] >= max_planning_iterations`, the agent transitions from planning to execution phase.
+  - Default: 2 (set to 1 for QA Specialist)
+  - Recommended: 1-2 for most tasks
+
+- **`max_execution_iterations`**: Maximum iterations for the execution phase. During execution, the agent carries out the plan, typically by making tool calls to gather information or perform actions. When `phase_iterations['execution'] >= max_execution_iterations`, the agent transitions from execution to refinement phase.
+  - Default: 3 (increased to 5 for QA Specialist)
+  - Recommended: 3-5 for most tasks, higher for complex data gathering
+
+- **`max_refinement_iterations`**: Maximum iterations for the refinement phase. During refinement, the agent processes all gathered information to produce a final, polished result. When `phase_iterations['refinement'] >= max_refinement_iterations`, the agent terminates.
+  - Default: 1 (increased to 2 for QA Specialist)
+  - Recommended: 1-2 for most tasks
 
 ### Tool Execution Parameters
 
@@ -69,13 +85,45 @@ In the refinement phase, the agent focuses on improving the quality of the answe
 - Ensures numerical data is presented clearly
 - Adds confidence scores if dynamic termination is enabled
 
-## Phase Transitions
+## Agent Loop and Phase Transitions
+
+### Agent Loop Structure
+
+The agent loop follows a three-phase structure, with each phase having its own iteration counter and maximum limit:
+
+```
+Agent Loop
+├── Planning Phase (max_planning_iterations)
+│   └── Iterations: 0, 1, 2, ...
+├── Execution Phase (max_execution_iterations)
+│   └── Iterations: 0, 1, 2, ...
+└── Refinement Phase (max_refinement_iterations)
+    └── Iterations: 0, 1, 2, ...
+```
+
+The overall `max_iterations` parameter limits the total number of iterations across all phases combined.
+
+### Phase Transitions
 
 The agent transitions between phases based on the following criteria:
 
 1. **Planning → Execution**: When `phase_iterations['planning'] >= max_planning_iterations`
-2. **Execution → Refinement**: When `phase_iterations['execution'] >= max_execution_iterations`
+2. **Execution → Refinement**: When `phase_iterations['execution'] >= max_execution_iterations` or when execution is complete (e.g., all agents have run in the Coordinator)
 3. **Refinement → Termination**: When `phase_iterations['refinement'] >= max_refinement_iterations`
+
+### Iteration Counting
+
+Each phase has its own iteration counter in `state.phase_iterations`, which is incremented at the end of each iteration in that phase. The overall iteration counter `state.current_iteration` is incremented regardless of which phase the agent is in.
+
+### Termination Conditions
+
+The agent terminates under any of the following conditions:
+
+1. **Max Iterations**: When `state.current_iteration >= max_iterations`
+2. **Phase Completion**: When all phases have completed their maximum iterations
+3. **Dynamic Termination**: When `enable_dynamic_termination` is true and the agent determines it has a high-confidence answer
+4. **Max Duration**: When `time.time() - state.start_time >= max_duration_seconds`
+5. **Capability Termination**: When a capability signals that the agent should terminate
 
 ## Tool Ledger
 
@@ -143,9 +191,36 @@ agent = QASpecialistAgent(
 
 ## Best Practices
 
-1. **Planning Phase**: Keep this phase short (1-2 iterations) to focus on understanding the task.
-2. **Execution Phase**: Allow more iterations (2-3) for data gathering and initial answer generation.
-3. **Refinement Phase**: Use 1-2 iterations for improving answer quality.
-4. **Tool Retries**: Set to 1-2 for most tools, higher for less reliable tools.
-5. **Tools Per Iteration**: Keep at 1 to avoid parameter confusion, unless tools are very simple.
-6. **Dynamic Termination**: Enable for tasks where quality can vary, disable for critical tasks.
+### Setting Iteration Parameters
+
+1. **Balance Across Phases**: Allocate iterations strategically across phases based on task complexity:
+   - For simple, factual queries: 1 planning, 2-3 execution, 1 refinement
+   - For complex analysis: 1-2 planning, 4-5 execution, 2 refinement
+
+2. **Adjust for Task Type**:
+   - **QA Specialist**: Higher execution iterations (5+) for complex financial queries
+   - **Financial Analyst**: Higher execution iterations (4-5) for detailed financial analysis
+   - **Risk Analyst**: Balanced iterations across phases (2 planning, 3-4 execution, 2 refinement)
+   - **Coordinator**: Higher planning iterations (2-3) for complex orchestration
+
+3. **Consider Tool Complexity**:
+   - Tasks requiring multiple tool calls need higher execution iterations
+   - Tasks with complex data processing need higher refinement iterations
+
+4. **Global vs. Phase Limits**:
+   - Focus on setting the phase-specific iteration limits (`max_planning_iterations`, `max_execution_iterations`, `max_refinement_iterations`)
+   - Let the system automatically compute `max_iterations_effective` from these phase limits
+   - Only override `max_iterations` if you have specific requirements
+   - The system adds a small buffer (10% of the sum, minimum 1) to the sum of phase iterations for safety
+
+5. **Monitor and Adjust**:
+   - Review agent logs to see if iterations are being fully utilized
+   - If the agent consistently terminates early, reduce iterations
+   - If the agent consistently hits iteration limits, increase them
+
+### Other Best Practices
+
+1. **Tool Retries**: Set to 1-2 for most tools, higher for less reliable tools.
+2. **Tools Per Iteration**: Keep at 1 to avoid parameter confusion, unless tools are very simple.
+3. **Dynamic Termination**: Enable for tasks where quality can vary, disable for critical tasks.
+4. **Circuit Breaker**: Use default settings unless you have specific reliability issues with certain tools.

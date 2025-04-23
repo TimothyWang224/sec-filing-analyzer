@@ -58,10 +58,11 @@ class AgentConfig:
     """Configuration for agent parameters."""
 
     # Agent iteration parameters
-    max_iterations: int = 3  # Legacy parameter, still used for backward compatibility
+    max_iterations: Optional[int] = 3  # Legacy parameter, still used for backward compatibility
     max_planning_iterations: int = 2
     max_execution_iterations: int = 3
     max_refinement_iterations: int = 1
+    max_iterations_effective: int = field(init=False)  # Computed effective max iterations
 
     # Tool execution parameters
     max_tool_retries: int = 2
@@ -81,11 +82,39 @@ class AgentConfig:
     llm_temperature: float = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.7"))
     llm_max_tokens: int = int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "4000"))
 
+    def __post_init__(self):
+        """Compute the effective max iterations after initialization."""
+        self._compute_effective_max_iterations()
+
+    def _compute_effective_max_iterations(self):
+        """Compute the effective max iterations based on phase iterations."""
+        # If max_iterations is explicitly set, use it
+        if self.max_iterations is not None:
+            self.max_iterations_effective = self.max_iterations
+            return
+
+        # Otherwise, compute from phase iterations with a small buffer
+        phase_sum = (
+            self.max_planning_iterations +
+            self.max_execution_iterations +
+            self.max_refinement_iterations
+        )
+
+        # Add a small buffer (10%) to account for potential phase transitions
+        # or other edge cases, with a minimum of 1 extra iteration
+        buffer = max(1, int(phase_sum * 0.1))
+
+        self.max_iterations_effective = phase_sum + buffer
+
     @classmethod
     def from_env(cls) -> "AgentConfig":
         """Create configuration from environment variables."""
+        # Check if max_iterations is explicitly set in environment
+        max_iterations_env = os.getenv("AGENT_MAX_ITERATIONS")
+        max_iterations = int(max_iterations_env) if max_iterations_env else None
+
         return cls(
-            max_iterations=int(os.getenv("AGENT_MAX_ITERATIONS", "3")),
+            max_iterations=max_iterations,
             max_planning_iterations=int(os.getenv("AGENT_MAX_PLANNING_ITERATIONS", "2")),
             max_execution_iterations=int(os.getenv("AGENT_MAX_EXECUTION_ITERATIONS", "3")),
             max_refinement_iterations=int(os.getenv("AGENT_MAX_REFINEMENT_ITERATIONS", "1")),
@@ -478,6 +507,7 @@ AGENT_CONFIG: Dict[str, Any] = {
     "max_planning_iterations": agent_config.max_planning_iterations,
     "max_execution_iterations": agent_config.max_execution_iterations,
     "max_refinement_iterations": agent_config.max_refinement_iterations,
+    "max_iterations_effective": agent_config.max_iterations_effective,  # New computed field
 
     # Tool execution parameters
     "max_tool_retries": agent_config.max_tool_retries,

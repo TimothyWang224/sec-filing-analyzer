@@ -34,6 +34,7 @@ The SEC Filing Analyzer is designed to process SEC filings (10-K, 10-Q, 8-K) and
 ### Agent Architecture
 
 - [Agent Parameters and Phases](agent_parameters.md)
+- [Agent Loop and Iteration Parameters](agent_loop.md)
 - [Tool Ledger](tool_ledger.md)
 - [Planning Capability](planning_capability.md)
 - [Parameter Completion](parameter_completion.md)

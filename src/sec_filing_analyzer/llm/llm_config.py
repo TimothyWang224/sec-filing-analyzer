@@ -116,9 +116,10 @@ QA_SPECIALIST_CONFIG = {
 
     # Agent execution parameters
     **BASE_AGENT_CONFIG,
+    "max_iterations": 5,  # Increased from 3 to 5 for more complex queries
     "max_planning_iterations": 1,
-    "max_execution_iterations": 2,
-    "max_refinement_iterations": 1,
+    "max_execution_iterations": 5,  # Increased from 2 to 5 to allow more tool calls
+    "max_refinement_iterations": 2,  # Increased from 1 to 2 for better answer refinement
     "max_tokens": 4000  # Longer responses for detailed explanations
 }
 

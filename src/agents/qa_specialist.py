@@ -271,27 +271,91 @@ class QASpecialistAgent(Agent):
                 Success criteria:
                 {', '.join(success_criteria) if success_criteria else 'Provide accurate and relevant information'}
 
-                Based on this task, select the most appropriate tool and parameters to use.
+                The user's question is related to SEC filings and financial data. Your task is to select the most appropriate tool to answer this question.
+
                 Available tools:
-                - sec_financial_data: Retrieves financial data from SEC filings
+                - sec_financial_data: Retrieves structured financial data from SEC filings
+                  - USE THIS TOOL for quantitative financial metrics like revenue, profit, EPS, etc.
+                  - ALWAYS USE THIS TOOL for questions asking about specific financial numbers or metrics
+                  - query_type="financial_facts": Retrieves specific financial metrics for a company
+                    - parameters: {{"ticker": "AAPL", "metrics": ["Revenue", "Net Income"], "start_date": "2022-01-01", "end_date": "2023-01-01"}}
                   - query_type="companies": Lists all available companies
-                  - query_type="metrics": Retrieves financial metrics for a company
+                  - query_type="metrics": Lists available financial metrics
                   - query_type="filings": Lists filings for a specific company
+                  - EXAMPLES: "What was NVDA's revenue for 2023?", "Show me Apple's profit margin", "What is Microsoft's EPS?"
 
                 - sec_semantic_search: Searches for information in SEC filings using semantic search
-                  - parameters: {{"query": "search text"}}
+                  - USE THIS TOOL for qualitative information, explanations, or when you need to find specific text in filings
+                  - DO NOT USE THIS TOOL for simple financial metrics that can be retrieved directly with sec_financial_data
+                  - parameters: {{"query": "search text", "companies": ["AAPL"]}}
+                  - EXAMPLES: "What risks did Apple mention in their latest 10-K?", "How does Microsoft describe their cloud strategy?"
 
                 - sec_graph_query: Queries the knowledge graph for relationships between entities
+                  - USE THIS TOOL to find relationships between companies, filings, etc.
                   - query_type="related_companies": Finds companies related to a given company
                   - query_type="company_filings": Finds filings for a specific company
+                  - EXAMPLES: "What companies are related to Apple?", "Show me all filings for NVDA"
 
                 - sec_data: Retrieves specific filing data
+                  - USE THIS TOOL to get complete filing content
                   - parameters: {{"company": "TICKER", "filing_type": "10-K"}}
+                  - EXAMPLES: "Get Apple's latest 10-K", "Show me NVDA's most recent quarterly report"
+
+                IMPORTANT GUIDELINES:
+                1. For questions about specific financial metrics (revenue, profit, etc.), ALWAYS use sec_financial_data with query_type="financial_facts"
+                2. For questions about qualitative information or explanations, use sec_semantic_search
+                3. For questions about relationships between entities, use sec_graph_query
+                4. For questions about specific filings, use sec_data
+                5. When in doubt between sec_financial_data and sec_semantic_search for a financial question, prefer sec_financial_data
 
                 Return your selection as a JSON object with the following structure:
                 {{"tool": "tool_name", "parameters": {{"param1": "value1", "param2": "value2"}}}}
                 """
 
+                # First, try the deterministic pattern matcher
+                early_classification = self._early_classify(user_input)
+                if early_classification:
+                    self.logger.info(f"Using deterministic pattern matcher for query: {user_input}")
+                    self.logger.info(f"Selected tool: {early_classification['tool']} with args: {early_classification['args']}")
+
+                    # Execute the selected tool
+                    try:
+                        tool_result = await self.environment.execute_action({
+                            "tool": early_classification["tool"],
+                            "args": early_classification["args"]
+                        })
+
+                        # Create a tool results structure
+                        tool_results = {
+                            "input": user_input,
+                            "tool_calls": [{
+                                "tool": early_classification["tool"],
+                                "args": early_classification["args"]
+                            }],
+                            "results": [{
+                                "success": True,
+                                "tool": early_classification["tool"],
+                                "result": tool_result
+                            }],
+                            "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0}
+                        }
+
+                        # Add the result to memory
+                        self.add_to_memory({
+                            "type": "tool_result",
+                            "tool": early_classification["tool"],
+                            "args": early_classification["args"],
+                            "result": tool_result
+                        })
+
+                        # Generate answer using the tool results
+                        answer = await self._generate_answer_from_results(user_input, tool_results)
+                        continue
+                    except Exception as e:
+                        self.logger.error(f"Error executing deterministic tool selection: {str(e)}")
+                        # Fall through to LLM-based selection
+
+                # If deterministic pattern matcher didn't match, fall back to LLM-based selection
                 try:
                     # Define the tool selection function
                     tool_selection_function = {
@@ -302,12 +366,49 @@ class QASpecialistAgent(Agent):
                             "properties": {
                                 "tool": {
                                     "type": "string",
-                                    "description": "The name of the tool to use",
+                                    "description": "The name of the tool to use. For financial metrics like revenue, profit, EPS, etc., ALWAYS use sec_financial_data.",
                                     "enum": ["sec_financial_data", "sec_semantic_search", "sec_graph_query", "sec_data"]
                                 },
                                 "parameters": {
                                     "type": "object",
-                                    "description": "Parameters for the selected tool"
+                                    "description": "Parameters for the selected tool",
+                                    "properties": {
+                                        "query_type": {
+                                            "type": "string",
+                                            "description": "The type of query to perform. For financial metrics like revenue, profit, EPS, etc., use 'financial_facts'.",
+                                            "enum": ["financial_facts", "companies", "metrics", "filings"]
+                                        },
+                                        "ticker": {
+                                            "type": "string",
+                                            "description": "The company ticker symbol"
+                                        },
+                                        "metrics": {
+                                            "type": "array",
+                                            "description": "List of financial metrics to retrieve",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "start_date": {
+                                            "type": "string",
+                                            "description": "Start date for the query (YYYY-MM-DD)"
+                                        },
+                                        "end_date": {
+                                            "type": "string",
+                                            "description": "End date for the query (YYYY-MM-DD)"
+                                        },
+                                        "query": {
+                                            "type": "string",
+                                            "description": "The search query for semantic search"
+                                        },
+                                        "companies": {
+                                            "type": "array",
+                                            "description": "List of company ticker symbols",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
                                 }
                             },
                             "required": ["tool"]
@@ -316,11 +417,35 @@ class QASpecialistAgent(Agent):
 
                     # Use function calling to get tool selection
                     self.logger.info("Using function calling for tool selection")
+
+                    # Extract key information from the user's question
+                    question_analysis = self._parse_question(user_input)
+                    companies = question_analysis.get("companies", [])
+                    metrics = question_analysis.get("metrics", [])
+
+                    # Add this information to the system prompt to help guide the model
+                    system_prompt = f"""
+                    You are an expert at selecting the right tools to answer financial questions.
+
+                    The user's question appears to be about: {', '.join(companies) if companies else 'No specific company'}
+                    The metrics mentioned are: {', '.join(metrics) if metrics else 'No specific metrics'}
+
+                    Remember:
+                    - If the question is asking for specific financial metrics like revenue, profit, EPS, etc., ALWAYS use sec_financial_data
+                    - Only use sec_semantic_search for qualitative information that cannot be directly queried from a database
+
+                    IMPORTANT EXAMPLES:
+                    - For "What was NVDA's revenue for 2023?", you should select sec_financial_data with query_type="financial_facts"
+                    - For "What is Apple's revenue?", you should select sec_financial_data with query_type="financial_facts"
+                    - For "Tell me about NVDA's business strategy", you should select sec_semantic_search
+                    """
+
                     response = await self.llm.generate_with_functions(
                         prompt=tool_selection_prompt,
+                        system_prompt=system_prompt,
                         functions=[tool_selection_function],
                         function_call={"name": "select_tool"},  # Force the model to call this function
-                        temperature=0.2  # Lower temperature for more deterministic tool selection
+                        temperature=0.1  # Very low temperature for more deterministic tool selection
                     )
 
                     self.logger.info(f"Function call response: {response}")
@@ -349,6 +474,13 @@ class QASpecialistAgent(Agent):
                         # Execute the selected tool
                         if tool_name:
                             self.logger.info(f"Executing selected tool: {tool_name}")
+
+                            # Ensure query parameter is provided for sec_semantic_search tool
+                            if tool_name == "sec_semantic_search" and "query" not in tool_params:
+                                self.logger.info("Adding missing query parameter to sec_semantic_search tool")
+                                # Use the user input as the default query if not provided
+                                tool_params["query"] = user_input
+
                             tool_result = await self.environment.execute_action({
                                 "tool": tool_name,
                                 "args": tool_params
@@ -721,15 +853,131 @@ class QASpecialistAgent(Agent):
         """
         self.logger.info(f"Using local implementation of process_with_llm_tools for: {input_text[:100]}{'...' if len(input_text) > 100 else ''}")
 
-        # For company listing requests, directly call the sec_financial_data tool
-        if "companies" in input_text.lower() and ("available" in input_text.lower() or "database" in input_text.lower() or "data" in input_text.lower()):
-            self.logger.info("Detected company listing request, using sec_financial_data tool")
+        # First, try the deterministic pattern matcher
+        early_classification = self._early_classify(input_text)
+        if early_classification:
+            self.logger.info(f"Using deterministic pattern matcher for query: {input_text}")
+            self.logger.info(f"Selected tool: {early_classification['tool']} with args: {early_classification['args']}")
+
+            # Execute the selected tool
             try:
-                # Execute the tool
+                result = await self.environment.execute_action({
+                    "tool": early_classification["tool"],
+                    "args": early_classification["args"]
+                })
+
+                return {
+                    "input": input_text,
+                    "tool_calls": [{
+                        "tool": early_classification["tool"],
+                        "args": early_classification["args"]
+                    }],
+                    "results": [{
+                        "success": True,
+                        "tool": early_classification["tool"],
+                        "result": result
+                    }],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0
+                    }
+                }
+            except Exception as e:
+                self.logger.error(f"Error executing deterministic tool selection: {str(e)}")
+                # Fall through to LLM-based selection
+
+        # If deterministic pattern matcher didn't match, fall back to LLM-based selection
+        # Parse the question to extract key information
+        question_analysis = self._parse_question(input_text)
+        companies = question_analysis.get("companies", [])
+        metrics = question_analysis.get("metrics", [])
+        temporal_info = {k: v for k, v in question_analysis.items() if k not in ["companies", "filing_types", "metrics"]}
+
+        # Use LLM to determine the appropriate tool
+        # Create a prompt for tool selection
+        tool_selection_prompt = f"""
+        You are an expert at selecting the right tools to answer questions about SEC filings and financial data.
+        Your task is to analyze the question and select the most appropriate tool to use.
+
+        Question: "{input_text}"
+
+        Available tools:
+        1. sec_financial_data - Use for retrieving structured financial metrics like revenue, profit, EPS, etc.
+           - Best for quantitative financial data that can be directly queried from a database
+           - Examples: "What was Apple's revenue in 2023?", "Show me NVDA's profit for the last quarter"
+
+        2. sec_semantic_search - Use for searching through filing text to find qualitative information
+           - Best for finding explanations, discussions, or specific text in filings
+           - Examples: "What risks did Apple mention in their latest 10-K?", "How does Microsoft describe their cloud strategy?"
+
+        3. sec_graph_query - Use for finding relationships between entities
+           - Best for questions about connections between companies, filings, etc.
+           - Examples: "What companies are related to Apple?", "Show me all filings for NVDA"
+
+        4. sec_data - Use for retrieving complete filing content
+           - Best for getting the full text of specific filings
+           - Examples: "Get Apple's latest 10-K", "Show me NVDA's most recent quarterly report"
+
+        Based on the question, which tool would be most appropriate? Respond with just the tool name.
+        """
+
+        # Use LLM to select the appropriate tool
+        try:
+            tool_selection = await self.llm.generate(prompt=tool_selection_prompt, temperature=0.1)
+            tool_selection = tool_selection.strip().lower()
+
+            # Extract the tool name from the response
+            if "sec_financial_data" in tool_selection:
+                tool_name = "sec_financial_data"
+            elif "sec_semantic_search" in tool_selection:
+                tool_name = "sec_semantic_search"
+            elif "sec_graph_query" in tool_selection:
+                tool_name = "sec_graph_query"
+            elif "sec_data" in tool_selection:
+                tool_name = "sec_data"
+            else:
+                # Default to semantic search if no clear tool is selected
+                tool_name = "sec_semantic_search"
+
+            self.logger.info(f"LLM selected tool: {tool_name} for query: {input_text}")
+
+            # Handle each tool type appropriately
+            if tool_name == "sec_financial_data":
+                # For financial data queries
+                if "companies" in input_text.lower() and ("available" in input_text.lower() or "database" in input_text.lower() or "data" in input_text.lower()):
+                    # Company listing request
+                    query_type = "companies"
+                    parameters = {}
+                else:
+                    # Financial metrics request
+                    query_type = "financial_facts"
+                    parameters = {}
+
+                    # Add company filter if available
+                    if companies:
+                        parameters["ticker"] = companies[0]
+
+                    # Add metrics filter if available
+                    if metrics:
+                        parameters["metrics"] = metrics
+
+                    # Add date range if available
+                    if "date_range" in temporal_info:
+                        parameters["start_date"] = temporal_info["date_range"][0]
+                        parameters["end_date"] = temporal_info["date_range"][1]
+                    elif "fiscal_year" in temporal_info:
+                        # Convert fiscal year to date range
+                        fiscal_year = temporal_info["fiscal_year"]
+                        parameters["start_date"] = f"{fiscal_year}-01-01"
+                        parameters["end_date"] = f"{fiscal_year}-12-31"
+
+                # Execute the financial data tool
                 result = await self.environment.execute_action({
                     "tool": "sec_financial_data",
                     "args": {
-                        "query_type": "companies"
+                        "query_type": query_type,
+                        "parameters": parameters
                     }
                 })
 
@@ -737,7 +985,10 @@ class QASpecialistAgent(Agent):
                     "input": input_text,
                     "tool_calls": [{
                         "tool": "sec_financial_data",
-                        "args": {"query_type": "companies"}
+                        "args": {
+                            "query_type": query_type,
+                            "parameters": parameters
+                        }
                     }],
                     "results": [{
                         "success": True,
@@ -750,22 +1001,141 @@ class QASpecialistAgent(Agent):
                         "tool_execution": 0.0
                     }
                 }
+            elif tool_name == "sec_semantic_search":
+                # For semantic search queries
+                result = await self.environment.execute_action({
+                    "tool": "sec_semantic_search",
+                    "args": {
+                        "query": input_text,
+                        "companies": companies if companies else None
+                    }
+                })
+
+                return {
+                    "input": input_text,
+                    "tool_calls": [{
+                        "tool": "sec_semantic_search",
+                        "args": {"query": input_text, "companies": companies if companies else None}
+                    }],
+                    "results": [{
+                        "success": True,
+                        "tool": "sec_semantic_search",
+                        "result": result
+                    }],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0
+                    }
+                }
+            elif tool_name == "sec_graph_query":
+                # For graph queries
+                query_type = "company_filings" if companies else "related_companies"
+                parameters = {"company": companies[0]} if companies else {}
+
+                result = await self.environment.execute_action({
+                    "tool": "sec_graph_query",
+                    "args": {
+                        "query_type": query_type,
+                        "parameters": parameters
+                    }
+                })
+
+                return {
+                    "input": input_text,
+                    "tool_calls": [{
+                        "tool": "sec_graph_query",
+                        "args": {
+                            "query_type": query_type,
+                            "parameters": parameters
+                        }
+                    }],
+                    "results": [{
+                        "success": True,
+                        "tool": "sec_graph_query",
+                        "result": result
+                    }],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0
+                    }
+                }
+            elif tool_name == "sec_data":
+                # For filing data queries
+                filing_type = question_analysis.get("filing_types", ["10-K"])[0] if question_analysis.get("filing_types") else "10-K"
+                company = companies[0] if companies else None
+
+                if not company:
+                    # If no company specified, fall back to semantic search
+                    self.logger.info("No company specified for sec_data tool, falling back to semantic search")
+                    return await self._local_process_with_llm_tools(input_text)  # Recursive call will select a different tool
+
+                result = await self.environment.execute_action({
+                    "tool": "sec_data",
+                    "args": {
+                        "company": company,
+                        "filing_type": filing_type
+                    }
+                })
+
+                return {
+                    "input": input_text,
+                    "tool_calls": [{
+                        "tool": "sec_data",
+                        "args": {
+                            "company": company,
+                            "filing_type": filing_type
+                        }
+                    }],
+                    "results": [{
+                        "success": True,
+                        "tool": "sec_data",
+                        "result": result
+                    }],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0
+                    }
+                }
+        except Exception as e:
+            self.logger.error(f"Error in LLM-driven tool selection: {str(e)}")
+            # Fall back to semantic search as a default
+            try:
+                result = await self.environment.execute_action({
+                    "tool": "sec_semantic_search",
+                    "args": {
+                        "query": input_text,
+                        "companies": companies if companies else None
+                    }
+                })
+
+                return {
+                    "input": input_text,
+                    "tool_calls": [{
+                        "tool": "sec_semantic_search",
+                        "args": {"query": input_text, "companies": companies if companies else None}
+                    }],
+                    "results": [{
+                        "success": True,
+                        "tool": "sec_semantic_search",
+                        "result": result
+                    }],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0
+                    }
+                }
             except Exception as e:
-                self.logger.error(f"Error executing sec_financial_data tool: {str(e)}")
+                self.logger.error(f"Error executing fallback semantic search: {str(e)}")
                 return {
                     "input": input_text,
                     "tool_calls": [],
                     "results": [],
                     "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0}
                 }
-
-        # For other requests, return empty results
-        return {
-            "input": input_text,
-            "tool_calls": [],
-            "results": [],
-            "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0}
-        }
 
     async def _generate_answer_from_results(self, input: str, tool_results: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -986,6 +1356,145 @@ class QASpecialistAgent(Agent):
             current_answer["refinement_error"] = str(e)
             return current_answer
 
+    def _early_classify(self, question: str) -> Optional[Dict[str, Any]]:
+        """
+        Deterministic pattern matcher for common financial metric queries.
+
+        Args:
+            question: The user's question
+
+        Returns:
+            A dictionary with tool and args if a pattern is matched, None otherwise
+        """
+        import re
+
+        # Define patterns for common financial metrics
+        METRIC_WORDS = r"(revenue|sales|net income|profit|earnings|ebitda|eps|operating income|gross margin|assets|liabilities)"
+        YEAR = r"((?:19|20)\d{2})"  # Capture the full 4-digit year in a single group
+
+        # Check for pattern: [METRIC] + [YEAR]
+        m = re.search(fr"\b{METRIC_WORDS}\b.*?\b{YEAR}\b", question, re.I)
+        if m:
+            metric, year = m.group(1).lower(), m.group(2)
+            # Year is already the full 4-digit year from the regex
+
+            # Try to extract company ticker
+            companies = self._extract_companies(question)
+            if companies:
+                ticker = companies[0]
+                self.logger.info(f"Early classification matched: metric={metric}, year={year}, ticker={ticker}")
+
+                # Map the extracted metric to the standardized metric name
+                metric_mapping = {
+                    "revenue": "Revenue",
+                    "sales": "Revenue",
+                    "net income": "NetIncome",
+                    "profit": "NetIncome",
+                    "earnings": "NetIncome",
+                    "ebitda": "EBITDA",
+                    "eps": "EPS",
+                    "operating income": "OperatingIncome",
+                    "gross margin": "GrossMargin",
+                    "assets": "TotalAssets",
+                    "liabilities": "TotalLiabilities"
+                }
+
+                standardized_metric = metric_mapping.get(metric, "Revenue")
+
+                # Create date range for the year
+                start_date = f"{year}-01-01"
+                end_date = f"{year}-12-31"
+
+                return {
+                    "tool": "sec_financial_data",
+                    "args": {
+                        "query_type": "financial_facts",
+                        "parameters": {
+                            "ticker": ticker,
+                            "metrics": [standardized_metric],
+                            "start_date": start_date,
+                            "end_date": end_date
+                        }
+                    }
+                }
+
+        # Check for pattern: [COMPANY] + [POSSESSIVE] + [METRIC]
+        companies = self._extract_companies(question)
+        for company in companies:
+            possessive_pattern = fr"\b{re.escape(company)}('s|s)\b.*?\b{METRIC_WORDS}\b"
+            m = re.search(possessive_pattern, question, re.I)
+            if m:
+                metric = m.group(2).lower()
+
+                # Map the extracted metric to the standardized metric name
+                metric_mapping = {
+                    "revenue": "Revenue",
+                    "sales": "Revenue",
+                    "net income": "NetIncome",
+                    "profit": "NetIncome",
+                    "earnings": "NetIncome",
+                    "ebitda": "EBITDA",
+                    "eps": "EPS",
+                    "operating income": "OperatingIncome",
+                    "gross margin": "GrossMargin",
+                    "assets": "TotalAssets",
+                    "liabilities": "TotalLiabilities"
+                }
+
+                standardized_metric = metric_mapping.get(metric, "Revenue")
+
+                # Check for year in the question
+                year_match = re.search(YEAR, question, re.I)
+                if year_match:
+                    year = year_match.group(1)  # Use group 1 to get the full 4-digit year
+                    start_date = f"{year}-01-01"
+                    end_date = f"{year}-12-31"
+                else:
+                    # Default to the most recent year
+                    import datetime
+                    current_year = datetime.datetime.now().year
+                    start_date = f"{current_year-1}-01-01"  # Previous year
+                    end_date = f"{current_year-1}-12-31"
+
+                self.logger.info(f"Early classification matched: metric={metric}, company={company}, date_range={start_date} to {end_date}")
+
+                return {
+                    "tool": "sec_financial_data",
+                    "args": {
+                        "query_type": "financial_facts",
+                        "parameters": {
+                            "ticker": company,
+                            "metrics": [standardized_metric],
+                            "start_date": start_date,
+                            "end_date": end_date
+                        }
+                    }
+                }
+
+        # No pattern matched
+        return None
+
+    def _extract_companies(self, question: str) -> List[str]:
+        """
+        Extract company tickers from the question.
+
+        Args:
+            question: The user's question
+
+        Returns:
+            List of company tickers
+        """
+        # List of common tickers to check for
+        common_tickers = ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "IBM", "INTC"]
+
+        # Check for exact ticker matches
+        companies = []
+        for ticker in common_tickers:
+            if ticker in question.upper():
+                companies.append(ticker)
+
+        return companies
+
     def _parse_question(self, question: str) -> Dict[str, Any]:
         """
         Parse the question to extract key information.
@@ -1017,10 +1526,23 @@ class QASpecialistAgent(Agent):
 
         # Extract potential metrics
         metrics = []
-        common_metrics = ["Revenue", "Net Income", "EPS", "Gross Margin", "Operating Income"]
+        common_metrics = [
+            "Revenue", "Net Income", "EPS", "Gross Margin", "Operating Income",
+            "Total Assets", "Total Liabilities", "Cash Flow", "EBITDA", "Gross Profit",
+            "Operating Expenses", "R&D Expenses", "Sales", "Profit", "Earnings"
+        ]
+
+        # Check for exact matches and variations
         for metric in common_metrics:
             if metric.lower() in question.lower():
                 metrics.append(metric)
+            # Check for variations (e.g., "revenues" instead of "revenue")
+            elif metric.lower().rstrip('s') + 's' in question.lower():
+                metrics.append(metric)
+
+        # Special case for "revenue" which might be mentioned as "sales"
+        if "revenue" not in [m.lower() for m in metrics] and "sales" in question.lower():
+            metrics.append("Revenue")
 
         # Use TimeAwarenessCapability to extract temporal information
         time_capability = next((cap for cap in self.capabilities if isinstance(cap, TimeAwarenessCapability)), None)
@@ -1048,8 +1570,10 @@ class QASpecialistAgent(Agent):
             date_range = None
             if "2023" in question:
                 date_range = ["2023-01-01", "2023-12-31"]
+                temporal_info["fiscal_year"] = 2023
             elif "2022" in question:
                 date_range = ["2022-01-01", "2022-12-31"]
+                temporal_info["fiscal_year"] = 2022
 
             if date_range:
                 temporal_info["date_range"] = date_range

@@ -203,7 +203,35 @@ class ToolRegistry:
         Returns:
             Tool documentation if found, None otherwise
         """
-        return cls._tools.get(name)
+        # First, try to get the tool from the registry
+        tool = cls._tools.get(name)
+
+        # If the tool is not found, attempt a lazy import
+        if tool is None:
+            try:
+                logger.info(f"Tool '{name}' not found in registry. Attempting lazy import.")
+
+                # Try to import the tool module
+                import importlib
+                try:
+                    # First try to import from sec_filing_analyzer.tools
+                    importlib.import_module(f"sec_filing_analyzer.tools.{name}")
+                    logger.info(f"Successfully imported sec_filing_analyzer.tools.{name}")
+                except ImportError:
+                    # Then try to import from src.tools
+                    importlib.import_module(f"src.tools.{name}")
+                    logger.info(f"Successfully imported src.tools.{name}")
+
+                # Check if the tool is now registered
+                tool = cls._tools.get(name)
+                if tool:
+                    logger.info(f"Tool '{name}' successfully registered via lazy import.")
+                else:
+                    logger.warning(f"Tool '{name}' module was imported but tool was not registered.")
+            except Exception as e:
+                logger.warning(f"Failed to lazy import tool '{name}': {str(e)}")
+
+        return tool
 
     @classmethod
     def list_tools(cls) -> Dict[str, Dict[str, Any]]:
