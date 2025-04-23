@@ -28,7 +28,7 @@ def sec_financial_data(query_type: str, parameters: dict): ...
 
 **Implementation**: Created a memoization decorator that caches tool results based on their input parameters. Applied the decorator to the `execute` method in the `Tool` base class to ensure all tool calls are cached. Added a mechanism to clear the cache when needed.
 
-### 2. Success-Criterion Short-Circuit
+### ✅ 2. Success-Criterion Short-Circuit
 
 ```python
 if "NetIncome" in memory and memory["NetIncome"]["year"] == 2023:
@@ -40,6 +40,10 @@ if "NetIncome" in memory and memory["NetIncome"]["year"] == 2023:
 **Priority**: High - This would significantly improve efficiency for simple queries.
 
 **Result**: This is the simplest guard against "walk the whole HTN even if leaf 1 solved the query."
+
+**Implementation**:
+1. First implementation: Added a `_check_success_criteria` method to the QA Specialist Agent that checks if the tool result contains the requested information. Modified the execution phase to check success criteria after each tool call and move to refinement if the criteria are met.
+2. Improved implementation: Extended the plan schema with `expected_key` and `output_path` fields. Added a `_should_skip` method to the base Agent class that checks if the expected output is already in memory. Modified the planning capability to check if steps can be skipped based on success criteria. This approach works for all agents, not just the QA Specialist.
 
 ### 3. Plan-Step ↔ Tool Contract
 

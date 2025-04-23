@@ -483,6 +483,19 @@ class PlanningCapability(Capability):
             # Move to the next step
             self.current_step_index += 1
 
+            # Check if we should skip the next step based on success criteria
+            if self.current_step_index < len(self.current_plan["steps"]):
+                next_step = self.current_plan["steps"][self.current_step_index]
+                # Use the agent's _execute_current_step method to check if we should skip
+                if hasattr(agent, '_execute_current_step'):
+                    should_skip = await agent._execute_current_step(next_step)
+                    if should_skip:
+                        # If we skipped, update the step_results and completed_steps
+                        self.step_results[next_step["step_id"]] = {"skipped": True, "reason": "Success criterion already satisfied"}
+                        self.completed_steps.append(next_step)
+                        # Move to the next step
+                        self.current_step_index += 1
+
             # Check if we need to reflect on the plan
             if (self.enable_step_reflection and
                 len(self.completed_steps) >= self.min_steps_before_reflection and
@@ -685,6 +698,8 @@ Your plan should include:
    - Which tool or agent to use (if applicable)
    - Any dependencies on previous steps
    - Parameters or inputs needed
+   - Expected key to check in results (for automatic success detection)
+   - Output path to the expected data (for automatic success detection)
 
 Return your plan as a JSON object with this structure:
 ```json
@@ -698,6 +713,8 @@ Return your plan as a JSON object with this structure:
       "agent": "optional_agent_name",
       "parameters": {{"param1": "value1", "param2": "value2"}},
       "dependencies": [],
+      "expected_key": "optional_key_to_check_in_results",
+      "output_path": ["optional", "path", "to", "result"],
       "status": "pending"
     }},
     ...
@@ -722,6 +739,8 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "tool": "sec_financial_data",
                     "parameters": {},
                     "dependencies": [],
+                    "expected_key": "financial_facts",
+                    "output_path": ["results"],
                     "status": "pending"
                 },
                 {
@@ -730,6 +749,8 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "tool": "sec_semantic_search",
                     "parameters": {},
                     "dependencies": [],
+                    "expected_key": "semantic_search",
+                    "output_path": ["results"],
                     "status": "pending"
                 },
                 {
@@ -738,12 +759,14 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "agent": "financial_analyst",
                     "parameters": {},
                     "dependencies": [1, 2],
+                    "expected_key": "financial_analysis",
                     "status": "pending"
                 },
                 {
                     "step_id": 4,
                     "description": "Generate comprehensive report",
                     "dependencies": [3],
+                    "expected_key": "report",
                     "status": "pending"
                 }
             ],
@@ -783,6 +806,22 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
             # Ensure dependencies is a list
             if "dependencies" not in step or not isinstance(step["dependencies"], list):
                 step["dependencies"] = []
+
+            # Ensure expected_key exists if tool is specified
+            if "tool" in step and "expected_key" not in step:
+                # Set a default expected key based on the tool
+                if step["tool"] == "sec_financial_data":
+                    step["expected_key"] = "financial_facts"
+                elif step["tool"] == "sec_semantic_search":
+                    step["expected_key"] = "semantic_search"
+
+            # Ensure output_path exists if expected_key exists
+            if "expected_key" in step and "output_path" not in step:
+                # Set a default output path based on the tool
+                if "tool" in step and step["tool"] == "sec_financial_data":
+                    step["output_path"] = ["results"]
+                elif "tool" in step and step["tool"] == "sec_semantic_search":
+                    step["output_path"] = ["results"]
 
         # Limit the number of steps
         if len(plan["steps"]) > self.max_plan_steps:

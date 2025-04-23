@@ -370,6 +370,12 @@ class QASpecialistAgent(Agent):
                         # Increment iteration counter
                         self.increment_iteration()
 
+                        # Check if success criteria have been met
+                        if self._check_success_criteria(user_input, tool_result):
+                            self.state.set_phase('refinement')
+                            self.logger.info(f"Success criteria met, moving to refinement phase")
+                            continue
+
                         # If we've done enough execution, move to refinement phase
                         if self.state.phase_iterations['execution'] >= self.max_execution_iterations:
                             self.state.set_phase('refinement')
@@ -534,6 +540,35 @@ class QASpecialistAgent(Agent):
                                 "args": tool_params,
                                 "result": tool_result
                             })
+
+                            # Check if success criteria have been met
+                            if self._check_success_criteria(user_input, tool_result):
+                                # Generate answer using the tool results
+                                answer = await self._generate_answer_from_results(user_input, tool_results)
+
+                                # Add result to memory
+                                self.add_to_memory({
+                                    "type": "qa_response",
+                                    "content": answer
+                                })
+
+                                # Process result with capabilities
+                                for capability in self.capabilities:
+                                    answer = await capability.process_result(
+                                        self,
+                                        {"input": user_input},
+                                        user_input,
+                                        {"type": "qa_response"},
+                                        answer
+                                    )
+
+                                # Increment iteration counter
+                                self.increment_iteration()
+
+                                # Move to refinement phase
+                                self.state.set_phase('refinement')
+                                self.logger.info(f"Success criteria met, moving to refinement phase")
+                                continue
 
                             # Generate answer using the tool results
                             answer = await self._generate_answer_from_results(user_input, tool_results)
@@ -1520,6 +1555,52 @@ class QASpecialistAgent(Agent):
                 companies.append(ticker)
 
         return companies
+
+    def _check_success_criteria(self, question: str, tool_result: Dict[str, Any]) -> bool:
+        """
+        Check if the success criteria have been met based on the tool result.
+
+        This method determines if we have the information needed to answer the question,
+        allowing us to short-circuit the execution phase and move to refinement.
+
+        Args:
+            question: The user's question
+            tool_result: The result from a tool execution
+
+        Returns:
+            True if success criteria are met, False otherwise
+        """
+        # Parse the question to extract key information
+        question_analysis = self._parse_question(question)
+
+        # Get the metrics, companies, and temporal information from the question
+        metrics = question_analysis.get("metrics", [])
+        companies = question_analysis.get("companies", [])
+        year = question_analysis.get("fiscal_year")
+
+        # Check if this is a financial metrics question and we have the data
+        if tool_result and "sec_financial_data" in str(tool_result):
+            # For financial data queries, check if we have the specific metric requested
+            if metrics and companies and year:
+                self.logger.info(f"Checking success criteria for financial query: {metrics}, {companies}, {year}")
+
+                # Check if the tool result contains the requested metric
+                if isinstance(tool_result, dict):
+                    # Different possible structures of the tool result
+                    if any(metric in str(tool_result) for metric in metrics):
+                        self.logger.info(f"Success criteria met: Found requested metric {metrics}")
+                        return True
+
+                    # Check for results array
+                    results = tool_result.get("results", [])
+                    if results and isinstance(results, list):
+                        for result in results:
+                            if isinstance(result, dict) and any(metric.lower() in str(result).lower() for metric in metrics):
+                                self.logger.info(f"Success criteria met: Found requested metric in results")
+                                return True
+
+        # If we reach here, success criteria are not met
+        return False
 
     def _parse_question(self, question: str) -> Dict[str, Any]:
         """

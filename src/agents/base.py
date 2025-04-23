@@ -549,6 +549,61 @@ class Agent(ABC):
 
 
 
+    def _should_skip(self, step: Dict[str, Any]) -> bool:
+        """
+        Check if a step should be skipped based on success criteria.
+
+        This method checks if the expected output of a step is already in memory,
+        allowing us to skip redundant steps and move directly to the next step.
+
+        Args:
+            step: The plan step to check
+
+        Returns:
+            True if the step should be skipped, False otherwise
+        """
+        # If no expected_key is specified, we can't skip
+        if "expected_key" not in step:
+            return False
+
+        expected_key = step["expected_key"]
+        output_path = step.get("output_path", [])
+
+        # Get all memory items
+        memory = self.get_memory()
+
+        # Check tool results in memory
+        for item in memory:
+            if item.get("type") == "tool_result":
+                result = item.get("result", {})
+
+                # If output_path is specified, navigate to the specific location in the result
+                if output_path:
+                    try:
+                        value = result
+                        for key in output_path:
+                            if isinstance(value, dict) and key in value:
+                                value = value[key]
+                            else:
+                                # Path doesn't exist in this result
+                                value = None
+                                break
+
+                        # If we found a value at the specified path, we can skip
+                        if value is not None:
+                            self.logger.info(f"Success criterion met: Found {expected_key} at path {output_path}")
+                            return True
+                    except Exception as e:
+                        self.logger.warning(f"Error checking output path: {str(e)}")
+                        continue
+                # Otherwise, check if the expected key is in the result
+                elif expected_key in str(result):
+                    self.logger.info(f"Success criterion met: Found {expected_key} in result")
+                    return True
+
+        # If we reach here, success criteria are not met
+        return False
+
     def _setup_basic_logger(self):
         """Set up basic logging that's always available."""
         logger_name = f"{self.__class__.__name__}.{self.session_id}"
@@ -643,6 +698,43 @@ class Agent(ABC):
     def add_to_memory(self, content: Dict[str, Any]):
         """Add an item to the agent's memory."""
         self.state.add_memory_item(content)
+
+    async def _execute_current_step(self, step: Dict[str, Any]) -> bool:
+        """
+        Execute the current step in the plan.
+
+        This method checks if the step should be skipped based on success criteria,
+        and if not, executes the step using the appropriate tool or agent.
+
+        Args:
+            step: The plan step to execute
+
+        Returns:
+            True if the step was executed or skipped successfully, False otherwise
+        """
+        # Check if we should skip this step based on success criteria
+        if self._should_skip(step):
+            self.logger.info(f"Skipping step {step['step_id']} - success criterion already satisfied")
+
+            # Mark the step as completed
+            step["status"] = "completed"
+            step["completed_at"] = datetime.now().isoformat()
+            step["skipped"] = True
+
+            # Add to memory that we skipped this step
+            self.add_to_memory({
+                "type": "step_skipped",
+                "step_id": step["step_id"],
+                "description": step["description"],
+                "expected_key": step.get("expected_key"),
+                "timestamp": datetime.now().isoformat()
+            })
+
+            return True
+
+        # If we shouldn't skip, execute the step normally
+        # This is handled by the planning capability and the agent's execution phase
+        return False
 
     def get_memory(self) -> List[Dict[str, Any]]:
         """Get the agent's current memory."""
