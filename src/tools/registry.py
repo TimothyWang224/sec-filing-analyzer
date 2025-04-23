@@ -5,10 +5,11 @@ Tool registry for managing tools with automatic documentation extraction.
 import inspect
 import re
 import logging
-from typing import Dict, Any, Optional, get_type_hints
+from typing import Dict, Any, Optional, get_type_hints, List, Union
 
 from .schema_registry import SchemaRegistry
 from .memoization import clear_tool_caches
+from ..contracts import ToolSpec
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +20,7 @@ class ToolRegistry:
 
     _tools: Dict[str, Dict[str, Any]] = {}
     _schema_mappings: Dict[str, Dict[str, str]] = {}
+    _tool_specs: Dict[str, ToolSpec] = {}
 
     @classmethod
     def register(cls, tool_class=None, name=None, tags=None):
@@ -90,6 +92,30 @@ class ToolRegistry:
             "parameters": parameters,
             "tags": tags or []
         }
+
+        # Create and store a ToolSpec
+        input_schema = {}
+        for param_name, param_info in parameters.items():
+            input_schema[param_name] = {
+                "type": param_info.get("type", "any"),
+                "description": param_info.get("description", f"Parameter {param_name}"),
+                "required": param_info.get("required", False)
+            }
+            if "default" in param_info:
+                input_schema[param_name]["default"] = param_info["default"]
+            if "enum" in param_info:
+                input_schema[param_name]["enum"] = param_info["enum"]
+
+        # Determine the output key based on the tool name
+        output_key = tool_name
+
+        # Create the ToolSpec
+        cls._tool_specs[tool_name] = ToolSpec(
+            name=tool_name,
+            input_schema=input_schema,
+            output_key=output_key,
+            description=description
+        )
 
         # Add metadata to the class
         tool_class._tool_name = tool_name
@@ -235,6 +261,69 @@ class ToolRegistry:
         return tool
 
     @classmethod
+    def get_schema(cls, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get tool input schema by name.
+
+        Args:
+            name: Name of the tool to retrieve
+
+        Returns:
+            Tool input schema if found, None otherwise
+        """
+        tool_spec = cls.get_tool_spec(name)
+        if tool_spec:
+            return tool_spec.input_schema
+        return None
+
+    @classmethod
+    def get_tool_spec(cls, name: str) -> Optional[ToolSpec]:
+        """
+        Get tool specification by name.
+
+        Args:
+            name: Name of the tool to retrieve
+
+        Returns:
+            ToolSpec if found, None otherwise
+        """
+        # First, try to get the tool spec from the registry
+        tool_spec = cls._tool_specs.get(name)
+
+        # If the tool spec is not found, try to get the tool and create a spec
+        if tool_spec is None:
+            tool = cls.get(name)
+            if tool:
+                # Create a tool spec from the tool documentation
+                input_schema = {}
+                for param_name, param_info in tool["parameters"].items():
+                    input_schema[param_name] = {
+                        "type": param_info.get("type", "any"),
+                        "description": param_info.get("description", f"Parameter {param_name}"),
+                        "required": param_info.get("required", False)
+                    }
+                    if "default" in param_info:
+                        input_schema[param_name]["default"] = param_info["default"]
+                    if "enum" in param_info:
+                        input_schema[param_name]["enum"] = param_info["enum"]
+
+                # Determine the output key based on the tool name
+                output_key = name
+
+                # Create the ToolSpec
+                tool_spec = ToolSpec(
+                    name=name,
+                    input_schema=input_schema,
+                    output_key=output_key,
+                    description=tool["description"]
+                )
+
+                # Store the tool spec for future use
+                cls._tool_specs[name] = tool_spec
+
+        return tool_spec
+
+    @classmethod
     def list_tools(cls) -> Dict[str, Dict[str, Any]]:
         """
         Get all registered tools.
@@ -282,7 +371,7 @@ class ToolRegistry:
 
         # Validate mappings against the schema
         errors = []
-        for param_name, field_name in cls._schema_mappings[tool_name].items():
+        for _, field_name in cls._schema_mappings[tool_name].items():
             field_info = SchemaRegistry.get_field_info(db_schema, field_name)
             if not field_info:
                 errors.append(f"Field '{field_name}' not found in schema '{db_schema}'")

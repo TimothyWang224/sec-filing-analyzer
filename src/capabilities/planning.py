@@ -15,6 +15,7 @@ from datetime import datetime
 from .base import Capability
 from ..agents.base import Agent
 from ..tools.tool_parameter_helper import validate_tool_parameters, generate_tool_parameter_prompt
+from ..contracts import PlanStep, Plan, extract_value
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -618,8 +619,14 @@ Return your plan in the exact JSON format requested."""
         plan_response = await self.agent.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            temperature=0.3
+            temperature=0.3,
+            return_usage=True
         )
+
+        # Count tokens if return_usage is True
+        if isinstance(plan_response, dict) and "usage" in plan_response:
+            self.agent.state.count_tokens(plan_response["usage"]["total_tokens"], "planning")
+            plan_response = plan_response["content"]
 
         # Parse the plan from the response
         try:
@@ -700,6 +707,12 @@ Your plan should include:
    - Parameters or inputs needed
    - Expected key to check in results (for automatic success detection)
    - Output path to the expected data (for automatic success detection)
+   - A "done" check condition that specifies when this step is considered complete
+
+Each step must have a clear contract with its tool:
+- If using a tool, specify exactly what output key you expect from that tool
+- Define a specific condition to check if the step is complete (e.g., "value not None", "list length > 0")
+- Make sure the expected_key and output_path match the actual output structure of the tool
 
 Return your plan as a JSON object with this structure:
 ```json
@@ -715,6 +728,7 @@ Return your plan as a JSON object with this structure:
       "dependencies": [],
       "expected_key": "optional_key_to_check_in_results",
       "output_path": ["optional", "path", "to", "result"],
+      "done_check": "value not None",
       "status": "pending"
     }},
     ...
@@ -741,6 +755,7 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "dependencies": [],
                     "expected_key": "financial_facts",
                     "output_path": ["results"],
+                    "done_check": "results is not None and len(results) > 0",
                     "status": "pending"
                 },
                 {
@@ -751,6 +766,7 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "dependencies": [],
                     "expected_key": "semantic_search",
                     "output_path": ["results"],
+                    "done_check": "results is not None and len(results) > 0",
                     "status": "pending"
                 },
                 {
@@ -760,6 +776,7 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "parameters": {},
                     "dependencies": [1, 2],
                     "expected_key": "financial_analysis",
+                    "done_check": "financial_analysis is not None",
                     "status": "pending"
                 },
                 {
@@ -767,6 +784,7 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     "description": "Generate comprehensive report",
                     "dependencies": [3],
                     "expected_key": "report",
+                    "done_check": "report is not None",
                     "status": "pending"
                 }
             ],
@@ -823,11 +841,45 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                 elif "tool" in step and step["tool"] == "sec_semantic_search":
                     step["output_path"] = ["results"]
 
+            # Ensure done_check exists if expected_key exists
+            if "expected_key" in step and "done_check" not in step:
+                expected_key = step["expected_key"]
+                # Set a default done_check based on the expected_key
+                step["done_check"] = f"{expected_key} is not None"
+
         # Limit the number of steps
         if len(plan["steps"]) > self.max_plan_steps:
             plan["steps"] = plan["steps"][:self.max_plan_steps]
 
         return plan
+
+    def _dict_to_plan_step(self, step_dict: Dict[str, Any]) -> PlanStep:
+        """Convert a dictionary-based plan step to a PlanStep model."""
+        return PlanStep(**step_dict)
+
+    def _plan_step_to_dict(self, plan_step: PlanStep) -> Dict[str, Any]:
+        """Convert a PlanStep model to a dictionary."""
+        return plan_step.model_dump()
+
+    def _dict_to_plan(self, plan_dict: Dict[str, Any]) -> Plan:
+        """Convert a dictionary-based plan to a Plan model."""
+        # Convert steps to PlanStep models
+        steps = [self._dict_to_plan_step(step) for step in plan_dict.get("steps", [])]
+
+        # Create a Plan model
+        return Plan(
+            goal=plan_dict.get("goal", "Process the input"),
+            steps=steps,
+            status=plan_dict.get("status", "pending"),
+            created_at=plan_dict.get("created_at"),
+            completed_at=plan_dict.get("completed_at"),
+            owner=plan_dict.get("owner", "agent"),
+            can_modify=plan_dict.get("can_modify", True)
+        )
+
+    def _plan_to_dict(self, plan: Plan) -> Dict[str, Any]:
+        """Convert a Plan model to a dictionary."""
+        return plan.model_dump()
 
     async def _reflect_and_update_plan(
         self,
@@ -876,8 +928,14 @@ Return the updated plan in the exact JSON format of the original plan."""
         reflection_response = await self.agent.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            temperature=0.3
+            temperature=0.3,
+            return_usage=True
         )
+
+        # Count tokens if return_usage is True
+        if isinstance(reflection_response, dict) and "usage" in reflection_response:
+            self.agent.state.count_tokens(reflection_response["usage"]["total_tokens"], "planning")
+            reflection_response = reflection_response["content"]
 
         # Parse the updated plan from the response
         try:

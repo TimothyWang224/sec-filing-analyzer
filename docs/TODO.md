@@ -45,7 +45,7 @@ if "NetIncome" in memory and memory["NetIncome"]["year"] == 2023:
 1. First implementation: Added a `_check_success_criteria` method to the QA Specialist Agent that checks if the tool result contains the requested information. Modified the execution phase to check success criteria after each tool call and move to refinement if the criteria are met.
 2. Improved implementation: Extended the plan schema with `expected_key` and `output_path` fields. Added a `_should_skip` method to the base Agent class that checks if the expected output is already in memory. Modified the planning capability to check if steps can be skipped based on success criteria. This approach works for all agents, not just the QA Specialist.
 
-### 3. Plan-Step ↔ Tool Contract
+### ✅ 3. Plan-Step ↔ Tool Contract
 
 Every plan step should declare the tool and the specific output key it expects.
 
@@ -59,6 +59,8 @@ Every plan step should declare the tool and the specific output key it expects.
 **Priority**: Medium - This is a more structural change that would improve clarity and efficiency.
 
 **Result**: Execution skips a step automatically once the expected key is already in memory.
+
+**Implementation**: Created a formal contract between plan steps and tools using Pydantic models. Added `ToolSpec` and `PlanStep` models in `contracts.py` to define the interface. Updated the `ToolRegistry` to use the `ToolSpec` model for tool specifications. Modified the `_execute_current_step` method in the base Agent class to use the tool specifications and standardized memory access patterns. Added the `extract_value` function to standardize how tools store and retrieve data from memory.
 
 ### 4. Merge Micro-Steps with a "Batch" Adapter
 

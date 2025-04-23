@@ -8,6 +8,9 @@ from datetime import datetime
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
+from ..contracts import extract_value, PlanStep
+from ..tools.registry import ToolRegistry
+
 from ..utils.json_utils import safe_parse_json, repair_json
 
 from .core.agent_state import AgentState
@@ -146,9 +149,6 @@ class Agent(ABC):
         self.state = AgentState()
         self.tool_ledger = ToolLedger()
 
-        # Configure token budgets
-        self._configure_token_budgets()
-
         # Initialize LLM
         self.llm = OpenAILLM(
             model=llm_model,
@@ -186,6 +186,9 @@ class Agent(ABC):
 
         # Log effective max iterations
         self.logger.info(f"Effective max iterations: {self.max_iterations_effective} (derived from planning={self.max_planning_iterations}, execution={self.max_execution_iterations}, refinement={self.max_refinement_iterations})")
+
+        # Configure token budgets
+        self._configure_token_budgets()
 
     def _get_config(self, agent_type: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -582,6 +585,8 @@ class Agent(ABC):
 
         This method checks if the expected output of a step is already in memory,
         allowing us to skip redundant steps and move directly to the next step.
+        It uses the done_check condition if available, otherwise falls back to checking
+        if the expected_key exists in the result.
 
         Args:
             step: The plan step to check
@@ -595,6 +600,7 @@ class Agent(ABC):
 
         expected_key = step["expected_key"]
         output_path = step.get("output_path", [])
+        done_check = step.get("done_check", None)
 
         # Get all memory items
         memory = self.get_memory()
@@ -607,26 +613,48 @@ class Agent(ABC):
                 # If output_path is specified, navigate to the specific location in the result
                 if output_path:
                     try:
-                        value = result
-                        for key in output_path:
-                            if isinstance(value, dict) and key in value:
-                                value = value[key]
-                            else:
-                                # Path doesn't exist in this result
-                                value = None
-                                break
+                        # Use the extract_value function from contracts module
+                        value = extract_value(result, output_path)
 
-                        # If we found a value at the specified path, we can skip
+                        # If we found a value at the specified path, check the done_check condition
                         if value is not None:
-                            self.logger.info(f"Success criterion met: Found {expected_key} at path {output_path}")
-                            return True
+                            # If done_check is specified, evaluate it
+                            if done_check:
+                                # Create a local context with the expected_key and value
+                                local_context = {expected_key: value}
+                                try:
+                                    # Evaluate the done_check condition in the local context
+                                    is_done = eval(done_check, {}, local_context)
+                                    if is_done:
+                                        self.logger.info(f"Success criterion met: {done_check} evaluated to True")
+                                        return True
+                                except Exception as e:
+                                    self.logger.warning(f"Error evaluating done_check condition: {str(e)}")
+                            else:
+                                # No done_check, just check if value exists
+                                self.logger.info(f"Success criterion met: Found {expected_key} at path {output_path}")
+                                return True
                     except Exception as e:
                         self.logger.warning(f"Error checking output path: {str(e)}")
                         continue
                 # Otherwise, check if the expected key is in the result
                 elif expected_key in str(result):
-                    self.logger.info(f"Success criterion met: Found {expected_key} in result")
-                    return True
+                    # If done_check is specified, evaluate it
+                    if done_check:
+                        # Create a local context with the expected_key and result
+                        local_context = {expected_key: result}
+                        try:
+                            # Evaluate the done_check condition in the local context
+                            is_done = eval(done_check, {}, local_context)
+                            if is_done:
+                                self.logger.info(f"Success criterion met: {done_check} evaluated to True")
+                                return True
+                        except Exception as e:
+                            self.logger.warning(f"Error evaluating done_check condition: {str(e)}")
+                    else:
+                        # No done_check, just check if expected_key exists in result
+                        self.logger.info(f"Success criterion met: Found {expected_key} in result")
+                        return True
 
         # If we reach here, success criteria are not met
         return False
@@ -775,6 +803,20 @@ class Agent(ABC):
         Returns:
             True if the step was executed or skipped successfully, False otherwise
         """
+        # Convert to PlanStep if it's a dictionary - for future use
+        if isinstance(step, dict):
+            try:
+                from ..capabilities.planning import PlanningCapability
+                if hasattr(self, 'capabilities'):
+                    for capability in self.capabilities:
+                        if isinstance(capability, PlanningCapability):
+                            # For future use - currently we continue with the dictionary
+                            _ = capability._dict_to_plan_step(step)
+                            break
+            except (ImportError, AttributeError):
+                # If conversion fails, continue with the dictionary
+                pass
+
         # Check if we should skip this step based on success criteria
         if self._should_skip(step):
             self.logger.info(f"Skipping step {step['step_id']} - success criterion already satisfied")
@@ -790,8 +832,27 @@ class Agent(ABC):
                 "step_id": step["step_id"],
                 "description": step["description"],
                 "expected_key": step.get("expected_key"),
+                "output_path": step.get("output_path"),
+                "done_check": step.get("done_check"),
                 "timestamp": datetime.now().isoformat()
             })
+
+            # If we have a tool and expected_key, store the result in memory
+            if "tool" in step and "expected_key" in step:
+                tool_name = step["tool"]
+                expected_key = step["expected_key"]
+
+                # Get the tool spec
+                tool_spec = ToolRegistry.get_tool_spec(tool_name)
+                if tool_spec:
+                    # Store the result in memory using the tool's output_key
+                    self.state.memory[expected_key] = {
+                        "skipped": True,
+                        "reason": "Success criterion already satisfied"
+                    }
+
+                    # Log that we stored the result
+                    self.logger.info(f"Stored result for {expected_key} in memory")
 
             return True
 
