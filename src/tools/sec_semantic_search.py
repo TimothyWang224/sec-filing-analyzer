@@ -6,17 +6,100 @@ using the optimized vector store.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Type
 from datetime import datetime
 
 from ..tools.base import Tool
 from ..tools.decorator import tool
+from ..contracts import BaseModel, ToolSpec, field_validator
+from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
 from sec_filing_analyzer.storage import OptimizedVectorStore
 from sec_filing_analyzer.config import StorageConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Define parameter models
+class SemanticSearchParams(BaseModel):
+    """Parameters for semantic search queries."""
+    query: str
+    companies: Optional[List[str]] = None
+    top_k: int = 5
+    filing_types: Optional[List[str]] = None
+    date_range: Optional[Tuple[str, str]] = None
+    sections: Optional[List[str]] = None
+    keywords: Optional[List[str]] = None
+    hybrid_search_weight: float = 0.5
+
+    @field_validator('query')
+    @classmethod
+    def validate_query(cls, v):
+        if not v or not isinstance(v, str):
+            raise ValueError("Query must be a non-empty string")
+        return v
+
+    @field_validator('top_k')
+    @classmethod
+    def validate_top_k(cls, v):
+        if not isinstance(v, int) or v <= 0:
+            raise ValueError("top_k must be a positive integer")
+        return v
+
+    @field_validator('companies')
+    @classmethod
+    def validate_companies(cls, v):
+        if v is not None and not all(isinstance(company, str) for company in v):
+            raise ValueError("Companies must be a list of strings")
+        return v
+
+    @field_validator('filing_types')
+    @classmethod
+    def validate_filing_types(cls, v):
+        valid_filing_types = ["10-K", "10-Q", "8-K", "S-1", "S-4", "20-F", "40-F", "6-K"]
+        if v is not None and not all(filing_type in valid_filing_types for filing_type in v):
+            raise ValueError(f"Filing types must be in {valid_filing_types}")
+        return v
+
+    @field_validator('date_range')
+    @classmethod
+    def validate_date_range(cls, v):
+        if v is not None:
+            if len(v) != 2:
+                raise ValueError("Date range must be a tuple of (start_date, end_date)")
+
+            start_date, end_date = v
+            try:
+                datetime.strptime(start_date, "%Y-%m-%d")
+                datetime.strptime(end_date, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError("Dates must be in format 'YYYY-MM-DD'")
+
+            if start_date > end_date:
+                raise ValueError("Start date must be before end date")
+        return v
+
+    @field_validator('hybrid_search_weight')
+    @classmethod
+    def validate_hybrid_search_weight(cls, v):
+        if not isinstance(v, (int, float)) or v < 0 or v > 1:
+            raise ValueError("Hybrid search weight must be a float between 0 and 1")
+        return v
+
+# Map query types to parameter models
+SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
+    "semantic_search": SemanticSearchParams
+}
+
+# Register tool specification
+from .registry import ToolRegistry
+
+ToolRegistry._tool_specs["sec_semantic_search"] = ToolSpec(
+    name="sec_semantic_search",
+    input_schema=SUPPORTED_QUERIES,
+    output_key="sec_semantic_search",
+    description="Tool for performing semantic search on SEC filings."
+)
 
 @tool(
     name="sec_semantic_search",
@@ -46,41 +129,62 @@ class SECSemanticSearchTool(Tool):
 
     async def _execute(
         self,
-        query: str,
-        companies: Optional[List[str]] = None,
-        top_k: int = 5,
-        filing_types: Optional[List[str]] = None,
-        date_range: Optional[Tuple[str, str]] = None,
-        sections: Optional[List[str]] = None,
-        keywords: Optional[List[str]] = None,
-        hybrid_search_weight: float = 0.5
+        query_type: str,
+        parameters: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Execute semantic search on SEC filings.
 
         Args:
-            query: The search query text
-            companies: Optional list of company tickers to search within
-            top_k: Number of results to return
-            filing_types: Optional list of filing types to filter by (e.g., ['10-K', '10-Q'])
-            date_range: Optional tuple of (start_date, end_date) in format 'YYYY-MM-DD'
-            sections: Optional list of document sections to filter by
-            keywords: Optional list of keywords to search for
-            hybrid_search_weight: Weight for hybrid search (0.0 = pure vector, 1.0 = pure keyword)
+            query_type: Type of query to execute (e.g., "semantic_search")
+            parameters: Parameters for the query
 
         Returns:
             Dictionary containing search results
+
+        Raises:
+            QueryTypeUnsupported: If the query type is not supported
+            ParameterError: If the parameters are invalid
+            StorageUnavailable: If the vector store is unavailable
+            DataNotFound: If no results are found
         """
         try:
-            print(f"SECSemanticSearchTool.execute: Executing semantic search: {query}")
-            print(f"SECSemanticSearchTool.execute: Companies: {companies}")
-            print(f"SECSemanticSearchTool.execute: Filing types: {filing_types}")
-            print(f"SECSemanticSearchTool.execute: Date range: {date_range}")
+            # Validate query type
+            if query_type not in SUPPORTED_QUERIES:
+                supported_types = list(SUPPORTED_QUERIES.keys())
+                raise QueryTypeUnsupported(query_type, "sec_semantic_search", supported_types)
+
+            # Validate parameters using the appropriate model
+            param_model = SUPPORTED_QUERIES[query_type]
+            if parameters is None:
+                parameters = {}
+
+            try:
+                # Validate parameters
+                params = param_model(**parameters)
+            except Exception as e:
+                raise ParameterError(str(e))
+
+            # Extract parameters
+            query = params.query
+            companies = params.companies
+            top_k = params.top_k
+            filing_types = params.filing_types
+            date_range = params.date_range
+            sections = params.sections
+            keywords = params.keywords
+            hybrid_search_weight = params.hybrid_search_weight
+
+            logger.info(f"Executing semantic search: {query}")
+            logger.info(f"Companies: {companies}")
+            logger.info(f"Filing types: {filing_types}")
+            logger.info(f"Date range: {date_range}")
+
+            # Check if vector store is available
+            if self.vector_store is None:
+                raise StorageUnavailable("vector_store", "Vector store is not initialized")
 
             # Perform search
-            print(f"SECSemanticSearchTool.execute: Vector store path: {self.vector_store_path}")
-            print(f"SECSemanticSearchTool.execute: Vector store initialized: {self.vector_store is not None}")
-
             search_results = self.vector_store.search_vectors(
                 query_text=query,
                 companies=companies,
@@ -92,7 +196,13 @@ class SECSemanticSearchTool(Tool):
                 hybrid_search_weight=hybrid_search_weight
             )
 
-            print(f"SECSemanticSearchTool.execute: Search results: {len(search_results) if search_results else 'None'}")
+            # Check if we have results
+            if not search_results:
+                raise DataNotFound("semantic_search_results", {
+                    "query": query,
+                    "companies": companies,
+                    "filing_types": filing_types
+                })
 
             # Format results
             formatted_results = []
@@ -119,87 +229,50 @@ class SECSemanticSearchTool(Tool):
                 "companies": companies,
                 "filing_types": filing_types,
                 "date_range": date_range,
-                "sections": sections
+                "sections": sections,
+                "output_key": "sec_semantic_search"
             }
 
+        except (QueryTypeUnsupported, ParameterError, StorageUnavailable, DataNotFound) as e:
+            # Re-raise known errors
+            raise
         except Exception as e:
             logger.error(f"Error executing semantic search: {str(e)}")
-            return {
-                "error": str(e),
-                "query": query,
-                "results": [],
-                "total_results": 0
-            }
+            raise StorageUnavailable("vector_store", f"Error executing semantic search: {str(e)}")
 
     def validate_args(
         self,
-        query: str,
-        companies: Optional[List[str]] = None,
-        top_k: int = 5,
-        filing_types: Optional[List[str]] = None,
-        date_range: Optional[Tuple[str, str]] = None,
-        sections: Optional[List[str]] = None,
-        keywords: Optional[List[str]] = None,
-        hybrid_search_weight: float = 0.5
+        query_type: str,
+        parameters: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         Validate the tool arguments.
 
         Args:
-            query: The search query text
-            companies: Optional list of company tickers to search within
-            top_k: Number of results to return
-            filing_types: Optional list of filing types to filter by
-            date_range: Optional tuple of (start_date, end_date)
-            sections: Optional list of document sections to filter by
-            keywords: Optional list of keywords to search for
-            hybrid_search_weight: Weight for hybrid search
+            query_type: Type of query to execute
+            parameters: Parameters for the query
 
         Returns:
             True if arguments are valid, False otherwise
         """
-        # Validate query
-        if not query or not isinstance(query, str):
-            logger.error("Invalid query: must be a non-empty string")
-            return False
-
-        # Validate top_k
-        if not isinstance(top_k, int) or top_k <= 0:
-            logger.error("Invalid top_k: must be a positive integer")
-            return False
-
-        # Validate companies if provided
-        if companies and not all(isinstance(company, str) for company in companies):
-            logger.error("Invalid companies: must be a list of strings")
-            return False
-
-        # Validate filing_types if provided
-        valid_filing_types = ["10-K", "10-Q", "8-K", "S-1", "S-4", "20-F", "40-F", "6-K"]
-        if filing_types and not all(filing_type in valid_filing_types for filing_type in filing_types):
-            logger.error(f"Invalid filing_types: must be in {valid_filing_types}")
-            return False
-
-        # Validate date_range if provided
-        if date_range:
-            try:
-                if len(date_range) != 2:
-                    logger.error("Invalid date_range: must be a tuple of (start_date, end_date)")
-                    return False
-
-                start_date, end_date = date_range
-                datetime.strptime(start_date, "%Y-%m-%d")
-                datetime.strptime(end_date, "%Y-%m-%d")
-
-                if start_date > end_date:
-                    logger.error("Invalid date_range: start_date must be before end_date")
-                    return False
-            except ValueError:
-                logger.error("Invalid date_range: dates must be in format 'YYYY-MM-DD'")
+        try:
+            # Validate query type
+            if query_type not in SUPPORTED_QUERIES:
+                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
                 return False
 
-        # Validate hybrid_search_weight
-        if not isinstance(hybrid_search_weight, (int, float)) or hybrid_search_weight < 0 or hybrid_search_weight > 1:
-            logger.error("Invalid hybrid_search_weight: must be a float between 0 and 1")
-            return False
+            # Validate parameters using the appropriate model
+            param_model = SUPPORTED_QUERIES[query_type]
+            if parameters is None:
+                parameters = {}
 
-        return True
+            try:
+                # Validate parameters
+                param_model(**parameters)
+                return True
+            except Exception as e:
+                logger.error(f"Parameter validation error: {str(e)}")
+                return False
+        except Exception as e:
+            logger.error(f"Validation error: {str(e)}")
+            return False

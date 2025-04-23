@@ -835,7 +835,7 @@ class Agent(ABC):
                 # If conversion fails, continue with the dictionary
                 pass
 
-        # Check if we should skip this step based on success criteria
+        # 1. Success short-circuit: Check if we should skip this step based on success criteria
         if self._should_skip(step):
             self.logger.info(f"Skipping step {step['step_id']} - success criterion already satisfied")
 
@@ -884,6 +884,50 @@ class Agent(ABC):
                     self.logger.info(f"Stored result for {expected_key} in memory with output_key {tool_spec.output_key}")
 
             return True
+
+        # 2. Validation: If the step has a tool, validate the parameters
+        if "tool" in step and step["tool"]:
+            tool_name = step["tool"]
+            parameters = step.get("parameters", {})
+
+            try:
+                # Import the validator
+                from ..tools.validator import validate_call
+
+                # Get the query_type and parameters
+                query_type = parameters.get("query_type")
+                tool_params = parameters.get("parameters", {})
+
+                if query_type:
+                    # Validate the call
+                    try:
+                        validate_call(tool_name, query_type, tool_params)
+                    except Exception as e:
+                        from ..errors import ToolError, get_user_message
+
+                        # Get a user-friendly error message
+                        error_message = get_user_message(e)
+
+                        # Mark the step as failed
+                        step["status"] = "failed"
+                        step["error"] = error_message
+
+                        # Add to memory that the step failed
+                        self.add_to_memory({
+                            "type": "step_failed",
+                            "step_id": step["step_id"],
+                            "tool": tool_name,
+                            "error": error_message,
+                            "timestamp": datetime.now().isoformat()
+                        })
+
+                        # Log the error
+                        self.logger.error(f"Step {step['step_id']} failed validation: {error_message}")
+
+                        return False
+            except ImportError:
+                # If validation fails, continue with the step
+                self.logger.warning("Could not import validator, skipping validation")
 
         # If we shouldn't skip, execute the step normally
         # This is handled by the planning capability and the agent's execution phase

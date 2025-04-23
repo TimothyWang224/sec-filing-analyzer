@@ -6,16 +6,72 @@ containing SEC filing relationships and structure.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Union
+from typing import Dict, Any, List, Optional, Union, Type
 
 from ..tools.base import Tool
 from ..tools.decorator import tool
+from ..contracts import BaseModel, ToolSpec, field_validator
+from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
 from sec_filing_analyzer.storage import GraphStore
 from sec_filing_analyzer.config import StorageConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Define parameter models
+class CompanyFilingsParams(BaseModel):
+    """Parameters for company filings queries."""
+    ticker: str
+    filing_types: Optional[List[str]] = None
+    limit: int = 10
+
+class FilingSectionsParams(BaseModel):
+    """Parameters for filing sections queries."""
+    accession_number: str
+    section_types: Optional[List[str]] = None
+    limit: int = 50
+
+class RelatedCompaniesParams(BaseModel):
+    """Parameters for related companies queries."""
+    ticker: str
+    relationship_type: str = "MENTIONS"
+    limit: int = 10
+
+class FilingTimelineParams(BaseModel):
+    """Parameters for filing timeline queries."""
+    ticker: str
+    filing_type: str = "10-K"
+    limit: int = 10
+
+class SectionTypesParams(BaseModel):
+    """Parameters for section types queries."""
+    pass
+
+class CustomCypherParams(BaseModel):
+    """Parameters for custom Cypher queries."""
+    cypher_query: str
+    query_params: Dict[str, Any] = {}
+
+# Map query types to parameter models
+SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
+    "company_filings": CompanyFilingsParams,
+    "filing_sections": FilingSectionsParams,
+    "related_companies": RelatedCompaniesParams,
+    "filing_timeline": FilingTimelineParams,
+    "section_types": SectionTypesParams,
+    "custom_cypher": CustomCypherParams
+}
+
+# Register tool specification
+from .registry import ToolRegistry
+
+ToolRegistry._tool_specs["sec_graph_query"] = ToolSpec(
+    name="sec_graph_query",
+    input_schema=SUPPORTED_QUERIES,
+    output_key="sec_graph_query",
+    description="Tool for querying the SEC filing graph database."
+)
 
 @tool(
     name="sec_graph_query",
@@ -77,40 +133,67 @@ class SECGraphQueryTool(Tool):
 
         Returns:
             Dictionary containing query results
+
+        Raises:
+            QueryTypeUnsupported: If the query type is not supported
+            ParameterError: If the parameters are invalid
+            StorageUnavailable: If the graph store is unavailable
+            DataNotFound: If no results are found
         """
         try:
-            logger.info(f"Executing graph query: {query_type}")
+            # Validate query type
+            if query_type not in SUPPORTED_QUERIES:
+                supported_types = list(SUPPORTED_QUERIES.keys())
+                raise QueryTypeUnsupported(query_type, "sec_graph_query", supported_types)
 
+            # Validate parameters using the appropriate model
+            param_model = SUPPORTED_QUERIES[query_type]
             if parameters is None:
                 parameters = {}
 
-            # Execute the appropriate query based on query_type
-            if query_type == "company_filings":
-                return self._query_company_filings(parameters)
-            elif query_type == "filing_sections":
-                return self._query_filing_sections(parameters)
-            elif query_type == "related_companies":
-                return self._query_related_companies(parameters)
-            elif query_type == "filing_timeline":
-                return self._query_filing_timeline(parameters)
-            elif query_type == "section_types":
-                return self._query_section_types(parameters)
-            elif query_type == "custom_cypher":
-                return self._execute_custom_cypher(parameters)
-            else:
-                return {
-                    "error": f"Unknown query type: {query_type}",
-                    "results": []
-                }
+            try:
+                # Validate parameters
+                params = param_model(**parameters)
+            except Exception as e:
+                raise ParameterError(str(e))
 
+            logger.info(f"Executing graph query: {query_type}")
+
+            # Check if graph store is available
+            if self.graph_store is None:
+                raise StorageUnavailable("graph_store", "Graph store is not initialized")
+
+            # Execute the appropriate query based on query_type
+            result = None
+            if query_type == "company_filings":
+                result = self._query_company_filings(params.model_dump())
+            elif query_type == "filing_sections":
+                result = self._query_filing_sections(params.model_dump())
+            elif query_type == "related_companies":
+                result = self._query_related_companies(params.model_dump())
+            elif query_type == "filing_timeline":
+                result = self._query_filing_timeline(params.model_dump())
+            elif query_type == "section_types":
+                result = self._query_section_types(params.model_dump())
+            elif query_type == "custom_cypher":
+                result = self._execute_custom_cypher(params.model_dump())
+
+            # Add output key to result
+            if result and isinstance(result, dict):
+                result["output_key"] = "sec_graph_query"
+                return result
+            else:
+                raise DataNotFound("graph_query_results", {
+                    "query_type": query_type,
+                    "parameters": parameters
+                })
+
+        except (QueryTypeUnsupported, ParameterError, StorageUnavailable, DataNotFound) as e:
+            # Re-raise known errors
+            raise
         except Exception as e:
             logger.error(f"Error executing graph query: {str(e)}")
-            return {
-                "error": str(e),
-                "query_type": query_type,
-                "parameters": parameters,
-                "results": []
-            }
+            raise StorageUnavailable("graph_store", f"Error executing graph query: {str(e)}")
 
     def _query_company_filings(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query filings for a specific company."""
@@ -311,42 +394,24 @@ class SECGraphQueryTool(Tool):
         Returns:
             True if arguments are valid, False otherwise
         """
-        # Validate query_type
-        valid_query_types = [
-            "company_filings",
-            "filing_sections",
-            "related_companies",
-            "filing_timeline",
-            "section_types",
-            "custom_cypher"
-        ]
+        try:
+            # Validate query type
+            if query_type not in SUPPORTED_QUERIES:
+                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
+                return False
 
-        if not query_type or query_type not in valid_query_types:
-            logger.error(f"Invalid query_type: must be one of {valid_query_types}")
+            # Validate parameters using the appropriate model
+            param_model = SUPPORTED_QUERIES[query_type]
+            if parameters is None:
+                parameters = {}
+
+            try:
+                # Validate parameters
+                param_model(**parameters)
+                return True
+            except Exception as e:
+                logger.error(f"Parameter validation error: {str(e)}")
+                return False
+        except Exception as e:
+            logger.error(f"Validation error: {str(e)}")
             return False
-
-        # Validate parameters based on query_type
-        if parameters is None:
-            parameters = {}
-
-        if query_type == "company_filings" and "ticker" not in parameters:
-            logger.error("Missing required parameter for company_filings: ticker")
-            return False
-
-        if query_type == "filing_sections" and "accession_number" not in parameters:
-            logger.error("Missing required parameter for filing_sections: accession_number")
-            return False
-
-        if query_type == "related_companies" and "ticker" not in parameters:
-            logger.error("Missing required parameter for related_companies: ticker")
-            return False
-
-        if query_type == "filing_timeline" and "ticker" not in parameters:
-            logger.error("Missing required parameter for filing_timeline: ticker")
-            return False
-
-        if query_type == "custom_cypher" and "cypher_query" not in parameters:
-            logger.error("Missing required parameter for custom_cypher: cypher_query")
-            return False
-
-        return True

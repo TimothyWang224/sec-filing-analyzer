@@ -6,16 +6,63 @@ stored in the DuckDB database.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Tuple, Union
+from typing import Dict, Any, List, Optional, Tuple, Union, Type
 from datetime import datetime
 
 from ..tools.base import Tool
 from ..tools.decorator import tool
+from ..contracts import ToolInput, FinancialFactsParams, MetricsParams, BaseModel, ToolSpec
+from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
 from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Define supported query types and their parameter models
+class TimeSeriesParams(BaseModel):
+    """Parameters for time series queries."""
+    ticker: str
+    metric: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    period: Optional[str] = None
+
+class CompanyInfoParams(BaseModel):
+    """Parameters for company info queries."""
+    ticker: Optional[str] = None
+
+class FinancialRatiosParams(BaseModel):
+    """Parameters for financial ratios queries."""
+    ticker: str
+    ratios: Optional[List[str]] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+class CustomSQLParams(BaseModel):
+    """Parameters for custom SQL queries."""
+    sql_query: str
+
+# Map query types to parameter models
+SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
+    "financial_facts": FinancialFactsParams,
+    "company_info": CompanyInfoParams,
+    "companies": CompanyInfoParams,
+    "metrics": MetricsParams,
+    "time_series": TimeSeriesParams,
+    "financial_ratios": FinancialRatiosParams,
+    "custom_sql": CustomSQLParams
+}
+
+# Register tool specification
+from .registry import ToolRegistry
+
+ToolRegistry._tool_specs["sec_financial_data"] = ToolSpec(
+    name="sec_financial_data",
+    input_schema=SUPPORTED_QUERIES,
+    output_key="sec_financial_data",
+    description="Tool for querying financial data from SEC filings."
+)
 
 @tool(
     name="sec_financial_data",
@@ -75,7 +122,29 @@ class SECFinancialDataTool(Tool):
 
         Returns:
             Dictionary containing query results
+
+        Raises:
+            QueryTypeUnsupported: If the query type is not supported
+            ParameterError: If the parameters are invalid
+            StorageUnavailable: If the database is unavailable
+            DataNotFound: If the requested data is not found
         """
+        # Validate query type
+        if query_type not in SUPPORTED_QUERIES:
+            supported_types = list(SUPPORTED_QUERIES.keys())
+            raise QueryTypeUnsupported(query_type, "sec_financial_data", supported_types)
+
+        # Validate parameters using the appropriate model
+        param_model = SUPPORTED_QUERIES[query_type]
+        if parameters is None:
+            parameters = {}
+
+        try:
+            # Validate parameters
+            param_model(**parameters)
+        except Exception as e:
+            raise ParameterError(str(e))
+
         try:
             logger.info(f"Executing financial data query: {query_type}")
 
@@ -385,48 +454,24 @@ class SECFinancialDataTool(Tool):
         Returns:
             True if arguments are valid, False otherwise
         """
-        # Validate query_type
-        valid_query_types = [
-            "financial_facts",
-            "company_info",
-            "companies",  # Alias for company_info with no ticker
-            "metrics",
-            "time_series",
-            "financial_ratios",
-            "custom_sql"
-        ]
+        try:
+            # Validate query type
+            if query_type not in SUPPORTED_QUERIES:
+                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
+                return False
 
-        if not query_type or query_type not in valid_query_types:
-            logger.error(f"Invalid query_type: must be one of {valid_query_types}")
+            # Validate parameters using the appropriate model
+            param_model = SUPPORTED_QUERIES[query_type]
+            if parameters is None:
+                parameters = {}
+
+            try:
+                # Validate parameters
+                param_model(**parameters)
+                return True
+            except Exception as e:
+                logger.error(f"Parameter validation error: {str(e)}")
+                return False
+        except Exception as e:
+            logger.error(f"Validation error: {str(e)}")
             return False
-
-        # Validate parameters based on query_type
-        if parameters is None:
-            parameters = {}
-
-        if query_type == "financial_facts" and "ticker" not in parameters:
-            logger.error("Missing required parameter for financial_facts: ticker")
-            return False
-
-        if query_type == "time_series" and ("ticker" not in parameters or "metric" not in parameters):
-            logger.error("Missing required parameters for time_series: ticker and metric")
-            return False
-
-        if query_type == "financial_ratios" and "ticker" not in parameters:
-            logger.error("Missing required parameter for financial_ratios: ticker")
-            return False
-
-        if query_type == "custom_sql" and "sql_query" not in parameters:
-            logger.error("Missing required parameter for custom_sql: sql_query")
-            return False
-
-        # Validate date parameters if provided
-        for date_param in ["start_date", "end_date"]:
-            if date_param in parameters and parameters[date_param]:
-                try:
-                    datetime.strptime(parameters[date_param], "%Y-%m-%d")
-                except ValueError:
-                    logger.error(f"Invalid {date_param}: must be in format 'YYYY-MM-DD'")
-                    return False
-
-        return True

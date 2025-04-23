@@ -6,18 +6,69 @@ ensuring that tools and plan steps have a clear understanding of what
 each expects and provides.
 """
 
-from typing import List, Dict, Any, Optional, Union
-from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional, Union, Type
+from datetime import date
+from pydantic import BaseModel, Field, field_validator
+
+
+class ToolInput(BaseModel):
+    """
+    Base model for tool inputs.
+
+    This defines the standard structure for tool inputs, with a query_type
+    and parameters dictionary.
+    """
+    query_type: str
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FinancialFactsParams(BaseModel):
+    """
+    Parameters for financial facts queries.
+    """
+    ticker: str
+    metrics: List[str]
+    start_date: str
+    end_date: str
+    filing_type: Optional[str] = None
+
+    @field_validator('start_date', 'end_date')
+    @classmethod
+    def validate_date_format(cls, v):
+        # Simple validation for YYYY-MM-DD format
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError("Date must be a non-empty string")
+
+        # Check if it's already a date object
+        if isinstance(v, date):
+            return v.isoformat()
+
+        # Basic format check
+        parts = v.split('-')
+        if len(parts) != 3:
+            raise ValueError("Date must be in YYYY-MM-DD format")
+
+        return v
+
+
+class MetricsParams(BaseModel):
+    """
+    Parameters for metrics queries.
+    """
+    ticker: str
+    year: Optional[int] = None
+    quarter: Optional[int] = None
+    filing_type: Optional[str] = None
 
 
 class ToolSpec(BaseModel):
     """
     Specification for a tool, defining its input schema and output format.
-    
+
     This serves as a contract for what a tool expects and what it returns.
     """
     name: str
-    input_schema: Dict[str, Any]  # parameter schema
+    input_schema: Dict[str, Type[BaseModel]]  # query_type -> parameter model
     output_key: str  # canonical key placed in memory
     description: str = ""
 
@@ -25,7 +76,7 @@ class ToolSpec(BaseModel):
 class PlanStep(BaseModel):
     """
     A step in a plan, with a clear contract for what it expects and provides.
-    
+
     The contract fields (expected_key, output_path, done_check) formalize
     the relationship between the step and the tool it uses.
     """
@@ -62,22 +113,22 @@ class Plan(BaseModel):
 def extract_value(result: Dict[str, Any], path: List[str]) -> Any:
     """
     Extract a value from a nested dictionary using a path.
-    
+
     Args:
         result: The dictionary to extract from
         path: List of keys to navigate the nested dictionary
-        
+
     Returns:
         The extracted value, or None if the path doesn't exist
     """
     if not path:
         return result
-    
+
     value = result
     for key in path:
         if isinstance(value, dict) and key in value:
             value = value[key]
         else:
             return None
-    
+
     return value
