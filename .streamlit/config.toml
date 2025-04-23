@@ -1,7 +1,6 @@
 [browser]
 serverAddress = "localhost"
 gatherUsageStats = false
-serveTrailingSlash = true
 
 [theme]
 base = "light"
@@ -21,17 +20,11 @@ hideTopBar = false
 [client]
 showErrorDetails = true
 toolbarMode = "auto"
-caching = false
-displayEnabled = true
 
 [runner]
 magicEnabled = true
-installTracer = true
-fixMatplotlib = true
 fastReruns = false
 
 [global]
-disableWatchdogWarning = false
 showWarningOnDirectExecution = true
-dataFrameSerialization = "arrow"
 suppressDeprecationWarnings = true

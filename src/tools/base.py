@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 import logging
 from .registry import ToolRegistry
 from .schema_registry import SchemaRegistry
+from .memoization import memoize_tool, clear_tool_caches
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -167,6 +168,7 @@ class Tool(ABC):
         """
         raise NotImplementedError("Subclasses must implement _execute")
 
+    @memoize_tool
     async def execute(self, **kwargs) -> Any:
         """
         Execute the tool with the given arguments.

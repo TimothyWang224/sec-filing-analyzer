@@ -350,6 +350,32 @@ class QASpecialistAgent(Agent):
 
                         # Generate answer using the tool results
                         answer = await self._generate_answer_from_results(user_input, tool_results)
+
+                        # Add result to memory
+                        self.add_to_memory({
+                            "type": "qa_response",
+                            "content": answer
+                        })
+
+                        # Process result with capabilities
+                        for capability in self.capabilities:
+                            answer = await capability.process_result(
+                                self,
+                                {"input": user_input},
+                                user_input,
+                                {"type": "qa_response"},
+                                answer
+                            )
+
+                        # Increment iteration counter
+                        self.increment_iteration()
+
+                        # If we've done enough execution, move to refinement phase
+                        if self.state.phase_iterations['execution'] >= self.max_execution_iterations:
+                            self.state.set_phase('refinement')
+                            self.logger.info(f"Moving to refinement phase")
+
+                        # Skip the rest of the loop body
                         continue
                     except Exception as e:
                         self.logger.error(f"Error executing deterministic tool selection: {str(e)}")

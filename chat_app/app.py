@@ -5,30 +5,24 @@ This Streamlit app provides a chat interface for interacting with the Financial 
 """
 
 import streamlit as st
+
+# Set page config - MUST be the first Streamlit command
+st.set_page_config(
+    page_title="SEC Filing Analyzer - Chat",
+    page_icon="💬",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 import asyncio
 import sys
 from pathlib import Path
 import time
 import logging
+import importlib.util
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-# Import agent components
-try:
-    from sec_filing_analyzer.config import ConfigProvider
-    from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
-    # Import tools module to ensure all tools are registered via module-level side effects
-    # This is necessary because the tool registration happens when the module is imported
-    import sec_filing_analyzer.tools
-    from src.agents import FinancialDiligenceCoordinator
-    from src.environments import FinancialEnvironment
-    from src.capabilities import TimeAwarenessCapability, LoggingCapability, PlanningCapability
-    imports_successful = True
-except ImportError as e:
-    st.error(f"Error importing SEC Filing Analyzer components: {e}")
-    st.warning("Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly.")
-    imports_successful = False
 
 # Configure logging
 logging.basicConfig(
@@ -37,13 +31,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Set page config
-st.set_page_config(
-    page_title="SEC Filing Analyzer - Chat",
-    page_icon="💬",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Import agent components
+imports_successful = True
+try:
+    from sec_filing_analyzer.config import ConfigProvider
+    from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
+
+    # Check if sec_filing_analyzer.tools module exists
+    if importlib.util.find_spec("sec_filing_analyzer.tools") is not None:
+        import sec_filing_analyzer.tools
+    else:
+        # If the tools module doesn't exist, we'll rely on the src.tools module
+        logger.info("sec_filing_analyzer.tools module not found, using src.tools instead")
+        import src.tools
+
+    from src.agents import FinancialDiligenceCoordinator
+    from src.environments import FinancialEnvironment
+    from src.capabilities import TimeAwarenessCapability, LoggingCapability, PlanningCapability
+except ImportError as e:
+    st.error(f"Error importing SEC Filing Analyzer components: {e}")
+    st.warning("Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly.")
+    imports_successful = False
 
 # Initialize configuration
 if imports_successful:

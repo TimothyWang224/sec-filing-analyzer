@@ -8,6 +8,7 @@ import logging
 from typing import Dict, Any, Optional, get_type_hints
 
 from .schema_registry import SchemaRegistry
+from .memoization import clear_tool_caches
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -337,6 +338,16 @@ class ToolRegistry:
                 return json.dumps(cls._tools, indent=2)
             else:
                 return "\n\n".join(docs)
+
+    @classmethod
+    def clear_caches(cls):
+        """
+        Clear all tool caches.
+
+        This should be called when data is updated to ensure tools use the latest data.
+        """
+        clear_tool_caches()
+        logger.info("All tool caches cleared")
 
     @classmethod
     def get_compact_tool_documentation(cls, format: str = "text") -> str:
