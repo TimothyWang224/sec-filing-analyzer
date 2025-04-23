@@ -69,12 +69,20 @@ The system uses an agent-based architecture for analysis:
    - Single tool call approach reduces parameter confusion
    - Robust error handling with adaptive retry strategies
    - Circuit breaker pattern prevents cascading failures
+   - Plan-Step ↔ Tool Contract ensures consistent tool execution and memory storage
 
 3. **Specialized Agents**:
    - QA Specialist for answering questions
    - Financial Analyst for financial analysis
    - Risk Analyst for risk assessment
    - Coordinator for orchestrating complex tasks
+
+4. **Plan-Step ↔ Tool Contract**:
+   - Formal contract between planning steps and tools using Pydantic models
+   - Standardized parameter validation with clear error messages
+   - Consistent memory storage with output keys
+   - Success criteria for skipping redundant steps
+   - Dependency tracking between steps
 
 For more details, see the [Agent Parameters and Phases](docs/agent_parameters.md) documentation.
 

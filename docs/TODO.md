@@ -62,6 +62,8 @@ Every plan step should declare the tool and the specific output key it expects.
 
 **Implementation**: Created a formal contract between plan steps and tools using Pydantic models. Added `ToolSpec` and `PlanStep` models in `contracts.py` to define the interface. Updated the `ToolRegistry` to use the `ToolSpec` model for tool specifications. Modified the `_execute_current_step` method in the base Agent class to use the tool specifications and standardized memory access patterns. Added the `extract_value` function to standardize how tools store and retrieve data from memory.
 
+**Enhanced Implementation**: Added standardized parameter models for all tools using Pydantic. Implemented a comprehensive error hierarchy with user-friendly error messages. Created a validation framework to validate tool calls before execution. Updated all tools to use the new parameter models and validation framework. Added success short-circuit to skip steps when the expected output is already in memory.
+
 ### 4. Merge Micro-Steps with a "Batch" Adapter
 
 ```python

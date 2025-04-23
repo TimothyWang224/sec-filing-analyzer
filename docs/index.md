@@ -38,6 +38,9 @@ The SEC Filing Analyzer is designed to process SEC filings (10-K, 10-Q, 8-K) and
 - [Tool Ledger](tool_ledger.md)
 - [Planning Capability](planning_capability.md)
 - [Parameter Completion](parameter_completion.md)
+- [Plan-Step ↔ Tool Contract](plan_step_tool_contract.md)
+- [Tool Parameter Models](tool_parameter_models.md)
+- [Error Handling](error_handling.md)
 
 ### Usage
 

@@ -15,6 +15,33 @@ The enhanced error handling system provides a comprehensive approach to handling
 
 ## Components
 
+### Error Hierarchy
+
+The error handling system uses a comprehensive error hierarchy based on the `ToolError` base class:
+
+```python
+class ToolError(Exception):
+    """Base class for all tool-related errors."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        self.message = message
+        self.details = details or {}
+        super().__init__(message)
+
+    def user_message(self) -> str:
+        """Return a user-friendly error message."""
+        return self.message
+```
+
+Specific error types include:
+
+- **ParameterError**: Invalid or missing parameters
+- **QueryTypeUnsupported**: Unsupported query type
+- **StorageUnavailable**: Storage system unavailable
+- **DataNotFound**: Requested data not found
+
+Each error type provides a user-friendly error message and includes details about the error.
+
 ### Error Classification
 
 The `ErrorClassifier` class classifies exceptions into different error types:
@@ -86,6 +113,9 @@ The error handling system is integrated with the agent architecture in several w
 2. **Tool Execution**: The `execute_tool_calls` method uses the error recovery manager to execute tool calls
 3. **Error Reporting**: Tool errors are recorded in the agent's memory and tool ledger
 4. **User Feedback**: User-friendly error messages are included in the agent's response
+5. **Parameter Validation**: Parameters are validated before tool execution using Pydantic models
+6. **Error Classification**: Errors are classified for better handling and recovery
+7. **Plan-Step ↔ Tool Contract**: The Plan-Step ↔ Tool Contract ensures consistent error handling across all tools
 
 ## Example
 
@@ -112,7 +142,7 @@ recovery_result = await self.error_recovery_manager.execute_tool_with_recovery(
 if recovery_result["success"]:
     # Handle successful result
     result = recovery_result["result"]
-    
+
     # Check if recovery was needed
     if "recovery_strategy" in recovery_result:
         # Recovery was successful
@@ -123,10 +153,10 @@ else:
     error = recovery_result["error"]
     error_message = error.message
     error_type = error.error_type.value
-    
+
     # Get user-friendly error message
     user_message = recovery_result.get("user_message", error_message)
-    
+
     # Get suggestions for fixing the error
     suggestions = recovery_result.get("suggestions", [])
     # ...

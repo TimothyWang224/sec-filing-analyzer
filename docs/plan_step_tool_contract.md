@@ -10,6 +10,8 @@ The Plan-Step ↔ Tool Contract defines a clear interface between planning steps
 2. Tools have a consistent interface with well-defined input and output schemas
 3. Results from tools are stored in memory with consistent keys
 4. Steps can be skipped based on success criteria
+5. Parameters are validated before tool execution
+6. Errors are properly classified and handled with user-friendly messages
 
 ## Models
 
@@ -21,13 +23,13 @@ The `ToolSpec` model defines the contract for what a tool expects and returns:
 class ToolSpec(BaseModel):
     """Tool specification."""
     name: str
-    input_schema: Dict[str, Any]
+    input_schema: Dict[str, Type[BaseModel]]  # query_type -> parameter model
     output_key: str
     description: str = ""
 ```
 
 - `name`: The name of the tool
-- `input_schema`: The schema for the tool's input parameters
+- `input_schema`: A mapping from query types to Pydantic parameter models
 - `output_key`: The key to use when storing the tool's output in memory
 - `description`: A description of the tool
 
@@ -156,6 +158,123 @@ step = PlanStep(
 
 When this step is executed, the `sec_financial_data` tool is called with the parameters, and the result is stored in memory with the key `revenue_data`. The `output_path` field specifies that the value to extract is at `["data", "Revenue"]` in the result.
 
+## Parameter Models
+
+The Plan-Step ↔ Tool Contract uses Pydantic models to define and validate tool parameters. Each tool defines a set of parameter models for different query types:
+
+```python
+class ToolInput(BaseModel):
+    """Base model for tool inputs."""
+    query_type: str
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FinancialFactsParams(BaseModel):
+    """Parameters for financial facts queries."""
+    ticker: str
+    metrics: List[str]
+    start_date: str
+    end_date: str
+    filing_type: Optional[str] = None
+
+    @field_validator('start_date', 'end_date')
+    @classmethod
+    def validate_date_format(cls, v):
+        # Simple validation for YYYY-MM-DD format
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError("Date must be a non-empty string")
+
+        # Check if it's already a date object
+        if isinstance(v, date):
+            return v.isoformat()
+
+        # Basic format check
+        parts = v.split('-')
+        if len(parts) != 3:
+            raise ValueError("Date must be in YYYY-MM-DD format")
+
+        return v
+```
+
+## Error Handling
+
+The Plan-Step ↔ Tool Contract includes a comprehensive error hierarchy for better error handling:
+
+```python
+class ToolError(Exception):
+    """Base class for all tool-related errors."""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        self.message = message
+        self.details = details or {}
+        super().__init__(message)
+
+    def user_message(self) -> str:
+        """Return a user-friendly error message."""
+        return self.message
+
+
+class ParameterError(ToolError):
+    """Error raised when tool parameters are invalid."""
+
+    def user_message(self) -> str:
+        """Return a user-friendly error message."""
+        if 'field' in self.details:
+            return f"The parameter '{self.details['field']}' is invalid: {self.message}"
+        return f"Invalid parameter: {self.message}"
+
+
+class QueryTypeUnsupported(ToolError):
+    """Error raised when a query type is not supported by a tool."""
+
+    def __init__(self, query_type: str, tool_name: str, supported_types: Optional[List[str]] = None):
+        self.query_type = query_type
+        self.tool_name = tool_name
+        self.supported_types = supported_types or []
+
+        message = f"Query type '{query_type}' is not supported by the {tool_name} tool."
+        if self.supported_types:
+            message += f" Supported types are: {', '.join(self.supported_types)}"
+
+        super().__init__(message, {
+            'query_type': query_type,
+            'tool_name': tool_name,
+            'supported_types': self.supported_types
+        })
+```
+
+## Validation
+
+The Plan-Step ↔ Tool Contract includes a validation framework for validating tool calls before execution:
+
+```python
+def validate_call(tool_name: str, query_type: str, params: Dict[str, Any]) -> None:
+    """Validate a tool call before execution."""
+    # Get the tool spec
+    tool_spec = ToolRegistry.get_tool_spec(tool_name)
+    if not tool_spec:
+        raise ValueError(f"Tool '{tool_name}' not found in registry")
+
+    # Check if the query type is supported
+    if query_type not in tool_spec.input_schema:
+        supported_types = list(tool_spec.input_schema.keys())
+        raise QueryTypeUnsupported(query_type, tool_name, supported_types)
+
+    # Get the parameter model
+    param_model: Type[BaseModel] = tool_spec.input_schema[query_type]
+
+    # Validate the parameters
+    try:
+        param_model(**params)
+    except ValidationError as e:
+        # Extract field information from the validation error
+        field = None
+        if e.errors() and 'loc' in e.errors()[0]:
+            field = e.errors()[0]['loc'][0]
+
+        raise ParameterError(str(e), {'field': field})
+```
+
 ## Benefits
 
 The Plan-Step ↔ Tool Contract provides several benefits:
@@ -165,3 +284,6 @@ The Plan-Step ↔ Tool Contract provides several benefits:
 3. **Flexibility**: Steps can be skipped based on success criteria
 4. **Reusability**: Tools can be reused across different plans
 5. **Maintainability**: The contract makes it easier to maintain and extend the system
+6. **Validation**: Parameters are validated before tool execution, preventing errors
+7. **Error Handling**: Errors are properly classified and handled with user-friendly messages
+8. **Documentation**: The parameter models provide clear documentation of what each tool expects
