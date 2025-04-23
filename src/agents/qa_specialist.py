@@ -565,6 +565,9 @@ class QASpecialistAgent(Agent):
                                 # Increment iteration counter
                                 self.increment_iteration()
 
+                                # Roll over unused tokens from execution to refinement
+                                self._rollover_token_surplus('execution', 'refinement')
+
                                 # Move to refinement phase
                                 self.state.set_phase('refinement')
                                 self.logger.info(f"Success criteria met, moving to refinement phase")
@@ -608,6 +611,10 @@ class QASpecialistAgent(Agent):
 
             # If we've done enough execution, move to refinement phase
             if self.state.phase_iterations['execution'] >= self.max_execution_iterations:
+                # Roll over unused tokens from execution to refinement
+                self._rollover_token_surplus('execution', 'refinement')
+
+                # Set phase to refinement
                 self.state.set_phase('refinement')
                 self.logger.info(f"Moving to refinement phase")
 

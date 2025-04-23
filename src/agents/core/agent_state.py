@@ -20,6 +20,12 @@ class AgentState:
             'execution': 0,
             'refinement': 0
         }
+        self.tokens_used: Dict[str, int] = {
+            'planning': 0,
+            'execution': 0,
+            'refinement': 0
+        }
+        self.token_budget: Dict[str, int] = {}
 
     def add_memory_item(self, item: Dict[str, Any]) -> None:
         """
@@ -79,6 +85,39 @@ class AgentState:
         """
         self.current_phase = phase
 
+    def count_tokens(self, tokens: int, phase: Optional[str] = None) -> None:
+        """
+        Count tokens used in a specific phase.
+
+        Args:
+            tokens: Number of tokens to count
+            phase: Phase to count tokens for (defaults to current phase)
+        """
+        if phase is None:
+            phase = self.current_phase
+
+        if phase in self.tokens_used:
+            self.tokens_used[phase] += tokens
+
+    def is_budget_exhausted(self, phase: Optional[str] = None) -> bool:
+        """
+        Check if the token budget for a phase is exhausted.
+
+        Args:
+            phase: Phase to check (defaults to current phase)
+
+        Returns:
+            True if the budget is exhausted, False otherwise
+        """
+        if phase is None:
+            phase = self.current_phase
+
+        # If no budget is set, use iteration-based control
+        if not self.token_budget or phase not in self.token_budget:
+            return False
+
+        return self.tokens_used[phase] >= self.token_budget[phase]
+
     def clear(self) -> None:
         """Clear the agent's state."""
         self.memory = []
@@ -87,6 +126,11 @@ class AgentState:
         self.start_time = time.time()
         self.current_phase = 'planning'
         self.phase_iterations = {
+            'planning': 0,
+            'execution': 0,
+            'refinement': 0
+        }
+        self.tokens_used = {
             'planning': 0,
             'execution': 0,
             'refinement': 0

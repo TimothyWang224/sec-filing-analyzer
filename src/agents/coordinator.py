@@ -346,6 +346,9 @@ class FinancialDiligenceCoordinator(Agent):
 
             # If we've done enough planning, move to execution phase
             if self.state.phase_iterations['planning'] >= self.max_planning_iterations:
+                # Roll over unused tokens from planning to execution
+                self._rollover_token_surplus('planning', 'execution')
+
                 self.state.set_phase('execution')
                 self.logger.info(f"Moving to execution phase")
 
@@ -560,6 +563,9 @@ class FinancialDiligenceCoordinator(Agent):
                 all_agents_run = False
 
             if all_agents_run or self.state.phase_iterations['execution'] >= self.max_execution_iterations:
+                # Roll over unused tokens from execution to refinement
+                self._rollover_token_surplus('execution', 'refinement')
+
                 self.state.set_phase('refinement')
                 self.logger.info(f"Moving to refinement phase")
 

@@ -50,8 +50,9 @@ class OpenAILLM(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         json_mode: bool = False,
+        return_usage: bool = False,
         **kwargs: Any
-    ) -> str:
+    ) -> Union[str, Dict[str, Any]]:
         """Generate a response using OpenAI's API.
 
         Args:
@@ -60,10 +61,12 @@ class OpenAILLM(BaseLLM):
             temperature: Controls randomness in the output (0.0 to 1.0)
             max_tokens: Maximum number of tokens to generate
             json_mode: If True, forces the model to return valid JSON
+            return_usage: If True, returns a dict with 'content' and 'usage' keys
             **kwargs: Additional provider-specific parameters
 
         Returns:
-            The generated response as a string
+            If return_usage is False (default): The generated response as a string
+            If return_usage is True: Dict with 'content' and 'usage' keys
         """
         messages = []
         if system_prompt:
@@ -99,7 +102,21 @@ class OpenAILLM(BaseLLM):
 
         logger.info(f"LLM Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
 
-        return response.choices[0].message.content
+        # Extract usage information
+        usage = {
+            "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
+            "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
+            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0
+        }
+
+        # Return based on return_usage parameter
+        if return_usage:
+            return {
+                "content": response.choices[0].message.content,
+                "usage": usage
+            }
+        else:
+            return response.choices[0].message.content
 
     @timed_function(category="llm_stream")
     async def generate_stream(
@@ -176,6 +193,7 @@ class OpenAILLM(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         function_call: Optional[Union[str, Dict[str, str]]] = None,
+        return_usage: bool = False,
         **kwargs: Any
     ) -> Dict[str, Any]:
         """Generate a response using OpenAI's function calling API.
@@ -190,10 +208,12 @@ class OpenAILLM(BaseLLM):
                 - "auto": Let the model decide whether to call a function
                 - "none": Don't call a function
                 - {"name": "function_name"}: Call the specified function
+            return_usage: If True, includes token usage information in the result
             **kwargs: Additional provider-specific parameters
 
         Returns:
-            Dictionary containing the response and function call information
+            Dictionary containing the response, function call information, and
+            optionally token usage information if return_usage is True
         """
         messages = []
         if system_prompt:
@@ -238,6 +258,13 @@ class OpenAILLM(BaseLLM):
 
         logger.info(f"LLM Function Call Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
 
+        # Extract usage information
+        usage = {
+            "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
+            "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
+            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0
+        }
+
         # Extract response content and function call information
         message = response.choices[0].message
         result = {
@@ -252,5 +279,9 @@ class OpenAILLM(BaseLLM):
                     "name": tool_call.function.name,
                     "arguments": tool_call.function.arguments
                 }
+
+        # Add usage information if requested
+        if return_usage:
+            result["usage"] = usage
 
         return result

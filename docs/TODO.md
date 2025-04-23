@@ -82,7 +82,7 @@ def fetch_fact(metric, ticker, year):
 
 **Result**: The planner can fall back to HTN only when batch_capable == False.
 
-### 5. Refinement Tokens vs. Execution Tokens
+### ✅ 5. Refinement Tokens vs. Execution Tokens
 
 Right now the QA agent has 5 execution vs 2 refinement iterations.
 For factoid Q&A you usually want the inverse:
@@ -96,6 +96,8 @@ For factoid Q&A you usually want the inverse:
 
 **Result**: This removes the "out of gas before polishing" failure class.
 
+**Implementation**: Implemented a token-based budgeting system that allocates tokens to each phase (planning, execution, refinement) with a 10/40/50 split by default. Added the ability to roll over unused tokens from execution to refinement, ensuring that simple queries that need minimal execution can benefit from more thorough refinement. Replaced iteration-based control with token-based control, while keeping iteration limits as a secondary safety mechanism.
+
 ### 6. Tool-Error Escalation Policy
 
 get_available_metrics raised an AttributeError and the agent kept trucking.
@@ -108,7 +110,7 @@ get_available_metrics raised an AttributeError and the agent kept trucking.
 **Difficulty**: Medium - Requires modifying the tool execution framework to handle errors more gracefully.
 **Priority**: Medium - This would improve robustness but isn't the primary issue in the current case.
 
-### 7. Instrumentation: Cost & Latency Budget per Phase
+### ⚠️ 7. Instrumentation: Cost & Latency Budget per Phase
 
 ```python
 state.tokens_used['planning'|'execution'|'refinement']
@@ -120,3 +122,5 @@ state.seconds_elapsed['…']
 **Priority**: Low - This is more of a monitoring improvement than a direct fix.
 
 **Result**: You'll quickly see whether planning or refinement needs bigger budgets, and you can auto-scale max_*_iterations based on token ceilings rather than fixed integers.
+
+**Partial Implementation**: Implemented token tracking with `state.tokens_used` for each phase. Still need to implement time tracking with `state.seconds_elapsed`.

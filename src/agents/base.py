@@ -60,6 +60,9 @@ class Agent(ABC):
         llm_model: Optional[str] = None,
         llm_temperature: Optional[float] = None,
         llm_max_tokens: Optional[int] = None,
+        # Token budget parameters
+        max_total_tokens: Optional[int] = None,
+        token_budgets: Optional[Dict[str, int]] = None,
         # Environment
         environment: Optional[Environment] = None,
         # Termination parameters
@@ -93,6 +96,10 @@ class Agent(ABC):
             llm_temperature: Temperature for LLM generation
             llm_max_tokens: Maximum tokens for LLM generation
 
+            # Token budget parameters
+            max_total_tokens: Maximum total tokens to use across all phases
+            token_budgets: Dictionary mapping phases to token budgets
+
             # Environment
             environment: Optional environment to use
 
@@ -122,6 +129,10 @@ class Agent(ABC):
         # Set runtime parameters with fallbacks
         self.max_duration_seconds = max_duration_seconds if max_duration_seconds is not None else config.get("max_duration_seconds", 180)
 
+        # Set token budget parameters with fallbacks
+        self.max_total_tokens = max_total_tokens if max_total_tokens is not None else config.get("max_total_tokens", 3000)
+        self.token_budgets = token_budgets if token_budgets is not None else config.get("token_budgets", None)
+
         # Set termination parameters with fallbacks
         self.enable_dynamic_termination = enable_dynamic_termination if enable_dynamic_termination is not None else config.get("enable_dynamic_termination", False)
         self.min_confidence_threshold = min_confidence_threshold if min_confidence_threshold is not None else config.get("min_confidence_threshold", 0.8)
@@ -134,6 +145,9 @@ class Agent(ABC):
         # Initialize state and tool ledger
         self.state = AgentState()
         self.tool_ledger = ToolLedger()
+
+        # Configure token budgets
+        self._configure_token_budgets()
 
         # Initialize LLM
         self.llm = OpenAILLM(
@@ -281,8 +295,15 @@ class Agent(ABC):
                 prompt=initial_prompt,
                 system_prompt=system_prompt,
                 temperature=0.2,
-                json_mode=True  # Force the model to return valid JSON
+                json_mode=True,  # Force the model to return valid JSON
+                return_usage=True  # Get token usage information
             )
+
+            # Count tokens
+            if isinstance(initial_response, dict) and "usage" in initial_response:
+                self.state.count_tokens(initial_response["usage"]["total_tokens"])
+                initial_response = initial_response["content"]
+
 
             # Parse tool calls from response
             initial_tool_calls = await self._parse_tool_calls(initial_response)
@@ -334,8 +355,14 @@ class Agent(ABC):
                     prompt=details_prompt,
                     system_prompt=system_prompt,
                     temperature=0.2,
-                    json_mode=True  # Force the model to return valid JSON
+                    json_mode=True,  # Force the model to return valid JSON
+                    return_usage=True  # Get token usage information
                 )
+
+                # Count tokens
+                if isinstance(details_response, dict) and "usage" in details_response:
+                    self.state.count_tokens(details_response["usage"]["total_tokens"])
+                    details_response = details_response["content"]
 
                 # Parse final tool calls
                 detailed_tool_calls = await self._parse_tool_calls(details_response)
@@ -633,6 +660,42 @@ class Agent(ABC):
 
         return agent_logger
 
+    def _configure_token_budgets(self) -> None:
+        """
+        Configure token budgets for each phase based on the agent's configuration.
+
+        This method sets up the token budgets for planning, execution, and refinement phases
+        based on the agent's configuration. If no specific budgets are provided, it uses
+        default percentages of the total token budget.
+        """
+        # Default token budget percentages
+        DEFAULT_PERCENTAGES = {
+            "planning": 0.10,   # 10% for planning
+            "execution": 0.40,  # 40% for execution
+            "refinement": 0.50  # 50% for refinement
+        }
+
+        # Default total token budget
+        DEFAULT_TOTAL_TOKENS = 3000
+
+        # Get total token budget from config or use default
+        total_tokens = getattr(self, "max_total_tokens", DEFAULT_TOTAL_TOKENS)
+
+        # Calculate default budgets based on percentages
+        default_budgets = {
+            phase: int(total_tokens * percentage)
+            for phase, percentage in DEFAULT_PERCENTAGES.items()
+        }
+
+        # Get token budgets from config or use defaults
+        token_budgets = getattr(self, "token_budgets", default_budgets)
+
+        # Set token budgets in state
+        self.state.token_budget = token_budgets
+
+        # Log the token budgets
+        self.logger.info(f"Token budgets configured: {self.state.token_budget}")
+
     def _compute_effective_max_iterations(self) -> int:
         """Compute the effective max iterations based on phase iterations."""
         # If max_iterations is explicitly set, use it
@@ -742,13 +805,14 @@ class Agent(ABC):
 
     def should_terminate(self) -> bool:
         """
-        Check if the agent should terminate based on iteration count, duration, or result quality.
+        Check if the agent should terminate based on iteration count, token budget, duration, or result quality.
 
         This method considers:
         1. Current iteration count vs. max_iterations_effective (derived from phase iterations or legacy max_iterations)
         2. Current phase and its specific iteration limit
-        3. Dynamic termination based on result quality (if enabled)
-        4. Maximum runtime duration
+        3. Token budget exhaustion for the current phase
+        4. Dynamic termination based on result quality (if enabled)
+        5. Maximum runtime duration
 
         Returns:
             True if the agent should terminate, False otherwise
@@ -770,6 +834,14 @@ class Agent(ABC):
             elif phase == 'refinement' and self.state.current_iteration >= self.max_refinement_iterations:
                 self.logger.info(f"Terminating: Reached max refinement iterations ({self.max_refinement_iterations})")
                 return True
+
+        # Check token budget exhaustion
+        if self.state.is_budget_exhausted():
+            phase = self.state.current_phase
+            tokens_used = self.state.tokens_used[phase]
+            budget = self.state.token_budget[phase]
+            self.logger.info(f"Terminating: Token budget exhausted for {phase} phase ({tokens_used}/{budget} tokens)")
+            return True
 
         # Check dynamic termination based on result quality
         if self.enable_dynamic_termination and self.state.current_iteration > 0:
@@ -793,6 +865,28 @@ class Agent(ABC):
     def increment_iteration(self):
         """Increment the current iteration counter."""
         self.state.increment_iteration()
+
+    def _rollover_token_surplus(self, from_phase: str, to_phase: str) -> None:
+        """
+        Roll over unused tokens from one phase to another.
+
+        Args:
+            from_phase: Phase to roll over tokens from
+            to_phase: Phase to roll over tokens to
+        """
+        if from_phase not in self.state.token_budget or to_phase not in self.state.token_budget:
+            return
+
+        # Calculate surplus
+        tokens_used = self.state.tokens_used[from_phase]
+        budget = self.state.token_budget[from_phase]
+        surplus = max(0, budget - tokens_used)
+
+        if surplus > 0:
+            # Add surplus to the target phase
+            self.state.token_budget[to_phase] += surplus
+            self.logger.info(f"Rolling over {surplus} unused tokens from {from_phase} to {to_phase} phase")
+            self.logger.info(f"New {to_phase} budget: {self.state.token_budget[to_phase]} tokens")
 
     @timed_function(category="process")
     async def process_with_llm_tools(self, input_text: str) -> Dict[str, Any]:
