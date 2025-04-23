@@ -57,12 +57,8 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
 # Register tool specification
 from .registry import ToolRegistry
 
-ToolRegistry._tool_specs["sec_financial_data"] = ToolSpec(
-    name="sec_financial_data",
-    input_schema=SUPPORTED_QUERIES,
-    output_key="sec_financial_data",
-    description="Tool for querying financial data from SEC filings."
-)
+# The tool registration is handled by the @tool decorator
+# The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
 @tool(
     name="sec_financial_data",

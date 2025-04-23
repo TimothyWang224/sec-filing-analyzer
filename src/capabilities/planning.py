@@ -107,6 +107,39 @@ class PlanningCapability(Capability):
 
         return context
 
+    def _update_context(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update the context with the current plan state.
+
+        Args:
+            context: Current context
+
+        Returns:
+            Updated context
+        """
+        if self.current_plan:
+            current_step = None
+            if self.current_step_index < len(self.current_plan.steps):
+                current_step = self.current_plan.steps[self.current_step_index]
+
+            context["planning"] = {
+                "has_plan": True,
+                "plan": self.current_plan,
+                "current_step": current_step,
+                "completed_steps": self.completed_steps.copy(),
+                "plan_status": self.current_plan.status,
+                "phase": self.agent.state.current_phase if hasattr(self.agent.state, 'current_phase') else "planning"
+            }
+        else:
+            context["planning"] = {
+                "has_plan": False,
+                "current_step": None,
+                "completed_steps": [],
+                "plan_status": "not_started"
+            }
+
+        return context
+
     async def start_agent_loop(self, agent: Agent, context: Dict[str, Any]) -> bool:
         """
         Called at the start of each agent loop iteration.
@@ -195,12 +228,12 @@ class PlanningCapability(Capability):
             context["planning"] = {
                 "has_plan": True,
                 "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][0] if self.current_plan["steps"] else None,
+                "current_step": self.current_plan.steps[0] if self.current_plan.steps else None,
                 "completed_steps": [],
                 "plan_status": "in_progress",
                 "phase": agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning",
-                "plan_owner": self.current_plan.get("owner", self.plan_owner),
-                "can_modify": self.current_plan.get("can_modify", True)
+                "plan_owner": self.current_plan.owner if hasattr(self.current_plan, 'owner') else self.plan_owner,
+                "can_modify": self.current_plan.can_modify if hasattr(self.current_plan, 'can_modify') else True
             }
 
         # Update the planning context with the current phase
@@ -208,8 +241,9 @@ class PlanningCapability(Capability):
             context["planning"]["phase"] = agent.state.current_phase
 
             # Log the plan
-            logger.info(f"Created plan with {len(self.current_plan['steps'])} steps")
-            logger.info(f"Plan: {json.dumps(self.current_plan, indent=2)}")
+            logger.info(f"Created plan with {len(self.current_plan.steps)} steps")
+            plan_dict = self._plan_to_dict(self.current_plan)
+            logger.info(f"Plan: {json.dumps(plan_dict, indent=2)}")
 
             # Add plan to agent memory
             agent.add_to_memory({
@@ -222,18 +256,18 @@ class PlanningCapability(Capability):
             context["planning"] = {
                 "has_plan": bool(self.current_plan),
                 "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][self.current_step_index] if self.current_plan and self.current_step_index < len(self.current_plan["steps"]) else None,
+                "current_step": self.current_plan.steps[self.current_step_index] if self.current_plan and self.current_step_index < len(self.current_plan.steps) else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"] if self.current_plan else "not_started"
+                "plan_status": self.current_plan.status if self.current_plan else "not_started"
             }
 
         # If we have a plan, update the current step
-        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
-            current_step = self.current_plan["steps"][self.current_step_index]
+        if self.current_plan and self.current_step_index < len(self.current_plan.steps):
+            current_step = self.current_plan.steps[self.current_step_index]
             context["planning"]["current_step"] = current_step
 
             # Log the current step
-            logger.info(f"Current step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}): {current_step['description']}")
+            logger.info(f"Current step ({self.current_step_index + 1}/{len(self.current_plan.steps)}): {current_step.description}")
 
         return True
 
@@ -254,30 +288,30 @@ class PlanningCapability(Capability):
             context["planning"] = {
                 "has_plan": True,
                 "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][self.current_step_index] if self.current_step_index < len(self.current_plan["steps"]) else None,
+                "current_step": self.current_plan.steps[self.current_step_index] if self.current_step_index < len(self.current_plan.steps) else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"],
+                "plan_status": self.current_plan.status,
                 "phase": agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning"
             }
 
         # If we have a plan, add the current step to the prompt
-        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
-            current_step = self.current_plan["steps"][self.current_step_index]
+        if self.current_plan and self.current_step_index < len(self.current_plan.steps):
+            current_step = self.current_plan.steps[self.current_step_index]
             current_phase = agent.state.current_phase if hasattr(agent.state, 'current_phase') else "planning"
 
             # Add planning context to the prompt
             enhanced_prompt = f"{prompt}\n\nCurrent Phase: {current_phase.upper()}\n"
-            enhanced_prompt += f"Current Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
-            enhanced_prompt += f"- Description: {current_step['description']}\n"
+            enhanced_prompt += f"Current Plan Step ({self.current_step_index + 1}/{len(self.current_plan.steps)}):\n"
+            enhanced_prompt += f"- Description: {current_step.description}\n"
 
-            if "tool" in current_step:
-                enhanced_prompt += f"- Recommended Tool: {current_step['tool']}\n"
+            if current_step.tool:
+                enhanced_prompt += f"- Recommended Tool: {current_step.tool}\n"
 
-            if "agent" in current_step:
-                enhanced_prompt += f"- Recommended Agent: {current_step['agent']}\n"
+            if current_step.agent:
+                enhanced_prompt += f"- Recommended Agent: {current_step.agent}\n"
 
-            if "dependencies" in current_step and current_step["dependencies"]:
-                enhanced_prompt += "- Dependencies: " + ", ".join([str(dep) for dep in current_step["dependencies"]]) + "\n"
+            if current_step.dependencies:
+                enhanced_prompt += "- Dependencies: " + ", ".join([str(dep) for dep in current_step.dependencies]) + "\n"
 
             # Add phase-specific guidance
             if current_phase == "planning":
@@ -320,55 +354,55 @@ class PlanningCapability(Capability):
             context["planning"] = {
                 "has_plan": True,
                 "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][self.current_step_index] if self.current_step_index < len(self.current_plan["steps"]) else None,
+                "current_step": self.current_plan.steps[self.current_step_index] if self.current_step_index < len(self.current_plan.steps) else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"]
+                "plan_status": self.current_plan.status
             }
 
         # If we have a plan and a current step, enhance the action
-        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
-            current_step = self.current_plan["steps"][self.current_step_index]
+        if self.current_plan and self.current_step_index < len(self.current_plan.steps):
+            current_step = self.current_plan.steps[self.current_step_index]
 
             # Check if all dependencies for this step are satisfied
             dependencies_satisfied = self._check_dependencies(current_step)
             if not dependencies_satisfied:
                 # If dependencies are not satisfied, log a warning and modify the action
                 missing_deps = self._get_missing_dependencies(current_step)
-                logger.warning(f"Dependencies not satisfied for step {current_step['step_id']}: {missing_deps}")
+                logger.warning(f"Dependencies not satisfied for step {current_step.step_id}: {missing_deps}")
 
                 # If the action is trying to use a tool that depends on previous steps,
                 # modify it to get the missing dependency data first
                 if "tool" in action:
                     # Find a step that would satisfy the dependency
                     dependency_step = self._find_dependency_step(missing_deps[0] if missing_deps else None)
-                    if dependency_step and "tool" in dependency_step:
+                    if dependency_step and dependency_step.tool:
                         # Replace the current tool with the dependency tool
-                        logger.info(f"Replacing tool {action.get('tool')} with dependency tool {dependency_step['tool']}")
-                        action["tool"] = dependency_step["tool"]
-                        if "parameters" in dependency_step:
-                            tool_name = dependency_step["tool"]
-                            parameters = dependency_step["parameters"]
+                        logger.info(f"Replacing tool {action.get('tool')} with dependency tool {dependency_step.tool}")
+                        action["tool"] = dependency_step.tool
+                        if dependency_step.parameters:
+                            tool_name = dependency_step.tool
+                            parameters = dependency_step.parameters
                             validation_result = validate_tool_parameters(tool_name, parameters)
                             action["args"] = validation_result["parameters"]
 
                         # Add dependency context to the action
                         action["dependency_context"] = {
-                            "original_step_id": current_step["step_id"],
-                            "dependency_step_id": dependency_step["step_id"],
+                            "original_step_id": current_step.step_id,
+                            "dependency_step_id": dependency_step.step_id,
                             "missing_dependencies": missing_deps
                         }
 
                         return action
 
             # If the current step recommends a specific tool, suggest it
-            if "tool" in current_step and "tool" not in action:
-                tool_name = current_step["tool"]
+            if current_step.tool and "tool" not in action:
+                tool_name = current_step.tool
                 action["tool"] = tool_name
 
             # If the current step has specific parameters, suggest them
-            if "parameters" in current_step and "args" not in action:
-                tool_name = current_step.get("tool")
-                parameters = current_step["parameters"]
+            if current_step.parameters and "args" not in action:
+                tool_name = current_step.tool
+                parameters = current_step.parameters
 
                 # Validate and fix parameters if a tool is specified
                 if tool_name:
@@ -381,23 +415,23 @@ class PlanningCapability(Capability):
 
             # Add plan context to the action
             action["plan_context"] = {
-                "step_id": current_step["step_id"],
-                "description": current_step["description"]
+                "step_id": current_step.step_id,
+                "description": current_step.description
             }
 
         return action
 
-    def _check_dependencies(self, step: Dict[str, Any]) -> bool:
+    def _check_dependencies(self, step: PlanStep) -> bool:
         """Check if all dependencies for a step are satisfied."""
-        if "dependencies" not in step or not step["dependencies"]:
+        if not step.dependencies:
             return True  # No dependencies to satisfy
 
         # Check each dependency
-        for dep_id in step["dependencies"]:
+        for dep_id in step.dependencies:
             # Find the dependency step in completed steps
             dep_satisfied = False
             for completed_step in self.completed_steps:
-                if completed_step["step_id"] == dep_id:
+                if completed_step.step_id == dep_id:
                     dep_satisfied = True
                     break
 
@@ -406,19 +440,19 @@ class PlanningCapability(Capability):
 
         return True  # All dependencies are satisfied
 
-    def _get_missing_dependencies(self, step: Dict[str, Any]) -> List[int]:
+    def _get_missing_dependencies(self, step: PlanStep) -> List[int]:
         """Get a list of missing dependencies for a step."""
         missing_deps = []
 
-        if "dependencies" not in step or not step["dependencies"]:
+        if not step.dependencies:
             return missing_deps  # No dependencies to check
 
         # Check each dependency
-        for dep_id in step["dependencies"]:
+        for dep_id in step.dependencies:
             # Find the dependency step in completed steps
             dep_satisfied = False
             for completed_step in self.completed_steps:
-                if completed_step["step_id"] == dep_id:
+                if completed_step.step_id == dep_id:
                     dep_satisfied = True
                     break
 
@@ -427,15 +461,15 @@ class PlanningCapability(Capability):
 
         return missing_deps
 
-    def _find_dependency_step(self, dep_id: Optional[int]) -> Optional[Dict[str, Any]]:
+    def _find_dependency_step(self, dep_id: Optional[int]) -> Optional[PlanStep]:
         """Find a step that would satisfy a dependency."""
         if dep_id is None:
             return None
 
         # Look for the dependency step in the plan
-        if self.current_plan and "steps" in self.current_plan:
-            for step in self.current_plan["steps"]:
-                if step["step_id"] == dep_id:
+        if self.current_plan and self.current_plan.steps:
+            for step in self.current_plan.steps:
+                if step.step_id == dep_id:
                     return step
 
         return None
@@ -466,21 +500,21 @@ class PlanningCapability(Capability):
             context["planning"] = {
                 "has_plan": bool(self.current_plan),
                 "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][self.current_step_index] if self.current_plan and self.current_step_index < len(self.current_plan["steps"]) else None,
+                "current_step": self.current_plan.steps[self.current_step_index] if self.current_plan and self.current_step_index < len(self.current_plan.steps) else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"] if self.current_plan else "not_started"
+                "plan_status": self.current_plan.status if self.current_plan else "not_started"
             }
 
         # If we have a plan and a current step, update the plan status
-        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
-            current_step = self.current_plan["steps"][self.current_step_index]
+        if self.current_plan and self.current_step_index < len(self.current_plan.steps):
+            current_step = self.current_plan.steps[self.current_step_index]
 
             # Mark the current step as completed
-            current_step["status"] = "completed"
-            current_step["completed_at"] = datetime.now().isoformat()
+            current_step.status = "completed"
+            current_step.completed_at = datetime.now().isoformat()
 
             # Store the result
-            self.step_results[current_step["step_id"]] = result
+            self.step_results[current_step.step_id] = result
 
             # Add to completed steps
             self.completed_steps.append(current_step)
@@ -492,14 +526,14 @@ class PlanningCapability(Capability):
             self.current_step_index += 1
 
             # Check if we should skip the next step based on success criteria
-            if self.current_step_index < len(self.current_plan["steps"]):
-                next_step = self.current_plan["steps"][self.current_step_index]
+            if self.current_step_index < len(self.current_plan.steps):
+                next_step = self.current_plan.steps[self.current_step_index]
                 # Use the agent's _execute_current_step method to check if we should skip
                 if hasattr(agent, '_execute_current_step'):
                     should_skip = await agent._execute_current_step(next_step)
                     if should_skip:
-                        # If we skipped, update the step_results and completed_steps
-                        self.step_results[next_step["step_id"]] = {"skipped": True, "reason": "Success criterion already satisfied"}
+                                # If we skipped, update the step_results and completed_steps
+                        self.step_results[next_step.step_id] = {"skipped": True, "reason": "Success criterion already satisfied"}
                         self.completed_steps.append(next_step)
                         # Move to the next step
                         self.current_step_index += 1
@@ -511,7 +545,7 @@ class PlanningCapability(Capability):
                  len(self.completed_steps) - self.last_reflection_at >= self.min_steps_before_reflection)):
 
                 # Reflect on the plan and potentially update it if allowed
-                can_modify = self.current_plan.get("can_modify", True)
+                can_modify = self.current_plan.can_modify if hasattr(self.current_plan, 'can_modify') else True
                 if self.enable_dynamic_replanning and can_modify:
                     updated_plan = await self._reflect_and_update_plan(
                         self.current_plan,
@@ -526,8 +560,8 @@ class PlanningCapability(Capability):
                         self.current_plan = updated_plan
 
                         # Preserve ownership and modification settings
-                        self.current_plan["owner"] = self.plan_owner
-                        self.current_plan["can_modify"] = can_modify
+                        self.current_plan.owner = self.plan_owner
+                        self.current_plan.can_modify = can_modify
 
                         # Update context with the new plan
                         context["planning"]["plan"] = self.current_plan
@@ -544,10 +578,10 @@ class PlanningCapability(Capability):
                 self.last_reflection_at = len(self.completed_steps)
 
             # Check if the plan is completed
-            if self.current_step_index >= len(self.current_plan["steps"]):
+            if self.current_step_index >= len(self.current_plan.steps):
                 logger.info("Plan completed")
-                self.current_plan["status"] = "completed"
-                self.current_plan["completed_at"] = datetime.now().isoformat()
+                self.current_plan.status = "completed"
+                self.current_plan.completed_at = datetime.now().isoformat()
 
                 # Update context
                 context["planning"]["plan_status"] = "completed"
@@ -562,15 +596,15 @@ class PlanningCapability(Capability):
                 })
             else:
                 # Update current step in context
-                context["planning"]["current_step"] = self.current_plan["steps"][self.current_step_index]
+                context["planning"]["current_step"] = self.current_plan.steps[self.current_step_index]
 
         # Add plan information to the result
         if isinstance(result, dict):
             result["plan_status"] = {
                 "current_step": self.current_step_index + 1 if self.current_plan else 0,
-                "total_steps": len(self.current_plan["steps"]) if self.current_plan else 0,
+                "total_steps": len(self.current_plan.steps) if self.current_plan else 0,
                 "completed_steps": len(self.completed_steps),
-                "plan_status": self.current_plan["status"] if self.current_plan else "not_started"
+                "plan_status": self.current_plan.status if self.current_plan else "not_started"
             }
 
         return result
@@ -924,7 +958,7 @@ I'm executing a plan to address this request: "{original_input}"
 Current plan:
 {json.dumps(plan_dict, indent=2)}
 
-Completed steps ({len(completed_steps)}/{len(plan_dict["steps"])}):
+Completed steps ({len(completed_steps)}/{len(plan_dict['steps'])}):
 {json.dumps(completed_steps, indent=2)}
 
 Based on the results so far, should I:
@@ -969,9 +1003,12 @@ Return the updated plan in the exact JSON format of the original plan."""
                     step_id = step["step_id"]
                     # If this step was already completed, mark it as such
                     for completed_step in completed_steps:
-                        if completed_step["step_id"] == step_id:
+                        if isinstance(completed_step, dict) and completed_step.get("step_id") == step_id:
                             step["status"] = "completed"
                             step["completed_at"] = completed_step.get("completed_at")
+                        elif hasattr(completed_step, 'step_id') and completed_step.step_id == step_id:
+                            step["status"] = "completed"
+                            step["completed_at"] = completed_step.completed_at if hasattr(completed_step, 'completed_at') else None
 
                 # Convert to Plan object
                 return self._dict_to_plan(updated_plan_dict)

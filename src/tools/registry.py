@@ -5,11 +5,12 @@ Tool registry for managing tools with automatic documentation extraction.
 import inspect
 import re
 import logging
-from typing import Dict, Any, Optional, get_type_hints, List, Union
+from typing import Dict, Any, Optional, get_type_hints, List, Union, Type
 
 from .schema_registry import SchemaRegistry
 from .memoization import clear_tool_caches
-from ..contracts import ToolSpec
+from ..contracts import ToolSpec, BaseModel
+from pydantic import Field
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -94,17 +95,31 @@ class ToolRegistry:
         }
 
         # Create and store a ToolSpec
-        input_schema = {}
+        # For now, we'll use a dynamic BaseModel class for the input schema
+        from pydantic import create_model
+
+        # Create a dynamic model for each parameter
+        input_models = {}
         for param_name, param_info in parameters.items():
-            input_schema[param_name] = {
-                "type": param_info.get("type", "any"),
-                "description": param_info.get("description", f"Parameter {param_name}"),
-                "required": param_info.get("required", False)
-            }
-            if "default" in param_info:
-                input_schema[param_name]["default"] = param_info["default"]
-            if "enum" in param_info:
-                input_schema[param_name]["enum"] = param_info["enum"]
+            # Create field definitions for the model
+            field_type = Any  # Default to Any
+            field_info = {}
+
+            # Add description
+            field_info["description"] = param_info.get("description", f"Parameter {param_name}")
+
+            # Add default if present
+            if "default" in param_info and param_info["default"] is not None:
+                field_info["default"] = param_info["default"]
+
+            # Create the model
+            param_model = create_model(
+                f"{tool_name.capitalize()}{param_name.capitalize()}Params",
+                **{param_name: (field_type, Field(**field_info))}
+            )
+
+            # Add to input models dictionary
+            input_models[param_name] = param_model
 
         # Determine the output key based on the tool name
         output_key = tool_name
@@ -112,7 +127,7 @@ class ToolRegistry:
         # Create the ToolSpec
         cls._tool_specs[tool_name] = ToolSpec(
             name=tool_name,
-            input_schema=input_schema,
+            input_schema=input_models,
             output_key=output_key,
             description=description
         )
@@ -295,17 +310,30 @@ class ToolRegistry:
             tool = cls.get(name)
             if tool:
                 # Create a tool spec from the tool documentation
-                input_schema = {}
+                from pydantic import create_model
+
+                # Create a dynamic model for each parameter
+                input_models = {}
                 for param_name, param_info in tool["parameters"].items():
-                    input_schema[param_name] = {
-                        "type": param_info.get("type", "any"),
-                        "description": param_info.get("description", f"Parameter {param_name}"),
-                        "required": param_info.get("required", False)
-                    }
-                    if "default" in param_info:
-                        input_schema[param_name]["default"] = param_info["default"]
-                    if "enum" in param_info:
-                        input_schema[param_name]["enum"] = param_info["enum"]
+                    # Create field definitions for the model
+                    field_type = Any  # Default to Any
+                    field_info = {}
+
+                    # Add description
+                    field_info["description"] = param_info.get("description", f"Parameter {param_name}")
+
+                    # Add default if present
+                    if "default" in param_info and param_info["default"] is not None:
+                        field_info["default"] = param_info["default"]
+
+                    # Create the model
+                    param_model = create_model(
+                        f"{name.capitalize()}{param_name.capitalize()}Params",
+                        **{param_name: (field_type, Field(**field_info))}
+                    )
+
+                    # Add to input models dictionary
+                    input_models[param_name] = param_model
 
                 # Determine the output key based on the tool name
                 output_key = name
@@ -313,7 +341,7 @@ class ToolRegistry:
                 # Create the ToolSpec
                 tool_spec = ToolSpec(
                     name=name,
-                    input_schema=input_schema,
+                    input_schema=input_models,
                     output_key=output_key,
                     description=tool["description"]
                 )

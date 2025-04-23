@@ -32,13 +32,8 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
     "tool_details": ToolDetailsParams
 }
 
-# Register tool specification
-ToolRegistry._tool_specs["tool_details"] = ToolSpec(
-    name="tool_details",
-    input_schema=SUPPORTED_QUERIES,
-    output_key="tool_details",
-    description="Tool for getting detailed information about other tools."
-)
+# The tool registration is handled by the @tool decorator
+# The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
 @tool(
     name="tool_details",
