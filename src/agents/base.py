@@ -503,17 +503,35 @@ class Agent(ABC):
                 )
 
                 # Add to agent memory for future reference
-                self.add_to_memory({
+                result_data = recovery_result["result"]
+                memory_item = {
                     "type": "tool_result",
                     "tool": tool_name,
                     "args": tool_args,
-                    "result": recovery_result["result"],
+                    "result": result_data,
                     "timestamp": datetime.now().isoformat(),
                     "recovery_info": {
                         "strategy": recovery_result.get("recovery_strategy", None),
                         "alternative_tool": recovery_result.get("alternative_tool", None)
                     }
-                })
+                }
+
+                # Check if the result has an output_key
+                if isinstance(result_data, dict) and "output_key" in result_data:
+                    memory_item["output_key"] = result_data["output_key"]
+
+                    # Get the expected_key from the current plan step if available
+                    current_plan = self.state.get_context().get("planning", {}).get("plan", {})
+                    current_step = self.state.get_context().get("planning", {}).get("current_step", {})
+
+                    if current_step and "expected_key" in current_step:
+                        expected_key = current_step["expected_key"]
+
+                        # Store the result in memory using the expected_key
+                        self.state.memory[expected_key] = result_data
+                        self.logger.info(f"Stored result for {expected_key} in memory with output_key {result_data['output_key']}")
+
+                self.add_to_memory(memory_item)
             else:
                 # Get error information
                 error = recovery_result["error"]
@@ -845,14 +863,25 @@ class Agent(ABC):
                 # Get the tool spec
                 tool_spec = ToolRegistry.get_tool_spec(tool_name)
                 if tool_spec:
-                    # Store the result in memory using the tool's output_key
+                    # Store the result in memory using the expected_key
                     self.state.memory[expected_key] = {
                         "skipped": True,
-                        "reason": "Success criterion already satisfied"
+                        "reason": "Success criterion already satisfied",
+                        "output_key": tool_spec.output_key
                     }
 
+                    # Add a memory item for the skipped step
+                    self.add_to_memory({
+                        "type": "step_skipped",
+                        "step_id": step.get("step_id"),
+                        "tool": tool_name,
+                        "expected_key": expected_key,
+                        "reason": "Success criterion already satisfied",
+                        "timestamp": datetime.now().isoformat()
+                    })
+
                     # Log that we stored the result
-                    self.logger.info(f"Stored result for {expected_key} in memory")
+                    self.logger.info(f"Stored result for {expected_key} in memory with output_key {tool_spec.output_key}")
 
             return True
 

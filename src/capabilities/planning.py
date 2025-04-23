@@ -141,7 +141,9 @@ class PlanningCapability(Capability):
             elif coordinator_plan and self.respect_existing_plan and not self.is_coordinator:
                 # Use the coordinator's plan
                 logger.info("Using coordinator's plan instead of creating a new one")
-                self.current_plan = {
+
+                # Create a Plan object from the coordinator's plan
+                plan_dict = {
                     "goal": coordinator_plan.get("task_objective", f"Process: {user_input}"),
                     "steps": [],
                     "status": "in_progress",
@@ -153,7 +155,7 @@ class PlanningCapability(Capability):
                 # Convert coordinator plan format to our plan format
                 if "steps" in coordinator_plan:
                     for i, step in enumerate(coordinator_plan.get("steps", [])):
-                        self.current_plan["steps"].append({
+                        plan_dict["steps"].append({
                             "step_id": i + 1,
                             "description": step.get("description", f"Step {i+1}"),
                             "tool": step.get("tool"),
@@ -163,20 +165,25 @@ class PlanningCapability(Capability):
                         })
                 else:
                     # Create a single step from the task objective
-                    self.current_plan["steps"] = [{
+                    plan_dict["steps"] = [{
                         "step_id": 1,
                         "description": coordinator_plan.get("task_objective", "Execute task"),
                         "status": "pending"
                     }]
+
+                # Convert to Plan object
+                self.current_plan = self._dict_to_plan(plan_dict)
             else:
                 # Create a new plan
                 self.current_plan = await self._create_plan(user_input)
-                self.current_plan["owner"] = self.plan_owner
-                self.current_plan["can_modify"] = self.is_coordinator or not self.respect_existing_plan
+
+                # Set owner and can_modify attributes
+                self.current_plan.owner = self.plan_owner
+                self.current_plan.can_modify = self.is_coordinator or not self.respect_existing_plan
 
                 # Cache the plan if caching is enabled
                 if self.enable_plan_caching:
-                    self.plan_cache[user_input] = self.current_plan.copy()
+                    self.plan_cache[user_input] = self.current_plan.model_copy()
 
             self.plan_created_at = datetime.now()
 
@@ -582,22 +589,28 @@ class PlanningCapability(Capability):
         """
         # Ensure planning context exists
         if "planning" not in context and self.current_plan:
+            # Convert Plan object to dictionary for context
+            plan_dict = self._plan_to_dict(self.current_plan)
+            current_step = None
+            if self.current_step_index < len(self.current_plan.steps):
+                current_step = self._plan_step_to_dict(self.current_plan.steps[self.current_step_index])
+
             context["planning"] = {
                 "has_plan": True,
-                "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][self.current_step_index] if self.current_step_index < len(self.current_plan["steps"]) else None,
+                "plan": plan_dict,
+                "current_step": current_step,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"]
+                "plan_status": self.current_plan.status
             }
 
         # If the plan is completed, suggest termination
-        if self.current_plan and self.current_plan.get("status") == "completed":
+        if self.current_plan and self.current_plan.status == "completed":
             logger.info("Suggesting termination: Plan completed")
             return True
 
         return False
 
-    async def _create_plan(self, user_input: str) -> Dict[str, Any]:
+    async def _create_plan(self, user_input: str) -> Plan:
         """
         Create a plan based on the user input.
 
@@ -605,7 +618,7 @@ class PlanningCapability(Capability):
             user_input: User's input
 
         Returns:
-            Plan dictionary
+            Plan object
         """
         # Create a prompt for plan generation
         prompt = self._create_plan_generation_prompt(user_input)
@@ -643,9 +656,10 @@ Return your plan in the exact JSON format requested."""
             plan = self._create_default_plan(user_input)
 
         # Validate and clean up the plan
-        plan = self._validate_and_clean_plan(plan, user_input)
+        plan_dict = self._validate_and_clean_plan(plan, user_input)
 
-        return plan
+        # Convert to Plan object
+        return self._dict_to_plan(plan_dict)
 
     def _create_plan_generation_prompt(self, user_input: str) -> str:
         """Create a prompt for plan generation."""
@@ -743,7 +757,7 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
         return prompt
 
     def _create_default_plan(self, user_input: str) -> Dict[str, Any]:
-        """Create a default plan if plan generation fails."""
+        """Create a default plan dictionary if plan generation fails."""
         return {
             "goal": f"Analyze financial information based on: {user_input}",
             "steps": [
@@ -883,11 +897,11 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
 
     async def _reflect_and_update_plan(
         self,
-        current_plan: Dict[str, Any],
+        current_plan: Plan,
         completed_steps: List[Dict[str, Any]],
         step_results: Dict[int, Any],
         original_input: str
-    ) -> Dict[str, Any]:
+    ) -> Plan:
         """
         Reflect on the plan execution so far and potentially update the plan.
 
@@ -900,14 +914,17 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
         Returns:
             Updated plan
         """
+        # Convert Plan object to dictionary for the prompt
+        plan_dict = self._plan_to_dict(current_plan)
+
         # Create a prompt for plan reflection
         prompt = f"""
 I'm executing a plan to address this request: "{original_input}"
 
 Current plan:
-{json.dumps(current_plan, indent=2)}
+{json.dumps(plan_dict, indent=2)}
 
-Completed steps ({len(completed_steps)}/{len(current_plan["steps"])}):
+Completed steps ({len(completed_steps)}/{len(plan_dict["steps"])}):
 {json.dumps(completed_steps, indent=2)}
 
 Based on the results so far, should I:
@@ -942,13 +959,13 @@ Return the updated plan in the exact JSON format of the original plan."""
             # Extract JSON from the response
             json_match = re.search(r'\{.*\}', reflection_response, re.DOTALL)
             if json_match:
-                updated_plan = json.loads(json_match.group(0))
+                updated_plan_dict = json.loads(json_match.group(0))
 
                 # Validate and clean the updated plan
-                updated_plan = self._validate_and_clean_plan(updated_plan, original_input)
+                updated_plan_dict = self._validate_and_clean_plan(updated_plan_dict, original_input)
 
                 # Preserve completed steps
-                for step in updated_plan["steps"]:
+                for step in updated_plan_dict["steps"]:
                     step_id = step["step_id"]
                     # If this step was already completed, mark it as such
                     for completed_step in completed_steps:
@@ -956,7 +973,8 @@ Return the updated plan in the exact JSON format of the original plan."""
                             step["status"] = "completed"
                             step["completed_at"] = completed_step.get("completed_at")
 
-                return updated_plan
+                # Convert to Plan object
+                return self._dict_to_plan(updated_plan_dict)
             else:
                 # No valid JSON found, return the current plan
                 return current_plan

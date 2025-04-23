@@ -180,7 +180,7 @@ class Tool(ABC):
             **kwargs: Keyword arguments based on the tool's parameters
 
         Returns:
-            The result of the tool's execution
+            The result of the tool's execution with output_key information
         """
         # Validate arguments
         self.validate_args(**kwargs)
@@ -193,4 +193,16 @@ class Tool(ABC):
             logger.info(f"Resolved parameters for {self.name}: {kwargs} -> {resolved_params}")
 
         # Execute the tool with resolved parameters
-        return await self._execute(**resolved_params)
+        result = await self._execute(**resolved_params)
+
+        # Get the tool spec to determine the output key
+        from .registry import ToolRegistry
+        tool_spec = ToolRegistry.get_tool_spec(self.name)
+
+        # If we have a tool spec, add the output_key to the result
+        if tool_spec and isinstance(result, dict):
+            # If the result doesn't already have an output_key field, add it
+            if "output_key" not in result:
+                result["output_key"] = tool_spec.output_key
+
+        return result
