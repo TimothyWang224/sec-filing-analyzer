@@ -251,6 +251,53 @@ def setup_logging(log_dir: Optional[Path] = None) -> None:
         with open(summary_file, 'w') as f:
             json.dump([], f)
 
+    # Reduce noise from third-party libraries
+    configure_noisy_loggers()
+
+def configure_noisy_loggers() -> None:
+    """Configure logging levels for noisy third-party libraries.
+
+    This function sets the logging level to WARNING for libraries that produce
+    a lot of noise in the logs, such as FAISS, Neo4j, and other dependencies.
+    """
+    # List of loggers to set to WARNING level
+    noisy_loggers = [
+        # FAISS and vector store related
+        "faiss",
+        "faiss.gpu",
+        "faiss.swigfaiss",
+        "faiss.swigfaiss_avx2",
+        "faiss.swigfaiss_avx512",
+
+        # Neo4j related
+        "neo4j",
+        "neo4j.io",
+        "neo4j.bolt",
+        "neo4j.work",
+        "neo4j.graph",
+
+        # LlamaIndex related
+        "llama_index",
+        "llama_index.core",
+        "llama_index.core.indices",
+        "llama_index.core.vector_stores",
+
+        # Other dependencies
+        "httpx",
+        "urllib3",
+        "requests",
+        "matplotlib",
+        "PIL"
+    ]
+
+    # Set logging level to WARNING for all noisy loggers
+    for logger_name in noisy_loggers:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.WARNING)
+
+    # Log that we've configured the loggers
+    logging.getLogger(__name__).info("Configured logging levels for noisy third-party libraries")
+
 def log_embedding_error(
     error: Exception,
     filing_id: str,

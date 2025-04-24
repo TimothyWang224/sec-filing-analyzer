@@ -7,7 +7,10 @@ various recovery strategies to handle tool call failures.
 
 import logging
 import time
-from typing import Dict, Any, Optional, Callable, Awaitable, List, Tuple
+from typing import Dict, Any, Optional, Callable, Awaitable, List, Tuple, Union
+
+from ...contracts import PlanStep
+from .plan_step_retry import prepare_step_for_retry
 
 from sec_filing_analyzer.llm import BaseLLM
 from ...tools.registry import ToolRegistry
@@ -67,7 +70,8 @@ class ErrorRecoveryManager:
         tool_args: Dict[str, Any],
         execute_func: Callable[[str, Dict[str, Any]], Awaitable[Any]],
         user_input: str = "",
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        step: Optional[Union[Dict[str, Any], PlanStep]] = None
     ) -> Dict[str, Any]:
         """
         Execute a tool with comprehensive error recovery.
@@ -100,6 +104,12 @@ class ErrorRecoveryManager:
                 "circuit_status": circuit_status,
                 "user_message": self.error_analyzer.format_error_for_user(error)
             }
+
+        # If we have a step, ensure it's a PlanStep object for retry
+        step_obj = None
+        if step is not None:
+            step_obj = prepare_step_for_retry(step)
+            logger.info(f"Prepared step {step_obj.step_id} for retry")
 
         # Create a function to execute the tool with the current arguments
         async def execute_with_current_args():
@@ -215,6 +225,11 @@ class ErrorRecoveryManager:
                 # If parameters were fixed, try again
                 if fixed_args != tool_args:
                     logger.info(f"Parameters fixed: {tool_args} -> {fixed_args}")
+
+                    # If we have a step, update its parameters
+                    if step_obj is not None:
+                        step_obj.parameters = fixed_args
+                        logger.info(f"Updated parameters for step {step_obj.step_id}")
 
                     # Execute with fixed parameters
                     async def execute_with_fixed_args():

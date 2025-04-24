@@ -128,3 +128,210 @@ state.seconds_elapsed['…']
 **Result**: You'll quickly see whether planning or refinement needs bigger budgets, and you can auto-scale max_*_iterations based on token ceilings rather than fixed integers.
 
 **Partial Implementation**: Implemented token tracking with `state.tokens_used` for each phase. Still need to implement time tracking with `state.seconds_elapsed`.
+
+## Stability Fixes
+
+### 1. Fix JSON Serialization in LoggingCapability ✅
+
+**Issue**: `Object of type Plan is not JSON serializable` error in LoggingCapability
+
+**Fix**:
+- ✅ Added `_prepare_for_serialization` method to convert Pydantic objects to dictionaries
+- ✅ Added `default=str` to `json.dump()` calls to handle non-serializable objects
+
+**Impact**: High - This prevents errors during logging that can disrupt the agent's execution flow
+**Difficulty**: Low - Simple code change
+**Priority**: High - This is causing the infinite planning loop
+
+### 2. Prevent Infinite Planning Loop ✅
+
+**Issue**: Agent stuck in planning phase, never switches to execution
+
+**Fix**:
+- ✅ Added a guard to check if plan status is "in_progress" and no changes, then jump to execution
+- ✅ Added code to roll over unused tokens from planning to execution
+
+**Impact**: High - Prevents the agent from getting stuck in planning
+**Difficulty**: Low - Simple conditional check
+**Priority**: High - Critical for agent functionality
+
+### 3. Fix Vector Store Initialization ✅
+
+**Issue**: Vector store initializes with 0 documents/companies
+
+**Fix**:
+- ✅ Added explicit check for metadata.json file
+- ✅ Added clear error message if metadata.json doesn't exist
+- ✅ Added instructions to run ETL pipeline or check VECTOR_STORE_DIR path
+
+**Impact**: High - Required for semantic search functionality
+**Difficulty**: Medium - May require path handling changes
+**Priority**: Medium-High - Needed for complete functionality
+
+### 4. Fix Duplicate Schema Registry Mappings ✅
+
+**Issue**: Schema registry mappings registered multiple times
+
+**Fix**:
+- ✅ Added a check to skip if mapping already exists
+- ✅ Added warning if trying to overwrite with a different mapping
+
+**Impact**: Low - Just reduces log noise
+**Difficulty**: Low - Simple guard clause
+**Priority**: Low - Not affecting functionality
+
+### 5. Fix Module Import Warning ✅
+
+**Issue**: `sec_filing_analyzer.tools module not found, using src.tools instead`
+
+**Fix**:
+- ✅ Added a re-export file in sec_filing_analyzer/tools/__init__.py
+
+**Impact**: Low - Just reduces log noise
+**Difficulty**: Low - Simple file addition or import changes
+**Priority**: Low - Not affecting functionality
+
+### 6. Set Default Token Budgets ✅
+
+**Issue**: Token budgets configured as None
+
+**Fix**:
+- ✅ Added DEFAULT_TOKEN_BUDGET constant to AgentState class
+- ✅ Updated _configure_token_budgets method to use the default budget
+- ✅ Initialized token_budget with DEFAULT_TOKEN_BUDGET in AgentState constructor
+- ✅ Increased token budget to 250,000 tokens (25k planning, 100k execution, 125k refinement)
+- ✅ Created global config.json file with token budget settings
+- ✅ Updated ConfigProvider to prioritize config.json and properly load token_budgets
+
+**Impact**: Medium - Ensures token budgeting works correctly
+**Difficulty**: Low - Simple default value addition
+**Priority**: Medium - Affects optimization but not core functionality
+
+### 7. Improve Plan Step Keys and Paths ✅
+
+**Issue**: Generic expected_key and incorrect output_path
+
+**Fix**:
+- ✅ Updated _validate_and_clean_plan to generate more specific keys like `"{ticker}_{metric}_{year}"`
+- ✅ Enhanced output_path generation to match the actual structure returned by tools
+- ✅ Added special handling for different query types and parameters
+
+**Impact**: High - Critical for success criteria checking
+**Difficulty**: Medium - Requires changes to planning logic
+**Priority**: High - Affects core functionality
+
+### 8. Reduce Log Noise ✅
+
+**Issue**: Faiss GPU/AVX512 warnings and Neo4j constraint warnings
+
+**Fix**:
+- ✅ Added configure_noisy_loggers function to set logger level to WARNING for noisy libraries
+- ✅ Called configure_noisy_loggers from setup_logging
+
+**Impact**: Low - Just improves log readability
+**Difficulty**: Low - Simple logger configuration
+**Priority**: Low - Not affecting functionality
+
+### 9. Remove Redundant Validation Steps in Planning ✅
+
+**Issue**: Agent creates redundant validation steps that re-check data already retrieved
+
+**Fix**:
+- ✅ Updated planning prompt to explicitly discourage redundant validation steps
+- ✅ Added clear warning in the prompt about automatic validation
+- ✅ Updated system prompt for plan generation to reinforce the message
+- ✅ Updated reflection prompt to discourage adding validation steps
+- ✅ Improved default plan to be more specific and efficient
+
+**Impact**: Medium - Improves efficiency and reduces unnecessary steps
+**Difficulty**: Low - Prompt modifications only
+**Priority**: Medium - Improves user experience
+
+### 10. Fix PlanStep Dependencies Validation Error ✅
+
+**Issue**: Error: `1 validation error for PlanStep dependencies.0 Input should be a valid integer`
+
+**Fix**:
+- ✅ Updated `_dict_to_plan_step` method to properly handle dependencies
+- ✅ Enhanced `_validate_and_clean_plan` to ensure dependencies are always integers
+- ✅ Added robust error handling to prevent crashes when invalid dependencies are encountered
+
+**Impact**: High - Prevents crashes during plan creation and execution
+**Difficulty**: Low - Simple validation and conversion logic
+**Priority**: High - Critical for agent functionality
+
+### 11. Fix Coordinator Max Refinement Iterations Issue ✅
+
+**Issue**: Financial Diligence Coordinator immediately terminates when entering refinement phase due to max_refinement_iterations
+
+**Fix**:
+- ✅ Modified `set_phase` method in AgentState to reset phase iteration counter when changing phases
+- ✅ Added check to only reset counter if actually changing to a different phase
+- ✅ Fixed `should_terminate` method to check phase-specific iteration counters instead of global iteration counter
+- ✅ Added more detailed logging with current/max iteration counts for better debugging
+- ✅ Ensures each phase starts with a clean iteration count and is properly tracked
+
+**Impact**: High - Allows coordinator to properly perform refinement iterations
+**Difficulty**: Low - Simple modification to phase transition logic
+**Priority**: High - Critical for proper agent functionality
+
+### 12. Remove Mock Data from Financial Data Tool ✅
+
+**Issue**: SEC Financial Data Tool was returning hardcoded mock data with incorrect values (e.g., GOOGL revenue reported as $383.29B instead of $307.39B)
+
+**Fix**:
+- ✅ Removed all hardcoded mock data from the SEC Financial Data Tool
+- ✅ Added proper error handling for database connection failures
+- ✅ Added warning messages for cases where no data is found
+- ✅ Ensured consistent error reporting across all query methods
+- ✅ Tool now returns empty results with error messages instead of fake data
+
+**Impact**: High - Prevents misleading information in financial reports
+**Difficulty**: Medium - Required updating multiple methods with consistent error handling
+**Priority**: High - Critical for data accuracy in production
+
+### 13. Fix Database Path Inconsistency in Financial Data Tool ✅
+
+**Issue**: SEC Financial Data Tool was using a hardcoded database path that didn't match the path used by other components
+
+**Fix**:
+- ✅ Updated SECFinancialDataTool to use the ETLConfig from ConfigProvider
+- ✅ Added more detailed logging for database connection failures
+- ✅ Removed misleading log message about fallback mode with mock data
+- ✅ Ensured consistent database path usage across the application
+- ✅ Linked database path to the master configuration system
+
+**Impact**: High - Enables the tool to find and use the correct database
+**Difficulty**: Low - Simple modification to use the centralized configuration
+**Priority**: High - Critical for accessing financial data
+
+### 14. Fix Missing Database File Issue ✅
+
+**Issue**: Configuration was pointing to a non-existent database file (`improved_financial_data.duckdb`) that was purged during GitHub upload
+
+**Fix**:
+- ✅ Located database schema files that survived the purge
+- ✅ Fixed SQL syntax errors in the schema file
+- ✅ Updated the database initialization script
+- ✅ Successfully recreated the `improved_financial_data.duckdb` database with the correct schema
+- ✅ Verified the database schema using the check_db_schema.py script
+
+**Impact**: High - Enables the system to use the correct database structure
+**Difficulty**: Medium - Required fixing schema files and initialization scripts
+**Priority**: High - Critical for system functionality
+
+### 15. Optimize Vector Store for GPU Acceleration ✅
+
+**Issue**: Embeddings were stored as JSON files instead of NumPy binaries, resulting in slower processing during semantic search
+
+**Fix**:
+- ✅ Created a script to migrate existing JSON embeddings to NumPy binary format
+- ✅ Successfully migrated 30,483 embedding files to NumPy format
+- ✅ Updated ETL pipeline to use OptimizedVectorStore by default
+- ✅ Enabled GPU acceleration for FAISS index
+- ✅ Rebuilt the FAISS index using the NumPy binary files
+- ✅ Updated configuration to use GPU acceleration by default
+
+**Impact**: High - Significantly improves semantic search performance
+**Difficulty**: Medium - Required creating migration scripts and updating configuration
+**Priority**: Medium - Enhances system performance

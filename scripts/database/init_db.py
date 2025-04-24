@@ -35,7 +35,7 @@ def main():
     print("Starting database initialization...")
 
     # Define parameters
-    db_path = "data/test_improved_financial_data.duckdb"
+    db_path = "data/db_backup/improved_financial_data.duckdb"
 
     print(f"Using database: {db_path}")
 

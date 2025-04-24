@@ -39,7 +39,7 @@ class DuckDBManager:
         if self._initialized:
             return
 
-        self.default_db_path = default_db_path or "data/db_backup/improved_financial_data.duckdb"
+        self.default_db_path = default_db_path or "data/db_backup/financial_data.duckdb"
         self._active_connections = {}
         self._initialized = True
         logger.info(f"Initialized DuckDB manager with default path: {self.default_db_path}")

@@ -90,7 +90,10 @@ class SECFinancialDataTool(Tool):
         super().__init__()
 
         # Initialize DuckDB store
-        self.db_path = db_path or "data/db_backup/financial_data.duckdb"
+        # Use the ETLConfig from ConfigProvider to ensure consistency
+        from sec_filing_analyzer.config import ConfigProvider, ETLConfig
+        etl_config = ConfigProvider.get_config(ETLConfig)
+        self.db_path = db_path or etl_config.db_path
         self.db_store = None
         self.db_error = None
 
@@ -102,7 +105,7 @@ class SECFinancialDataTool(Tool):
             # Log the error but don't raise it - we'll handle it gracefully
             self.db_error = str(e)
             logger.warning(f"Failed to initialize DuckDB store: {self.db_error}")
-            logger.info("Tool will operate in fallback mode with mock data")
+            logger.warning(f"Database path attempted: {self.db_path}")
 
     async def _execute(
         self,
@@ -189,24 +192,47 @@ class SECFinancialDataTool(Tool):
         if not ticker:
             return {"error": "Missing required parameter: ticker", "results": []}
 
-        # For testing purposes, return mock data
-        # In a real implementation, this would query the database
-        results = [
-            {
-                "ticker": ticker,
-                "metric_name": "Revenue",
-                "value": "$383.29 billion",
-                "period_end_date": "2023-09-30",
-                "filing_type": filing_type or "10-K",
-                "source": "Mock data for testing"
+        # Check if database is available
+        if self.db_error:
+            return {
+                "query_type": "financial_facts",
+                "parameters": parameters,
+                "error": f"Database connection failed: {self.db_error}",
+                "results": []
             }
-        ]
 
-        return {
-            "query_type": "financial_facts",
-            "parameters": parameters,
-            "results": results
-        }
+        # Query the database for financial facts
+        try:
+            results = self.db_store.query_financial_facts(
+                ticker=ticker,
+                metrics=metrics,
+                start_date=start_date,
+                end_date=end_date,
+                filing_type=filing_type
+            )
+
+            if not results:
+                logger.warning(f"No financial facts found for {ticker}")
+                return {
+                    "query_type": "financial_facts",
+                    "parameters": parameters,
+                    "warning": f"No financial facts found for {ticker}",
+                    "results": []
+                }
+
+            return {
+                "query_type": "financial_facts",
+                "parameters": parameters,
+                "results": results
+            }
+        except Exception as e:
+            logger.error(f"Error querying financial facts: {str(e)}")
+            return {
+                "query_type": "financial_facts",
+                "parameters": parameters,
+                "error": f"Error querying financial facts: {str(e)}",
+                "results": []
+            }
 
     def _query_company_info(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query company information."""
@@ -214,39 +240,44 @@ class SECFinancialDataTool(Tool):
 
         # Check if database is available
         if self.db_error:
-            # Return mock data if database is not available
+            return {
+                "query_type": "company_info",
+                "parameters": parameters,
+                "error": f"Database connection failed: {self.db_error}",
+                "results": []
+            }
+
+        try:
+            # If database is available, use it
             if not ticker:
-                # Mock list of companies
-                results = [
-                    {"ticker": "AAPL", "name": "Apple Inc."},
-                    {"ticker": "MSFT", "name": "Microsoft Corporation"},
-                    {"ticker": "GOOGL", "name": "Alphabet Inc."},
-                    {"ticker": "NVDA", "name": "NVIDIA Corporation"}
-                ]
+                # If no ticker is provided, return all companies
+                results = self.db_store.get_all_companies()
             else:
-                # Mock company info
-                results = [{"ticker": ticker, "name": f"{ticker} Inc."}]
+                # Query specific company
+                results = self.db_store.get_company_info(ticker=ticker)
+
+            if not results:
+                logger.warning(f"No company info found for {ticker if ticker else 'any company'}")
+                return {
+                    "query_type": "company_info",
+                    "parameters": parameters,
+                    "warning": f"No company info found for {ticker if ticker else 'any company'}",
+                    "results": []
+                }
 
             return {
                 "query_type": "company_info",
                 "parameters": parameters,
-                "results": results,
-                "note": "Using mock data - database connection failed"
+                "results": results
             }
-
-        # If database is available, use it
-        if not ticker:
-            # If no ticker is provided, return all companies
-            results = self.db_store.get_all_companies()
-        else:
-            # Query specific company
-            results = self.db_store.get_company_info(ticker=ticker)
-
-        return {
-            "query_type": "company_info",
-            "parameters": parameters,
-            "results": results
-        }
+        except Exception as e:
+            logger.error(f"Error querying company info: {str(e)}")
+            return {
+                "query_type": "company_info",
+                "parameters": parameters,
+                "error": f"Error querying company info: {str(e)}",
+                "results": []
+            }
 
     def _query_metrics(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query available metrics."""
@@ -254,37 +285,39 @@ class SECFinancialDataTool(Tool):
 
         # Check if database is available
         if self.db_error:
-            # Return mock metrics if database is not available
-            results = [
-                {"metric_name": "Revenue", "category": "Income Statement"},
-                {"metric_name": "NetIncome", "category": "Income Statement"},
-                {"metric_name": "EPS", "category": "Income Statement"},
-                {"metric_name": "GrossMargin", "category": "Income Statement"},
-                {"metric_name": "OperatingIncome", "category": "Income Statement"},
-                {"metric_name": "TotalAssets", "category": "Balance Sheet"},
-                {"metric_name": "TotalLiabilities", "category": "Balance Sheet"},
-                {"metric_name": "EBITDA", "category": "Income Statement"}
-            ]
+            return {
+                "query_type": "metrics",
+                "parameters": parameters,
+                "error": f"Database connection failed: {self.db_error}",
+                "results": []
+            }
 
-            # Filter by category if provided
-            if category:
-                results = [r for r in results if r.get("category") == category]
+        try:
+            # If database is available, use it
+            results = self.db_store.get_available_metrics(category=category)
+
+            if not results:
+                logger.warning(f"No metrics found for category: {category if category else 'any category'}")
+                return {
+                    "query_type": "metrics",
+                    "parameters": parameters,
+                    "warning": f"No metrics found for category: {category if category else 'any category'}",
+                    "results": []
+                }
 
             return {
                 "query_type": "metrics",
                 "parameters": parameters,
-                "results": results,
-                "note": "Using mock data - database connection failed"
+                "results": results
             }
-
-        # If database is available, use it
-        results = self.db_store.get_available_metrics(category=category)
-
-        return {
-            "query_type": "metrics",
-            "parameters": parameters,
-            "results": results
-        }
+        except Exception as e:
+            logger.error(f"Error querying metrics: {str(e)}")
+            return {
+                "query_type": "metrics",
+                "parameters": parameters,
+                "error": f"Error querying metrics: {str(e)}",
+                "results": []
+            }
 
     def _query_time_series(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query time series data for a specific metric."""
@@ -299,49 +332,45 @@ class SECFinancialDataTool(Tool):
 
         # Check if database is available
         if self.db_error:
-            # Return mock time series data if database is not available
-            import datetime
-            current_year = datetime.datetime.now().year
+            return {
+                "query_type": "time_series",
+                "parameters": parameters,
+                "error": f"Database connection failed: {self.db_error}",
+                "results": []
+            }
 
-            # Generate mock quarterly data for the last 3 years
-            results = []
-            for year in range(current_year - 3, current_year):
-                for quarter in range(1, 5):
-                    # Generate a realistic value with some growth
-                    base_value = 10000 if metric.lower() == "revenue" else 1000
-                    growth_factor = 1.0 + (year - (current_year - 3)) * 0.1 + quarter * 0.02
-                    value = base_value * growth_factor
+        try:
+            # If database is available, use it
+            results = self.db_store.query_time_series(
+                ticker=ticker,
+                metric=metric,
+                start_date=start_date,
+                end_date=end_date,
+                period=period
+            )
 
-                    results.append({
-                        "ticker": ticker,
-                        "metric_name": metric,
-                        "fiscal_year": year,
-                        "fiscal_quarter": quarter,
-                        "value": value,
-                        "period": f"{year}Q{quarter}"
-                    })
+            if not results:
+                logger.warning(f"No time series data found for {ticker} and metric {metric}")
+                return {
+                    "query_type": "time_series",
+                    "parameters": parameters,
+                    "warning": f"No time series data found for {ticker} and metric {metric}",
+                    "results": []
+                }
 
             return {
                 "query_type": "time_series",
                 "parameters": parameters,
-                "results": results,
-                "note": "Using mock data - database connection failed"
+                "results": results
             }
-
-        # If database is available, use it
-        results = self.db_store.query_time_series(
-            ticker=ticker,
-            metric=metric,
-            start_date=start_date,
-            end_date=end_date,
-            period=period
-        )
-
-        return {
-            "query_type": "time_series",
-            "parameters": parameters,
-            "results": results
-        }
+        except Exception as e:
+            logger.error(f"Error querying time series data: {str(e)}")
+            return {
+                "query_type": "time_series",
+                "parameters": parameters,
+                "error": f"Error querying time series data: {str(e)}",
+                "results": []
+            }
 
     def _query_financial_ratios(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query financial ratios for a specific company."""
@@ -355,55 +384,44 @@ class SECFinancialDataTool(Tool):
 
         # Check if database is available
         if self.db_error:
-            # Return mock financial ratios if database is not available
-            default_ratios = ["PE", "PB", "ROE", "ROA", "CurrentRatio", "DebtToEquity"]
-            ratio_list = ratios if ratios else default_ratios
+            return {
+                "query_type": "financial_ratios",
+                "parameters": parameters,
+                "error": f"Database connection failed: {self.db_error}",
+                "results": []
+            }
 
-            # Generate mock ratio data
-            results = []
-            for ratio in ratio_list:
-                # Generate a realistic value based on the ratio type
-                if ratio == "PE":
-                    value = 25.5
-                elif ratio == "PB":
-                    value = 3.2
-                elif ratio == "ROE":
-                    value = 0.15
-                elif ratio == "ROA":
-                    value = 0.08
-                elif ratio == "CurrentRatio":
-                    value = 1.5
-                elif ratio == "DebtToEquity":
-                    value = 0.4
-                else:
-                    value = 1.0
+        try:
+            # If database is available, use it
+            results = self.db_store.query_financial_ratios(
+                ticker=ticker,
+                ratios=ratios,
+                start_date=start_date,
+                end_date=end_date
+            )
 
-                results.append({
-                    "ticker": ticker,
-                    "ratio_name": ratio,
-                    "value": value
-                })
+            if not results:
+                logger.warning(f"No financial ratios found for {ticker}")
+                return {
+                    "query_type": "financial_ratios",
+                    "parameters": parameters,
+                    "warning": f"No financial ratios found for {ticker}",
+                    "results": []
+                }
 
             return {
                 "query_type": "financial_ratios",
                 "parameters": parameters,
-                "results": results,
-                "note": "Using mock data - database connection failed"
+                "results": results
             }
-
-        # If database is available, use it
-        results = self.db_store.query_financial_ratios(
-            ticker=ticker,
-            ratios=ratios,
-            start_date=start_date,
-            end_date=end_date
-        )
-
-        return {
-            "query_type": "financial_ratios",
-            "parameters": parameters,
-            "results": results
-        }
+        except Exception as e:
+            logger.error(f"Error querying financial ratios: {str(e)}")
+            return {
+                "query_type": "financial_ratios",
+                "parameters": parameters,
+                "error": f"Error querying financial ratios: {str(e)}",
+                "results": []
+            }
 
     def _execute_custom_sql(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a custom SQL query."""

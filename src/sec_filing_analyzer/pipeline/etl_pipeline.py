@@ -11,8 +11,8 @@ from pathlib import Path
 
 from llama_index.embeddings.openai import OpenAIEmbedding
 
-from ..config import ETLConfig, StorageConfig
-from ..storage import GraphStore, LlamaIndexVectorStore
+from ..config import ETLConfig, StorageConfig, VectorStoreConfig
+from ..storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
 from ..data_retrieval import SECFilingsDownloader, FilingProcessor
 from ..data_retrieval.file_storage import FileStorage
 from ..data_processing.chunking import FilingChunker
@@ -64,10 +64,23 @@ class SECFilingETLPipeline:
             use_parallel: Whether to use parallel processing (default: True)
         """
         self.graph_store = graph_store or GraphStore()
-        self.vector_store = vector_store or LlamaIndexVectorStore(
-            store_path=StorageConfig().vector_store_path,
-            lazy_load=True  # Use lazy loading to avoid rebuilding the index on startup
-        )
+
+        # Use OptimizedVectorStore by default
+        if vector_store is None:
+            vector_store_config = VectorStoreConfig()
+            if vector_store_config.type == "optimized":
+                self.vector_store = OptimizedVectorStore(
+                    store_path=vector_store_config.path,
+                    index_type=vector_store_config.index_type,
+                    use_gpu=vector_store_config.use_gpu
+                )
+            else:
+                self.vector_store = LlamaIndexVectorStore(
+                    store_path=StorageConfig().vector_store_path,
+                    lazy_load=True  # Use lazy loading to avoid rebuilding the index on startup
+                )
+        else:
+            self.vector_store = vector_store
         self.file_storage = file_storage or FileStorage(
             base_dir=ETLConfig().filings_dir
         )

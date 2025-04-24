@@ -245,11 +245,23 @@ class PlanningCapability(Capability):
             plan_dict = self._plan_to_dict(self.current_plan)
             logger.info(f"Plan: {json.dumps(plan_dict, indent=2)}")
 
-            # Add plan to agent memory
+            # Add plan to agent memory - store the Plan object, not a dictionary
             agent.add_to_memory({
                 "type": "plan",
-                "content": self.current_plan
+                "content": self.current_plan  # Store the Plan object directly
             })
+
+            # Guard against infinite planning loops
+            # If we already have a plan and we're still in planning phase, check if we should move to execution
+            if hasattr(agent.state, 'current_phase') and agent.state.current_phase == 'planning':
+                # If the plan is in progress and we've done at least one planning iteration, move to execution
+                if self.current_plan.status == "in_progress" and agent.state.phase_iterations.get('planning', 0) > 0:
+                    logger.info("Plan already exists and is in progress. Moving to execution phase.")
+                    agent.state.set_phase('execution')
+
+                    # Roll over unused tokens from planning to execution if the agent supports it
+                    if hasattr(agent, '_rollover_token_surplus'):
+                        agent._rollover_token_surplus('planning', 'execution')
 
         # Ensure planning context exists
         if "planning" not in context:
@@ -566,10 +578,10 @@ class PlanningCapability(Capability):
                         # Update context with the new plan
                         context["planning"]["plan"] = self.current_plan
 
-                        # Add updated plan to agent memory
+                        # Add updated plan to agent memory - store the Plan object, not a dictionary
                         agent.add_to_memory({
                             "type": "updated_plan",
-                            "content": self.current_plan
+                            "content": self.current_plan  # Store the Plan object directly
                         })
                 elif not can_modify and self.enable_dynamic_replanning:
                     logger.info("Plan reflection skipped - plan is not modifiable (owned by coordinator)")
@@ -586,11 +598,11 @@ class PlanningCapability(Capability):
                 # Update context
                 context["planning"]["plan_status"] = "completed"
 
-                # Add plan completion to agent memory
+                # Add plan completion to agent memory - store the Plan object, not a dictionary
                 agent.add_to_memory({
                     "type": "plan_completed",
                     "content": {
-                        "plan": self.current_plan,
+                        "plan": self.current_plan,  # Store the Plan object directly
                         "results": self.step_results
                     }
                 })
@@ -661,6 +673,8 @@ class PlanningCapability(Capability):
         system_prompt = """You are an expert financial planning assistant.
 Your task is to create a detailed, step-by-step plan to address the user's request.
 Each step should be specific, actionable, and include the necessary tools or agents.
+Focus on efficiency - do NOT create redundant validation steps that re-check data already retrieved.
+The system automatically validates tool outputs using the done_check condition.
 Return your plan in the exact JSON format requested."""
 
         plan_response = await self.agent.llm.generate(
@@ -759,8 +773,10 @@ Your plan should include:
 
 Each step must have a clear contract with its tool:
 - If using a tool, specify exactly what output key you expect from that tool
-- Define a specific condition to check if the step is complete (e.g., "value not None", "list length > 0")
+- Define a simple condition to check if the step is complete (e.g., "value not None", "list length > 0")
 - Make sure the expected_key and output_path match the actual output structure of the tool
+
+IMPORTANT: Do NOT create separate validation steps to verify data you've already retrieved. The system automatically validates tool outputs using the done_check condition. Creating redundant validation steps wastes resources and time.
 
 Return your plan as a JSON object with this structure:
 ```json
@@ -792,47 +808,75 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
 
     def _create_default_plan(self, user_input: str) -> Dict[str, Any]:
         """Create a default plan dictionary if plan generation fails."""
+        # Parse the user input to extract potential ticker and metrics
+        ticker_match = re.search(r'\b([A-Z]{1,5})\b', user_input.upper())
+        ticker = ticker_match.group(1) if ticker_match else "AAPL"
+
+        # Look for common financial metrics
+        metrics = []
+        for metric in ["revenue", "income", "profit", "earnings", "eps", "assets", "liabilities", "debt"]:
+            if metric.lower() in user_input.lower():
+                metrics.append(metric.capitalize())
+
+        # If no metrics found, default to Revenue
+        if not metrics:
+            metrics = ["Revenue"]
+
+        # Extract year if present
+        year_match = re.search(r'(20\d{2})', user_input)
+        year = year_match.group(1) if year_match else str(datetime.now().year - 1)
+
+        # Create a more specific default plan based on the extracted information
         return {
-            "goal": f"Analyze financial information based on: {user_input}",
+            "goal": f"Analyze {', '.join(metrics)} for {ticker} in {year}",
             "steps": [
                 {
                     "step_id": 1,
-                    "description": "Retrieve relevant financial data",
+                    "description": f"Retrieve {', '.join(metrics)} data for {ticker} in {year}",
                     "tool": "sec_financial_data",
-                    "parameters": {},
+                    "parameters": {
+                        "query_type": "financial_facts",
+                        "parameters": {
+                            "ticker": ticker,
+                            "metrics": metrics,
+                            "start_date": f"{year}-01-01",
+                            "end_date": f"{year}-12-31"
+                        }
+                    },
                     "dependencies": [],
-                    "expected_key": "financial_facts",
+                    "expected_key": f"{ticker}_{'_'.join(metrics)}_{year}",
                     "output_path": ["results"],
                     "done_check": "results is not None and len(results) > 0",
                     "status": "pending"
                 },
                 {
                     "step_id": 2,
-                    "description": "Search for relevant context in SEC filings",
+                    "description": f"Search for context about {ticker}'s {', '.join(metrics)} in {year}",
                     "tool": "sec_semantic_search",
-                    "parameters": {},
+                    "parameters": {
+                        "query": f"{', '.join(metrics)} performance in {year}",
+                        "companies": [ticker],
+                        "top_k": 3
+                    },
                     "dependencies": [],
-                    "expected_key": "semantic_search",
+                    "expected_key": f"{ticker}_search_{year}",
                     "output_path": ["results"],
                     "done_check": "results is not None and len(results) > 0",
                     "status": "pending"
                 },
                 {
                     "step_id": 3,
-                    "description": "Analyze financial metrics and trends",
+                    "description": f"Analyze {ticker}'s {', '.join(metrics)} performance",
                     "agent": "financial_analyst",
-                    "parameters": {},
+                    "parameters": {
+                        "analysis_type": "metric_performance",
+                        "ticker": ticker,
+                        "metrics": metrics,
+                        "year": year
+                    },
                     "dependencies": [1, 2],
-                    "expected_key": "financial_analysis",
-                    "done_check": "financial_analysis is not None",
-                    "status": "pending"
-                },
-                {
-                    "step_id": 4,
-                    "description": "Generate comprehensive report",
-                    "dependencies": [3],
-                    "expected_key": "report",
-                    "done_check": "report is not None",
+                    "expected_key": f"{ticker}_analysis_{year}",
+                    "done_check": f"{ticker}_analysis_{year} is not None",
                     "status": "pending"
                 }
             ],
@@ -869,25 +913,107 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
             if "status" not in step:
                 step["status"] = "pending"
 
-            # Ensure dependencies is a list
-            if "dependencies" not in step or not isinstance(step["dependencies"], list):
+            # Ensure dependencies is a list of integers
+            if "dependencies" not in step:
                 step["dependencies"] = []
+            elif not isinstance(step["dependencies"], list):
+                step["dependencies"] = []
+            else:
+                # Convert dependencies to integers
+                dependencies = []
+                for dep in step["dependencies"]:
+                    if isinstance(dep, int):
+                        dependencies.append(dep)
+                    elif isinstance(dep, dict) and "step_id" in dep:
+                        # If it's a dictionary with step_id, extract the step_id
+                        dependencies.append(dep["step_id"])
+                    elif isinstance(dep, str) and dep.isdigit():
+                        # If it's a string that can be converted to an integer
+                        dependencies.append(int(dep))
+                step["dependencies"] = dependencies
 
             # Ensure expected_key exists if tool is specified
             if "tool" in step and "expected_key" not in step:
-                # Set a default expected key based on the tool
+                # Extract parameters for more specific keys
+                parameters = step.get("parameters", {})
+                query_type = parameters.get("query_type", "")
+                params = parameters.get("parameters", {})
+
+                # Set a default expected key based on the tool and parameters
                 if step["tool"] == "sec_financial_data":
-                    step["expected_key"] = "financial_facts"
+                    ticker = params.get("ticker", "")
+                    metrics = params.get("metrics", [])
+                    start_date = params.get("start_date", "")
+                    end_date = params.get("end_date", "")
+
+                    # Extract year from date if available
+                    year = ""
+                    if start_date:
+                        year_match = re.search(r"((?:19|20)\d{2})", start_date)
+                        if year_match:
+                            year = year_match.group(1)
+
+                    # Create a specific key based on parameters
+                    if ticker and metrics and len(metrics) == 1 and year:
+                        # Single metric with year
+                        step["expected_key"] = f"{ticker}_{metrics[0]}_{year}"
+                    elif ticker and metrics and len(metrics) == 1:
+                        # Single metric without year
+                        step["expected_key"] = f"{ticker}_{metrics[0]}"
+                    elif ticker and year:
+                        # Multiple metrics with year
+                        step["expected_key"] = f"{ticker}_financial_facts_{year}"
+                    elif ticker:
+                        # Multiple metrics without year
+                        step["expected_key"] = f"{ticker}_financial_facts"
+                    else:
+                        # Fallback
+                        step["expected_key"] = "financial_facts"
                 elif step["tool"] == "sec_semantic_search":
-                    step["expected_key"] = "semantic_search"
+                    query = params.get("query", "")
+                    ticker = params.get("ticker", "")
+
+                    # Create a specific key based on parameters
+                    if ticker and query:
+                        # Shorten and clean query for key
+                        short_query = re.sub(r'[^a-zA-Z0-9]', '_', query[:20]).strip('_')
+                        step["expected_key"] = f"{ticker}_search_{short_query}"
+                    elif ticker:
+                        step["expected_key"] = f"{ticker}_semantic_search"
+                    else:
+                        step["expected_key"] = "semantic_search"
+                else:
+                    # Default key for other tools
+                    step["expected_key"] = f"{step['tool']}_result"
 
             # Ensure output_path exists if expected_key exists
             if "expected_key" in step and "output_path" not in step:
-                # Set a default output path based on the tool
-                if "tool" in step and step["tool"] == "sec_financial_data":
-                    step["output_path"] = ["results"]
-                elif "tool" in step and step["tool"] == "sec_semantic_search":
-                    step["output_path"] = ["results"]
+                # Set a default output path based on the tool and query type
+                if "tool" in step:
+                    parameters = step.get("parameters", {})
+                    query_type = parameters.get("query_type", "")
+
+                    if step["tool"] == "sec_financial_data":
+                        if query_type == "financial_facts":
+                            # Financial facts have a nested structure with metrics and years
+                            params = parameters.get("parameters", {})
+                            metrics = params.get("metrics", [])
+
+                            if len(metrics) == 1:
+                                # For a single metric, point directly to it
+                                step["output_path"] = ["results", metrics[0]]
+                            else:
+                                # For multiple metrics, point to results
+                                step["output_path"] = ["results"]
+                        else:
+                            # Default path for other query types
+                            step["output_path"] = ["results"]
+                    elif step["tool"] == "sec_semantic_search":
+                        # Semantic search returns results in a list
+                        step["output_path"] = ["results"]
+                    else:
+                        # Default path for other tools
+                        step["output_path"] = ["results"]
 
             # Ensure done_check exists if expected_key exists
             if "expected_key" in step and "done_check" not in step:
@@ -903,7 +1029,36 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
 
     def _dict_to_plan_step(self, step_dict: Dict[str, Any]) -> PlanStep:
         """Convert a dictionary-based plan step to a PlanStep model."""
-        return PlanStep(**step_dict)
+        # Ensure dependencies is a list of integers
+        if "dependencies" in step_dict:
+            # Handle case where dependencies might be a list of dictionaries or other non-integer values
+            dependencies = []
+            for dep in step_dict["dependencies"]:
+                if isinstance(dep, int):
+                    dependencies.append(dep)
+                elif isinstance(dep, dict) and "step_id" in dep:
+                    # If it's a dictionary with step_id, extract the step_id
+                    dependencies.append(dep["step_id"])
+                elif isinstance(dep, str) and dep.isdigit():
+                    # If it's a string that can be converted to an integer
+                    dependencies.append(int(dep))
+
+            # Replace the dependencies in the step_dict
+            step_dict["dependencies"] = dependencies
+
+        try:
+            return PlanStep(**step_dict)
+        except Exception as e:
+            logger.error(f"Error creating PlanStep from dictionary: {e}")
+            logger.error(f"Step dictionary: {step_dict}")
+            # Create a minimal valid PlanStep
+            return PlanStep(
+                step_id=step_dict.get("step_id", 0),
+                description=step_dict.get("description", "Unknown step"),
+                tool=step_dict.get("tool"),
+                parameters=step_dict.get("parameters", {}),
+                dependencies=[]
+            )
 
     def _plan_step_to_dict(self, plan_step: PlanStep) -> Dict[str, Any]:
         """Convert a PlanStep model to a dictionary."""
@@ -966,6 +1121,12 @@ Based on the results so far, should I:
 2. Modify the remaining steps
 3. Add new steps
 4. Remove unnecessary steps
+
+IMPORTANT GUIDELINES:
+- Do NOT add redundant validation steps that re-check data already retrieved
+- The system automatically validates tool outputs using the done_check condition
+- Focus on adding steps that provide new information or analysis
+- Remove any steps that simply verify data we already have
 
 If modifications are needed, provide the updated plan in the same JSON format.
 If no changes are needed, return the current plan unchanged.

@@ -657,6 +657,15 @@ class LlamaIndexVectorStore:
             force_rebuild: Whether to force rebuilding the index even if it exists
         """
         try:
+            # Check if metadata.json exists in the store path
+            metadata_json_path = self.store_path / "metadata.json"
+            if not metadata_json_path.exists():
+                error_msg = f"Vector store metadata.json not found at {metadata_json_path}. This file is required for vector store initialization."
+                logger.error(error_msg)
+                logger.error("Please run the ETL pipeline to populate the vector store or check the VECTOR_STORE_DIR path.")
+                # Raise an exception to fail fast
+                raise FileNotFoundError(error_msg)
+
             # Check if index exists and we're not forcing a rebuild
             index_path = self.index_dir / "index"
             if index_path.exists() and not force_rebuild:
@@ -724,6 +733,10 @@ class LlamaIndexVectorStore:
                     )
                     # Remove temporary document
                     self.vector_store.delete("temp")
+        except FileNotFoundError as e:
+            # Re-raise the specific error for metadata.json
+            logger.error(f"Critical error: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"Error loading or creating index: {e}")
             # Create an empty index as fallback

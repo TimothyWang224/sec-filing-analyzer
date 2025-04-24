@@ -153,7 +153,7 @@ class ETLConfig:
 
     # XBRL extraction settings
     process_quantitative: bool = True
-    db_path: str = "data/db_backup/improved_financial_data.duckdb"
+    db_path: str = "data/db_backup/financial_data.duckdb"
     db_read_only: bool = True  # Default to read-only mode for database access
 
     # Processing flags
@@ -204,7 +204,7 @@ class VectorStoreConfig:
 
     # Index parameters
     index_type: str = "hnsw"  # hnsw, flat, ivf, etc.
-    use_gpu: bool = False
+    use_gpu: bool = True  # Use GPU acceleration if available
 
     # HNSW parameters
     hnsw_m: int = 32
@@ -222,7 +222,7 @@ class VectorStoreConfig:
             type=os.getenv("VECTOR_STORE_TYPE", "optimized"),
             path=Path(os.getenv("VECTOR_STORE_PATH", "data/vector_store")),
             index_type=os.getenv("VECTOR_INDEX_TYPE", "hnsw"),
-            use_gpu=os.getenv("VECTOR_USE_GPU", "false").lower() == "true",
+            use_gpu=os.getenv("VECTOR_USE_GPU", "true").lower() == "true",  # Default to using GPU
             hnsw_m=int(os.getenv("VECTOR_HNSW_M", "32")),
             hnsw_ef_construction=int(os.getenv("VECTOR_HNSW_EF_CONSTRUCTION", "400")),
             hnsw_ef_search=int(os.getenv("VECTOR_HNSW_EF_SEARCH", "200")),
@@ -303,8 +303,18 @@ class ConfigProvider:
         if config_path:
             cls._external_config_path = Path(config_path)
         else:
-            # Default to data/config/etl_config.json
-            cls._external_config_path = Path("data/config/etl_config.json")
+            # Try to find the config file in standard locations
+            config_paths = [
+                Path("data/config/config.json"),
+                Path("data/config/etl_config.json")
+            ]
+            for path in config_paths:
+                if path.exists():
+                    cls._external_config_path = path
+                    break
+            else:
+                # Default to data/config/config.json even if it doesn't exist yet
+                cls._external_config_path = Path("data/config/config.json")
 
         # Set schema directory path if provided
         if schema_dir:
@@ -378,7 +388,11 @@ class ConfigProvider:
                 if 'agent' in external_config:
                     # Update with external values
                     for key, value in external_config['agent'].items():
-                        config[key] = value
+                        # Special handling for token_budgets to ensure it's properly loaded
+                        if key == 'token_budgets' and isinstance(value, dict):
+                            config['token_budgets'] = value
+                        else:
+                            config[key] = value
             except Exception as e:
                 print(f"Warning: Could not load external config: {str(e)}")
 

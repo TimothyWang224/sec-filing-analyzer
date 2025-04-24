@@ -8,6 +8,13 @@ import time
 class AgentState:
     """Unified state management for agents."""
 
+    # Default token budget for agents
+    DEFAULT_TOKEN_BUDGET = {
+        'planning': 25000,    # 10% for planning
+        'execution': 100000,   # 40% for execution
+        'refinement': 125000   # 50% for refinement
+    }
+
     def __init__(self):
         """Initialize the agent state."""
         self.memory: List[Dict[str, Any]] = []
@@ -25,7 +32,8 @@ class AgentState:
             'execution': 0,
             'refinement': 0
         }
-        self.token_budget: Dict[str, int] = {}
+        # Initialize with default token budget
+        self.token_budget: Dict[str, int] = self.DEFAULT_TOKEN_BUDGET.copy()
 
     def add_memory_item(self, item: Dict[str, Any]) -> None:
         """
@@ -83,6 +91,11 @@ class AgentState:
         Args:
             phase: The phase to set
         """
+        # Only reset the phase iteration counter if we're changing phases
+        if self.current_phase != phase:
+            # Reset the phase iteration counter for the new phase
+            self.phase_iterations[phase] = 0
+
         self.current_phase = phase
 
     def count_tokens(self, tokens: int, phase: Optional[str] = None) -> None:

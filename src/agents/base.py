@@ -8,10 +8,57 @@ from datetime import datetime
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
-from ..contracts import extract_value, PlanStep
+from ..contracts import extract_value, PlanStep, Plan
 from ..tools.registry import ToolRegistry
 
 from ..utils.json_utils import safe_parse_json, repair_json
+
+
+def _to_dict(obj: Any) -> Dict[str, Any]:
+    """
+    Convert an object to a dictionary.
+
+    This helper function ensures consistent conversion of objects to dictionaries,
+    handling both Pydantic models and plain dictionaries.
+
+    Args:
+        obj: The object to convert (PlanStep, Plan, or dictionary)
+
+    Returns:
+        Dictionary representation of the object
+    """
+    if isinstance(obj, dict):
+        return obj
+    if isinstance(obj, PlanStep):
+        return obj.model_dump()
+    # fallback for full Plan model
+    return obj.model_dump() if hasattr(obj, "model_dump") else dict(obj)
+
+
+def _to_object(obj: Any, model_class: Type = None) -> Any:
+    """
+    Convert a dictionary to a Pydantic object.
+
+    This helper function ensures consistent conversion of dictionaries to Pydantic objects,
+    handling both dictionaries and existing Pydantic models.
+
+    Args:
+        obj: The object to convert (dictionary or Pydantic model)
+        model_class: The Pydantic model class to use for conversion (PlanStep or Plan)
+
+    Returns:
+        Pydantic model instance
+    """
+    if model_class is None:
+        return obj
+
+    if isinstance(obj, model_class):
+        return obj
+
+    if isinstance(obj, dict):
+        return model_class.model_validate(obj)
+
+    return obj
 
 from .core.agent_state import AgentState
 from .core.tool_ledger import ToolLedger
@@ -597,7 +644,7 @@ class Agent(ABC):
 
 
 
-    def _should_skip(self, step: Dict[str, Any]) -> bool:
+    def _should_skip(self, step: Union[Dict[str, Any], PlanStep]) -> bool:
         """
         Check if a step should be skipped based on success criteria.
 
@@ -607,18 +654,21 @@ class Agent(ABC):
         if the expected_key exists in the result.
 
         Args:
-            step: The plan step to check
+            step: The plan step to check (dictionary or PlanStep object)
 
         Returns:
             True if the step should be skipped, False otherwise
         """
+        # Convert to dictionary if it's a PlanStep object
+        step_dict = _to_dict(step)
+
         # If no expected_key is specified, we can't skip
-        if "expected_key" not in step:
+        if "expected_key" not in step_dict:
             return False
 
-        expected_key = step["expected_key"]
-        output_path = step.get("output_path", [])
-        done_check = step.get("done_check", None)
+        expected_key = step_dict["expected_key"]
+        output_path = step_dict.get("output_path", [])
+        done_check = step_dict.get("done_check", None)
 
         # Get all memory items
         memory = self.get_memory()
@@ -722,22 +772,26 @@ class Agent(ABC):
         }
 
         # Default total token budget
-        DEFAULT_TOTAL_TOKENS = 3000
+        DEFAULT_TOTAL_TOKENS = 250000
 
         # Get total token budget from config or use default
         total_tokens = getattr(self, "max_total_tokens", DEFAULT_TOTAL_TOKENS)
 
-        # Calculate default budgets based on percentages
-        default_budgets = {
-            phase: int(total_tokens * percentage)
-            for phase, percentage in DEFAULT_PERCENTAGES.items()
-        }
-
-        # Get token budgets from config or use defaults
-        token_budgets = getattr(self, "token_budgets", default_budgets)
-
-        # Set token budgets in state
-        self.state.token_budget = token_budgets
+        # If token_budgets is explicitly provided, use it
+        if hasattr(self, "token_budgets") and self.token_budgets is not None:
+            # Set token budgets in state
+            self.state.token_budget = self.token_budgets
+        else:
+            # If max_total_tokens is explicitly provided, calculate budgets based on percentages
+            if hasattr(self, "max_total_tokens") and self.max_total_tokens is not None:
+                # Calculate budgets based on percentages
+                calculated_budgets = {
+                    phase: int(total_tokens * percentage)
+                    for phase, percentage in DEFAULT_PERCENTAGES.items()
+                }
+                self.state.token_budget = calculated_budgets
+            # Otherwise, use the default token budget from AgentState
+            # (which is already set in the AgentState constructor)
 
         # Log the token budgets
         self.logger.info(f"Token budgets configured: {self.state.token_budget}")
@@ -808,7 +862,32 @@ class Agent(ABC):
         """Add an item to the agent's memory."""
         self.state.add_memory_item(content)
 
-    async def _execute_current_step(self, step: Dict[str, Any]) -> bool:
+    def _write_to_memory(self, step: Union[Dict[str, Any], PlanStep], raw_result: Dict[str, Any]):
+        """
+        Write the result of a step to memory using the expected_key and output_path.
+
+        Args:
+            step: The plan step (dictionary or PlanStep object)
+            raw_result: The raw result from the tool
+        """
+        # Convert to dictionary if it's a PlanStep object
+        step_dict = _to_dict(step)
+
+        # Check if we have expected_key and output_path
+        if "expected_key" in step_dict and step_dict.get("output_path") is not None:
+            expected_key = step_dict["expected_key"]
+            output_path = step_dict["output_path"]
+
+            # Extract the value from the result using the output_path
+            value = extract_value(raw_result, output_path)
+
+            # Store the value in memory
+            self.state.memory[expected_key] = value
+
+            # Log that we stored the result
+            self.logger.info(f"Stored result for {expected_key} in memory with value {value}")
+
+    async def _execute_current_step(self, step: Union[Dict[str, Any], PlanStep]) -> bool:
         """
         Execute the current step in the plan.
 
@@ -816,49 +895,47 @@ class Agent(ABC):
         and if not, executes the step using the appropriate tool or agent.
 
         Args:
-            step: The plan step to execute
+            step: The plan step to execute (dictionary or PlanStep object)
 
         Returns:
             True if the step was executed or skipped successfully, False otherwise
         """
-        # Convert to PlanStep if it's a dictionary - for future use
-        if isinstance(step, dict):
-            try:
-                from ..capabilities.planning import PlanningCapability
-                if hasattr(self, 'capabilities'):
-                    for capability in self.capabilities:
-                        if isinstance(capability, PlanningCapability):
-                            # For future use - currently we continue with the dictionary
-                            _ = capability._dict_to_plan_step(step)
-                            break
-            except (ImportError, AttributeError):
-                # If conversion fails, continue with the dictionary
-                pass
+        # Convert to PlanStep if it's a dictionary
+        step_obj = _to_object(step, PlanStep) if isinstance(step, dict) else step
+
+        # Also keep a dictionary version for backward compatibility
+        step_dict = _to_dict(step_obj)
 
         # 1. Success short-circuit: Check if we should skip this step based on success criteria
-        if self._should_skip(step):
-            self.logger.info(f"Skipping step {step['step_id']} - success criterion already satisfied")
+        if self._should_skip(step_obj):
+            self.logger.info(f"Skipping step {step_dict['step_id']} - success criterion already satisfied")
 
             # Mark the step as completed
-            step["status"] = "completed"
-            step["completed_at"] = datetime.now().isoformat()
-            step["skipped"] = True
+            if isinstance(step, dict):
+                step["status"] = "completed"
+                step["completed_at"] = datetime.now().isoformat()
+                step["skipped"] = True
+            else:
+                step_obj.status = "completed"
+                step_obj.completed_at = datetime.now().isoformat()
+                step_obj.skipped = True
 
             # Add to memory that we skipped this step
             self.add_to_memory({
                 "type": "step_skipped",
-                "step_id": step["step_id"],
-                "description": step["description"],
-                "expected_key": step.get("expected_key"),
-                "output_path": step.get("output_path"),
-                "done_check": step.get("done_check"),
+                "step_id": step_dict["step_id"],
+                "description": step_dict["description"],
+                "expected_key": step_dict.get("expected_key"),
+                "output_path": step_dict.get("output_path"),
+                "done_check": step_dict.get("done_check"),
                 "timestamp": datetime.now().isoformat()
             })
 
             # If we have a tool and expected_key, store the result in memory
-            if "tool" in step and "expected_key" in step:
-                tool_name = step["tool"]
-                expected_key = step["expected_key"]
+            if ("tool" in step_dict and "expected_key" in step_dict) or \
+               (hasattr(step_obj, 'tool') and step_obj.tool and hasattr(step_obj, 'expected_key') and step_obj.expected_key):
+                tool_name = step_dict["tool"]
+                expected_key = step_dict["expected_key"]
 
                 # Get the tool spec
                 tool_spec = ToolRegistry.get_tool_spec(tool_name)
@@ -873,7 +950,7 @@ class Agent(ABC):
                     # Add a memory item for the skipped step
                     self.add_to_memory({
                         "type": "step_skipped",
-                        "step_id": step.get("step_id"),
+                        "step_id": step_dict.get("step_id"),
                         "tool": tool_name,
                         "expected_key": expected_key,
                         "reason": "Success criterion already satisfied",
@@ -886,9 +963,9 @@ class Agent(ABC):
             return True
 
         # 2. Validation: If the step has a tool, validate the parameters
-        if "tool" in step and step["tool"]:
-            tool_name = step["tool"]
-            parameters = step.get("parameters", {})
+        if ("tool" in step_dict and step_dict["tool"]) or (hasattr(step_obj, 'tool') and step_obj.tool):
+            tool_name = step_dict["tool"]
+            parameters = step_dict.get("parameters", {})
 
             try:
                 # Import the validator
@@ -909,20 +986,25 @@ class Agent(ABC):
                         error_message = get_user_message(e)
 
                         # Mark the step as failed
-                        step["status"] = "failed"
-                        step["error"] = error_message
+                        if isinstance(step, dict):
+                            step["status"] = "failed"
+                            step["error"] = error_message
+                        else:
+                            step_obj.status = "failed"
+                            # We can't set error directly on PlanStep as it's not a field
+                            # But we can add it to the dictionary for memory
 
                         # Add to memory that the step failed
                         self.add_to_memory({
                             "type": "step_failed",
-                            "step_id": step["step_id"],
+                            "step_id": step_dict["step_id"],
                             "tool": tool_name,
                             "error": error_message,
                             "timestamp": datetime.now().isoformat()
                         })
 
                         # Log the error
-                        self.logger.error(f"Step {step['step_id']} failed validation: {error_message}")
+                        self.logger.error(f"Step {step_dict['step_id']} failed validation: {error_message}")
 
                         return False
             except ImportError:
@@ -959,14 +1041,14 @@ class Agent(ABC):
         # Check phase-specific iteration limits
         if hasattr(self.state, 'current_phase'):
             phase = self.state.current_phase
-            if phase == 'planning' and self.state.current_iteration >= self.max_planning_iterations:
-                self.logger.info(f"Terminating: Reached max planning iterations ({self.max_planning_iterations})")
+            if phase == 'planning' and self.state.phase_iterations[phase] >= self.max_planning_iterations:
+                self.logger.info(f"Terminating: Reached max planning iterations ({self.state.phase_iterations[phase]}/{self.max_planning_iterations})")
                 return True
-            elif phase == 'execution' and self.state.current_iteration >= self.max_execution_iterations:
-                self.logger.info(f"Terminating: Reached max execution iterations ({self.max_execution_iterations})")
+            elif phase == 'execution' and self.state.phase_iterations[phase] >= self.max_execution_iterations:
+                self.logger.info(f"Terminating: Reached max execution iterations ({self.state.phase_iterations[phase]}/{self.max_execution_iterations})")
                 return True
-            elif phase == 'refinement' and self.state.current_iteration >= self.max_refinement_iterations:
-                self.logger.info(f"Terminating: Reached max refinement iterations ({self.max_refinement_iterations})")
+            elif phase == 'refinement' and self.state.phase_iterations[phase] >= self.max_refinement_iterations:
+                self.logger.info(f"Terminating: Reached max refinement iterations ({self.state.phase_iterations[phase]}/{self.max_refinement_iterations})")
                 return True
 
         # Check token budget exhaustion

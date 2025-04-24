@@ -350,7 +350,7 @@ class LoggingCapability(Capability):
                     "agent_type": agent_type,
                     "start_time": datetime.now().isoformat(),
                     "logs": []
-                }, f, indent=2)
+                }, f, indent=2, default=str)
 
         return agent_logger
 
@@ -578,6 +578,9 @@ class LoggingCapability(Capability):
             return
 
         try:
+            # Convert Pydantic objects to dictionaries
+            log_entry = self._prepare_for_serialization(log_entry)
+
             # Read existing log
             with open(self.json_log_file, 'r') as f:
                 log_data = json.load(f)
@@ -585,9 +588,9 @@ class LoggingCapability(Capability):
             # Append new entry
             log_data["logs"].append(log_entry)
 
-            # Write updated log
+            # Write updated log with default=str to handle non-serializable objects
             with open(self.json_log_file, 'w') as f:
-                json.dump(log_data, f, indent=2)
+                json.dump(log_data, f, indent=2, default=str)
 
             # Increment log count
             self.log_count += 1
@@ -596,3 +599,28 @@ class LoggingCapability(Capability):
             # Log error but don't crash
             logger.error(f"Error appending to JSON log: {str(e)}")
             logger.debug(traceback.format_exc())
+
+    def _prepare_for_serialization(self, obj: Any) -> Any:
+        """
+        Prepare an object for JSON serialization by converting Pydantic models to dictionaries.
+
+        Args:
+            obj: Object to prepare
+
+        Returns:
+            JSON-serializable object
+        """
+        # If it's a dictionary, process each value
+        if isinstance(obj, dict):
+            return {k: self._prepare_for_serialization(v) for k, v in obj.items()}
+
+        # If it's a list, process each item
+        elif isinstance(obj, list):
+            return [self._prepare_for_serialization(item) for item in obj]
+
+        # If it's a Pydantic model, convert to dictionary
+        elif hasattr(obj, 'model_dump'):
+            return obj.model_dump()
+
+        # Otherwise, return as is
+        return obj

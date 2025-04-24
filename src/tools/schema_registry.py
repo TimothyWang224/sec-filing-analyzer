@@ -61,9 +61,20 @@ class SchemaRegistry:
             param_name: Name of the tool parameter
             field_name: Name of the database field
         """
+        # Initialize the schema mapping dictionary if it doesn't exist
         if schema_name not in cls._field_mappings:
             cls._field_mappings[schema_name] = {}
 
+        # Check if this mapping already exists
+        if param_name in cls._field_mappings[schema_name]:
+            existing_field = cls._field_mappings[schema_name][param_name]
+            # If the mapping is the same, just return without logging
+            if existing_field == field_name:
+                return
+            # If it's different, log a warning but still update
+            logger.warning(f"Overwriting existing field mapping: {schema_name}.{param_name} -> {existing_field} with {field_name}")
+
+        # Register the mapping
         cls._field_mappings[schema_name][param_name] = field_name
         logger.info(f"Registered field mapping: {schema_name}.{param_name} -> {field_name}")
 
