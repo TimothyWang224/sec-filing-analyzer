@@ -11,8 +11,7 @@ from datetime import datetime
 
 from ..tools.base import Tool
 from ..tools.decorator import tool
-from ..contracts import BaseModel, ToolSpec, field_validator
-from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
+from ..contracts import BaseModel, field_validator
 from sec_filing_analyzer.storage import OptimizedVectorStore
 from sec_filing_analyzer.config import StorageConfig
 
@@ -91,11 +90,7 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
     "semantic_search": SemanticSearchParams
 }
 
-# Register tool specification
-from .registry import ToolRegistry
-
 # The tool registration is handled by the @tool decorator
-# The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
 @tool(
     name="sec_semantic_search",
@@ -136,30 +131,48 @@ class SECSemanticSearchTool(Tool):
             parameters: Parameters for the query
 
         Returns:
-            Dictionary containing search results
+            A standardized response dictionary with the following fields:
+            - query_type: The type of query that was executed
+            - parameters: The parameters that were used
+            - results: The search results with text and metadata
+            - output_key: The tool's name
+            - success: Boolean indicating whether the operation was successful
+            - query: The search query text
+            - total_results: The number of results found
+            - companies: The companies that were searched
+            - filing_types: The filing types that were searched
+            - date_range: The date range that was searched
+            - sections: The sections that were searched
 
-        Raises:
-            QueryTypeUnsupported: If the query type is not supported
-            ParameterError: If the parameters are invalid
-            StorageUnavailable: If the vector store is unavailable
-            DataNotFound: If no results are found
+            Error responses will additionally have:
+            - error or warning: The error message (depending on error_type)
         """
+        # Ensure parameters is a dictionary
+        if parameters is None:
+            parameters = {}
+
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
                 supported_types = list(SUPPORTED_QUERIES.keys())
-                raise QueryTypeUnsupported(query_type, "sec_semantic_search", supported_types)
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}"
+                )
 
             # Validate parameters using the appropriate model
             param_model = SUPPORTED_QUERIES[query_type]
-            if parameters is None:
-                parameters = {}
 
             try:
                 # Validate parameters
                 params = param_model(**parameters)
             except Exception as e:
-                raise ParameterError(str(e))
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}"
+                )
 
             # Extract parameters
             query = params.query
@@ -178,27 +191,40 @@ class SECSemanticSearchTool(Tool):
 
             # Check if vector store is available
             if self.vector_store is None:
-                raise StorageUnavailable("vector_store", "Vector store is not initialized")
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message="Vector store is not initialized"
+                )
 
-            # Perform search
-            search_results = self.vector_store.search_vectors(
-                query_text=query,
-                companies=companies,
-                top_k=top_k,
-                filing_types=filing_types,
-                date_range=date_range,
-                sections=sections,
-                keywords=keywords,
-                hybrid_search_weight=hybrid_search_weight
-            )
+            try:
+                # Perform search
+                search_results = self.vector_store.search_vectors(
+                    query_text=query,
+                    companies=companies,
+                    top_k=top_k,
+                    filing_types=filing_types,
+                    date_range=date_range,
+                    sections=sections,
+                    keywords=keywords,
+                    hybrid_search_weight=hybrid_search_weight
+                )
+            except Exception as e:
+                logger.error(f"Error executing semantic search: {str(e)}")
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Error executing semantic search: {str(e)}"
+                )
 
             # Check if we have results
             if not search_results:
-                raise DataNotFound("semantic_search_results", {
-                    "query": query,
-                    "companies": companies,
-                    "filing_types": filing_types
-                })
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"No results found for query: {query}",
+                    error_type="warning"
+                )
 
             # Format results
             formatted_results = []
@@ -218,23 +244,30 @@ class SECSemanticSearchTool(Tool):
                 }
                 formatted_results.append(formatted_result)
 
-            return {
-                "query": query,
-                "results": formatted_results,
-                "total_results": len(formatted_results),
-                "companies": companies,
-                "filing_types": filing_types,
-                "date_range": date_range,
-                "sections": sections,
-                "output_key": "sec_semantic_search"
-            }
+            # Create a custom result with additional fields
+            result = self.format_success_response(
+                query_type=query_type,
+                parameters=parameters,
+                results=formatted_results
+            )
 
-        except (QueryTypeUnsupported, ParameterError, StorageUnavailable, DataNotFound) as e:
-            # Re-raise known errors
-            raise
+            # Add additional fields
+            result["query"] = query
+            result["total_results"] = len(formatted_results)
+            result["companies"] = companies
+            result["filing_types"] = filing_types
+            result["date_range"] = date_range
+            result["sections"] = sections
+
+            return result
+
         except Exception as e:
-            logger.error(f"Error executing semantic search: {str(e)}")
-            raise StorageUnavailable("vector_store", f"Error executing semantic search: {str(e)}")
+            logger.error(f"Unexpected error executing semantic search: {str(e)}")
+            return self.format_error_response(
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}"
+            )
 
     def validate_args(
         self,

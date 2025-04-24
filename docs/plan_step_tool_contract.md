@@ -127,8 +127,18 @@ When a tool is executed:
 1. The agent passes the parameters from the step to the tool
 2. The tool validates the parameters
 3. The tool executes with the validated parameters
-4. The tool returns a result with an `output_key` field
-5. The agent stores the result in memory using the `expected_key` from the step
+4. The tool returns a standardized response with the following fields:
+   - `query_type`: The type of query that was executed
+   - `parameters`: The parameters that were used
+   - `results`: The results of the query (empty list for errors)
+   - `output_key`: The tool's name
+   - `success`: Boolean indicating whether the operation was successful
+   - Additional fields specific to the tool
+5. If the response has `success: false`, it will also include:
+   - `error` or `warning`: The error message (depending on error type)
+6. The agent stores the result in memory using the `expected_key` from the step
+
+All tools use the `format_success_response` and `format_error_response` methods from the `Tool` base class to ensure consistent response formatting.
 
 ## Example
 

@@ -42,6 +42,50 @@ Specific error types include:
 
 Each error type provides a user-friendly error message and includes details about the error.
 
+### Standardized Error Response Format
+
+All tools now use a standardized error response format provided by the `Tool` base class:
+
+```python
+def format_error_response(
+    self,
+    query_type: str,
+    parameters: Dict[str, Any],
+    error_message: str,
+    error_type: str = "error",
+    additional_data: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
+    """
+    Format a standardized error response.
+
+    Args:
+        query_type: The type of query that was attempted
+        parameters: The parameters that were used
+        error_message: The error message
+        error_type: The type of error (default: "error")
+        additional_data: Additional data to include in the response
+
+    Returns:
+        A standardized error response dictionary
+    """
+    response = {
+        "query_type": query_type,
+        "parameters": parameters,
+        error_type: error_message,
+        "results": [],
+        "output_key": self.name,
+        "success": False
+    }
+
+    # Add any additional data
+    if additional_data:
+        response.update(additional_data)
+
+    return response
+```
+
+This ensures that all error responses have a consistent structure, making it easier for agents to handle errors.
+
 ### Error Classification
 
 The `ErrorClassifier` class classifies exceptions into different error types:

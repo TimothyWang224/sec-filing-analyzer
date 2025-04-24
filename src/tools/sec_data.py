@@ -4,8 +4,7 @@ from datetime import datetime
 
 from .base import Tool
 from .decorator import tool
-from ..contracts import BaseModel, ToolSpec, field_validator
-from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
+from ..contracts import BaseModel, field_validator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -56,11 +55,7 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
     "sec_data": SECDataParams
 }
 
-# Register tool specification
-from .registry import ToolRegistry
-
 # The tool registration is handled by the @tool decorator
-# The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
 @tool(
     name="sec_data",
@@ -91,30 +86,47 @@ class SECDataTool(Tool):
             parameters: Parameters for the query
 
         Returns:
-            Dictionary containing retrieved SEC filing data
+            A standardized response dictionary with the following fields:
+            - query_type: The type of query that was executed
+            - parameters: The parameters that were used
+            - results: The retrieved SEC filing data
+            - output_key: The tool's name
+            - success: Boolean indicating whether the operation was successful
+            - ticker: The company ticker symbol
+            - filing_type: The type of filing retrieved
+            - time_period: The time period covered by the data
+            - sections: The sections that were retrieved
+            - data: The actual filing data
 
-        Raises:
-            QueryTypeUnsupported: If the query type is not supported
-            ParameterError: If the parameters are invalid
-            StorageUnavailable: If the data store is unavailable
-            DataNotFound: If no results are found
+            Error responses will additionally have:
+            - error or warning: The error message (depending on error_type)
         """
+        # Ensure parameters is a dictionary
+        if parameters is None:
+            parameters = {}
+
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
                 supported_types = list(SUPPORTED_QUERIES.keys())
-                raise QueryTypeUnsupported(query_type, "sec_data", supported_types)
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}"
+                )
 
             # Validate parameters using the appropriate model
             param_model = SUPPORTED_QUERIES[query_type]
-            if parameters is None:
-                parameters = {}
 
             try:
                 # Validate parameters
                 params = param_model(**parameters)
             except Exception as e:
-                raise ParameterError(str(e))
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}"
+                )
 
             # Extract parameters
             ticker = params.ticker
@@ -123,22 +135,16 @@ class SECDataTool(Tool):
             end_date = params.end_date or "2023-12-31"
             sections = params.sections or ["Financial Statements", "Management Discussion"]
 
-            # This is a placeholder for the actual SEC data retrieval logic
-            # In practice, this would:
-            # 1. Connect to SEC API or database
-            # 2. Retrieve specified filings
-            # 3. Extract relevant sections
-            # 4. Process and format data
+            try:
+                # This is a placeholder for the actual SEC data retrieval logic
+                # In practice, this would:
+                # 1. Connect to SEC API or database
+                # 2. Retrieve specified filings
+                # 3. Extract relevant sections
+                # 4. Process and format data
 
-            return {
-                "ticker": ticker,
-                "filing_type": filing_type,
-                "time_period": {
-                    "start": start_date,
-                    "end": end_date
-                },
-                "sections": sections,
-                "data": {
+                # Create mock data for demonstration purposes
+                mock_data = {
                     "financial_statements": {
                         "balance_sheet": {
                             "assets": "500M",
@@ -163,14 +169,42 @@ class SECDataTool(Tool):
                             "Economic conditions"
                         ]
                     }
-                },
-                "output_key": "sec_data"
-            }
-        except (QueryTypeUnsupported, ParameterError, StorageUnavailable, DataNotFound) as e:
-            # Re-raise known errors
-            raise
+                }
+
+                # Create a custom result with additional fields
+                result = self.format_success_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    results=mock_data
+                )
+
+                # Add additional fields
+                result["ticker"] = ticker
+                result["filing_type"] = filing_type
+                result["time_period"] = {
+                    "start": start_date,
+                    "end": end_date
+                }
+                result["sections"] = sections
+                result["data"] = mock_data
+
+                return result
+
+            except Exception as e:
+                logger.error(f"Error retrieving SEC data: {str(e)}")
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Error retrieving SEC data: {str(e)}"
+                )
+
         except Exception as e:
-            raise StorageUnavailable("sec_data", f"Error retrieving SEC data: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return self.format_error_response(
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}"
+            )
 
     def validate_args(
         self,

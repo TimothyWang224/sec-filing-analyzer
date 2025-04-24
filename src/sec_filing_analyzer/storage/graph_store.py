@@ -323,12 +323,28 @@ class GraphStore(GraphStoreInterface):
         v2_array = np.array(v2)
         return np.dot(v1_array, v2_array) / (np.linalg.norm(v1_array) * np.linalg.norm(v2_array))
 
-    def query(self, query: str) -> List[Dict[str, Any]]:
-        """Execute a query on the graph store."""
+    def query(
+        self,
+        query: str,
+        parameters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Execute a query on the graph store.
+
+        Args:
+            query: Query string
+            parameters: Optional query parameters
+
+        Returns:
+            List of result dictionaries
+        """
+        if parameters is None:
+            parameters = {}
+
         if self.use_neo4j:
             try:
                 with self.driver.session(database=self.database) as session:
-                    result = session.run(query)
+                    result = session.run(query, **parameters)
                     return [dict(record) for record in result]
             except Exception as e:
                 logger.error(f"Error executing Neo4j query: {str(e)}")

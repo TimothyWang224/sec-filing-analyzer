@@ -8,8 +8,7 @@ from typing import Dict, Any, Optional, Type
 from .base import Tool
 from .registry import ToolRegistry
 from .decorator import tool
-from ..contracts import BaseModel, ToolSpec, field_validator
-from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
+from ..contracts import BaseModel, field_validator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -94,61 +93,98 @@ class ToolDetailsTool(Tool):
             parameters: Parameters for the query
 
         Returns:
-            Dictionary containing detailed information about the tool
+            A standardized response dictionary with the following fields:
+            - query_type: The type of query that was executed
+            - parameters: The parameters that were used
+            - results: Empty object (tool details are in other fields)
+            - output_key: The tool's name
+            - success: Boolean indicating whether the operation was successful
+            - tool_name: The name of the requested tool
+            - description: The tool's description
+            - parameters: The tool's parameters
+            - documentation: Detailed documentation for the tool
 
-        Raises:
-            QueryTypeUnsupported: If the query type is not supported
-            ParameterError: If the parameters are invalid
-            DataNotFound: If the tool is not found
+            Error responses will additionally have:
+            - error or warning: The error message (depending on error_type)
+            - available_tools: List of available tools (if tool not found)
         """
+        # Ensure parameters is a dictionary
+        if parameters is None:
+            parameters = {}
+
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
                 supported_types = list(SUPPORTED_QUERIES.keys())
-                raise QueryTypeUnsupported(query_type, "tool_details", supported_types)
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}"
+                )
 
             # Validate parameters using the appropriate model
             param_model = SUPPORTED_QUERIES[query_type]
-            if parameters is None:
-                parameters = {}
 
             try:
                 # Validate parameters
                 params = param_model(**parameters)
             except Exception as e:
-                raise ParameterError(str(e))
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}"
+                )
 
             # Extract parameters
             tool_name = params.tool_name
 
-            # Get tool info
-            tool_info = ToolRegistry.get(tool_name)
+            try:
+                # Get tool info
+                tool_info = ToolRegistry.get(tool_name)
 
-            if not tool_info:
-                raise DataNotFound("tool", {"tool_name": tool_name})
+                if not tool_info:
+                    response = {
+                        "query_type": query_type,
+                        "parameters": parameters,
+                        "warning": f"Tool '{tool_name}' not found",
+                        "error": f"Tool '{tool_name}' not found",  # For backward compatibility
+                        "results": [],
+                        "output_key": self.name,
+                        "success": False,
+                        "available_tools": list(ToolRegistry.list_tools().keys())
+                    }
+                    return response
 
-            # Get formatted documentation
-            detailed_docs = ToolRegistry.get_tool_documentation(name=tool_name, format="text")
+                # Get formatted documentation
+                detailed_docs = ToolRegistry.get_tool_documentation(name=tool_name, format="text")
 
-            return {
-                "success": True,
-                "tool_name": tool_name,
-                "description": tool_info.get("description", ""),
-                "parameters": tool_info.get("parameters", {}),
-                "documentation": detailed_docs,
-                "output_key": "tool_details"
-            }
-        except DataNotFound as e:
-            # Handle tool not found error
-            return {
-                "success": False,
-                "error": f"Tool '{e.query_params.get('tool_name')}' not found",
-                "available_tools": list(ToolRegistry.list_tools().keys()),
-                "output_key": "tool_details"
-            }
-        except (QueryTypeUnsupported, ParameterError) as e:
-            # Re-raise known errors
-            raise
+                # Create a custom result with additional fields
+                result = self.format_success_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    results={}
+                )
+
+                # Add fields directly to the result
+                result["tool_name"] = tool_name
+                result["description"] = tool_info.get("description", "")
+                result["parameters"] = tool_info.get("parameters", {})
+                result["documentation"] = detailed_docs
+
+                return result
+
+            except Exception as e:
+                logger.error(f"Error getting tool details: {str(e)}")
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Error getting tool details: {str(e)}"
+                )
+
         except Exception as e:
-            logger.error(f"Error getting tool details: {str(e)}")
-            raise StorageUnavailable("tool_registry", f"Error getting tool details: {str(e)}")
+            logger.error(f"Unexpected error: {str(e)}")
+            return self.format_error_response(
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}"
+            )

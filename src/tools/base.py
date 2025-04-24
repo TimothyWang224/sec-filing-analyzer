@@ -1,9 +1,9 @@
-from typing import Any, Dict, ClassVar, Optional, List, Tuple, Union
+from typing import Any, Dict, ClassVar, Optional
 from abc import ABC, abstractmethod
 import logging
 from .registry import ToolRegistry
 from .schema_registry import SchemaRegistry
-from .memoization import memoize_tool, clear_tool_caches
+from .memoization import memoize_tool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,7 +21,25 @@ except ImportError:
 register_tool = ToolRegistry.register
 
 class Tool(ABC):
-    """Base class for all tools available to agents."""
+    """
+    Base class for all tools available to agents.
+
+    All tools should inherit from this class and implement the _execute method.
+    Tools provide standardized error handling and response formatting through
+    the format_error_response and format_success_response methods.
+
+    All tool responses will have the following standard fields:
+    - query_type: The type of query that was executed
+    - parameters: The parameters that were used
+    - results: The results of the query (empty list for errors)
+    - output_key: The tool's name
+    - success: Boolean indicating whether the operation was successful
+
+    Error responses will additionally have:
+    - error or warning: The error message (depending on error_type)
+
+    Tools may add additional fields to the response as needed.
+    """
 
     # Class variables for tool metadata
     _tool_name: ClassVar[str] = None
@@ -156,20 +174,93 @@ class Tool(ABC):
 
         return resolved_params
 
-    async def _execute(self, **kwargs) -> Any:
+    async def _execute(self, **_) -> Dict[str, Any]:
         """
         Internal execute method to be implemented by subclasses.
 
+        Subclasses should use format_success_response and format_error_response
+        to ensure consistent response formatting.
+
         Args:
-            **kwargs: Keyword arguments for the tool
+            **_: Keyword arguments for the tool (unused in base class)
 
         Returns:
-            The result of the tool's execution
+            A standardized response dictionary. Use format_success_response or
+            format_error_response to create this dictionary.
         """
         raise NotImplementedError("Subclasses must implement _execute")
 
+    def format_error_response(
+        self,
+        query_type: str,
+        parameters: Dict[str, Any],
+        error_message: str,
+        error_type: str = "error",
+        additional_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Format a standardized error response.
+
+        Args:
+            query_type: The type of query that was attempted
+            parameters: The parameters that were used
+            error_message: The error message
+            error_type: The type of error (default: "error")
+            additional_data: Additional data to include in the response
+
+        Returns:
+            A standardized error response dictionary
+        """
+        response = {
+            "query_type": query_type,
+            "parameters": parameters,
+            error_type: error_message,
+            "results": [],
+            "output_key": self.name,
+            "success": False
+        }
+
+        # Add any additional data
+        if additional_data:
+            response.update(additional_data)
+
+        return response
+
+    def format_success_response(
+        self,
+        query_type: str,
+        parameters: Dict[str, Any],
+        results: Any,
+        additional_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Format a standardized success response.
+
+        Args:
+            query_type: The type of query that was executed
+            parameters: The parameters that were used
+            results: The results of the query
+            additional_data: Additional data to include in the response
+
+        Returns:
+            A standardized success response dictionary
+        """
+        response = {
+            "query_type": query_type,
+            "parameters": parameters,
+            "results": results,
+            "output_key": self.name,
+            "success": True
+        }
+
+        # Add any additional data
+        if additional_data:
+            response.update(additional_data)
+
+        return response
+
     @memoize_tool
-    async def execute(self, **kwargs) -> Any:
+    async def execute(self, **kwargs) -> Dict[str, Any]:
         """
         Execute the tool with the given arguments.
 
@@ -180,7 +271,17 @@ class Tool(ABC):
             **kwargs: Keyword arguments based on the tool's parameters
 
         Returns:
-            The result of the tool's execution with output_key information
+            A standardized response dictionary with the following fields:
+            - query_type: The type of query that was executed
+            - parameters: The parameters that were used
+            - results: The results of the query (empty list for errors)
+            - output_key: The tool's name
+            - success: Boolean indicating whether the operation was successful
+
+            Error responses will additionally have:
+            - error or warning: The error message (depending on error_type)
+
+            Tools may add additional fields to the response as needed.
         """
         # Validate arguments
         self.validate_args(**kwargs)

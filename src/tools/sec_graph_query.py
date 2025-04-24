@@ -6,12 +6,11 @@ containing SEC filing relationships and structure.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Union, Type
+from typing import Dict, Any, List, Optional, Type
 
 from ..tools.base import Tool
 from ..tools.decorator import tool
-from ..contracts import BaseModel, ToolSpec, field_validator
-from ..errors import ParameterError, QueryTypeUnsupported, StorageUnavailable, DataNotFound
+from ..contracts import BaseModel
 from sec_filing_analyzer.storage import GraphStore
 from sec_filing_analyzer.config import StorageConfig
 
@@ -63,11 +62,7 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
     "custom_cypher": CustomCypherParams
 }
 
-# Register tool specification
-from .registry import ToolRegistry
-
 # The tool registration is handled by the @tool decorator
-# The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
 @tool(
     name="sec_graph_query",
@@ -128,68 +123,103 @@ class SECGraphQueryTool(Tool):
             parameters: Optional parameters for the query
 
         Returns:
-            Dictionary containing query results
+            A standardized response dictionary with the following fields:
+            - query_type: The type of query that was executed
+            - parameters: The parameters that were used
+            - results: The results of the query (empty list for errors)
+            - output_key: The tool's name
+            - success: Boolean indicating whether the operation was successful
 
-        Raises:
-            QueryTypeUnsupported: If the query type is not supported
-            ParameterError: If the parameters are invalid
-            StorageUnavailable: If the graph store is unavailable
-            DataNotFound: If no results are found
+            Error responses will additionally have:
+            - error or warning: The error message (depending on error_type)
         """
+        # Ensure parameters is a dictionary
+        if parameters is None:
+            parameters = {}
+
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
                 supported_types = list(SUPPORTED_QUERIES.keys())
-                raise QueryTypeUnsupported(query_type, "sec_graph_query", supported_types)
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}"
+                )
 
             # Validate parameters using the appropriate model
             param_model = SUPPORTED_QUERIES[query_type]
-            if parameters is None:
-                parameters = {}
 
             try:
                 # Validate parameters
                 params = param_model(**parameters)
             except Exception as e:
-                raise ParameterError(str(e))
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}"
+                )
 
             logger.info(f"Executing graph query: {query_type}")
 
             # Check if graph store is available
             if self.graph_store is None:
-                raise StorageUnavailable("graph_store", "Graph store is not initialized")
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message="Graph store is not initialized"
+                )
 
             # Execute the appropriate query based on query_type
             result = None
-            if query_type == "company_filings":
-                result = self._query_company_filings(params.model_dump())
-            elif query_type == "filing_sections":
-                result = self._query_filing_sections(params.model_dump())
-            elif query_type == "related_companies":
-                result = self._query_related_companies(params.model_dump())
-            elif query_type == "filing_timeline":
-                result = self._query_filing_timeline(params.model_dump())
-            elif query_type == "section_types":
-                result = self._query_section_types(params.model_dump())
-            elif query_type == "custom_cypher":
-                result = self._execute_custom_cypher(params.model_dump())
+            try:
+                if query_type == "company_filings":
+                    result = self._query_company_filings(params.model_dump())
+                elif query_type == "filing_sections":
+                    result = self._query_filing_sections(params.model_dump())
+                elif query_type == "related_companies":
+                    result = self._query_related_companies(params.model_dump())
+                elif query_type == "filing_timeline":
+                    result = self._query_filing_timeline(params.model_dump())
+                elif query_type == "section_types":
+                    result = self._query_section_types(params.model_dump())
+                elif query_type == "custom_cypher":
+                    result = self._execute_custom_cypher(params.model_dump())
+                else:
+                    return self.format_error_response(
+                        query_type=query_type,
+                        parameters=parameters,
+                        error_message=f"Unknown query type: {query_type}"
+                    )
+            except Exception as e:
+                logger.error(f"Error executing graph query: {str(e)}")
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Error executing graph query: {str(e)}"
+                )
 
-            # Add output key to result
+            # Check if we have a valid result
             if result and isinstance(result, dict):
-                result["output_key"] = "sec_graph_query"
+                # Ensure the result has the output_key
+                if "output_key" not in result:
+                    result["output_key"] = self.name
                 return result
             else:
-                raise DataNotFound("graph_query_results", {
-                    "query_type": query_type,
-                    "parameters": parameters
-                })
+                return self.format_error_response(
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message="No results found",
+                    error_type="warning"
+                )
 
-        except (QueryTypeUnsupported, ParameterError, StorageUnavailable, DataNotFound) as e:
-            # Re-raise known errors
-            raise
         except Exception as e:
-            logger.error(f"Error executing graph query: {str(e)}")
-            raise StorageUnavailable("graph_store", f"Error executing graph query: {str(e)}")
+            logger.error(f"Unexpected error executing graph query: {str(e)}")
+            return self.format_error_response(
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}"
+            )
 
     def _query_company_filings(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query filings for a specific company."""
@@ -198,38 +228,58 @@ class SECGraphQueryTool(Tool):
         limit = parameters.get("limit", 10)
 
         if not ticker:
-            return {"error": "Missing required parameter: ticker", "results": []}
+            return self.format_error_response(
+                query_type="company_filings",
+                parameters=parameters,
+                error_message="Missing required parameter: ticker"
+            )
 
-        # Build Cypher query
-        query = """
-        MATCH (c:Company {ticker: $ticker})-[:FILED]->(f:Filing)
-        """
+        try:
+            # Build Cypher query
+            query = """
+            MATCH (c:Company {ticker: $ticker})-[:FILED]->(f:Filing)
+            """
 
-        if filing_types:
-            query += "WHERE f.filing_type IN $filing_types "
+            if filing_types:
+                query += "WHERE f.filing_type IN $filing_types "
 
-        query += """
-        RETURN f.filing_type as filing_type,
-               f.filing_date as filing_date,
-               f.accession_number as accession_number,
-               f.fiscal_year as fiscal_year,
-               f.fiscal_period as fiscal_period
-        ORDER BY f.filing_date DESC
-        LIMIT $limit
-        """
+            query += """
+            RETURN f.filing_type as filing_type,
+                   f.filing_date as filing_date,
+                   f.accession_number as accession_number,
+                   f.fiscal_year as fiscal_year,
+                   f.fiscal_period as fiscal_period
+            ORDER BY f.filing_date DESC
+            LIMIT $limit
+            """
 
-        # Execute query
-        results = self.graph_store.query(query, {
-            "ticker": ticker,
-            "filing_types": filing_types,
-            "limit": limit
-        })
+            # Execute query
+            results = self.graph_store.query(query, {
+                "ticker": ticker,
+                "filing_types": filing_types,
+                "limit": limit
+            })
 
-        return {
-            "query_type": "company_filings",
-            "parameters": parameters,
-            "results": results
-        }
+            if not results:
+                return self.format_error_response(
+                    query_type="company_filings",
+                    parameters=parameters,
+                    error_message=f"No filings found for ticker: {ticker}",
+                    error_type="warning"
+                )
+
+            return self.format_success_response(
+                query_type="company_filings",
+                parameters=parameters,
+                results=results
+            )
+        except Exception as e:
+            logger.error(f"Error querying company filings: {str(e)}")
+            return self.format_error_response(
+                query_type="company_filings",
+                parameters=parameters,
+                error_message=f"Error querying company filings: {str(e)}"
+            )
 
     def _query_filing_sections(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query sections for a specific filing."""
@@ -238,68 +288,110 @@ class SECGraphQueryTool(Tool):
         limit = parameters.get("limit", 50)
 
         if not accession_number:
-            return {"error": "Missing required parameter: accession_number", "results": []}
+            return self.format_error_response(
+                query_type="filing_sections",
+                parameters=parameters,
+                error_message="Missing required parameter: accession_number"
+            )
 
-        # Build Cypher query
-        query = """
-        MATCH (f:Filing {accession_number: $accession_number})-[:CONTAINS]->(s:Section)
-        """
+        try:
+            # Build Cypher query
+            query = """
+            MATCH (f:Filing {accession_number: $accession_number})-[:CONTAINS]->(s:Section)
+            """
 
-        if section_types:
-            query += "WHERE s.section_type IN $section_types "
+            if section_types:
+                query += "WHERE s.section_type IN $section_types "
 
-        query += """
-        RETURN s.title as title,
-               s.section_type as section_type,
-               s.order as order
-        ORDER BY s.order ASC
-        LIMIT $limit
-        """
+            query += """
+            RETURN s.title as title,
+                   s.section_type as section_type,
+                   s.order as order
+            ORDER BY s.order ASC
+            LIMIT $limit
+            """
 
-        # Execute query
-        results = self.graph_store.query(query, {
-            "accession_number": accession_number,
-            "section_types": section_types,
-            "limit": limit
-        })
+            # Execute query
+            results = self.graph_store.query(query, {
+                "accession_number": accession_number,
+                "section_types": section_types,
+                "limit": limit
+            })
 
-        return {
-            "query_type": "filing_sections",
-            "parameters": parameters,
-            "results": results
-        }
+            if not results:
+                return self.format_error_response(
+                    query_type="filing_sections",
+                    parameters=parameters,
+                    error_message=f"No sections found for accession number: {accession_number}",
+                    error_type="warning"
+                )
+
+            return self.format_success_response(
+                query_type="filing_sections",
+                parameters=parameters,
+                results=results
+            )
+        except Exception as e:
+            logger.error(f"Error querying filing sections: {str(e)}")
+            return self.format_error_response(
+                query_type="filing_sections",
+                parameters=parameters,
+                error_message=f"Error querying filing sections: {str(e)}"
+            )
 
     def _query_related_companies(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query companies related to a specific company."""
         ticker = parameters.get("ticker")
-        relationship_type = parameters.get("relationship_type", "MENTIONS")
+        # Note: relationship_type is not currently used in the query
+        # but kept for future extensibility
+        # relationship_type = parameters.get("relationship_type", "MENTIONS")
         limit = parameters.get("limit", 10)
 
         if not ticker:
-            return {"error": "Missing required parameter: ticker", "results": []}
+            return self.format_error_response(
+                query_type="related_companies",
+                parameters=parameters,
+                error_message="Missing required parameter: ticker"
+            )
 
-        # Build Cypher query
-        query = f"""
-        MATCH (c1:Company {{ticker: $ticker}})-[:FILED]->(:Filing)-[:CONTAINS]->(:Section)-[:MENTIONS]->(c2:Company)
-        WHERE c1 <> c2
-        RETURN c2.ticker as ticker,
-               c2.name as name,
-               count(*) as mention_count
-        ORDER BY mention_count DESC
-        LIMIT $limit
-        """
+        try:
+            # Build Cypher query
+            query = f"""
+            MATCH (c1:Company {{ticker: $ticker}})-[:FILED]->(:Filing)-[:CONTAINS]->(:Section)-[:MENTIONS]->(c2:Company)
+            WHERE c1 <> c2
+            RETURN c2.ticker as ticker,
+                   c2.name as name,
+                   count(*) as mention_count
+            ORDER BY mention_count DESC
+            LIMIT $limit
+            """
 
-        # Execute query
-        results = self.graph_store.query(query, {
-            "ticker": ticker,
-            "limit": limit
-        })
+            # Execute query
+            results = self.graph_store.query(query, {
+                "ticker": ticker,
+                "limit": limit
+            })
 
-        return {
-            "query_type": "related_companies",
-            "parameters": parameters,
-            "results": results
-        }
+            if not results:
+                return self.format_error_response(
+                    query_type="related_companies",
+                    parameters=parameters,
+                    error_message=f"No related companies found for ticker: {ticker}",
+                    error_type="warning"
+                )
+
+            return self.format_success_response(
+                query_type="related_companies",
+                parameters=parameters,
+                results=results
+            )
+        except Exception as e:
+            logger.error(f"Error querying related companies: {str(e)}")
+            return self.format_error_response(
+                query_type="related_companies",
+                parameters=parameters,
+                error_message=f"Error querying related companies: {str(e)}"
+            )
 
     def _query_filing_timeline(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query the timeline of filings for a company."""
@@ -308,52 +400,88 @@ class SECGraphQueryTool(Tool):
         limit = parameters.get("limit", 10)
 
         if not ticker:
-            return {"error": "Missing required parameter: ticker", "results": []}
+            return self.format_error_response(
+                query_type="filing_timeline",
+                parameters=parameters,
+                error_message="Missing required parameter: ticker"
+            )
 
-        # Build Cypher query
-        query = """
-        MATCH (c:Company {ticker: $ticker})-[:FILED]->(f:Filing)
-        WHERE f.filing_type = $filing_type
-        RETURN f.filing_date as filing_date,
-               f.accession_number as accession_number,
-               f.fiscal_year as fiscal_year,
-               f.fiscal_period as fiscal_period
-        ORDER BY f.filing_date DESC
-        LIMIT $limit
-        """
+        try:
+            # Build Cypher query
+            query = """
+            MATCH (c:Company {ticker: $ticker})-[:FILED]->(f:Filing)
+            WHERE f.filing_type = $filing_type
+            RETURN f.filing_date as filing_date,
+                   f.accession_number as accession_number,
+                   f.fiscal_year as fiscal_year,
+                   f.fiscal_period as fiscal_period
+            ORDER BY f.filing_date DESC
+            LIMIT $limit
+            """
 
-        # Execute query
-        results = self.graph_store.query(query, {
-            "ticker": ticker,
-            "filing_type": filing_type,
-            "limit": limit
-        })
+            # Execute query
+            results = self.graph_store.query(query, {
+                "ticker": ticker,
+                "filing_type": filing_type,
+                "limit": limit
+            })
 
-        return {
-            "query_type": "filing_timeline",
-            "parameters": parameters,
-            "results": results
-        }
+            if not results:
+                return self.format_error_response(
+                    query_type="filing_timeline",
+                    parameters=parameters,
+                    error_message=f"No filing timeline found for ticker: {ticker} and filing type: {filing_type}",
+                    error_type="warning"
+                )
+
+            return self.format_success_response(
+                query_type="filing_timeline",
+                parameters=parameters,
+                results=results
+            )
+        except Exception as e:
+            logger.error(f"Error querying filing timeline: {str(e)}")
+            return self.format_error_response(
+                query_type="filing_timeline",
+                parameters=parameters,
+                error_message=f"Error querying filing timeline: {str(e)}"
+            )
 
     def _query_section_types(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Query the available section types in the database."""
-        # Build Cypher query
-        query = """
-        MATCH (s:Section)
-        WHERE s.section_type IS NOT NULL
-        RETURN DISTINCT s.section_type as section_type,
-               count(*) as count
-        ORDER BY count DESC
-        """
+        try:
+            # Build Cypher query
+            query = """
+            MATCH (s:Section)
+            WHERE s.section_type IS NOT NULL
+            RETURN DISTINCT s.section_type as section_type,
+                   count(*) as count
+            ORDER BY count DESC
+            """
 
-        # Execute query
-        results = self.graph_store.query(query)
+            # Execute query
+            results = self.graph_store.query(query)
 
-        return {
-            "query_type": "section_types",
-            "parameters": parameters,
-            "results": results
-        }
+            if not results:
+                return self.format_error_response(
+                    query_type="section_types",
+                    parameters=parameters,
+                    error_message="No section types found in the database",
+                    error_type="warning"
+                )
+
+            return self.format_success_response(
+                query_type="section_types",
+                parameters=parameters,
+                results=results
+            )
+        except Exception as e:
+            logger.error(f"Error querying section types: {str(e)}")
+            return self.format_error_response(
+                query_type="section_types",
+                parameters=parameters,
+                error_message=f"Error querying section types: {str(e)}"
+            )
 
     def _execute_custom_cypher(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a custom Cypher query."""
@@ -361,19 +489,36 @@ class SECGraphQueryTool(Tool):
         query_params = parameters.get("query_params", {})
 
         if not cypher_query:
-            return {"error": "Missing required parameter: cypher_query", "results": []}
+            return self.format_error_response(
+                query_type="custom_cypher",
+                parameters={"cypher_query": cypher_query},
+                error_message="Missing required parameter: cypher_query"
+            )
 
-        # Execute query
-        results = self.graph_store.query(cypher_query, query_params)
+        try:
+            # Execute query
+            results = self.graph_store.query(cypher_query, query_params)
 
-        return {
-            "query_type": "custom_cypher",
-            "parameters": {
-                "cypher_query": cypher_query,
-                # Don't return potentially sensitive query_params
-            },
-            "results": results
-        }
+            if not results:
+                return self.format_error_response(
+                    query_type="custom_cypher",
+                    parameters={"cypher_query": cypher_query},
+                    error_message="No results found for the custom Cypher query",
+                    error_type="warning"
+                )
+
+            return self.format_success_response(
+                query_type="custom_cypher",
+                parameters={"cypher_query": cypher_query},  # Don't return potentially sensitive query_params
+                results=results
+            )
+        except Exception as e:
+            logger.error(f"Error executing custom Cypher query: {str(e)}")
+            return self.format_error_response(
+                query_type="custom_cypher",
+                parameters={"cypher_query": cypher_query},
+                error_message=f"Error executing custom Cypher query: {str(e)}"
+            )
 
     def validate_args(
         self,

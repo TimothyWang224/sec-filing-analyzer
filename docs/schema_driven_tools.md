@@ -29,11 +29,16 @@ The `ToolRegistry` has been enhanced to integrate with the `SchemaRegistry`. It 
 
 ### Tool Base Class
 
-The `Tool` base class has been updated to support dynamic parameter resolution. It now:
+The `Tool` base class has been updated to support dynamic parameter resolution and standardized response formatting. It now:
 
 - Resolves parameters to database field names
 - Delegates execution to the `_execute` method
 - Provides a consistent interface for tool implementation
+- Provides standardized methods for formatting responses:
+  - `format_success_response`: Creates a standardized success response
+  - `format_error_response`: Creates a standardized error response
+
+All tools now use these methods to ensure consistent response formatting, making it easier for agents to interpret tool results.
 
 ### Tool Decorator
 
@@ -169,20 +174,35 @@ These scripts test the `SchemaRegistry`, `ToolRegistry`, and all tool implementa
 
 ## Implemented Tools
 
-The following tools have been updated to use the schema-driven approach:
+The following tools have been updated to use the schema-driven approach and standardized response format:
 
 1. **SECDataTool** - For retrieving raw SEC filing data
    - Not using schema mappings due to custom parameter structure
+   - Uses standardized response format with `format_success_response` and `format_error_response`
 
 2. **SECSemanticSearchTool** - For semantic search on SEC filings
    - Not using schema mappings due to complex parameter structure
+   - Uses standardized response format with `format_success_response` and `format_error_response`
 
 3. **SECGraphQueryTool** - For querying the SEC filing graph database
    - Not using schema mappings due to nested parameter structure
+   - Uses standardized response format with `format_success_response` and `format_error_response`
 
 4. **SECFinancialDataTool** - For querying financial data from SEC filings
    - Schema: `financial_facts`
    - Parameter mappings: ticker, metric -> metric_name, start_date -> period_start_date, end_date -> period_end_date, filing_type
+   - Uses standardized response format with `format_success_response` and `format_error_response`
 
 5. **ToolDetailsTool** - For getting detailed information about other tools
    - No schema (metadata tool)
+   - Uses standardized response format with `format_success_response` and `format_error_response`
+
+All tools now return responses with a consistent structure, including:
+- `query_type`: The type of query that was executed
+- `parameters`: The parameters that were used
+- `results`: The results of the query (empty list for errors)
+- `output_key`: The tool's name
+- `success`: Boolean indicating whether the operation was successful
+
+Error responses also include:
+- `error` or `warning`: The error message (depending on error type)
