@@ -92,15 +92,34 @@ class SECFinancialDataTool(Tool):
         self.db_store = None
         self.db_error = None
 
+        # We'll use lazy initialization to avoid hanging during startup
+        # The database will be connected only when needed
+        logger.info(f"SEC Financial Data Tool initialized with database path: {self.db_path}")
+
+    def _ensure_db_connection(self) -> bool:
+        """Ensure database connection is established.
+
+        Returns:
+            True if connection is successful, False otherwise
+        """
+        if self.db_store is not None:
+            return True
+
+        if self.db_error is not None:
+            # We already tried and failed
+            return False
+
         try:
             # Try to initialize the DuckDB store
-            self.db_store = OptimizedDuckDBStore(db_path=self.db_path, read_only=read_only)
+            self.db_store = OptimizedDuckDBStore(db_path=self.db_path, read_only=True)
             logger.info(f"Successfully initialized DuckDB store at {self.db_path}")
+            return True
         except Exception as e:
             # Log the error but don't raise it - we'll handle it gracefully
             self.db_error = str(e)
             logger.warning(f"Failed to initialize DuckDB store: {self.db_error}")
             logger.warning(f"Database path attempted: {self.db_path}")
+            return False
 
     async def _execute(
         self,
@@ -143,8 +162,8 @@ class SECFinancialDataTool(Tool):
         except Exception as e:
             raise ParameterError(str(e))
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type=query_type,
                 parameters=parameters,
@@ -203,8 +222,8 @@ class SECFinancialDataTool(Tool):
                 error_message="Missing required parameter: ticker"
             )
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type="financial_facts",
                 parameters=parameters,
@@ -247,8 +266,8 @@ class SECFinancialDataTool(Tool):
         """Query company information."""
         ticker = parameters.get("ticker")
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type="company_info",
                 parameters=parameters,
@@ -290,8 +309,8 @@ class SECFinancialDataTool(Tool):
         """Query available metrics."""
         category = parameters.get("category")
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type="metrics",
                 parameters=parameters,
@@ -339,8 +358,8 @@ class SECFinancialDataTool(Tool):
                 error_message="Missing required parameters: ticker and metric"
             )
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type="time_series",
                 parameters=parameters,
@@ -393,8 +412,8 @@ class SECFinancialDataTool(Tool):
                 error_message="Missing required parameter: ticker"
             )
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type="financial_ratios",
                 parameters=parameters,
@@ -443,8 +462,8 @@ class SECFinancialDataTool(Tool):
                 error_message="Missing required parameter: sql_query"
             )
 
-        # Check if database is available
-        if self.db_error:
+        # Ensure database connection is established
+        if not self._ensure_db_connection():
             return self.format_error_response(
                 query_type="custom_sql",
                 parameters={"sql_query": sql_query},

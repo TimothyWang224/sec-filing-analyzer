@@ -1028,6 +1028,509 @@ class OptimizedDuckDBStore:
             logger.error(f"Error getting database stats: {e}")
             return {}
 
+    def get_all_companies(self) -> List[Dict[str, Any]]:
+        """Get all companies in the database.
+
+        Returns:
+            List of company dictionaries
+        """
+        try:
+            query = """
+                SELECT
+                    ticker,
+                    name,
+                    cik,
+                    sic,
+                    sector,
+                    industry,
+                    exchange
+                FROM companies
+                ORDER BY ticker
+            """
+
+            # Execute the query
+            result = self.conn.execute(query).fetchdf()
+
+            if result.empty:
+                return []
+
+            # Convert DataFrame to list of dictionaries
+            companies = []
+            for _, row in result.iterrows():
+                company = row.to_dict()
+                companies.append(company)
+
+            return companies
+        except Exception as e:
+            logger.error(f"Error getting all companies: {e}")
+            return []
+
+    def get_company_info(self, ticker: str) -> List[Dict[str, Any]]:
+        """Get information about a specific company.
+
+        Args:
+            ticker: Company ticker symbol
+
+        Returns:
+            List containing a single company dictionary
+        """
+        try:
+            query = """
+                SELECT
+                    ticker,
+                    name,
+                    cik,
+                    sic,
+                    sector,
+                    industry,
+                    exchange
+                FROM companies
+                WHERE ticker = ?
+            """
+
+            # Execute the query
+            result = self.conn.execute(query, [ticker]).fetchdf()
+
+            if result.empty:
+                return []
+
+            # Convert DataFrame to list of dictionaries
+            companies = []
+            for _, row in result.iterrows():
+                company = row.to_dict()
+                companies.append(company)
+
+            return companies
+        except Exception as e:
+            logger.error(f"Error getting company info for {ticker}: {e}")
+            return []
+
+    def get_available_metrics(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Get available metrics.
+
+        Args:
+            category: Optional category to filter by
+
+        Returns:
+            List of metric dictionaries
+        """
+        try:
+            # First try to get metrics from the xbrl_tag_mappings table
+            query = """
+                SELECT
+                    xbrl_tag,
+                    standard_metric_name,
+                    category,
+                    description
+                FROM xbrl_tag_mappings
+                WHERE 1=1
+            """
+            params = []
+
+            # Add category filter
+            if category:
+                query += " AND category = ?"
+                params.append(category)
+
+            # Execute the query
+            result = self.conn.execute(query, params).fetchdf()
+
+            if not result.empty:
+                # Convert DataFrame to list of dictionaries
+                metrics = []
+                for _, row in result.iterrows():
+                    metric = row.to_dict()
+                    metrics.append(metric)
+
+                return metrics
+
+            # If no metrics found in xbrl_tag_mappings, try getting distinct metrics from time_series_metrics
+            query = """
+                SELECT DISTINCT
+                    metric_name,
+                    unit
+                FROM time_series_metrics
+            """
+
+            # Execute the query
+            result = self.conn.execute(query).fetchdf()
+
+            if not result.empty:
+                # Convert DataFrame to list of dictionaries
+                metrics = []
+                for _, row in result.iterrows():
+                    metric = {
+                        "metric_name": row["metric_name"],
+                        "unit": row["unit"],
+                        "category": "Financial",
+                        "description": f"Financial metric: {row['metric_name']}"
+                    }
+                    metrics.append(metric)
+
+                return metrics
+
+            # If still no metrics found, try getting distinct metric_name from financial_facts
+            query = """
+                SELECT DISTINCT
+                    metric_name,
+                    unit
+                FROM financial_facts
+                WHERE metric_name IS NOT NULL AND metric_name != ''
+            """
+
+            # Execute the query
+            result = self.conn.execute(query).fetchdf()
+
+            if not result.empty:
+                # Convert DataFrame to list of dictionaries
+                metrics = []
+                for _, row in result.iterrows():
+                    metric = {
+                        "metric_name": row["metric_name"],
+                        "unit": row["unit"],
+                        "category": "Financial",
+                        "description": f"Financial fact: {row['metric_name']}"
+                    }
+                    metrics.append(metric)
+
+                return metrics
+
+            # If we still haven't found any metrics, return an empty list
+            return []
+        except Exception as e:
+            logger.error(f"Error getting available metrics: {e}")
+            return []
+
+    def query_time_series(self, ticker: str, metric: str,
+                         start_date: Optional[str] = None,
+                         end_date: Optional[str] = None,
+                         period: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Query time series data for a specific metric.
+
+        Args:
+            ticker: Company ticker symbol
+            metric: Metric name
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            period: Period type (e.g., "annual", "quarterly")
+
+        Returns:
+            List of time series data points
+        """
+        try:
+            # Build query
+            query = """
+                SELECT
+                    ticker,
+                    metric_name,
+                    fiscal_year,
+                    fiscal_quarter,
+                    value,
+                    unit,
+                    filing_id
+                FROM time_series_metrics
+                WHERE ticker = ?
+                AND metric_name = ?
+            """
+            params = [ticker, metric]
+
+            # Add date filters based on start_date and end_date
+            if start_date:
+                try:
+                    start_year = int(start_date.split('-')[0])
+                    query += " AND fiscal_year >= ?"
+                    params.append(start_year)
+                except (ValueError, IndexError):
+                    pass
+
+            if end_date:
+                try:
+                    end_year = int(end_date.split('-')[0])
+                    query += " AND fiscal_year <= ?"
+                    params.append(end_year)
+                except (ValueError, IndexError):
+                    pass
+
+            # Add period filter
+            if period == "annual":
+                query += " AND fiscal_quarter = 4"
+            elif period == "quarterly":
+                # Include all quarters
+                pass
+
+            # Add ordering
+            query += " ORDER BY fiscal_year, fiscal_quarter"
+
+            # Execute the query
+            result = self.conn.execute(query, params).fetchdf()
+
+            if result.empty:
+                return []
+
+            # Convert DataFrame to list of dictionaries
+            time_series = []
+            for _, row in result.iterrows():
+                data_point = row.to_dict()
+                time_series.append(data_point)
+
+            return time_series
+        except Exception as e:
+            logger.error(f"Error querying time series for {ticker} and metric {metric}: {e}")
+            return []
+
+    def query_financial_ratios(self, ticker: str, ratios: Optional[List[str]] = None,
+                              start_date: Optional[str] = None,
+                              end_date: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Query financial ratios for a specific company.
+
+        Args:
+            ticker: Company ticker symbol
+            ratios: List of ratio names to filter by
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+
+        Returns:
+            List of financial ratios
+        """
+        try:
+            # Build query
+            query = """
+                SELECT
+                    ticker,
+                    ratio_name,
+                    fiscal_year,
+                    fiscal_quarter,
+                    value,
+                    filing_id
+                FROM financial_ratios
+                WHERE ticker = ?
+            """
+            params = [ticker]
+
+            # Add ratios filter
+            if ratios:
+                placeholders = ", ".join(["?" for _ in ratios])
+                query += f" AND ratio_name IN ({placeholders})"
+                params.extend(ratios)
+
+            # Add date filters based on start_date and end_date
+            if start_date:
+                try:
+                    start_year = int(start_date.split('-')[0])
+                    query += " AND fiscal_year >= ?"
+                    params.append(start_year)
+                except (ValueError, IndexError):
+                    pass
+
+            if end_date:
+                try:
+                    end_year = int(end_date.split('-')[0])
+                    query += " AND fiscal_year <= ?"
+                    params.append(end_year)
+                except (ValueError, IndexError):
+                    pass
+
+            # Add ordering
+            query += " ORDER BY fiscal_year, fiscal_quarter, ratio_name"
+
+            # Execute the query
+            result = self.conn.execute(query, params).fetchdf()
+
+            if result.empty:
+                return []
+
+            # Convert DataFrame to list of dictionaries
+            ratios_results = []
+            for _, row in result.iterrows():
+                ratio = row.to_dict()
+                ratios_results.append(ratio)
+
+            return ratios_results
+        except Exception as e:
+            logger.error(f"Error querying financial ratios for {ticker}: {e}")
+            return []
+
+    def execute_custom_query(self, sql_query: str) -> List[Dict[str, Any]]:
+        """Execute a custom SQL query.
+
+        Args:
+            sql_query: SQL query to execute
+
+        Returns:
+            List of dictionaries with query results
+        """
+        try:
+            # Execute the query
+            result = self.conn.execute(sql_query).fetchdf()
+
+            if result.empty:
+                return []
+
+            # Convert DataFrame to list of dictionaries
+            results = []
+            for _, row in result.iterrows():
+                data = row.to_dict()
+                results.append(data)
+
+            return results
+        except Exception as e:
+            logger.error(f"Error executing custom query: {e}")
+            return []
+
+    def query_financial_facts(self, ticker: str, metrics: Optional[List[str]] = None,
+                          start_date: Optional[str] = None, end_date: Optional[str] = None,
+                          filing_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Query financial facts for a specific company.
+
+        Args:
+            ticker: Company ticker symbol
+            metrics: List of metrics to filter by
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            filing_type: Filing type to filter by (e.g., "10-K", "10-Q")
+
+        Returns:
+            List of financial facts
+        """
+        try:
+            # First, get the relevant filings
+            filings_query = """
+                SELECT id, fiscal_year, fiscal_quarter, filing_date
+                FROM filings
+                WHERE ticker = ?
+            """
+            params = [ticker]
+
+            # Add filing type filter
+            if filing_type:
+                filings_query += " AND filing_type = ?"
+                params.append(filing_type)
+
+            # Add date filters if provided
+            if start_date:
+                formatted_start = self._format_date(start_date)
+                if formatted_start:
+                    filings_query += " AND filing_date >= ?"
+                    params.append(formatted_start)
+
+            if end_date:
+                formatted_end = self._format_date(end_date)
+                if formatted_end:
+                    filings_query += " AND filing_date <= ?"
+                    params.append(formatted_end)
+
+            # Order by date descending to get the most recent filings first
+            filings_query += " ORDER BY filing_date DESC"
+
+            # Execute the query to get filings
+            filings_df = self.conn.execute(filings_query, params).fetchdf()
+
+            if filings_df.empty:
+                logger.warning(f"No filings found for {ticker} with the specified criteria")
+                return []
+
+            # Get the filing IDs
+            filing_ids = filings_df['id'].tolist()
+
+            # Now query the financial facts for these filings
+            facts_results = []
+
+            for filing_id in filing_ids:
+                # Build query for facts
+                facts_query = """
+                    SELECT
+                        ff.id,
+                        f.ticker,
+                        ff.metric_name,
+                        ff.value,
+                        ff.unit,
+                        ff.period_type,
+                        ff.start_date,
+                        ff.end_date,
+                        f.fiscal_year,
+                        f.fiscal_quarter,
+                        f.filing_date
+                    FROM financial_facts ff
+                    JOIN filings f ON ff.filing_id = f.id
+                    WHERE ff.filing_id = ?
+                """
+                facts_params = [filing_id]
+
+                # Add metrics filter
+                if metrics:
+                    placeholders = ", ".join(["?" for _ in metrics])
+                    facts_query += f" AND ff.metric_name IN ({placeholders})"
+                    facts_params.extend(metrics)
+
+                # Execute the query
+                facts_df = self.conn.execute(facts_query, facts_params).fetchdf()
+
+                if not facts_df.empty:
+                    # Convert DataFrame to list of dictionaries
+                    for _, row in facts_df.iterrows():
+                        fact = row.to_dict()
+                        facts_results.append(fact)
+
+            # If we found facts, return them
+            if facts_results:
+                return facts_results
+
+            # If no facts were found, try querying the time_series_metrics table
+            metrics_query = """
+                SELECT
+                    ticker,
+                    metric_name,
+                    fiscal_year,
+                    fiscal_quarter,
+                    value,
+                    unit,
+                    filing_id
+                FROM time_series_metrics
+                WHERE ticker = ?
+            """
+            metrics_params = [ticker]
+
+            # Add metrics filter
+            if metrics:
+                placeholders = ", ".join(["?" for _ in metrics])
+                metrics_query += f" AND metric_name IN ({placeholders})"
+                metrics_params.extend(metrics)
+
+            # Add year filters based on start_date and end_date
+            if start_date:
+                try:
+                    start_year = int(start_date.split('-')[0])
+                    metrics_query += " AND fiscal_year >= ?"
+                    metrics_params.append(start_year)
+                except (ValueError, IndexError):
+                    pass
+
+            if end_date:
+                try:
+                    end_year = int(end_date.split('-')[0])
+                    metrics_query += " AND fiscal_year <= ?"
+                    metrics_params.append(end_year)
+                except (ValueError, IndexError):
+                    pass
+
+            # Execute the query
+            metrics_df = self.conn.execute(metrics_query, metrics_params).fetchdf()
+
+            if not metrics_df.empty:
+                # Convert DataFrame to list of dictionaries
+                metrics_results = []
+                for _, row in metrics_df.iterrows():
+                    metric = row.to_dict()
+                    metrics_results.append(metric)
+                return metrics_results
+
+            # If we still haven't found anything, return an empty list
+            return []
+
+        except Exception as e:
+            logger.error(f"Error querying financial facts for {ticker}: {e}")
+            return []
+
     def _format_date(self, date_value):
         """
         Format a date value for DuckDB.
