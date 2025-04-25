@@ -40,7 +40,7 @@ def test_nvda_2023_filings():
         graph_store = GraphStore()
 
         # Initialize file storage
-        file_storage = FileStorage(base_dir=ETLConfig().cache_dir.parent / "filings")
+        file_storage = FileStorage(base_dir=ETLConfig().filings_dir)
 
         # Initialize filing processor
         filing_processor = FilingProcessor(

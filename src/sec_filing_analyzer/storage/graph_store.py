@@ -45,12 +45,27 @@ class GraphStore(GraphStoreInterface):
         self.use_neo4j = use_neo4j
         self.max_cluster_size = max_cluster_size or 5
         self.community_summary = {}
+        self.driver = None  # Initialize driver attribute
 
         # Initialize storage
         if use_neo4j:
             self._init_neo4j(username, password, url, database)
         else:
             self._init_in_memory()
+
+    def __del__(self):
+        """Destructor to ensure driver is closed."""
+        self.close()
+
+    def close(self):
+        """Close the Neo4j driver if it exists."""
+        if self.use_neo4j and self.driver is not None:
+            try:
+                self.driver.close()
+                logger.info("Neo4j driver closed")
+                self.driver = None
+            except Exception as e:
+                logger.error(f"Error closing Neo4j driver: {str(e)}")
 
     def _init_neo4j(
         self,

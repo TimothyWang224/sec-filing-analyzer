@@ -73,7 +73,7 @@ class ToolDetailsTool(Tool):
             logger.error(f"Validation error: {str(e)}")
             return False
 
-    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Get detailed information about a specific tool.
 

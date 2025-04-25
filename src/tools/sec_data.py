@@ -75,7 +75,7 @@ class SECDataTool(Tool):
         """Initialize the SEC data tool."""
         super().__init__()
 
-    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute the SEC data retrieval tool.
 

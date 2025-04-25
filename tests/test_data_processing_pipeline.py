@@ -31,13 +31,13 @@ def test_text():
     return """
     This is a test SEC filing document.
     It contains multiple paragraphs and sections.
-    
+
     Section 1: Business Overview
     This section describes the company's business operations.
-    
+
     Section 2: Risk Factors
     This section outlines various risks associated with the business.
-    
+
     Section 3: Financial Statements
     This section contains the company's financial information.
     """
@@ -48,7 +48,7 @@ def pipeline_components():
     """Initialize and return pipeline components."""
     return {
         "embedding_generator": EmbeddingGenerator(),
-        "vector_store": LlamaIndexVectorStore(),
+        "vector_store": LlamaIndexVectorStore(test_mode=True),
         "chunking_processor": FilingChunker(),
     }
 

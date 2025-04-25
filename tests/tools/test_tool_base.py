@@ -16,7 +16,7 @@ class TestTool(Tool):
 
     _tool_name = "testtool"
 
-    async def _execute(self, **kwargs):
+    async def _execute_abstract(self, **kwargs):
         """Execute the test tool."""
         return {"result": "test_result"}
 

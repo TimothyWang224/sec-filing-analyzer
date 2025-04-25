@@ -125,7 +125,7 @@ class SECGraphQueryTool(Tool):
             database=database,
         )
 
-    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute a graph query on the SEC filing database.
 

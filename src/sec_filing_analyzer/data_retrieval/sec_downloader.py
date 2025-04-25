@@ -8,6 +8,7 @@ import logging
 from datetime import date
 from typing import Any, Dict, List, Optional, Union
 
+import edgar
 from edgar import Filing
 
 from ..data_processing import XBRLExtractorFactory

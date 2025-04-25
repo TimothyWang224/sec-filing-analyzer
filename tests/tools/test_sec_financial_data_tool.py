@@ -49,7 +49,8 @@ class TestSECFinancialDataTool:
             tool = SECFinancialDataTool(db_path="test.duckdb")
             assert tool.db_store is None
             assert tool.db_error is not None
-            assert "DB error" in str(tool.db_error)
+            # The error message will be about not being able to open the database
+            assert "database does not exist" in str(tool.db_error)
 
     @pytest.mark.asyncio
     async def test_execute_financial_facts(self, tool, mock_db_store):

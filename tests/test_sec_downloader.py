@@ -24,7 +24,7 @@ def test_download_nvda_filings():
     """Test downloading NVDA filings."""
     try:
         # Initialize file storage
-        file_storage = FileStorage(base_dir=ETLConfig().cache_dir.parent / "filings")
+        file_storage = FileStorage(base_dir=ETLConfig().filings_dir)
 
         # Initialize SEC downloader
         sec_downloader = SECFilingsDownloader(file_storage=file_storage)

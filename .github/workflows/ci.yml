@@ -18,20 +18,40 @@ jobs:
 
     - name: Run tests
       run: |
-        mkdir -p .logs
-        poetry run pytest -q tests/test_api.py tests/test_agents.py tests/test_tools.py tests/test_capabilities.py --cov=src --cov-report=xml 2>&1 | tee .logs/pytest.log
+        mkdir -p .logs/pytest
+        # Generate timestamp for log files
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        # Run tests and save output to timestamped log files
+        poetry run pytest tests/test_api.py tests/test_agents.py tests/test_tools.py tests/test_capabilities.py \
+          --cov=src --cov-report=xml \
+          --junitxml=.logs/pytest/junit_${TIMESTAMP}.xml 2>&1 | tee .logs/pytest/pytest_${TIMESTAMP}.log
+        # Create symlinks for latest logs
+        ln -sf pytest_${TIMESTAMP}.log .logs/pytest/latest.log
+        ln -sf junit_${TIMESTAMP}.xml .logs/pytest/latest.xml
       continue-on-error: true
 
     - name: Security scan with Bandit
       run: |
-        mkdir -p .logs
-        poetry run bandit -r src -ll --configfile .bandit.yaml 2>&1 | tee .logs/bandit.log
+        mkdir -p .logs/bandit
+        # Generate timestamp for log files
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        # Run bandit and save output to timestamped log file
+        poetry run bandit -r src -ll --configfile .bandit.yaml 2>&1 | tee .logs/bandit/bandit_${TIMESTAMP}.log
+        # Create symlink for latest log
+        ln -sf bandit_${TIMESTAMP}.log .logs/bandit/latest.log
       continue-on-error: true
 
     - name: Run pre-commit
       run: |
-        mkdir -p .logs
-        pre-commit run --all-files 2>&1 | tee .logs/precommit.log
+        mkdir -p .logs/precommit
+        # Generate timestamp for log files
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        # Run pre-commit and save output to timestamped log file
+        pre-commit run --all-files 2>&1 | tee .logs/precommit/precommit_${TIMESTAMP}.log
+        # Create symlink for latest log
+        ln -sf precommit_${TIMESTAMP}.log .logs/precommit/latest.log
+        # Also create a symlink at the root logs directory for backward compatibility
+        ln -sf precommit/latest.log .logs/latest.log
       continue-on-error: true
 
     - name: Upload coverage report
@@ -47,12 +67,31 @@ jobs:
         path: .logs/
         retention-days: 7  # Keep logs for 7 days to save storage
 
-    - name: Post lint summary
+    - name: Post summary
       if: always()
       run: |
-        if [ -f .logs/latest.log ]; then
+        if [ -f .logs/precommit/latest.log ]; then
           echo "### Pre-commit Results" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 50 .logs/latest.log >> $GITHUB_STEP_SUMMARY
+          tail -n 50 .logs/precommit/latest.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ -f .logs/pytest/latest.log ]; then
+          echo "### Pytest Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -A 10 "FAILED" .logs/pytest/latest.log >> $GITHUB_STEP_SUMMARY || echo "No test failures found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -A 3 "=== short test summary info ===" .logs/pytest/latest.log >> $GITHUB_STEP_SUMMARY || echo "No test summary found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ -f .logs/bandit/latest.log ]; then
+          echo "### Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -A 5 "Issue:" .logs/bandit/latest.log >> $GITHUB_STEP_SUMMARY || echo "No security issues found" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
         fi

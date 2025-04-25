@@ -121,7 +121,7 @@ class SECSemanticSearchTool(Tool):
         self.vector_store_path = vector_store_path or config.vector_store_path
         self.vector_store = OptimizedVectorStore(store_path=self.vector_store_path)
 
-    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute semantic search on SEC filings.
 

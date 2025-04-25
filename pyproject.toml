@@ -72,6 +72,10 @@ pandas = "^2.0.0"
 jupyter = "^1.0.0"
 notebook = "^6.5.0"
 ipywidgets = "^8.0.0"
+
+[tool.poetry.scripts]
+pytest-log = "scripts.pytest_log_wrapper:main"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
@@ -179,3 +183,11 @@ ignore = [
 "archive/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608"]
 "src/scripts/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608"]
 "src/streamlit_app/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608", "S605"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--color=yes --verbose"
+asyncio_mode = "auto"
