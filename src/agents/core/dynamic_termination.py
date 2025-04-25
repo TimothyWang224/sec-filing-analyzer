@@ -2,17 +2,18 @@
 Example implementation of dynamic termination strategies for agents.
 """
 
-from typing import Dict, Any, List, Set, Optional
-import logging
 import json
+import logging
 import re
 from difflib import SequenceMatcher
+from typing import Any, Dict, List, Optional, Set
+
 
 class DynamicTermination:
     """
     Mixin class providing dynamic termination strategies for agents.
     """
-    
+
     def __init__(
         self,
         confidence_threshold: int = 85,
@@ -22,11 +23,11 @@ class DynamicTermination:
         enable_convergence_check: bool = True,
         enable_confidence_check: bool = True,
         enable_info_gain_check: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize dynamic termination settings.
-        
+
         Args:
             confidence_threshold: Minimum confidence level to terminate (0-100)
             similarity_threshold: Threshold for answer similarity (0.0-1.0)
@@ -45,45 +46,45 @@ class DynamicTermination:
         self.enable_info_gain_check = enable_info_gain_check
         self.used_sources = set()
         self.log = logging.getLogger(self.__class__.__name__)
-    
+
     def should_terminate(self) -> bool:
         """
         Check if the agent should terminate based on dynamic criteria.
-        
+
         Returns:
             True if the agent should terminate, False otherwise
         """
         # Always respect max iterations
         if self.current_iteration >= self.max_iterations:
             return True
-            
+
         # Always run at least min_iterations
         if self.current_iteration < self.min_iterations:
             return False
-            
+
         # Check if we have any results yet
         if not self.memory:
             return False
-            
+
         latest_result = self.memory[-1].get("content", {})
-        
+
         # Check confidence threshold
         if self.enable_confidence_check and latest_result.get("confidence", 0) >= self.confidence_threshold:
             self.log.info(f"Terminating: Confidence threshold reached ({latest_result['confidence']}).")
             return True
-            
+
         # Check for LLM termination signal
         if self.enable_llm_assessment and latest_result.get("should_terminate", False):
             self.log.info("Terminating: LLM determined answer is sufficient.")
             return True
-            
+
         # Check for answer convergence if we have at least 2 iterations
         if self.enable_convergence_check and len(self.memory) >= 2:
             previous_result = self.memory[-2].get("content", {})
             if self._answers_similar(previous_result, latest_result):
                 self.log.info("Terminating: Answer has converged.")
                 return True
-                
+
         # Check for information gain
         if self.enable_info_gain_check:
             current_sources = self._extract_sources(latest_result)
@@ -92,61 +93,61 @@ class DynamicTermination:
                 self.log.info("Terminating: No new information sources.")
                 return True
             self.used_sources.update(current_sources)
-                
+
         # Continue iterations
         return False
-    
+
     def _answers_similar(self, answer1: Dict[str, Any], answer2: Dict[str, Any]) -> bool:
         """
         Check if two answers are similar enough to consider converged.
-        
+
         Args:
             answer1: First answer to compare
             answer2: Second answer to compare
-            
+
         Returns:
             True if answers are similar, False otherwise
         """
         text1 = answer1.get("answer", "")
         text2 = answer2.get("answer", "")
-        
+
         if not text1 or not text2:
             return False
-            
+
         # Use SequenceMatcher for more sophisticated similarity
         similarity = SequenceMatcher(None, text1, text2).ratio()
-        
+
         return similarity > self.similarity_threshold
-    
+
     def _extract_sources(self, answer: Dict[str, Any]) -> Set[str]:
         """
         Extract unique information sources from an answer.
-        
+
         Args:
             answer: Answer to extract sources from
-            
+
         Returns:
             Set of unique source identifiers
         """
         sources = set()
-        
+
         # Extract sources from semantic context
         for context in answer.get("supporting_data", {}).get("semantic_context", []):
             source_id = f"{context.get('company')}_{context.get('filing_date')}_{context.get('filing_type')}"
             sources.add(source_id)
-            
+
         # Add other source types as needed
-        
+
         return sources
-    
+
     async def assess_answer_quality(self, question: str, answer: str) -> Dict[str, Any]:
         """
         Use the LLM to assess the quality of an answer.
-        
+
         Args:
             question: The original question
             answer: The generated answer
-            
+
         Returns:
             Dictionary with assessment results
         """
@@ -173,20 +174,18 @@ class DynamicTermination:
             "reasoning": "<brief explanation>"
         }}
         """
-        
+
         system_prompt = """You are an objective evaluator of answer quality. 
         Assess the given answer critically and honestly.
         Provide your assessment in the exact JSON format requested."""
-        
+
         try:
             assessment_response = await self.llm.generate(
-                prompt=assessment_prompt,
-                system_prompt=system_prompt,
-                temperature=0.3
+                prompt=assessment_prompt, system_prompt=system_prompt, temperature=0.3
             )
-            
+
             # Find JSON pattern in the response
-            json_match = re.search(r'({.*})', assessment_response.replace('\n', ' '), re.DOTALL)
+            json_match = re.search(r"({.*})", assessment_response.replace("\n", " "), re.DOTALL)
             if json_match:
                 assessment_json = json.loads(json_match.group(1))
                 return assessment_json
@@ -198,9 +197,9 @@ class DynamicTermination:
                     "clarity": 0,
                     "confidence": 0,
                     "should_terminate": "NO",
-                    "reasoning": "Failed to parse assessment"
+                    "reasoning": "Failed to parse assessment",
                 }
-                
+
         except Exception as e:
             self.log.error(f"Error in answer assessment: {str(e)}")
             return {
@@ -209,5 +208,5 @@ class DynamicTermination:
                 "clarity": 0,
                 "confidence": 0,
                 "should_terminate": "NO",
-                "reasoning": f"Error: {str(e)}"
+                "reasoning": f"Error: {str(e)}",
             }

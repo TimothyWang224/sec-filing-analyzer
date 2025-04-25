@@ -6,28 +6,26 @@ This tool parses workflow log files and generates interactive visualizations
 of the workflow steps, timing, and results.
 """
 
-import streamlit as st
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import json
-import re
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Any, Tuple
+import streamlit as st
 
 # Set page config
-st.set_page_config(
-    page_title="SEC Filing Analyzer Log Visualizer",
-    page_icon="📊",
-    layout="wide"
-)
+st.set_page_config(page_title="SEC Filing Analyzer Log Visualizer", page_icon="📊", layout="wide")
 
 # Title
 st.title("SEC Filing Analyzer Log Visualizer")
 
 # Sidebar
 st.sidebar.header("Configuration")
+
 
 # Log file selection
 def get_log_files():
@@ -37,16 +35,12 @@ def get_log_files():
     # Check for workflow logs
     workflow_log_dir = Path("data/logs/workflows")
     if workflow_log_dir.exists():
-        log_files.extend([
-            f for f in workflow_log_dir.glob("workflow_*.log")
-        ])
+        log_files.extend([f for f in workflow_log_dir.glob("workflow_*.log")])
 
     # Check for agent logs
     agent_log_dir = Path("data/logs/agents")
     if agent_log_dir.exists():
-        log_files.extend([
-            f for f in agent_log_dir.glob("*.log")
-        ])
+        log_files.extend([f for f in agent_log_dir.glob("*.log")])
 
     # Check alternate locations
     alt_log_dir = Path("logs")
@@ -54,16 +48,11 @@ def get_log_files():
         for subdir in ["workflows", "agents"]:
             subdir_path = alt_log_dir / subdir
             if subdir_path.exists():
-                log_files.extend([
-                    f for f in subdir_path.glob("*.log")
-                ])
+                log_files.extend([f for f in subdir_path.glob("*.log")])
 
     # Sort by modification time (newest first)
-    return sorted(
-        log_files,
-        key=lambda x: x.stat().st_mtime,
-        reverse=True
-    )
+    return sorted(log_files, key=lambda x: x.stat().st_mtime, reverse=True)
+
 
 log_files = get_log_files()
 
@@ -102,10 +91,7 @@ if not log_file_options:
     st.stop()
 
 selected_log_file = st.sidebar.selectbox(
-    "Select Log File",
-    options=log_file_options,
-    format_func=lambda x: log_file_display[x],
-    index=0
+    "Select Log File", options=log_file_options, format_func=lambda x: log_file_display[x], index=0
 )
 
 # Display log file info
@@ -115,6 +101,7 @@ st.sidebar.info(
     f"Size: {selected_file.stat().st_size / 1024:.1f} KB\n"
     f"Modified: {datetime.fromtimestamp(selected_file.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')}"
 )
+
 
 # Parse log file
 @st.cache_data
@@ -129,13 +116,7 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
         Tuple of (log entries, workflow metadata)
     """
     log_entries = []
-    workflow_metadata = {
-        "workflow_id": "",
-        "start_time": None,
-        "end_time": None,
-        "status": "unknown",
-        "agents": set()
-    }
+    workflow_metadata = {"workflow_id": "", "start_time": None, "end_time": None, "status": "unknown", "agents": set()}
 
     # Regular expression patterns
     timestamp_pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
@@ -153,14 +134,16 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
     json_log_path = Path(log_file_path).with_suffix(".json")
     if json_log_path.exists():
         try:
-            with open(json_log_path, 'r') as f:
+            with open(json_log_path, "r") as f:
                 json_data = json.load(f)
-                workflow_metadata.update({
-                    "workflow_id": json_data.get("workflow_id", "") or json_data.get("session_id", ""),
-                    "start_time": json_data.get("start_time"),
-                    "end_time": json_data.get("end_time"),
-                    "status": json_data.get("status", "unknown")
-                })
+                workflow_metadata.update(
+                    {
+                        "workflow_id": json_data.get("workflow_id", "") or json_data.get("session_id", ""),
+                        "start_time": json_data.get("start_time"),
+                        "end_time": json_data.get("end_time"),
+                        "status": json_data.get("status", "unknown"),
+                    }
+                )
 
                 # Extract planning information from logs
                 if "logs" in json_data:
@@ -172,10 +155,12 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                             for memory_item in log_entry.get("memory_items", []):
                                 if memory_item.get("type") == "plan":
                                     plan_content = memory_item.get("content", {})
-                                    timestamp = datetime.fromisoformat(log_entry.get("timestamp").replace("Z", "+00:00"))
+                                    timestamp = datetime.fromisoformat(
+                                        log_entry.get("timestamp").replace("Z", "+00:00")
+                                    )
 
                                     for step in plan_content.get("steps", []):
-                                        step_id = step.get('step_id')
+                                        step_id = step.get("step_id")
                                         step_key = f"Plan Step {step_id}"
 
                                         # Create or update the step entry
@@ -184,7 +169,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                                             completed_at = None
                                             if step.get("status") == "completed" and "completed_at" in step:
                                                 try:
-                                                    completed_at = datetime.fromisoformat(step.get("completed_at").replace("Z", "+00:00"))
+                                                    completed_at = datetime.fromisoformat(
+                                                        step.get("completed_at").replace("Z", "+00:00")
+                                                    )
                                                 except (ValueError, AttributeError):
                                                     pass
 
@@ -205,7 +192,7 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                                                 "completed_at": completed_at,
                                                 "message": f"Plan Step {step_id}: {step.get('description')}",
                                                 "level": "INFO",
-                                                "logger": workflow_metadata["workflow_id"]
+                                                "logger": workflow_metadata["workflow_id"],
                                             }
 
                     # Add the unique plan steps to log entries
@@ -214,7 +201,7 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             st.error(f"Error parsing JSON log file: {e}")
 
     # Parse the log file
-    with open(log_file_path, 'r') as f:
+    with open(log_file_path, "r") as f:
         current_step = None
         current_tool = None
         current_tool_args = None
@@ -244,16 +231,18 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             timing_match = re.search(timing_pattern, message)
             if timing_match:
                 category, operation, duration = timing_match.groups()
-                log_entries.append({
-                    "timestamp": timestamp,
-                    "type": "timing",
-                    "category": category,
-                    "operation": operation,
-                    "duration": float(duration),
-                    "message": message,
-                    "level": level,
-                    "logger": logger_name
-                })
+                log_entries.append(
+                    {
+                        "timestamp": timestamp,
+                        "type": "timing",
+                        "category": category,
+                        "operation": operation,
+                        "duration": float(duration),
+                        "message": message,
+                        "level": level,
+                        "logger": logger_name,
+                    }
+                )
                 continue
 
             # Parse tool execution
@@ -265,15 +254,17 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             tool_args_match = re.search(tool_args_pattern, message)
             if tool_args_match and current_tool:
                 current_tool_args = tool_args_match.group(1)
-                log_entries.append({
-                    "timestamp": timestamp,
-                    "type": "tool",
-                    "tool": current_tool,
-                    "args": current_tool_args,
-                    "message": message,
-                    "level": level,
-                    "logger": logger_name
-                })
+                log_entries.append(
+                    {
+                        "timestamp": timestamp,
+                        "type": "tool",
+                        "tool": current_tool,
+                        "args": current_tool_args,
+                        "message": message,
+                        "level": level,
+                        "logger": logger_name,
+                    }
+                )
                 current_tool = None
                 current_tool_args = None
                 continue
@@ -283,15 +274,17 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             if step_match:
                 step_name, step_details = step_match.groups()
                 current_step = step_name.strip()
-                log_entries.append({
-                    "timestamp": timestamp,
-                    "type": "step",
-                    "step": current_step,
-                    "details": step_details.strip(),
-                    "message": message,
-                    "level": level,
-                    "logger": logger_name
-                })
+                log_entries.append(
+                    {
+                        "timestamp": timestamp,
+                        "type": "step",
+                        "step": current_step,
+                        "details": step_details.strip(),
+                        "message": message,
+                        "level": level,
+                        "logger": logger_name,
+                    }
+                )
                 continue
 
             # Parse planning steps
@@ -299,15 +292,17 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             if plan_step_match:
                 step_num, total_steps, step_description = plan_step_match.groups()
                 current_step = f"Plan Step {step_num}"
-                log_entries.append({
-                    "timestamp": timestamp,
-                    "type": "step",
-                    "step": current_step,
-                    "details": step_description.strip(),
-                    "message": message,
-                    "level": level,
-                    "logger": logger_name
-                })
+                log_entries.append(
+                    {
+                        "timestamp": timestamp,
+                        "type": "step",
+                        "step": current_step,
+                        "details": step_description.strip(),
+                        "message": message,
+                        "level": level,
+                        "logger": logger_name,
+                    }
+                )
                 continue
 
             # Parse LLM prompts and responses
@@ -324,7 +319,7 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                     current_llm_tokens = {
                         "total": total_tokens,
                         "prompt": prompt_tokens,
-                        "completion": completion_tokens
+                        "completion": completion_tokens,
                     }
                 continue
 
@@ -341,7 +336,7 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                     "tokens": current_llm_tokens,
                     "logger": logger_name,
                     "level": level,
-                    "current_step": current_step
+                    "current_step": current_step,
                 }
 
                 llm_interactions.append(llm_interaction)
@@ -354,19 +349,22 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                 continue
 
             # Add general log entry
-            log_entries.append({
-                "timestamp": timestamp,
-                "type": "log",
-                "message": message,
-                "level": level,
-                "logger": logger_name,
-                "current_step": current_step
-            })
+            log_entries.append(
+                {
+                    "timestamp": timestamp,
+                    "type": "log",
+                    "message": message,
+                    "level": level,
+                    "logger": logger_name,
+                    "current_step": current_step,
+                }
+            )
 
     # Convert agents set to list for JSON serialization
     workflow_metadata["agents"] = list(workflow_metadata["agents"])
 
     return log_entries, workflow_metadata
+
 
 # Parse the selected log file
 log_entries, workflow_metadata = parse_log_file(selected_log_file)
@@ -419,26 +417,22 @@ if step_entries:
         y="step",
         color="step",
         hover_data=["details", "duration", "status", "tool", "agent"],
-        title="Workflow Steps Timeline"
+        title="Workflow Steps Timeline",
     )
 
     # Add connecting lines between steps for visual clarity
     for i in range(len(step_df) - 1):
         fig.add_trace(
             go.Scatter(
-                x=[step_df.iloc[i]["end_time"], step_df.iloc[i+1]["timestamp"]],
-                y=[step_df.iloc[i]["step"], step_df.iloc[i+1]["step"]],
+                x=[step_df.iloc[i]["end_time"], step_df.iloc[i + 1]["timestamp"]],
+                y=[step_df.iloc[i]["step"], step_df.iloc[i + 1]["step"]],
                 mode="lines",
                 line=dict(width=2, color="gray", dash="dot"),
-                showlegend=False
+                showlegend=False,
             )
         )
 
-    fig.update_layout(
-        xaxis_title="Time",
-        yaxis_title="Step",
-        height=400
-    )
+    fig.update_layout(xaxis_title="Time", yaxis_title="Step", height=400)
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -454,9 +448,7 @@ if step_entries:
     if "agent" in step_df.columns:
         display_columns.append("agent")
 
-    step_table = step_df[display_columns].rename(
-        columns={"timestamp": "Start Time", "duration": "Duration (seconds)"}
-    )
+    step_table = step_df[display_columns].rename(columns={"timestamp": "Start Time", "duration": "Duration (seconds)"})
     st.dataframe(step_table, use_container_width=True)
 
     # Add a bar chart showing duration of each step
@@ -468,7 +460,7 @@ if step_entries:
             y="duration",
             color="status" if "status" in step_df.columns else None,
             title="Duration of Each Step",
-            labels={"duration": "Duration (seconds)", "step": "Step"}
+            labels={"duration": "Duration (seconds)", "step": "Step"},
         )
         st.plotly_chart(fig, use_container_width=True)
 else:
@@ -494,28 +486,32 @@ if step_entries:
         mask = ~step_df["completed_at"].isna()
         for idx, row in step_df[mask].iterrows():
             # Add a timing entry for each completed step
-            timing_entries.append({
-                "timestamp": row["timestamp"],
-                "type": "timing",
-                "category": "plan_step",
-                "operation": row["step"],
-                "duration": (row["completed_at"] - row["timestamp"]).total_seconds(),
-                "message": f"Plan step execution: {row['details']}",
-                "level": "INFO",
-                "logger": row.get("logger", "workflow"),
-                "status": row.get("status", "completed"),
-                "tool": row.get("tool", ""),
-                "agent": row.get("agent", "")
-            })
+            timing_entries.append(
+                {
+                    "timestamp": row["timestamp"],
+                    "type": "timing",
+                    "category": "plan_step",
+                    "operation": row["step"],
+                    "duration": (row["completed_at"] - row["timestamp"]).total_seconds(),
+                    "message": f"Plan step execution: {row['details']}",
+                    "level": "INFO",
+                    "logger": row.get("logger", "workflow"),
+                    "status": row.get("status", "completed"),
+                    "tool": row.get("tool", ""),
+                    "agent": row.get("agent", ""),
+                }
+            )
 
 if timing_entries:
     timing_df = pd.DataFrame(timing_entries)
     timing_df["timestamp"] = pd.to_datetime(timing_df["timestamp"])
 
     # Group by category and operation
-    timing_summary = timing_df.groupby(["category", "operation"])["duration"].agg(
-        ["count", "sum", "mean", "min", "max"]
-    ).reset_index()
+    timing_summary = (
+        timing_df.groupby(["category", "operation"])["duration"]
+        .agg(["count", "sum", "mean", "min", "max"])
+        .reset_index()
+    )
 
     # Create a bar chart of total duration by category
     category_totals = timing_df.groupby("category")["duration"].sum().reset_index()
@@ -524,7 +520,7 @@ if timing_entries:
         x="category",
         y="duration",
         title="Total Duration by Category",
-        labels={"duration": "Duration (seconds)", "category": "Category"}
+        labels={"duration": "Duration (seconds)", "category": "Category"},
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -540,7 +536,7 @@ if timing_entries:
             y="duration",
             color="status" if "status" in plan_step_timing.columns else None,
             title="Plan Step Execution Duration",
-            labels={"duration": "Duration (seconds)", "operation": "Step"}
+            labels={"duration": "Duration (seconds)", "operation": "Step"},
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -559,7 +555,9 @@ if timing_entries:
         st.dataframe(step_timing_table, use_container_width=True)
 
     # Add end times for operations
-    timing_df["end_time"] = timing_df.apply(lambda row: row["timestamp"] + pd.Timedelta(seconds=row["duration"]), axis=1)
+    timing_df["end_time"] = timing_df.apply(
+        lambda row: row["timestamp"] + pd.Timedelta(seconds=row["duration"]), axis=1
+    )
 
     # Create a timeline of operations
     fig = px.timeline(
@@ -569,7 +567,7 @@ if timing_entries:
         y="operation",
         color="category",
         hover_data=["duration"],
-        title="Operations Timeline"
+        title="Operations Timeline",
     )
 
     # Add connecting lines between operations in the same category
@@ -580,19 +578,15 @@ if timing_entries:
             for i in range(len(category_df) - 1):
                 fig.add_trace(
                     go.Scatter(
-                        x=[category_df.iloc[i]["end_time"], category_df.iloc[i+1]["timestamp"]],
-                        y=[category_df.iloc[i]["operation"], category_df.iloc[i+1]["operation"]],
+                        x=[category_df.iloc[i]["end_time"], category_df.iloc[i + 1]["timestamp"]],
+                        y=[category_df.iloc[i]["operation"], category_df.iloc[i + 1]["operation"]],
                         mode="lines",
                         line=dict(width=1, color="gray", dash="dot"),
-                        showlegend=False
+                        showlegend=False,
                     )
                 )
 
-    fig.update_layout(
-        xaxis_title="Time",
-        yaxis_title="Operation",
-        height=600
-    )
+    fig.update_layout(xaxis_title="Time", yaxis_title="Operation", height=600)
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -619,11 +613,7 @@ if tool_entries:
 
     # Create a bar chart of tool usage
     fig = px.bar(
-        tool_counts,
-        x="Tool",
-        y="Count",
-        title="Tool Usage",
-        labels={"Count": "Number of Calls", "Tool": "Tool Name"}
+        tool_counts, x="Tool", y="Count", title="Tool Usage", labels={"Count": "Number of Calls", "Tool": "Tool Name"}
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -650,13 +640,15 @@ if llm_entries:
     token_counts = []
     for entry in llm_entries:
         if entry.get("tokens"):
-            token_counts.append({
-                "id": entry["id"],
-                "timestamp": entry["timestamp"],
-                "prompt_tokens": entry["tokens"].get("prompt", 0),
-                "completion_tokens": entry["tokens"].get("completion", 0),
-                "total_tokens": entry["tokens"].get("total", 0)
-            })
+            token_counts.append(
+                {
+                    "id": entry["id"],
+                    "timestamp": entry["timestamp"],
+                    "prompt_tokens": entry["tokens"].get("prompt", 0),
+                    "completion_tokens": entry["tokens"].get("completion", 0),
+                    "total_tokens": entry["tokens"].get("total", 0),
+                }
+            )
 
     token_df = pd.DataFrame(token_counts)
     if not token_df.empty:
@@ -667,37 +659,31 @@ if llm_entries:
             y=["prompt_tokens", "completion_tokens"],
             title="Token Usage by LLM Interaction",
             labels={"value": "Token Count", "variable": "Token Type", "id": "Interaction ID"},
-            barmode="stack"
+            barmode="stack",
         )
         st.plotly_chart(fig, use_container_width=True)
 
     # Display LLM interactions
     for i, entry in enumerate(llm_entries):
-        with st.expander(f"LLM Interaction {i+1} - {entry.get('timestamp').strftime('%H:%M:%S')} - {entry.get('logger', '')}"):
+        with st.expander(
+            f"LLM Interaction {i + 1} - {entry.get('timestamp').strftime('%H:%M:%S')} - {entry.get('logger', '')}"
+        ):
             col1, col2 = st.columns(2)
 
             with col1:
                 st.subheader("Prompt")
-                st.text_area(
-                    "Prompt Text",
-                    entry.get("prompt", ""),
-                    height=300
-                )
+                st.text_area("Prompt Text", entry.get("prompt", ""), height=300)
 
             with col2:
                 st.subheader("Response")
-                st.text_area(
-                    "Response Text",
-                    entry.get("response", ""),
-                    height=300
-                )
+                st.text_area("Response Text", entry.get("response", ""), height=300)
 
             # Display token information
             if entry.get("tokens"):
                 st.metric(
                     "Total Tokens",
                     entry["tokens"].get("total", 0),
-                    f"Prompt: {entry['tokens'].get('prompt', 0)} | Completion: {entry['tokens'].get('completion', 0)}"
+                    f"Prompt: {entry['tokens'].get('prompt', 0)} | Completion: {entry['tokens'].get('completion', 0)}",
                 )
 
             # Display context information

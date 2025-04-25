@@ -1,11 +1,14 @@
-from typing import Dict, Any, Optional, Callable
+from typing import Any, Callable, Dict, Optional
+
 from .base import Environment
+
 
 class FinancialEnvironment(Environment):
     """Environment specialized for financial analysis tasks."""
 
     def __init__(self):
         """Initialize the financial environment."""
+
         # Define a filter to only include SEC tools
         def sec_tool_filter(name, info):
             return any(tag in info.get("tags", []) for tag in ["sec"])
@@ -16,11 +19,7 @@ class FinancialEnvironment(Environment):
         # Print available tools
         print(f"Available tools: {list(self.tools.keys()) if self.tools else 'None'}")
 
-    async def execute_action(
-        self,
-        action: Dict[str, Any] = None,
-        agent: Any = None
-    ) -> Dict[str, Any]:
+    async def execute_action(self, action: Dict[str, Any] = None, agent: Any = None) -> Dict[str, Any]:
         """
         Execute an action in the financial environment.
 
@@ -61,10 +60,7 @@ class FinancialEnvironment(Environment):
             raise
 
         # Update environment context
-        self.context.update({
-            "last_action": action,
-            "last_result": result
-        })
+        self.context.update({"last_action": action, "last_result": result})
 
         return result
 

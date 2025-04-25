@@ -2,9 +2,10 @@
 Script to check the structure of a cached filing.
 """
 
-import os
 import json
+import os
 from pathlib import Path
+
 
 def main():
     """Check the structure of a cached filing."""
@@ -60,6 +61,7 @@ def main():
     print("Metadata keys:", list(metadata.keys()))
     for key, value in metadata.items():
         print(f"  {key}: {value}")
+
 
 if __name__ == "__main__":
     main()

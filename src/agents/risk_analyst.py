@@ -1,10 +1,12 @@
 import json
-from typing import Dict, Any, List, Optional
-from .base import Agent, Goal
+from typing import Any, Dict, List, Optional
+
 from ..capabilities.base import Capability
-from ..capabilities.time_awareness import TimeAwarenessCapability
 from ..capabilities.planning import PlanningCapability
+from ..capabilities.time_awareness import TimeAwarenessCapability
 from ..environments.financial import FinancialEnvironment
+from .base import Agent, Goal
+
 
 class RiskAnalystAgent(Agent):
     """Agent specialized in identifying and analyzing financial and operational risks."""
@@ -30,7 +32,7 @@ class RiskAnalystAgent(Agent):
         environment: Optional[FinancialEnvironment] = None,
         # Termination parameters
         enable_dynamic_termination: Optional[bool] = None,
-        min_confidence_threshold: Optional[float] = None
+        min_confidence_threshold: Optional[float] = None,
     ):
         """
         Initialize the risk analyst agent.
@@ -46,18 +48,9 @@ class RiskAnalystAgent(Agent):
             max_tool_calls: Maximum number of tool calls per iteration
         """
         goals = [
-            Goal(
-                name="risk_identification",
-                description="Identify potential financial and operational risks"
-            ),
-            Goal(
-                name="risk_assessment",
-                description="Assess the severity and likelihood of identified risks"
-            ),
-            Goal(
-                name="risk_monitoring",
-                description="Monitor and track changes in risk factors"
-            )
+            Goal(name="risk_identification", description="Identify potential financial and operational risks"),
+            Goal(name="risk_assessment", description="Assess the severity and likelihood of identified risks"),
+            Goal(name="risk_monitoring", description="Monitor and track changes in risk factors"),
         ]
 
         # Initialize the base agent with agent type for configuration
@@ -84,7 +77,7 @@ class RiskAnalystAgent(Agent):
             enable_dynamic_termination=enable_dynamic_termination,
             min_confidence_threshold=min_confidence_threshold,
             # Agent type for configuration
-            agent_type="risk_analyst"
+            agent_type="risk_analyst",
         )
 
         # Initialize environment
@@ -98,14 +91,15 @@ class RiskAnalystAgent(Agent):
         # Add PlanningCapability if not already present
         has_planning = any(isinstance(cap, PlanningCapability) for cap in self.capabilities)
         if not has_planning:
-            self.capabilities.append(PlanningCapability(
-                enable_dynamic_replanning=True,
-                enable_step_reflection=True,
-                min_steps_before_reflection=1,
-                max_plan_steps=5,  # Limited planning depth
-                plan_detail_level="medium",
-                # Planning instructions focused on how to accomplish the task
-                planning_instructions="""You are a risk analyst agent responsible for identifying and assessing risks.
+            self.capabilities.append(
+                PlanningCapability(
+                    enable_dynamic_replanning=True,
+                    enable_step_reflection=True,
+                    min_steps_before_reflection=1,
+                    max_plan_steps=5,  # Limited planning depth
+                    plan_detail_level="medium",
+                    # Planning instructions focused on how to accomplish the task
+                    planning_instructions="""You are a risk analyst agent responsible for identifying and assessing risks.
                 Your goal is to create a detailed plan to accomplish the task assigned by the coordinator.
 
                 For each task:
@@ -126,10 +120,13 @@ class RiskAnalystAgent(Agent):
                   - Useful for assessing financial risks
 
                 Your plan should be detailed enough to accomplish the task effectively while staying focused on the specific objective.
-                """
-            ))
+                """,
+                )
+            )
 
-    async def run(self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None) -> Dict[str, Any]:
+    async def run(
+        self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None
+    ) -> Dict[str, Any]:
         """
         Run the risk analyst agent with a provided high-level task.
 
@@ -149,25 +146,21 @@ class RiskAnalystAgent(Agent):
         # Add plan to memory if provided
         if plan:
             self.logger.info(f"Received high-level task from coordinator: {plan}")
-            self.add_to_memory({
-                "type": "high_level_task",
-                "content": plan
-            })
+            self.add_to_memory({"type": "high_level_task", "content": plan})
 
             # Extract task objective and success criteria
             task_objective = plan.get("task_objective", "")
             success_criteria = plan.get("success_criteria", [])
 
             # Add to planning context
-            if hasattr(self.state, 'update_context'):
-                self.state.update_context({
-                    "planning": {
-                        "high_level_task": {
-                            "objective": task_objective,
-                            "success_criteria": success_criteria
+            if hasattr(self.state, "update_context"):
+                self.state.update_context(
+                    {
+                        "planning": {
+                            "high_level_task": {"objective": task_objective, "success_criteria": success_criteria}
                         }
                     }
-                })
+                )
 
         # Initialize capabilities
         for capability in self.capabilities:
@@ -177,14 +170,14 @@ class RiskAnalystAgent(Agent):
         self.logger.info(f"Processing risk analysis request: {user_input}")
 
         # Set initial phase to planning
-        self.state.set_phase('planning')
+        self.state.set_phase("planning")
         self.logger.info(f"Starting planning phase")
 
         # Execute the agent loop through all phases
         risk_analysis = None
 
         # Phase 1: Planning
-        while not self.should_terminate() and self.state.current_phase == 'planning':
+        while not self.should_terminate() and self.state.current_phase == "planning":
             # Start of loop capabilities
             for capability in self.capabilities:
                 if not await capability.start_agent_loop(self, {"input": user_input}):
@@ -197,30 +190,23 @@ class RiskAnalystAgent(Agent):
             company_info = self._parse_company_info(user_input)
 
             # Add analysis to memory
-            self.add_to_memory({
-                "type": "company_info",
-                "content": company_info
-            })
+            self.add_to_memory({"type": "company_info", "content": company_info})
 
             # Process with capabilities
             for capability in self.capabilities:
                 await capability.process_result(
-                    self,
-                    {"input": user_input},
-                    user_input,
-                    {"type": "company_info"},
-                    company_info
+                    self, {"input": user_input}, user_input, {"type": "company_info"}, company_info
                 )
 
             self.increment_iteration()
 
             # If we've done enough planning, move to execution phase
-            if self.state.phase_iterations['planning'] >= self.max_planning_iterations:
-                self.state.set_phase('execution')
+            if self.state.phase_iterations["planning"] >= self.max_planning_iterations:
+                self.state.set_phase("execution")
                 self.logger.info(f"Moving to execution phase")
 
         # Phase 2: Execution
-        while not self.should_terminate() and self.state.current_phase == 'execution':
+        while not self.should_terminate() and self.state.current_phase == "execution":
             # Start of loop capabilities
             for capability in self.capabilities:
                 if not await capability.start_agent_loop(self, {"input": user_input}):
@@ -233,30 +219,23 @@ class RiskAnalystAgent(Agent):
             risk_analysis = await self._analyze_risks(user_input)
 
             # Add result to memory
-            self.add_to_memory({
-                "type": "risk_analysis",
-                "content": risk_analysis
-            })
+            self.add_to_memory({"type": "risk_analysis", "content": risk_analysis})
 
             # Process result with capabilities
             for capability in self.capabilities:
                 risk_analysis = await capability.process_result(
-                    self,
-                    {"input": user_input},
-                    user_input,
-                    {"type": "risk_analysis"},
-                    risk_analysis
+                    self, {"input": user_input}, user_input, {"type": "risk_analysis"}, risk_analysis
                 )
 
             self.increment_iteration()
 
             # If we've done enough execution, move to refinement phase
-            if self.state.phase_iterations['execution'] >= self.max_execution_iterations:
-                self.state.set_phase('refinement')
+            if self.state.phase_iterations["execution"] >= self.max_execution_iterations:
+                self.state.set_phase("refinement")
                 self.logger.info(f"Moving to refinement phase")
 
         # Phase 3: Refinement
-        while not self.should_terminate() and self.state.current_phase == 'refinement':
+        while not self.should_terminate() and self.state.current_phase == "refinement":
             # Start of loop capabilities
             for capability in self.capabilities:
                 if not await capability.start_agent_loop(self, {"input": user_input}):
@@ -276,19 +255,12 @@ class RiskAnalystAgent(Agent):
                 refined_analysis = await self._refine_risk_analysis(user_input, current_analysis)
 
                 # Add refined result to memory
-                self.add_to_memory({
-                    "type": "risk_analysis",
-                    "content": refined_analysis
-                })
+                self.add_to_memory({"type": "risk_analysis", "content": refined_analysis})
 
                 # Process result with capabilities
                 for capability in self.capabilities:
                     refined_analysis = await capability.process_result(
-                        self,
-                        {"input": user_input},
-                        user_input,
-                        {"type": "risk_analysis"},
-                        refined_analysis
+                        self, {"input": user_input}, user_input, {"type": "risk_analysis"}, refined_analysis
                     )
 
                 risk_analysis = refined_analysis
@@ -296,7 +268,7 @@ class RiskAnalystAgent(Agent):
             self.increment_iteration()
 
             # If we've done enough refinement, we're done
-            if self.state.phase_iterations['refinement'] >= self.max_refinement_iterations:
+            if self.state.phase_iterations["refinement"] >= self.max_refinement_iterations:
                 break
 
         # Log the completion of processing
@@ -306,7 +278,7 @@ class RiskAnalystAgent(Agent):
             "status": "completed",
             "risk_analysis": risk_analysis,
             "memory": self.get_memory(),
-            "phase_iterations": self.state.phase_iterations
+            "phase_iterations": self.state.phase_iterations,
         }
 
     def _parse_company_info(self, input: str) -> Dict[str, Any]:
@@ -325,7 +297,8 @@ class RiskAnalystAgent(Agent):
 
         # Check for ticker pattern (all caps, 1-5 letters)
         import re
-        ticker_match = re.search(r'\b[A-Z]{1,5}\b', input)
+
+        ticker_match = re.search(r"\b[A-Z]{1,5}\b", input)
         if ticker_match:
             ticker = ticker_match.group(0)
 
@@ -356,19 +329,13 @@ class RiskAnalystAgent(Agent):
             temporal_info["temporal_references"] = temporal_references
         else:
             # Simple date extraction
-            year_match = re.search(r'\b(20\d{2})\b', input)
+            year_match = re.search(r"\b(20\d{2})\b", input)
             if year_match:
                 year = year_match.group(1)
                 temporal_info["year"] = year
                 temporal_info["date_range"] = [f"{year}-01-01", f"{year}-12-31"]
 
-        return {
-            "company_name": company_name,
-            "ticker": ticker,
-            "industry": industry,
-            "sector": sector,
-            **temporal_info
-        }
+        return {"company_name": company_name, "ticker": ticker, "industry": industry, "sector": sector, **temporal_info}
 
     async def _refine_risk_analysis(self, input: str, current_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -412,8 +379,8 @@ class RiskAnalystAgent(Agent):
             risk_factors_prompt = f"""
             Based on the refined analysis, please improve the risk factors for {input}.
 
-            Current financial risks: {json.dumps(risk_factors.get('financial_risks', []), indent=2)}
-            Current operational risks: {json.dumps(risk_factors.get('operational_risks', []), indent=2)}
+            Current financial risks: {json.dumps(risk_factors.get("financial_risks", []), indent=2)}
+            Current operational risks: {json.dumps(risk_factors.get("operational_risks", []), indent=2)}
 
             For each risk category, provide a more focused list with clear severity and likelihood ratings.
             Format your response as a JSON object with 'financial_risks' and 'operational_risks' arrays.
@@ -426,7 +393,8 @@ class RiskAnalystAgent(Agent):
             try:
                 # Extract JSON from the response
                 import re
-                json_match = re.search(r'\{.*\}', risk_factors_response, re.DOTALL)
+
+                json_match = re.search(r"\{.*\}", risk_factors_response, re.DOTALL)
                 refined_risk_factors = json.loads(json_match.group(0)) if json_match else risk_factors
             except:
                 refined_risk_factors = risk_factors
@@ -446,7 +414,7 @@ class RiskAnalystAgent(Agent):
             # Try to parse recommendations as JSON
             try:
                 # Extract JSON from the response
-                json_match = re.search(r'\[.*\]', recommendations_response, re.DOTALL)
+                json_match = re.search(r"\[.*\]", recommendations_response, re.DOTALL)
                 refined_recommendations = json.loads(json_match.group(0)) if json_match else recommendations
             except:
                 refined_recommendations = recommendations
@@ -522,12 +490,14 @@ class RiskAnalystAgent(Agent):
             risk_context = []
             if semantic_results and semantic_results.get("results"):
                 for result in semantic_results["results"]:
-                    risk_context.append({
-                        "text": result.get("text", ""),
-                        "company": result.get("metadata", {}).get("company", ""),
-                        "filing_type": result.get("metadata", {}).get("filing_type", ""),
-                        "filing_date": result.get("metadata", {}).get("filing_date", "")
-                    })
+                    risk_context.append(
+                        {
+                            "text": result.get("text", ""),
+                            "company": result.get("metadata", {}).get("company", ""),
+                            "filing_type": result.get("metadata", {}).get("filing_type", ""),
+                            "filing_date": result.get("metadata", {}).get("filing_date", ""),
+                        }
+                    )
 
             # Generate risk analysis using the LLM
             analysis_prompt = f"""
@@ -560,7 +530,8 @@ class RiskAnalystAgent(Agent):
             try:
                 # Extract JSON from the response
                 import re
-                json_match = re.search(r'\[.*\]', financial_risks_response, re.DOTALL)
+
+                json_match = re.search(r"\[.*\]", financial_risks_response, re.DOTALL)
                 financial_risks_json = json.loads(json_match.group(0)) if json_match else []
             except:
                 financial_risks_json = [
@@ -568,7 +539,7 @@ class RiskAnalystAgent(Agent):
                         "name": "Unknown Financial Risk",
                         "severity": "Medium",
                         "likelihood": "Medium",
-                        "description": "Insufficient data to identify specific financial risks"
+                        "description": "Insufficient data to identify specific financial risks",
                     }
                 ]
 
@@ -584,7 +555,7 @@ class RiskAnalystAgent(Agent):
             # Try to parse operational risks as JSON
             try:
                 # Extract JSON from the response
-                json_match = re.search(r'\[.*\]', operational_risks_response, re.DOTALL)
+                json_match = re.search(r"\[.*\]", operational_risks_response, re.DOTALL)
                 operational_risks_json = json.loads(json_match.group(0)) if json_match else []
             except:
                 operational_risks_json = [
@@ -592,7 +563,7 @@ class RiskAnalystAgent(Agent):
                         "name": "Unknown Operational Risk",
                         "severity": "Medium",
                         "likelihood": "Medium",
-                        "description": "Insufficient data to identify specific operational risks"
+                        "description": "Insufficient data to identify specific operational risks",
                     }
                 ]
 
@@ -607,12 +578,10 @@ class RiskAnalystAgent(Agent):
             # Try to parse trends as JSON
             try:
                 # Extract JSON from the response
-                json_match = re.search(r'\[.*\]', trends_response, re.DOTALL)
+                json_match = re.search(r"\[.*\]", trends_response, re.DOTALL)
                 trends_json = json.loads(json_match.group(0)) if json_match else []
             except:
-                trends_json = [
-                    "Insufficient data to determine risk trends"
-                ]
+                trends_json = ["Insufficient data to determine risk trends"]
 
             # Extract recommendations
             recommendations_prompt = f"""
@@ -625,26 +594,19 @@ class RiskAnalystAgent(Agent):
             # Try to parse recommendations as JSON
             try:
                 # Extract JSON from the response
-                json_match = re.search(r'\[.*\]', recommendations_response, re.DOTALL)
+                json_match = re.search(r"\[.*\]", recommendations_response, re.DOTALL)
                 recommendations_json = json.loads(json_match.group(0)) if json_match else []
             except:
-                recommendations_json = [
-                    "Insufficient data to provide meaningful risk mitigation recommendations"
-                ]
+                recommendations_json = ["Insufficient data to provide meaningful risk mitigation recommendations"]
 
             # Return the comprehensive risk analysis
             return {
                 "input": input,
                 "analysis": analysis_response.strip(),
-                "risk_factors": {
-                    "financial_risks": financial_risks_json,
-                    "operational_risks": operational_risks_json
-                },
+                "risk_factors": {"financial_risks": financial_risks_json, "operational_risks": operational_risks_json},
                 "risk_trends": trends_json,
                 "recommendations": recommendations_json,
-                "supporting_data": {
-                    "risk_context": risk_context
-                }
+                "supporting_data": {"risk_context": risk_context},
             }
 
         except Exception as e:
@@ -653,10 +615,7 @@ class RiskAnalystAgent(Agent):
                 "input": input,
                 "error": str(e),
                 "analysis": "I encountered an error while analyzing the risks. Please try again or provide more specific information.",
-                "risk_factors": {
-                    "financial_risks": [],
-                    "operational_risks": []
-                },
+                "risk_factors": {"financial_risks": [], "operational_risks": []},
                 "risk_trends": ["Error in analysis"],
-                "recommendations": [f"Error details: {str(e)}"]
+                "recommendations": [f"Error details: {str(e)}"],
             }

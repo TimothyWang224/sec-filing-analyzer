@@ -9,23 +9,23 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from src.sec_filing_analyzer.config import ConfigProvider, AgentConfig
+    from src.sec_filing_analyzer.config import AgentConfig, ConfigProvider
     from src.sec_filing_analyzer.llm.llm_config import LLMConfigFactory, get_agent_types
-    
+
     # Initialize the ConfigProvider
     ConfigProvider.initialize()
-    
+
     # Test getting agent types
     print("Available agent types:")
     agent_types = ConfigProvider.get_all_agent_types()
     print(agent_types)
     print()
-    
+
     # Test getting agent configs
     for agent_type in agent_types:
         print(f"Configuration for {agent_type}:")
         config = ConfigProvider.get_agent_config(agent_type)
-        
+
         # Print key parameters
         print(f"  Model: {config.get('model', 'Not specified')}")
         print(f"  Temperature: {config.get('temperature', 'Not specified')}")
@@ -35,7 +35,7 @@ try:
         print(f"  Max Execution Iterations: {config.get('max_execution_iterations', 'Not specified')}")
         print(f"  Max Refinement Iterations: {config.get('max_refinement_iterations', 'Not specified')}")
         print()
-    
+
     # Test getting agent config via LLMConfigFactory
     print("Testing LLMConfigFactory:")
     for agent_type in agent_types:
@@ -44,7 +44,7 @@ try:
         print(f"    Model: {config.get('model', 'Not specified')}")
         print(f"    Temperature: {config.get('temperature', 'Not specified')}")
         print()
-    
+
     # Test getting agent config with different task complexities
     print("Testing task complexity configurations:")
     for complexity in ["low", "medium", "high"]:
@@ -54,10 +54,11 @@ try:
         print(f"    Max Tokens: {config.get('max_tokens', 'Not specified')}")
         print(f"    Max Planning Iterations: {config.get('max_planning_iterations', 'Not specified')}")
         print()
-    
+
     print("All tests completed successfully!")
-    
+
 except Exception as e:
     print(f"Error testing ConfigProvider: {str(e)}")
     import traceback
+
     traceback.print_exc()

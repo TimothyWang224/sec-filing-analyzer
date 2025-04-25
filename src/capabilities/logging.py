@@ -5,22 +5,23 @@ This module provides a capability for agents to log their activities, decisions,
 and reasoning in a structured and configurable way.
 """
 
-import logging
 import json
+import logging
 import os
 import time
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Union, Callable
-from datetime import datetime
 import traceback
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from .base import Capability
 from ..agents.base import Agent
 from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
+from .base import Capability
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class LoggingCapability(Capability):
     """Capability for logging agent activities, decisions, and reasoning."""
@@ -39,7 +40,7 @@ class LoggingCapability(Capability):
         include_prompts: bool = False,
         include_responses: bool = False,
         max_content_length: int = 1000,
-        custom_formatters: Optional[Dict[str, Callable]] = None
+        custom_formatters: Optional[Dict[str, Callable]] = None,
     ):
         """
         Initialize the logging capability.
@@ -59,10 +60,7 @@ class LoggingCapability(Capability):
             max_content_length: Maximum length for content in logs (to avoid huge logs)
             custom_formatters: Custom formatter functions for specific content types
         """
-        super().__init__(
-            name="logging",
-            description="Logs agent activities, decisions, and reasoning"
-        )
+        super().__init__(name="logging", description="Logs agent activities, decisions, and reasoning")
 
         # Set logging configuration
         self.log_dir = log_dir or str(get_standard_log_dir("agents"))
@@ -111,12 +109,12 @@ class LoggingCapability(Capability):
         self.agent_logger.info(f"Initializing {agent_type} with session ID: {self.session_id}")
 
         # Log goals
-        if hasattr(agent, 'goals') and agent.goals:
+        if hasattr(agent, "goals") and agent.goals:
             goals_str = ", ".join([f"{goal.name}: {goal.description}" for goal in agent.goals])
             self.agent_logger.info(f"Agent goals: {goals_str}")
 
         # Log capabilities
-        if hasattr(agent, 'capabilities') and agent.capabilities:
+        if hasattr(agent, "capabilities") and agent.capabilities:
             capabilities_str = ", ".join([cap.__class__.__name__ for cap in agent.capabilities])
             self.agent_logger.info(f"Agent capabilities: {capabilities_str}")
 
@@ -125,7 +123,7 @@ class LoggingCapability(Capability):
             "session_id": self.session_id,
             "agent_type": agent_type,
             "start_time": datetime.now().isoformat(),
-            "log_file": self.log_file if hasattr(self, 'log_file') else None
+            "log_file": self.log_file if hasattr(self, "log_file") else None,
         }
 
         return context
@@ -145,7 +143,7 @@ class LoggingCapability(Capability):
         self.agent_logger.info(f"Starting iteration {agent.state.current_iteration + 1}/{agent.max_iterations}")
 
         # Log memory if enabled
-        if self.include_memory and hasattr(agent, 'state'):
+        if self.include_memory and hasattr(agent, "state"):
             self._log_memory(agent.state.get_memory())
 
         # Log context if enabled
@@ -154,12 +152,7 @@ class LoggingCapability(Capability):
 
         return True
 
-    async def process_prompt(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the prompt before it's sent to the LLM.
 
@@ -177,12 +170,7 @@ class LoggingCapability(Capability):
 
         return prompt
 
-    async def process_response(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        response: str
-    ) -> str:
+    async def process_response(self, agent: Agent, context: Dict[str, Any], response: str) -> str:
         """
         Process the response from the LLM.
 
@@ -200,12 +188,7 @@ class LoggingCapability(Capability):
 
         return response
 
-    async def process_action(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action before it's executed.
 
@@ -226,12 +209,7 @@ class LoggingCapability(Capability):
         return action
 
     async def process_result(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        response: str,
-        action: Dict[str, Any],
-        result: Any
+        self, agent: Agent, context: Dict[str, Any], response: str, action: Dict[str, Any], result: Any
     ) -> Any:
         """
         Process the result of an action.
@@ -266,7 +244,7 @@ class LoggingCapability(Capability):
         self.agent_logger.info(f"Completed iteration {agent.state.current_iteration + 1}")
 
         # Log memory changes if enabled
-        if self.include_memory and hasattr(agent, 'state'):
+        if self.include_memory and hasattr(agent, "state"):
             self._log_memory_changes(agent.state.get_memory())
 
     async def terminate(self, agent: Agent, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -288,7 +266,7 @@ class LoggingCapability(Capability):
         self.agent_logger.info(f"Total log entries: {self.log_count}")
 
         # Log final memory if enabled
-        if self.include_memory and hasattr(agent, 'state'):
+        if self.include_memory and hasattr(agent, "state"):
             self._log_memory(agent.state.get_memory(), is_final=True)
 
         # Return execution stats
@@ -297,7 +275,7 @@ class LoggingCapability(Capability):
                 "session_id": self.session_id,
                 "execution_time": execution_time,
                 "log_count": self.log_count,
-                "log_file": self.log_file if hasattr(self, 'log_file') else None
+                "log_file": self.log_file if hasattr(self, "log_file") else None,
             }
         }
 
@@ -344,13 +322,18 @@ class LoggingCapability(Capability):
 
             # Create JSON log file for structured logging
             self.json_log_file = log_dir / f"{agent_type}_{self.session_id}.json"
-            with open(self.json_log_file, 'w') as f:
-                json.dump({
-                    "session_id": self.session_id,
-                    "agent_type": agent_type,
-                    "start_time": datetime.now().isoformat(),
-                    "logs": []
-                }, f, indent=2, default=str)
+            with open(self.json_log_file, "w") as f:
+                json.dump(
+                    {
+                        "session_id": self.session_id,
+                        "agent_type": agent_type,
+                        "start_time": datetime.now().isoformat(),
+                        "logs": [],
+                    },
+                    f,
+                    indent=2,
+                    default=str,
+                )
 
         return agent_logger
 
@@ -375,14 +358,16 @@ class LoggingCapability(Capability):
             self.agent_logger.debug(f"Memory item {len(memory) - 3 + i + 1}: {formatted_item}")
 
         # Log to JSON file
-        if hasattr(self, 'json_log_file'):
-            self._append_to_json_log({
-                "type": "memory",
-                "timestamp": datetime.now().isoformat(),
-                "is_final": is_final,
-                "memory_size": len(memory),
-                "memory_items": memory[-3:] if len(memory) > 3 else memory
-            })
+        if hasattr(self, "json_log_file"):
+            self._append_to_json_log(
+                {
+                    "type": "memory",
+                    "timestamp": datetime.now().isoformat(),
+                    "is_final": is_final,
+                    "memory_size": len(memory),
+                    "memory_items": memory[-3:] if len(memory) > 3 else memory,
+                }
+            )
 
     def _log_memory_changes(self, memory: List[Dict[str, Any]]):
         """
@@ -401,12 +386,10 @@ class LoggingCapability(Capability):
             self.agent_logger.debug(f"Memory updated: {formatted_item}")
 
             # Log to JSON file
-            if hasattr(self, 'json_log_file'):
-                self._append_to_json_log({
-                    "type": "memory_update",
-                    "timestamp": datetime.now().isoformat(),
-                    "memory_item": last_item
-                })
+            if hasattr(self, "json_log_file"):
+                self._append_to_json_log(
+                    {"type": "memory_update", "timestamp": datetime.now().isoformat(), "memory_item": last_item}
+                )
 
     def _log_context(self, context: Dict[str, Any]):
         """
@@ -423,12 +406,8 @@ class LoggingCapability(Capability):
         self.agent_logger.debug(f"Context: {formatted_context}")
 
         # Log to JSON file
-        if hasattr(self, 'json_log_file'):
-            self._append_to_json_log({
-                "type": "context",
-                "timestamp": datetime.now().isoformat(),
-                "context": context
-            })
+        if hasattr(self, "json_log_file"):
+            self._append_to_json_log({"type": "context", "timestamp": datetime.now().isoformat(), "context": context})
 
     def _format_memory_item(self, item: Dict[str, Any]) -> str:
         """
@@ -545,7 +524,7 @@ class LoggingCapability(Capability):
 
         content_str = str(content)
         if len(content_str) > self.max_content_length:
-            return content_str[:self.max_content_length] + "..."
+            return content_str[: self.max_content_length] + "..."
         return content_str
 
     def _get_log_level(self, level_str: str) -> int:
@@ -563,7 +542,7 @@ class LoggingCapability(Capability):
             "INFO": logging.INFO,
             "WARNING": logging.WARNING,
             "ERROR": logging.ERROR,
-            "CRITICAL": logging.CRITICAL
+            "CRITICAL": logging.CRITICAL,
         }
         return levels.get(level_str.upper(), logging.INFO)
 
@@ -574,7 +553,7 @@ class LoggingCapability(Capability):
         Args:
             log_entry: Log entry
         """
-        if not hasattr(self, 'json_log_file'):
+        if not hasattr(self, "json_log_file"):
             return
 
         try:
@@ -582,14 +561,14 @@ class LoggingCapability(Capability):
             log_entry = self._prepare_for_serialization(log_entry)
 
             # Read existing log
-            with open(self.json_log_file, 'r') as f:
+            with open(self.json_log_file, "r") as f:
                 log_data = json.load(f)
 
             # Append new entry
             log_data["logs"].append(log_entry)
 
             # Write updated log with default=str to handle non-serializable objects
-            with open(self.json_log_file, 'w') as f:
+            with open(self.json_log_file, "w") as f:
                 json.dump(log_data, f, indent=2, default=str)
 
             # Increment log count
@@ -619,7 +598,7 @@ class LoggingCapability(Capability):
             return [self._prepare_for_serialization(item) for item in obj]
 
         # If it's a Pydantic model, convert to dictionary
-        elif hasattr(obj, 'model_dump'):
+        elif hasattr(obj, "model_dump"):
             return obj.model_dump()
 
         # Otherwise, return as is

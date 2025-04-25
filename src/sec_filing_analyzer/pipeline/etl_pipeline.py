@@ -4,31 +4,32 @@ SEC Filing ETL Pipeline
 This module provides the main ETL pipeline for processing SEC filings.
 """
 
-import logging
 import concurrent.futures
-from typing import Dict, List, Any, Optional
+import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 from ..config import ETLConfig, StorageConfig, VectorStoreConfig
-from ..storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
-from ..data_retrieval import SECFilingsDownloader, FilingProcessor
-from ..data_retrieval.file_storage import FileStorage
 from ..data_processing.chunking import FilingChunker
+from ..data_retrieval import FilingProcessor, SECFilingsDownloader
+from ..data_retrieval.file_storage import FileStorage
+from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
 from ..semantic.embeddings.embedding_generator import EmbeddingGenerator
 from ..semantic.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
 from ..semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
-from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
+from ..storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
+from .etl_pipeline_extension import ETLPipelineExtension
+from .quantitative_pipeline import QuantitativeETLPipeline
 
 # Import the semantic and quantitative pipelines
 from .semantic_pipeline import SemanticETLPipeline
-from .quantitative_pipeline import QuantitativeETLPipeline
-from .etl_pipeline_extension import ETLPipelineExtension
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class SECFilingETLPipeline:
     """
@@ -48,7 +49,7 @@ class SECFilingETLPipeline:
         use_parallel: bool = True,
         process_semantic: bool = True,
         process_quantitative: bool = True,
-        db_path: Optional[str] = None
+        db_path: Optional[str] = None,
     ):
         """Initialize the ETL pipeline.
 
@@ -72,21 +73,17 @@ class SECFilingETLPipeline:
                 self.vector_store = OptimizedVectorStore(
                     store_path=vector_store_config.path,
                     index_type=vector_store_config.index_type,
-                    use_gpu=vector_store_config.use_gpu
+                    use_gpu=vector_store_config.use_gpu,
                 )
             else:
                 self.vector_store = LlamaIndexVectorStore(
                     store_path=StorageConfig().vector_store_path,
-                    lazy_load=True  # Use lazy loading to avoid rebuilding the index on startup
+                    lazy_load=True,  # Use lazy loading to avoid rebuilding the index on startup
                 )
         else:
             self.vector_store = vector_store
-        self.file_storage = file_storage or FileStorage(
-            base_dir=ETLConfig().filings_dir
-        )
-        self.sec_downloader = sec_downloader or SECFilingsDownloader(
-            file_storage=self.file_storage
-        )
+        self.file_storage = file_storage or FileStorage(base_dir=ETLConfig().filings_dir)
+        self.sec_downloader = sec_downloader or SECFilingsDownloader(file_storage=self.file_storage)
 
         # Configuration
         self.max_workers = max_workers
@@ -105,13 +102,11 @@ class SECFilingETLPipeline:
                 graph_store=self.graph_store,
                 vector_store=self.vector_store,
                 file_storage=self.file_storage,
-                max_workers=max_workers
+                max_workers=max_workers,
             )
         else:
             self.filing_processor = filing_processor or FilingProcessor(
-                graph_store=self.graph_store,
-                vector_store=self.vector_store,
-                file_storage=self.file_storage
+                graph_store=self.graph_store, vector_store=self.vector_store, file_storage=self.file_storage
             )
 
         # Initialize filing chunker
@@ -125,35 +120,31 @@ class SECFilingETLPipeline:
                 max_tokens_per_chunk=8000,  # Safe limit below the 8192 max
                 rate_limit=rate_limit,
                 batch_size=50,  # Default batch size
-                max_retries=5  # Increased retry logic
+                max_retries=5,  # Increased retry logic
             )
         else:
             # Use the standard embedding generator for simpler cases
-            self.embedding_generator = EmbeddingGenerator(
-                model=ETLConfig().embedding_model
-            )
+            self.embedding_generator = EmbeddingGenerator(model=ETLConfig().embedding_model)
 
         # Get ETL config for database settings
         etl_config = ETLConfig()
 
         # Initialize the semantic and quantitative pipelines
         if self.process_semantic:
-            self.semantic_pipeline = SemanticETLPipeline(
-                downloader=self.sec_downloader
-            )
+            self.semantic_pipeline = SemanticETLPipeline(downloader=self.sec_downloader)
 
         if self.process_quantitative:
             # Use read-write mode for the quantitative pipeline
             self.quantitative_pipeline = QuantitativeETLPipeline(
                 downloader=self.sec_downloader,
                 db_path=self.db_path,
-                read_only=False  # Always use read-write mode for ETL operations
+                read_only=False,  # Always use read-write mode for ETL operations
             )
 
         # Initialize ETL pipeline extension
         self.extension = ETLPipelineExtension(
             db_path=self.db_path,
-            read_only=False  # Always use read-write mode for ETL operations
+            read_only=False,  # Always use read-write mode for ETL operations
         )
 
         logger.info(f"Initialized ETL pipeline with parallel processing: {use_parallel}")
@@ -165,7 +156,7 @@ class SECFilingETLPipeline:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         force_download: bool = False,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Process all filings for a company.
@@ -181,12 +172,7 @@ class SECFilingETLPipeline:
         Returns:
             Dictionary with processing results
         """
-        result = {
-            "ticker": ticker,
-            "status": "failed",
-            "filings_processed": 0,
-            "error": None
-        }
+        result = {"ticker": ticker, "status": "failed", "filings_processed": 0, "error": None}
 
         try:
             # Download filings
@@ -196,7 +182,7 @@ class SECFilingETLPipeline:
                 start_date=start_date,
                 end_date=end_date,
                 force_download=force_download,
-                limit=limit
+                limit=limit,
             )
 
             if not downloaded_filings:
@@ -210,17 +196,18 @@ class SECFilingETLPipeline:
             processed_count = 0
             if self.use_parallel and len(downloaded_filings) > 1:
                 # Process filings in parallel
-                with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(downloaded_filings))) as executor:
+                with concurrent.futures.ThreadPoolExecutor(
+                    max_workers=min(self.max_workers, len(downloaded_filings))
+                ) as executor:
                     # Submit tasks
                     future_to_filing = {
-                        executor.submit(self.process_filing_data, filing): filing
-                        for filing in downloaded_filings
+                        executor.submit(self.process_filing_data, filing): filing for filing in downloaded_filings
                     }
 
                     # Process results as they complete
                     for future in concurrent.futures.as_completed(future_to_filing):
                         filing = future_to_filing[future]
-                        filing_id = filing.get('accession_number', 'unknown')
+                        filing_id = filing.get("accession_number", "unknown")
                         try:
                             future.result()
                             processed_count += 1
@@ -253,7 +240,7 @@ class SECFilingETLPipeline:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit: Optional[int] = None,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process multiple filings for a company through the ETL pipeline.
@@ -280,7 +267,7 @@ class SECFilingETLPipeline:
                 start_date=start_date,
                 end_date=end_date,
                 force_download=force_download,
-                limit=limit
+                limit=limit,
             )
 
             # Format the result to match what the Streamlit app expects
@@ -288,14 +275,21 @@ class SECFilingETLPipeline:
                 "status": "success" if result["status"] == "completed" else result["status"],
                 "message": f"Processed {result['filings_processed']} filings for {ticker}",
                 "filings_processed": result["filings_processed"],
-                "error": result.get("error")
+                "error": result.get("error"),
             }
 
         except Exception as e:
             logger.error(f"Error processing filings for {ticker}: {e}")
             return {"error": str(e)}
 
-    def process_filing(self, ticker: str, filing_type: str, filing_date: Optional[str] = None, accession_number: Optional[str] = None, force_download: bool = False) -> Dict[str, Any]:
+    def process_filing(
+        self,
+        ticker: str,
+        filing_type: str,
+        filing_date: Optional[str] = None,
+        accession_number: Optional[str] = None,
+        force_download: bool = False,
+    ) -> Dict[str, Any]:
         """Process a single filing.
 
         Args:
@@ -314,11 +308,7 @@ class SECFilingETLPipeline:
             # Process using the legacy pipeline
             # Step 1: Get the filing object
             filings = self.sec_downloader.get_filings(
-                ticker=ticker,
-                filing_types=[filing_type],
-                start_date=filing_date,
-                end_date=filing_date,
-                limit=1
+                ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
             )
 
             if not filings:
@@ -349,7 +339,7 @@ class SECFilingETLPipeline:
                 accession_number=accession_number,
                 file_path=file_path,
                 processing_status="downloaded",
-                document_url=document_url
+                document_url=document_url,
             )
 
             # Step 2: Process the filing
@@ -363,15 +353,12 @@ class SECFilingETLPipeline:
                     filing_type=filing_type,
                     filing_date=filing_date,
                     accession_number=accession_number,
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 results["semantic"] = semantic_result
 
                 # Update filing status in DuckDB
-                self.extension.update_filing_status(
-                    accession_number=accession_number,
-                    processing_status="embedded"
-                )
+                self.extension.update_filing_status(accession_number=accession_number, processing_status="embedded")
 
             # Process using the quantitative pipeline if enabled
             if self.process_quantitative:
@@ -380,14 +367,13 @@ class SECFilingETLPipeline:
                     filing_type=filing_type,
                     filing_date=filing_date,
                     accession_number=accession_number,
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 results["quantitative"] = quantitative_result
 
                 # Update filing status in DuckDB
                 self.extension.update_filing_status(
-                    accession_number=accession_number,
-                    processing_status="xbrl_processed"
+                    accession_number=accession_number, processing_status="xbrl_processed"
                 )
 
             # Determine overall status
@@ -397,22 +383,14 @@ class SECFilingETLPipeline:
                     status = "partial"
                     break
 
-            return {
-                "status": status,
-                "ticker": ticker,
-                "filing_type": filing_type,
-                "results": results
-            }
+            return {"status": status, "ticker": ticker, "filing_type": filing_type, "results": results}
 
         except Exception as e:
             logger.error(f"Error processing {filing_type} filing for {ticker}: {e}")
 
             # Update filing status in DuckDB if accession_number is available
-            if 'accession_number' in locals() and accession_number:
-                self.extension.update_filing_status(
-                    accession_number=accession_number,
-                    processing_status="error"
-                )
+            if "accession_number" in locals() and accession_number:
+                self.extension.update_filing_status(accession_number=accession_number, processing_status="error")
 
             return {"error": str(e)}
 
@@ -428,7 +406,7 @@ class SECFilingETLPipeline:
         """
         try:
             # Get the accession number from the filing data
-            accession_number = filing_data.get('accession_number')
+            accession_number = filing_data.get("accession_number")
             if not accession_number:
                 logger.error(f"Missing accession_number in filing data: {filing_data}")
                 return None
@@ -440,11 +418,11 @@ class SECFilingETLPipeline:
                 return None
 
             # Get HTML content if available
-            if filing_data.get('has_html'):
+            if filing_data.get("has_html"):
                 try:
                     html_data = self.file_storage.load_html_filing(accession_number)
                     if html_data:
-                        filing_content['html_content'] = html_data.get('html_content', '')
+                        filing_content["html_content"] = html_data.get("html_content", "")
                 except Exception as e:
                     logger.warning(f"Could not load HTML content for filing {accession_number}: {e}")
 
@@ -452,22 +430,21 @@ class SECFilingETLPipeline:
             processed_data = self.filing_chunker.process_filing(filing_data, filing_content)
 
             # Extract chunk texts
-            chunk_texts = processed_data.get('chunk_texts', [])
+            chunk_texts = processed_data.get("chunk_texts", [])
 
             # Generate embeddings for chunks
             logger.info(f"Generating embeddings for {len(chunk_texts)} chunks")
             if self.use_parallel:
                 # Use parallel embedding generator with batch processing
                 chunk_embeddings_result = self.embedding_generator.generate_embeddings(
-                    chunk_texts,
-                    batch_size=self.batch_size
+                    chunk_texts, batch_size=self.batch_size
                 )
 
                 # Handle both tuple return (embeddings, metadata) and direct embeddings return
                 if isinstance(chunk_embeddings_result, tuple) and len(chunk_embeddings_result) == 2:
                     chunk_embeddings, embedding_metadata = chunk_embeddings_result
                     # Store metadata in processed data
-                    processed_data['embedding_metadata'] = embedding_metadata
+                    processed_data["embedding_metadata"] = embedding_metadata
                 else:
                     chunk_embeddings = chunk_embeddings_result
             else:
@@ -478,15 +455,15 @@ class SECFilingETLPipeline:
                 if isinstance(chunk_embeddings_result, tuple) and len(chunk_embeddings_result) == 2:
                     chunk_embeddings, embedding_metadata = chunk_embeddings_result
                     # Store metadata in processed data
-                    processed_data['embedding_metadata'] = embedding_metadata
+                    processed_data["embedding_metadata"] = embedding_metadata
                 else:
                     chunk_embeddings = chunk_embeddings_result
 
             # Add embeddings to processed data
-            processed_data['chunk_embeddings'] = chunk_embeddings
+            processed_data["chunk_embeddings"] = chunk_embeddings
 
             # Only generate full text embedding for small documents (optional)
-            text = processed_data['text']
+            text = processed_data["text"]
             try:
                 # Check if text is small enough for embedding
                 token_count = self.filing_chunker._count_tokens(text)
@@ -498,31 +475,37 @@ class SECFilingETLPipeline:
                     if isinstance(full_text_result, tuple) and len(full_text_result) == 2:
                         full_text_embeddings, full_text_metadata = full_text_result
                         # Store metadata in processed data
-                        if 'embedding_metadata' not in processed_data:
-                            processed_data['embedding_metadata'] = {}
-                        processed_data['embedding_metadata']['full_text'] = full_text_metadata
-                        processed_data['embedding'] = full_text_embeddings[0]
+                        if "embedding_metadata" not in processed_data:
+                            processed_data["embedding_metadata"] = {}
+                        processed_data["embedding_metadata"]["full_text"] = full_text_metadata
+                        processed_data["embedding"] = full_text_embeddings[0]
                     else:
-                        processed_data['embedding'] = full_text_result[0]
+                        processed_data["embedding"] = full_text_result[0]
                 else:
                     logger.info(f"Skipping full text embedding due to token count ({token_count} tokens)")
                     # Use the average of chunk embeddings as a fallback
                     if chunk_embeddings:
                         try:
                             import numpy as np
+
                             # Ensure all embeddings have the same shape
                             valid_embeddings = []
                             for emb in chunk_embeddings:
-                                if isinstance(emb, list) and len(emb) == self.embedding_generator.get_embedding_dimensions():
+                                if (
+                                    isinstance(emb, list)
+                                    and len(emb) == self.embedding_generator.get_embedding_dimensions()
+                                ):
                                     valid_embeddings.append(emb)
                                 else:
-                                    logger.warning(f"Skipping embedding with invalid shape: {len(emb) if isinstance(emb, list) else type(emb)}")
+                                    logger.warning(
+                                        f"Skipping embedding with invalid shape: {len(emb) if isinstance(emb, list) else type(emb)}"
+                                    )
 
                             if valid_embeddings:
                                 # Convert to numpy array and calculate mean
                                 valid_embeddings_array = np.array(valid_embeddings)
                                 avg_embedding = np.mean(valid_embeddings_array, axis=0).tolist()
-                                processed_data['embedding'] = avg_embedding
+                                processed_data["embedding"] = avg_embedding
                                 logger.info("Using average of chunk embeddings for document embedding")
                             else:
                                 logger.warning("No valid embeddings found for averaging")
@@ -537,25 +520,19 @@ class SECFilingETLPipeline:
 
             # Save processed filing to disk
             self.file_storage.save_processed_filing(
-                filing_id=accession_number,
-                processed_data=processed_data,
-                metadata=filing_data
+                filing_id=accession_number, processed_data=processed_data, metadata=filing_data
             )
 
             # Update filing status in DuckDB
             self.extension.update_filing_status(
                 accession_number=accession_number,
                 processing_status="embedded",
-                file_path=self.file_storage.get_processed_filing_path(accession_number)
+                file_path=self.file_storage.get_processed_filing_path(accession_number),
             )
 
             # Cache filing for quick access
             self.file_storage.cache_filing(
-                filing_id=accession_number,
-                filing_data={
-                    "metadata": filing_data,
-                    "processed_data": processed_data
-                }
+                filing_id=accession_number, filing_data={"metadata": filing_data, "processed_data": processed_data}
             )
 
             return processed_data

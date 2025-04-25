@@ -5,20 +5,18 @@ Generate Sample Workflow Log
 A utility script to generate a sample workflow log for testing the workflow visualizer.
 """
 
+import argparse
 import json
 import logging
 import random
 import time
 from datetime import datetime
 from pathlib import Path
-import argparse
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class SampleWorkflowLogger:
     """Sample workflow logger for testing."""
@@ -39,18 +37,12 @@ class SampleWorkflowLogger:
 
         # Add file handler
         file_handler = logging.FileHandler(self.log_file)
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        ))
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         self.logger.addHandler(file_handler)
 
         # Initialize JSON log
-        with open(self.json_log_file, 'w') as f:
-            json.dump({
-                "workflow_id": workflow_id,
-                "start_time": datetime.now().isoformat(),
-                "logs": []
-            }, f, indent=2)
+        with open(self.json_log_file, "w") as f:
+            json.dump({"workflow_id": workflow_id, "start_time": datetime.now().isoformat(), "logs": []}, f, indent=2)
 
     def log_workflow_start(self, description: str):
         """Log workflow start."""
@@ -61,7 +53,7 @@ class SampleWorkflowLogger:
         self.logger.info(f"Workflow {status}: {details or 'No details'}")
 
         # Update JSON log
-        with open(self.json_log_file, 'r+') as f:
+        with open(self.json_log_file, "r+") as f:
             data = json.load(f)
             data["end_time"] = datetime.now().isoformat()
             data["status"] = status
@@ -82,7 +74,9 @@ class SampleWorkflowLogger:
     def log_llm_interaction(self, prompt: str, response: str, prompt_tokens: int, completion_tokens: int):
         """Log an LLM interaction."""
         self.logger.info(f"LLM Prompt: {prompt}")
-        self.logger.info(f"LLM Response: tokens={prompt_tokens + completion_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
+        self.logger.info(
+            f"LLM Response: tokens={prompt_tokens + completion_tokens} (prompt={prompt_tokens}, completion={completion_tokens})"
+        )
         self.logger.info(f"LLM Content: {response}")
 
     def log_tool_call(self, tool_name: str, args: dict):
@@ -98,12 +92,11 @@ class SampleWorkflowLogger:
         # Add file handler if not already added
         if not agent_logger.handlers:
             file_handler = logging.FileHandler(self.log_file)
-            file_handler.setFormatter(logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            ))
+            file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
             agent_logger.addHandler(file_handler)
 
         agent_logger.info(f"{action}: {details or ''}")
+
 
 def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
     """Generate a sample workflow log."""
@@ -127,7 +120,7 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
         ("Data Processing", "Processing and transforming data"),
         ("Analysis", "Analyzing processed data"),
         ("Report Generation", "Generating final report"),
-        ("Cleanup", "Cleaning up temporary resources")
+        ("Cleanup", "Cleaning up temporary resources"),
     ]
 
     # Define tools
@@ -135,14 +128,14 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
         ("sec_data", {"ticker": "AAPL", "filing_type": "10-K"}),
         ("sec_semantic_search", {"query": "Apple financial performance", "companies": ["AAPL"]}),
         ("sec_financial_data", {"query_type": "financial_facts", "parameters": {"ticker": "AAPL"}}),
-        ("sec_graph_query", {"query_type": "company_filings", "parameters": {"ticker": "AAPL"}})
+        ("sec_graph_query", {"query_type": "company_filings", "parameters": {"ticker": "AAPL"}}),
     ]
 
     # Define agents
     agents = [
         "FinancialAnalystAgent.20250414_125810",
         "RiskAnalystAgent.20250414_125843",
-        "QASpecialistAgent.20250414_125800"
+        "QASpecialistAgent.20250414_125800",
     ]
 
     # Log workflow execution
@@ -175,13 +168,13 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
     llm_prompts = [
         "What was Apple's revenue in 2023?",
         "Analyze Apple's financial performance over the last 3 years.",
-        "Identify key risks mentioned in Apple's latest 10-K filing."
+        "Identify key risks mentioned in Apple's latest 10-K filing.",
     ]
 
     llm_responses = [
         "Apple's revenue in 2023 was $383.29 billion, representing a 2.8% decrease from the previous year.",
         "Apple's financial performance over the last 3 years shows a mixed trend. Revenue increased from $365.82 billion in 2021 to $394.33 billion in 2022, but then decreased to $383.29 billion in 2023. Net income followed a similar pattern, rising from $94.68 billion in 2021 to $99.80 billion in 2022, then declining to $96.99 billion in 2023. Gross margin has improved steadily from 41.8% in 2021 to 44.0% in 2023, indicating better cost management despite revenue challenges.",
-        "Key risks identified in Apple's latest 10-K filing include: 1) Global economic conditions and consumer spending patterns, 2) Intense competition in all business areas, 3) Supply chain disruptions and component shortages, 4) Rapid technological changes requiring continuous innovation, 5) Intellectual property challenges and litigation, 6) Regulatory pressures in multiple jurisdictions, 7) Data privacy and security concerns, 8) Dependence on manufacturing and logistics in China and other countries."
+        "Key risks identified in Apple's latest 10-K filing include: 1) Global economic conditions and consumer spending patterns, 2) Intense competition in all business areas, 3) Supply chain disruptions and component shortages, 4) Rapid technological changes requiring continuous innovation, 5) Intellectual property challenges and litigation, 6) Regulatory pressures in multiple jurisdictions, 7) Data privacy and security concerns, 8) Dependence on manufacturing and logistics in China and other countries.",
     ]
 
     for i in range(3):
@@ -192,7 +185,7 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
             prompt=llm_prompts[i],
             response=llm_responses[i],
             prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens
+            completion_tokens=completion_tokens,
         )
 
         # Log timing
@@ -203,6 +196,7 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
     logger.log_workflow_end("completed", "Workflow completed successfully")
 
     return logger.log_file
+
 
 def main():
     """Main entry point."""
@@ -221,6 +215,7 @@ def main():
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     exit(main())

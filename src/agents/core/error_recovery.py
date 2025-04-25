@@ -7,17 +7,17 @@ various recovery strategies to handle tool call failures.
 
 import logging
 import time
-from typing import Dict, Any, Optional, Callable, Awaitable, List, Tuple, Union
-
-from ...contracts import PlanStep
-from .plan_step_retry import prepare_step_for_retry
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
 from sec_filing_analyzer.llm import BaseLLM
-from ...tools.registry import ToolRegistry
+
+from ...contracts import PlanStep
 from ...tools.llm_parameter_completer import LLMParameterCompleter
-from .error_handling import ToolError, ToolErrorType, ErrorClassifier, ErrorAnalyzer, ToolCircuitBreaker
+from ...tools.registry import ToolRegistry
 from .adaptive_retry import AdaptiveRetryStrategy
 from .alternative_tools import AlternativeToolSelector
+from .error_handling import ErrorAnalyzer, ErrorClassifier, ToolCircuitBreaker, ToolError, ToolErrorType
+from .plan_step_retry import prepare_step_for_retry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -39,7 +39,7 @@ class ErrorRecoveryManager:
         max_retries: int = 2,
         base_delay: float = 1.0,
         circuit_breaker_threshold: int = 3,
-        circuit_breaker_reset_timeout: int = 300
+        circuit_breaker_reset_timeout: int = 300,
     ):
         """
         Initialize the error recovery manager.
@@ -58,8 +58,7 @@ class ErrorRecoveryManager:
         self.parameter_completer = LLMParameterCompleter(llm)
         self.retry_strategy = AdaptiveRetryStrategy(base_delay=base_delay)
         self.circuit_breaker = ToolCircuitBreaker(
-            failure_threshold=circuit_breaker_threshold,
-            reset_timeout=circuit_breaker_reset_timeout
+            failure_threshold=circuit_breaker_threshold, reset_timeout=circuit_breaker_reset_timeout
         )
         self.alternative_selector = AlternativeToolSelector(llm)
         self.error_analyzer = ErrorAnalyzer()
@@ -71,7 +70,7 @@ class ErrorRecoveryManager:
         execute_func: Callable[[str, Dict[str, Any]], Awaitable[Any]],
         user_input: str = "",
         context: Optional[Dict[str, Any]] = None,
-        step: Optional[Union[Dict[str, Any], PlanStep]] = None
+        step: Optional[Union[Dict[str, Any], PlanStep]] = None,
     ) -> Dict[str, Any]:
         """
         Execute a tool with comprehensive error recovery.
@@ -93,16 +92,14 @@ class ErrorRecoveryManager:
 
             # Create a circuit open error
             error = ToolError(
-                ToolErrorType.SYSTEM_ERROR,
-                f"Circuit open for tool {tool_name} due to repeated failures",
-                tool_name
+                ToolErrorType.SYSTEM_ERROR, f"Circuit open for tool {tool_name} due to repeated failures", tool_name
             )
 
             return {
                 "success": False,
                 "error": error,
                 "circuit_status": circuit_status,
-                "user_message": self.error_analyzer.format_error_for_user(error)
+                "user_message": self.error_analyzer.format_error_for_user(error),
             }
 
         # If we have a step, ensure it's a PlanStep object for retry
@@ -121,9 +118,7 @@ class ErrorRecoveryManager:
 
         # Execute the tool with adaptive retry
         result = await self.retry_strategy.retry_with_strategy(
-            execute_with_current_args,
-            self.max_retries,
-            classify_error
+            execute_with_current_args, self.max_retries, classify_error
         )
 
         # If successful, record success and return result
@@ -147,22 +142,12 @@ class ErrorRecoveryManager:
 
             # Try recovery strategies with enhanced context
             recovery_result = await self._apply_recovery_strategies(
-                tool_name,
-                tool_args,
-                error,
-                execute_func,
-                user_input,
-                enhanced_context
+                tool_name, tool_args, error, execute_func, user_input, enhanced_context
             )
         else:
             # Try normal recovery strategies
             recovery_result = await self._apply_recovery_strategies(
-                tool_name,
-                tool_args,
-                error,
-                execute_func,
-                user_input,
-                context
+                tool_name, tool_args, error, execute_func, user_input, context
             )
 
         # If recovery succeeded, return the result
@@ -179,7 +164,7 @@ class ErrorRecoveryManager:
             "error": error,
             "user_message": user_message,
             "suggestions": suggestions,
-            "recovery_attempted": True
+            "recovery_attempted": True,
         }
 
     async def _apply_recovery_strategies(
@@ -189,7 +174,7 @@ class ErrorRecoveryManager:
         error: ToolError,
         execute_func: Callable[[str, Dict[str, Any]], Awaitable[Any]],
         user_input: str = "",
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Apply various recovery strategies to handle a tool error.
@@ -216,10 +201,7 @@ class ErrorRecoveryManager:
             try:
                 # Complete parameters using the LLM with error context
                 fixed_args = await self.parameter_completer.complete_parameters(
-                    tool_name=tool_name,
-                    partial_parameters=tool_args,
-                    user_input=user_input,
-                    context=error_context
+                    tool_name=tool_name, partial_parameters=tool_args, user_input=user_input, context=error_context
                 )
 
                 # If parameters were fixed, try again
@@ -243,7 +225,7 @@ class ErrorRecoveryManager:
                     result = await self.retry_strategy.retry_with_strategy(
                         execute_with_fixed_args,
                         1,  # Only try once with fixed parameters
-                        classify_error
+                        classify_error,
                     )
 
                     if result["success"]:
@@ -258,20 +240,13 @@ class ErrorRecoveryManager:
             tool_purpose = self._get_tool_purpose(tool_name, tool_args)
 
             # Find an alternative tool
-            alternative_tool = await self.alternative_selector.find_alternative_tool(
-                tool_name,
-                tool_purpose
-            )
+            alternative_tool = await self.alternative_selector.find_alternative_tool(tool_name, tool_purpose)
 
             if alternative_tool:
                 logger.info(f"Trying alternative tool: {alternative_tool}")
 
                 # Map parameters to the alternative tool
-                mapped_args = await self.alternative_selector.map_parameters(
-                    tool_name,
-                    alternative_tool,
-                    tool_args
-                )
+                mapped_args = await self.alternative_selector.map_parameters(tool_name, alternative_tool, tool_args)
 
                 # Execute the alternative tool
                 async def execute_alternative():
@@ -285,7 +260,7 @@ class ErrorRecoveryManager:
                 result = await self.retry_strategy.retry_with_strategy(
                     execute_alternative,
                     1,  # Only try once with the alternative tool
-                    classify_error
+                    classify_error,
                 )
 
                 if result["success"]:
@@ -296,11 +271,7 @@ class ErrorRecoveryManager:
             logger.error(f"Error trying alternative tool: {str(e)}")
 
         # If all recovery strategies fail, return failure
-        return {
-            "success": False,
-            "error": error,
-            "recovery_attempted": True
-        }
+        return {"success": False, "error": error, "recovery_attempted": True}
 
     def _get_tool_purpose(self, tool_name: str, tool_args: Dict[str, Any]) -> str:
         """

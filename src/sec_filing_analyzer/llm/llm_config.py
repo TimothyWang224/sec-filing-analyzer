@@ -1,14 +1,8 @@
-from typing import Dict, Any, Optional, List
 import os
+from typing import Any, Dict, List, Optional
 
 # Base configuration shared across all LLMs
-BASE_CONFIG = {
-    "temperature": 0.7,
-    "max_tokens": 1000,
-    "top_p": 1.0,
-    "frequency_penalty": 0.0,
-    "presence_penalty": 0.0
-}
+BASE_CONFIG = {"temperature": 0.7, "max_tokens": 1000, "top_p": 1.0, "frequency_penalty": 0.0, "presence_penalty": 0.0}
 
 # Base agent execution configuration shared across all agents
 BASE_AGENT_CONFIG = {
@@ -17,19 +11,16 @@ BASE_AGENT_CONFIG = {
     "max_planning_iterations": 2,
     "max_execution_iterations": 3,
     "max_refinement_iterations": 1,
-
     # Tool execution parameters
     "max_tool_retries": 2,
     "tools_per_iteration": 1,  # Default to 1 for single tool call approach
     "circuit_breaker_threshold": 3,
     "circuit_breaker_reset_timeout": 300,
-
     # Runtime parameters
     "max_duration_seconds": 180,
-
     # Termination parameters
     "enable_dynamic_termination": False,
-    "min_confidence_threshold": 0.8
+    "min_confidence_threshold": 0.8,
 }
 
 # Coordinator-specific configuration
@@ -47,13 +38,12 @@ COORDINATOR_CONFIG = {
 4. Ensure consistent and coherent analysis
 
 Your responses should be well-structured, comprehensive, and actionable.""",
-
     # Agent execution parameters
     **BASE_AGENT_CONFIG,
     "max_planning_iterations": 1,
     "max_execution_iterations": 2,
     "max_refinement_iterations": 1,
-    "max_duration_seconds": 300  # Longer runtime for complex coordination tasks
+    "max_duration_seconds": 300,  # Longer runtime for complex coordination tasks
 }
 
 # Financial Analyst configuration
@@ -69,12 +59,11 @@ FINANCIAL_ANALYST_CONFIG = {
 2. Focused on key financial metrics
 3. Clear and concise
 4. Based on standard financial analysis principles""",
-
     # Agent execution parameters
     **BASE_AGENT_CONFIG,
     "max_planning_iterations": 1,
     "max_execution_iterations": 2,
-    "max_refinement_iterations": 1
+    "max_refinement_iterations": 1,
 }
 
 # Risk Analyst configuration
@@ -91,12 +80,11 @@ RISK_ANALYST_CONFIG = {
 2. Quantitative in risk assessment
 3. Clear in risk categorization
 4. Actionable in risk mitigation recommendations""",
-
     # Agent execution parameters
     **BASE_AGENT_CONFIG,
     "max_planning_iterations": 1,
     "max_execution_iterations": 2,
-    "max_refinement_iterations": 1
+    "max_refinement_iterations": 1,
 }
 
 # QA Specialist configuration
@@ -113,14 +101,13 @@ QA_SPECIALIST_CONFIG = {
 3. Accurate in financial details
 4. Engaging and conversational
 5. Contextually aware""",
-
     # Agent execution parameters
     **BASE_AGENT_CONFIG,
     "max_iterations": 5,  # Increased from 3 to 5 for more complex queries
     "max_planning_iterations": 1,
     "max_execution_iterations": 5,  # Increased from 2 to 5 to allow more tool calls
     "max_refinement_iterations": 2,  # Increased from 1 to 2 for better answer refinement
-    "max_tokens": 4000  # Longer responses for detailed explanations
+    "max_tokens": 4000,  # Longer responses for detailed explanations
 }
 
 # SEC Analysis capability configuration
@@ -135,12 +122,11 @@ SEC_ANALYSIS_CONFIG = {
 2. Comprehensive in data extraction
 3. Clear in analysis presentation
 4. Based on regulatory requirements""",
-
     # Agent execution parameters
     **BASE_AGENT_CONFIG,
     "max_planning_iterations": 1,
     "max_execution_iterations": 2,
-    "max_refinement_iterations": 1
+    "max_refinement_iterations": 1,
 }
 
 # Mapping of agent types to their configurations
@@ -149,8 +135,9 @@ AGENT_CONFIGS = {
     "financial_analyst": FINANCIAL_ANALYST_CONFIG,
     "risk_analyst": RISK_ANALYST_CONFIG,
     "qa_specialist": QA_SPECIALIST_CONFIG,
-    "sec_analysis": SEC_ANALYSIS_CONFIG
+    "sec_analysis": SEC_ANALYSIS_CONFIG,
 }
+
 
 def get_agent_config(agent_type: str) -> Dict[str, Any]:
     """
@@ -178,6 +165,7 @@ def get_agent_types() -> List[str]:
         List of agent type names
     """
     return list(AGENT_CONFIGS.keys())
+
 
 class LLMConfigFactory:
     """Factory for creating and managing LLM configurations."""
@@ -228,6 +216,7 @@ class LLMConfigFactory:
         """
         try:
             from sec_filing_analyzer.config import ConfigProvider
+
             config = ConfigProvider.get_agent_config(agent_type)
 
             # Apply any overrides
@@ -249,7 +238,7 @@ class LLMConfigFactory:
         return {
             "gpt-4o": "Most capable model for complex tasks",
             "gpt-4o-mini": "Efficient model for standard tasks",
-            "gpt-3.5-turbo": "Legacy model for basic tasks"
+            "gpt-3.5-turbo": "Legacy model for basic tasks",
         }
 
     @staticmethod
@@ -281,6 +270,7 @@ class LLMConfigFactory:
         # Try to use the ConfigProvider first
         try:
             from sec_filing_analyzer.config import ConfigProvider
+
             base_config = ConfigProvider.get_agent_config(agent_type)
         except ImportError:
             # Fall back to the old method if ConfigProvider is not available

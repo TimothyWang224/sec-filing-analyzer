@@ -5,9 +5,9 @@ This script launches the Streamlit application for the SEC Filing Analyzer.
 """
 
 import os
-import sys
-import socket
 import shutil
+import socket
+import sys
 from pathlib import Path
 
 # Add the project root to the Python path
@@ -21,10 +21,12 @@ except ImportError as e:
     print("Make sure the SEC Filing Analyzer package is installed correctly.")
     sys.exit(1)
 
+
 def is_port_in_use(port):
     """Check if a port is in use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
+        return s.connect_ex(("localhost", port)) == 0
+
 
 def find_available_port(start_port, max_attempts=10):
     """Find an available port starting from start_port.
@@ -41,9 +43,11 @@ def find_available_port(start_port, max_attempts=10):
             return port
     return None
 
+
 def check_streamlit_installed():
     """Check if Streamlit is installed."""
     return shutil.which("streamlit") is not None
+
 
 def main():
     """Launch the Streamlit application."""
@@ -61,6 +65,7 @@ def main():
     except Exception as e:
         print(f"Error initializing configuration: {e}")
         print("Using default configuration values.")
+
         # Use default values if configuration fails
         class DefaultConfig:
             port = 8501
@@ -68,6 +73,7 @@ def main():
             theme_base = "light"
             enable_cors = True
             enable_xsrf_protection = False
+
         streamlit_config = DefaultConfig()
 
     # Get the port
@@ -97,8 +103,10 @@ def main():
     env["STREAMLIT_SERVER_HEADLESS"] = str(streamlit_config.headless).lower()
     env["STREAMLIT_THEME_BASE"] = streamlit_config.theme_base
     env["STREAMLIT_SERVER_PORT"] = str(port)
-    env["STREAMLIT_SERVER_ENABLE_CORS"] = str(getattr(streamlit_config, 'enable_cors', True)).lower()
-    env["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = str(getattr(streamlit_config, 'enable_xsrf_protection', False)).lower()
+    env["STREAMLIT_SERVER_ENABLE_CORS"] = str(getattr(streamlit_config, "enable_cors", True)).lower()
+    env["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = str(
+        getattr(streamlit_config, "enable_xsrf_protection", False)
+    ).lower()
 
     # Get the path to the app.py file
     app_path = Path(__file__).resolve().parent / "app.py"
@@ -115,6 +123,7 @@ def main():
     # Run Streamlit directly (not in a subprocess)
     os.environ.update(env)
     os.system(f"streamlit run {app_path}")
+
 
 if __name__ == "__main__":
     main()

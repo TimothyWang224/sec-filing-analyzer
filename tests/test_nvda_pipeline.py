@@ -7,13 +7,14 @@ This script processes NVDA's 2023 filings using the SEC Filing ETL Pipeline.
 import logging
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
-from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
-from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
+from sec_filing_analyzer.config import ETLConfig, StorageConfig
 from sec_filing_analyzer.data_retrieval import FilingProcessor
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
-from sec_filing_analyzer.config import ETLConfig, StorageConfig
+from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
+from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
 
 # Load environment variables
 load_dotenv()
@@ -21,12 +22,13 @@ load_dotenv()
 # Setup logging
 logging.basicConfig(
     level=logging.DEBUG,  # Set to DEBUG for more detailed logs
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
 # Set specific loggers to DEBUG level
-logging.getLogger('sec_filing_analyzer').setLevel(logging.DEBUG)
+logging.getLogger("sec_filing_analyzer").setLevel(logging.DEBUG)
+
 
 def test_nvda_2023_filings():
     """Test processing NVDA's 2023 filings."""
@@ -38,15 +40,11 @@ def test_nvda_2023_filings():
         graph_store = GraphStore()
 
         # Initialize file storage
-        file_storage = FileStorage(
-            base_dir=ETLConfig().cache_dir.parent / "filings"
-        )
+        file_storage = FileStorage(base_dir=ETLConfig().cache_dir.parent / "filings")
 
         # Initialize filing processor
         filing_processor = FilingProcessor(
-            graph_store=graph_store,
-            vector_store=vector_store,
-            file_storage=file_storage
+            graph_store=graph_store, vector_store=vector_store, file_storage=file_storage
         )
 
         # Initialize pipeline
@@ -54,7 +52,7 @@ def test_nvda_2023_filings():
             graph_store=graph_store,
             vector_store=vector_store,
             filing_processor=filing_processor,
-            file_storage=file_storage
+            file_storage=file_storage,
         )
 
         logger.info("Starting ETL process for NVDA")
@@ -63,10 +61,7 @@ def test_nvda_2023_filings():
 
         # Process NVDA's 2023 filings
         pipeline.process_company(
-            ticker="NVDA",
-            filing_types=["10-K", "10-Q", "8-K"],
-            start_date="2023-01-01",
-            end_date="2023-12-31"
+            ticker="NVDA", filing_types=["10-K", "10-Q", "8-K"], start_date="2023-01-01", end_date="2023-12-31"
         )
 
         logger.info("ETL process completed successfully")
@@ -74,8 +69,10 @@ def test_nvda_2023_filings():
     except Exception as e:
         logger.error(f"Error running ETL process: {str(e)}")
         import traceback
+
         logger.error(f"Traceback: {traceback.format_exc()}")
         raise
+
 
 if __name__ == "__main__":
     test_nvda_2023_filings()

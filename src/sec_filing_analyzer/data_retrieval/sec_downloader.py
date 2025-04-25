@@ -5,17 +5,19 @@ This module provides functionality for downloading SEC filings.
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Union
 from datetime import date
+from typing import Any, Dict, List, Optional, Union
 
 from edgar import Filing
-from .file_storage import FileStorage
-from ..utils import edgar_utils
+
 from ..data_processing import XBRLExtractorFactory
+from ..utils import edgar_utils
+from .file_storage import FileStorage
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class SECFilingsDownloader:
     """
@@ -26,7 +28,7 @@ class SECFilingsDownloader:
         self,
         file_storage: Optional[FileStorage] = None,
         xbrl_cache_dir: Optional[str] = None,
-        use_edgar_xbrl: bool = True
+        use_edgar_xbrl: bool = True,
     ):
         """
         Initialize the SEC filings downloader.
@@ -39,8 +41,7 @@ class SECFilingsDownloader:
         self.file_storage = file_storage or FileStorage()
         self.xbrl_cache_dir = xbrl_cache_dir
         self.xbrl_extractor = XBRLExtractorFactory.create_extractor(
-            extractor_type="edgar" if use_edgar_xbrl else "simplified",
-            cache_dir=xbrl_cache_dir
+            extractor_type="edgar" if use_edgar_xbrl else "simplified", cache_dir=xbrl_cache_dir
         )
 
     def get_filings(
@@ -49,7 +50,7 @@ class SECFilingsDownloader:
         filing_types: Optional[List[str]] = None,
         start_date: Optional[Union[str, date]] = None,
         end_date: Optional[Union[str, date]] = None,
-        limit: int = 10
+        limit: int = 10,
     ) -> List[Filing]:
         """
         Get SEC filings for a company.
@@ -78,21 +79,12 @@ class SECFilingsDownloader:
             if filing_types:
                 for form_type in filing_types:
                     form_filings = edgar_utils.get_filings(
-                        ticker=ticker,
-                        form_type=form_type,
-                        start_date=start_date,
-                        end_date=end_date,
-                        limit=limit
+                        ticker=ticker, form_type=form_type, start_date=start_date, end_date=end_date, limit=limit
                     )
                     filings.extend(form_filings)
             else:
                 # Get all filings
-                filings = edgar_utils.get_filings(
-                    ticker=ticker,
-                    start_date=start_date,
-                    end_date=end_date,
-                    limit=limit
-                )
+                filings = edgar_utils.get_filings(ticker=ticker, start_date=start_date, end_date=end_date, limit=limit)
 
             return filings
 
@@ -107,7 +99,7 @@ class SECFilingsDownloader:
         start_date: Optional[Union[str, date]] = None,
         end_date: Optional[Union[str, date]] = None,
         force_download: bool = False,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Download all filings for a company.
@@ -129,7 +121,7 @@ class SECFilingsDownloader:
                 ticker=ticker,
                 form_type=filing_types,  # Pass the entire list of filing types
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
             )
 
             logger.info(f"Retrieved {len(filings)} filings for {ticker}")
@@ -172,8 +164,8 @@ class SECFilingsDownloader:
             if cached_data:
                 logger.info(f"Using cached data for filing {filing.accession_number}")
                 # Extract metadata from cached data if available
-                if isinstance(cached_data, dict) and 'metadata' in cached_data:
-                    return cached_data['metadata']
+                if isinstance(cached_data, dict) and "metadata" in cached_data:
+                    return cached_data["metadata"]
                 # If the cached data doesn't have the expected structure, create metadata from the filing object
                 return edgar_utils.get_filing_metadata(filing, ticker)
         else:
@@ -204,50 +196,40 @@ class SECFilingsDownloader:
             metadata = edgar_utils.get_filing_metadata(filing, ticker)
 
             # Add content availability flags
-            metadata.update({
-                "has_html": html_content is not None,
-                "has_xml": xml_content is not None,
-                "has_xbrl": content.get("xbrl") is not None
-            })
+            metadata.update(
+                {
+                    "has_html": html_content is not None,
+                    "has_xml": xml_content is not None,
+                    "has_xbrl": content.get("xbrl") is not None,
+                }
+            )
 
             # Ensure both id and accession_number fields are present
-            if 'accession_number' in metadata and 'id' not in metadata:
-                metadata['id'] = metadata['accession_number']
+            if "accession_number" in metadata and "id" not in metadata:
+                metadata["id"] = metadata["accession_number"]
                 logger.debug(f"Added id field from accession_number: {metadata['id']}")
-            elif 'id' in metadata and 'accession_number' not in metadata:
-                metadata['accession_number'] = metadata['id']
+            elif "id" in metadata and "accession_number" not in metadata:
+                metadata["accession_number"] = metadata["id"]
                 logger.debug(f"Added accession_number field from id: {metadata['accession_number']}")
 
             # Save raw filing to disk
             # Ensure we use a consistent ID for saving the filing
-            filing_id = metadata.get('accession_number')
+            filing_id = metadata.get("accession_number")
 
             # Save the raw filing content
-            self.file_storage.save_raw_filing(
-                filing_id=filing_id,
-                content=text_content,
-                metadata=metadata
-            )
+            self.file_storage.save_raw_filing(filing_id=filing_id, content=text_content, metadata=metadata)
 
             # Log successful save
             logger.info(f"Saved raw filing content for {filing_id}")
 
             # Save HTML filing to disk if available
             if html_content:
-                self.file_storage.save_html_filing(
-                    filing_id=filing_id,
-                    html_content=html_content,
-                    metadata=metadata
-                )
+                self.file_storage.save_html_filing(filing_id=filing_id, html_content=html_content, metadata=metadata)
                 logger.info(f"Saved HTML content for {filing_id}")
 
             # Save XML filing to disk if available
             if xml_content:
-                self.file_storage.save_xml_filing(
-                    filing_id=filing_id,
-                    xml_content=xml_content,
-                    metadata=metadata
-                )
+                self.file_storage.save_xml_filing(filing_id=filing_id, xml_content=xml_content, metadata=metadata)
                 logger.info(f"Saved XML content for {filing_id}")
 
             return metadata
@@ -319,15 +301,12 @@ class SECFilingsDownloader:
             # Get the filing URL if available
             filing_url = None
             filing_data = self.get_filing_by_accession(ticker, accession_number)
-            if filing_data and 'filing_url' in filing_data:
-                filing_url = filing_data['filing_url']
+            if filing_data and "filing_url" in filing_data:
+                filing_url = filing_data["filing_url"]
 
             # Use the XBRL extractor to extract data
             xbrl_data = self.xbrl_extractor.extract_financials(
-                ticker=ticker,
-                filing_id=filing_id,
-                accession_number=accession_number,
-                filing_url=filing_url
+                ticker=ticker, filing_id=filing_id, accession_number=accession_number, filing_url=filing_url
             )
 
             # Cache the XBRL data
@@ -337,18 +316,10 @@ class SECFilingsDownloader:
             return xbrl_data
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {e}")
-            return {
-                "filing_id": filing_id,
-                "ticker": ticker,
-                "accession_number": accession_number,
-                "error": str(e)
-            }
+            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
 
     def list_filings(
-        self,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None,
-        filing_type: Optional[str] = None
+        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         List available filings.
@@ -361,8 +332,4 @@ class SECFilingsDownloader:
         Returns:
             List of filing metadata
         """
-        return self.file_storage.list_filings(
-            ticker=ticker,
-            year=year,
-            filing_type=filing_type
-        )
+        return self.file_storage.list_filings(ticker=ticker, year=year, filing_type=filing_type)

@@ -4,22 +4,25 @@ Extension for the ETL pipeline to ensure proper tracking in DuckDB
 
 import logging
 import os
-import duckdb
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple, Set
-from datetime import datetime
-
-from ..config import ETLConfig, StorageConfig, ConfigProvider
-from ..storage.sync_manager import StorageSyncManager
 
 # Import the DuckDB manager
 import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+import duckdb
+
+from ..config import ConfigProvider, ETLConfig, StorageConfig
+from ..storage.sync_manager import StorageSyncManager
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ETLPipelineExtension:
     """
@@ -31,7 +34,7 @@ class ETLPipelineExtension:
         db_path: Optional[str] = None,
         vector_store_path: Optional[str] = None,
         filings_dir: Optional[str] = None,
-        read_only: bool = True
+        read_only: bool = True,
     ):
         """
         Initialize the ETL pipeline extension.
@@ -54,7 +57,7 @@ class ETLPipelineExtension:
             db_path=self.db_path,
             vector_store_path=self.vector_store_path,
             filings_dir=self.filings_dir,
-            read_only=read_only
+            read_only=read_only,
         )
 
     def register_filing(
@@ -65,7 +68,7 @@ class ETLPipelineExtension:
         accession_number: str,
         file_path: Optional[str] = None,
         processing_status: str = "downloaded",
-        document_url: Optional[str] = None
+        document_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Register a filing in DuckDB.
@@ -93,10 +96,7 @@ class ETLPipelineExtension:
             filing_id = f"{ticker}_{accession_number}"
 
             # Check if filing exists
-            existing = conn.execute(
-                "SELECT id FROM filings WHERE accession_number = ?",
-                [accession_number]
-            ).fetchone()
+            existing = conn.execute("SELECT id FROM filings WHERE accession_number = ?", [accession_number]).fetchone()
 
             if existing:
                 # Update filing
@@ -108,8 +108,7 @@ class ETLPipelineExtension:
                         last_updated = CURRENT_TIMESTAMP
                     WHERE accession_number = ?
                     """,
-                    [ticker, filing_type, filing_date, file_path, processing_status,
-                     document_url, accession_number]
+                    [ticker, filing_type, filing_date, file_path, processing_status, document_url, accession_number],
                 )
                 logger.info(f"Updated filing {filing_id} in database")
                 result = {"status": "updated", "filing_id": filing_id}
@@ -122,8 +121,16 @@ class ETLPipelineExtension:
                         local_file_path, processing_status, document_url, last_updated
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     """,
-                    [filing_id, ticker, accession_number, filing_type, filing_date,
-                     file_path, processing_status, document_url]
+                    [
+                        filing_id,
+                        ticker,
+                        accession_number,
+                        filing_type,
+                        filing_date,
+                        file_path,
+                        processing_status,
+                        document_url,
+                    ],
                 )
                 logger.info(f"Added filing {filing_id} to database")
                 result = {"status": "added", "filing_id": filing_id}
@@ -138,10 +145,7 @@ class ETLPipelineExtension:
             return {"status": "error", "error": str(e)}
 
     def update_filing_status(
-        self,
-        accession_number: str,
-        processing_status: str,
-        file_path: Optional[str] = None
+        self, accession_number: str, processing_status: str, file_path: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Update the processing status of a filing.
@@ -159,10 +163,7 @@ class ETLPipelineExtension:
             conn = duckdb_manager.get_read_write_connection(self.db_path)
 
             # Check if filing exists
-            existing = conn.execute(
-                "SELECT id FROM filings WHERE accession_number = ?",
-                [accession_number]
-            ).fetchone()
+            existing = conn.execute("SELECT id FROM filings WHERE accession_number = ?", [accession_number]).fetchone()
 
             if existing:
                 # Update filing
@@ -173,7 +174,7 @@ class ETLPipelineExtension:
                         SET processing_status = ?, local_file_path = ?, last_updated = CURRENT_TIMESTAMP
                         WHERE accession_number = ?
                         """,
-                        [processing_status, file_path, accession_number]
+                        [processing_status, file_path, accession_number],
                     )
                 else:
                     conn.execute(
@@ -182,7 +183,7 @@ class ETLPipelineExtension:
                         SET processing_status = ?, last_updated = CURRENT_TIMESTAMP
                         WHERE accession_number = ?
                         """,
-                        [processing_status, accession_number]
+                        [processing_status, accession_number],
                     )
 
                 logger.info(f"Updated filing {existing[0]} status to {processing_status}")

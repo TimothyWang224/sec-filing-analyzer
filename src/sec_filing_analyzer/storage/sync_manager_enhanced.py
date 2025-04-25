@@ -5,20 +5,21 @@ This module provides an enhanced version of the StorageSyncManager with better e
 and the ability to continue synchronization even if some parts fail.
 """
 
-import os
-import logging
-import duckdb
-import json
 import hashlib
-from pathlib import Path
+import json
+import logging
+import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple, Set
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
+import duckdb
 import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class EnhancedStorageSyncManager:
     """
@@ -32,7 +33,7 @@ class EnhancedStorageSyncManager:
         vector_store_path: str = "data/vector_store",
         filings_dir: str = "data/filings",
         graph_store_dir: str = "data/graph_store",
-        read_only: bool = True
+        read_only: bool = True,
     ):
         """
         Initialize the enhanced storage synchronization manager.
@@ -52,7 +53,7 @@ class EnhancedStorageSyncManager:
             vector_store_path=vector_store_path,
             filings_dir=filings_dir,
             graph_store_dir=graph_store_dir,
-            read_only=read_only
+            read_only=read_only,
         )
 
         # Store paths for reference
@@ -79,7 +80,7 @@ class EnhancedStorageSyncManager:
             "status_update": {"updated": 0, "errors": 0},
             "total_filings": 0,
             "overall_status": "success",
-            "failed_components": []
+            "failed_components": [],
         }
 
         # Sync vector store

@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # Global registry of memoized functions
 _memoized_functions = []
 
+
 def _make_hashable(obj):
     """
     Convert an object to a hashable representation.
@@ -33,6 +34,7 @@ def _make_hashable(obj):
     else:
         return str(obj)
 
+
 def memoize_tool(func):
     """
     Decorator to memoize tool results.
@@ -49,7 +51,7 @@ def memoize_tool(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
         # Get the tool name for logging
-        tool_name = args[0].name if args and hasattr(args[0], 'name') else func.__name__
+        tool_name = args[0].name if args and hasattr(args[0], "name") else func.__name__
 
         # Create a hashable key from the arguments
         try:
@@ -80,6 +82,7 @@ def memoize_tool(func):
     _memoized_functions.append((func.__name__, wrapper, cache))
 
     return wrapper
+
 
 def clear_tool_caches():
     """Clear all tool caches."""

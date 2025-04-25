@@ -10,9 +10,11 @@ This script:
 import os
 import shutil
 from pathlib import Path
+
 from rich.console import Console
 
 console = Console()
+
 
 def cleanup_root_directory():
     """Clean up the root directory."""
@@ -20,11 +22,11 @@ def cleanup_root_directory():
     tests_scripts_dir = Path("tests/scripts")
     scripts_dir = Path("scripts")
     docs_dir = Path("docs/assets")
-    
+
     # Ensure the directories exist
     tests_scripts_dir.mkdir(parents=True, exist_ok=True)
     console.print(f"[green]Ensured directory exists: {tests_scripts_dir}[/green]")
-    
+
     # Define files to move
     test_scripts = [
         "check_neo4j.py",
@@ -35,13 +37,11 @@ def cleanup_root_directory():
         "check_vector_store_aapl_updated.py",
         "check_vector_store_simple.py",
         "search_aapl_revenue.py",
-        "test_export.json"
+        "test_export.json",
     ]
-    
-    utility_scripts = [
-        "migrate_data_structure.py"
-    ]
-    
+
+    utility_scripts = ["migrate_data_structure.py"]
+
     # Move test scripts
     for script in test_scripts:
         if os.path.exists(script):
@@ -52,7 +52,7 @@ def cleanup_root_directory():
             console.print(f"[red]Removed {script} from root directory[/red]")
         else:
             console.print(f"[yellow]File not found: {script}[/yellow]")
-    
+
     # Move utility scripts
     for script in utility_scripts:
         if os.path.exists(script):
@@ -63,8 +63,9 @@ def cleanup_root_directory():
             console.print(f"[red]Removed {script} from root directory[/red]")
         else:
             console.print(f"[yellow]File not found: {script}[/yellow]")
-    
+
     console.print("\n[bold green]Root directory cleanup complete![/bold green]")
+
 
 if __name__ == "__main__":
     cleanup_root_directory()

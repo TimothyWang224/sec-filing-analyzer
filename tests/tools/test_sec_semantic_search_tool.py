@@ -2,9 +2,11 @@
 Unit tests for the SECSemanticSearchTool.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from src.tools.sec_semantic_search import SECSemanticSearchTool, SUPPORTED_QUERIES
+
+from src.tools.sec_semantic_search import SUPPORTED_QUERIES, SECSemanticSearchTool
 
 
 class TestSECSemanticSearchTool:
@@ -24,9 +26,9 @@ class TestSECSemanticSearchTool:
                     "filing_type": "10-K",
                     "filing_date": "2022-10-28",
                     "section": "Management Discussion",
-                    "section_type": "MD&A"
+                    "section_type": "MD&A",
                 },
-                "score": 0.95
+                "score": 0.95,
             }
         ]
         return mock_store
@@ -67,8 +69,8 @@ class TestSECSemanticSearchTool:
                 "companies": ["AAPL"],
                 "top_k": 3,
                 "filing_types": ["10-K"],
-                "date_range": ["2022-01-01", "2022-12-31"]
-            }
+                "date_range": ["2022-01-01", "2022-12-31"],
+            },
         )
 
         # Check that the result is correct
@@ -90,10 +92,7 @@ class TestSECSemanticSearchTool:
         """Test executing the tool with minimal parameters."""
         # Execute the tool
         result = await tool.execute(
-            query_type="semantic_search",
-            parameters={
-                "query": "What was Apple's revenue in 2022?"
-            }
+            query_type="semantic_search", parameters={"query": "What was Apple's revenue in 2022?"}
         )
 
         # Check that the result is correct
@@ -111,10 +110,7 @@ class TestSECSemanticSearchTool:
 
         # Execute the tool
         result = await tool.execute(
-            query_type="semantic_search",
-            parameters={
-                "query": "What was Apple's revenue in 2022?"
-            }
+            query_type="semantic_search", parameters={"query": "What was Apple's revenue in 2022?"}
         )
 
         # Check that the result contains an error message
@@ -131,10 +127,7 @@ class TestSECSemanticSearchTool:
         # Execute the tool
         result = await tool.execute(
             query_type="semantic_search",
-            parameters={
-                "query": "What was Apple's revenue in 2022?",
-                "companies": ["AAPL"]
-            }
+            parameters={"query": "What was Apple's revenue in 2022?", "companies": ["AAPL"]},
         )
 
         # Check that the result contains the expected fields
@@ -150,10 +143,7 @@ class TestSECSemanticSearchTool:
 
         # Execute the tool
         result = await tool.execute(
-            query_type="semantic_search",
-            parameters={
-                "query": "What was Apple's revenue in 2022?"
-            }
+            query_type="semantic_search", parameters={"query": "What was Apple's revenue in 2022?"}
         )
 
         # Check that the result contains an error message
@@ -171,8 +161,8 @@ class TestSECSemanticSearchTool:
                 "companies": ["AAPL"],
                 "top_k": 3,
                 "filing_types": ["10-K"],
-                "date_range": ["2022-01-01", "2022-12-31"]
-            }
+                "date_range": ["2022-01-01", "2022-12-31"],
+            },
         )
 
         # Check that validation passed
@@ -182,10 +172,7 @@ class TestSECSemanticSearchTool:
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
         result = tool.validate_args(
-            query_type="invalid_query",
-            parameters={
-                "query": "What was Apple's revenue in 2022?"
-            }
+            query_type="invalid_query", parameters={"query": "What was Apple's revenue in 2022?"}
         )
 
         # Check that validation failed
@@ -194,12 +181,7 @@ class TestSECSemanticSearchTool:
     def test_validate_args_missing_query(self, tool):
         """Test validating arguments without a query."""
         # Validate arguments without a query
-        result = tool.validate_args(
-            query_type="semantic_search",
-            parameters={
-                "companies": ["AAPL"]
-            }
-        )
+        result = tool.validate_args(query_type="semantic_search", parameters={"companies": ["AAPL"]})
 
         # Check that validation failed
         assert result is False

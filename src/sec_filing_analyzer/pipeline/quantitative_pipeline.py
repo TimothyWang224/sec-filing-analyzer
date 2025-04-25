@@ -6,8 +6,8 @@ quantitative data from SEC filings.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 from ..data_retrieval.sec_downloader import SECFilingsDownloader
 from ..quantitative.processing.edgar_xbrl_to_duckdb import EdgarXBRLToDuckDBExtractor
@@ -15,6 +15,7 @@ from ..quantitative.processing.edgar_xbrl_to_duckdb import EdgarXBRLToDuckDBExtr
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class QuantitativeETLPipeline:
     """
@@ -26,7 +27,7 @@ class QuantitativeETLPipeline:
         downloader: Optional[SECFilingsDownloader] = None,
         xbrl_extractor: Optional[EdgarXBRLToDuckDBExtractor] = None,
         db_path: Optional[str] = None,
-        read_only: bool = True
+        read_only: bool = True,
     ):
         """
         Initialize the quantitative ETL pipeline.
@@ -39,10 +40,7 @@ class QuantitativeETLPipeline:
         """
         self.downloader = downloader or SECFilingsDownloader()
         # Pass read_only parameter to the XBRL extractor
-        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(
-            db_path=db_path,
-            read_only=read_only
-        )
+        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(db_path=db_path, read_only=read_only)
 
         logger.info("Initialized quantitative ETL pipeline")
 
@@ -52,7 +50,7 @@ class QuantitativeETLPipeline:
         filing_type: str,
         filing_date: Optional[str] = None,
         accession_number: Optional[str] = None,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process a single filing through the quantitative ETL pipeline.
@@ -74,11 +72,7 @@ class QuantitativeETLPipeline:
             if not accession_number:
                 # Get the filing object
                 filings = self.downloader.get_filings(
-                    ticker=ticker,
-                    filing_types=[filing_type],
-                    start_date=filing_date,
-                    end_date=filing_date,
-                    limit=1
+                    ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
                 )
 
                 if not filings:
@@ -98,10 +92,7 @@ class QuantitativeETLPipeline:
                 accession_number = filing_data.get("accession_number")
 
             # Step 2: Extract XBRL data and store in DuckDB
-            result = self.xbrl_extractor.process_filing(
-                ticker=ticker,
-                accession_number=accession_number
-            )
+            result = self.xbrl_extractor.process_filing(ticker=ticker, accession_number=accession_number)
 
             if "error" in result:
                 logger.error(f"Failed to extract XBRL data for {filing_type} filing for {ticker}: {result['error']}")
@@ -119,7 +110,7 @@ class QuantitativeETLPipeline:
                 "filing_type": filing_type,
                 "accession_number": accession_number,
                 "has_xbrl": result.get("has_xbrl", False),
-                "fiscal_info": result.get("fiscal_info", {})
+                "fiscal_info": result.get("fiscal_info", {}),
             }
 
         except Exception as e:
@@ -133,7 +124,7 @@ class QuantitativeETLPipeline:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit: int = 10,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process multiple filings for a company through the quantitative ETL pipeline.
@@ -154,15 +145,11 @@ class QuantitativeETLPipeline:
 
             # Default to 10-K and 10-Q filings if not specified
             if filing_types is None:
-                filing_types = ['10-K', '10-Q']
+                filing_types = ["10-K", "10-Q"]
 
             # Step 1: Get the list of filings
             filings = self.downloader.get_filings(
-                ticker=ticker,
-                filing_types=filing_types,
-                start_date=start_date,
-                end_date=end_date,
-                limit=limit
+                ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
             )
 
             if not filings:
@@ -176,18 +163,13 @@ class QuantitativeETLPipeline:
                     ticker=ticker,
                     filing_type=filing.get("filing_type"),
                     accession_number=filing.get("accession_number"),
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 results.append(result)
 
             logger.info(f"Successfully processed {len(results)} filings for {ticker}")
 
-            return {
-                "status": "success",
-                "ticker": ticker,
-                "num_filings": len(results),
-                "results": results
-            }
+            return {"status": "success", "ticker": ticker, "num_filings": len(results), "results": results}
 
         except Exception as e:
             logger.error(f"Error processing filings for {ticker}: {e}")
@@ -200,7 +182,7 @@ class QuantitativeETLPipeline:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit_per_company: int = 5,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process filings for multiple companies through the quantitative ETL pipeline.
@@ -228,17 +210,13 @@ class QuantitativeETLPipeline:
                     start_date=start_date,
                     end_date=end_date,
                     limit=limit_per_company,
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 results[ticker] = result
 
             logger.info(f"Successfully processed filings for {len(tickers)} companies")
 
-            return {
-                "status": "success",
-                "num_companies": len(tickers),
-                "results": results
-            }
+            return {"status": "success", "num_companies": len(tickers), "results": results}
 
         except Exception as e:
             logger.error(f"Error processing multiple companies: {e}")

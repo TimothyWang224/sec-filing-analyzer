@@ -4,23 +4,21 @@ DuckDB Explorer
 A standalone application for exploring DuckDB databases.
 """
 
-import streamlit as st
-import pandas as pd
+import logging
 import os
 import sys
-import logging
 from pathlib import Path
+
+import pandas as pd
+import streamlit as st
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('duckdb_explorer.log')
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("duckdb_explorer.log")],
 )
-logger = logging.getLogger('duckdb_explorer')
+logger = logging.getLogger("duckdb_explorer")
 
 # Log startup information
 logger.info("DuckDB Explorer starting up")
@@ -28,12 +26,7 @@ logger.info(f"Python version: {sys.version}")
 logger.info(f"Current directory: {os.getcwd()}")
 
 # Set page config
-st.set_page_config(
-    page_title="DuckDB Explorer",
-    page_icon="🔍",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="DuckDB Explorer", page_icon="🔍", layout="wide", initial_sidebar_state="expanded")
 
 # Title and description
 st.title("DuckDB Explorer")
@@ -62,6 +55,7 @@ if os.path.exists(db_path):
     try:
         logger.info("Attempting to import duckdb")
         import duckdb
+
         logger.info("Successfully imported duckdb")
 
         # Connect to database
@@ -117,7 +111,9 @@ if os.path.exists(db_path):
                                 logger.info(f"Table columns: {columns}")
 
                                 # Fetch data as a list of tuples
-                                sample_data_tuples = conn.execute(f"SELECT * FROM {selected_table} LIMIT {rows_per_page} OFFSET {offset}").fetchall()
+                                sample_data_tuples = conn.execute(
+                                    f"SELECT * FROM {selected_table} LIMIT {rows_per_page} OFFSET {offset}"
+                                ).fetchall()
                                 logger.info(f"Successfully fetched sample data: {len(sample_data_tuples)} rows")
 
                                 # Convert to list of dictionaries for JSON display
@@ -160,14 +156,16 @@ if os.path.exists(db_path):
                                 # Convert schema to list of dictionaries for JSON display
                                 schema_list = []
                                 for col in schema:
-                                    schema_list.append({
-                                        "Column": col[0],
-                                        "Type": col[1],
-                                        "Null": col[2],
-                                        "Key": col[3],
-                                        "Default": str(col[4]) if col[4] is not None else None,
-                                        "Extra": str(col[5]) if col[5] is not None else None
-                                    })
+                                    schema_list.append(
+                                        {
+                                            "Column": col[0],
+                                            "Type": col[1],
+                                            "Null": col[2],
+                                            "Key": col[3],
+                                            "Default": str(col[4]) if col[4] is not None else None,
+                                            "Extra": str(col[5]) if col[5] is not None else None,
+                                        }
+                                    )
 
                                 # Display as JSON
                                 logger.info("Displaying schema as JSON")
@@ -186,13 +184,18 @@ if os.path.exists(db_path):
                                     # Convert foreign keys to list of dictionaries for JSON display
                                     fk_list = []
                                     for col in fk_columns:
-                                        fk_list.append({
-                                            "Column": col,
-                                            "Potential Referenced Table": col.replace("_id", "") if not col in ["ticker", "filing_id", "fact_id"] else
-                                                                         "companies" if col == "ticker" else
-                                                                         "filings" if col == "filing_id" else
-                                                                         "financial_facts"
-                                        })
+                                        fk_list.append(
+                                            {
+                                                "Column": col,
+                                                "Potential Referenced Table": col.replace("_id", "")
+                                                if not col in ["ticker", "filing_id", "fact_id"]
+                                                else "companies"
+                                                if col == "ticker"
+                                                else "filings"
+                                                if col == "filing_id"
+                                                else "financial_facts",
+                                            }
+                                        )
                                     logger.info("Displaying foreign keys as JSON")
                                     st.json(fk_list)
                                 else:
@@ -210,7 +213,7 @@ if os.path.exists(db_path):
                                 "Select All": f"SELECT * FROM {selected_table} LIMIT 100",
                                 "Count Rows": f"SELECT COUNT(*) FROM {selected_table}",
                                 "Group By": f"SELECT column1, COUNT(*) FROM {selected_table} GROUP BY column1 LIMIT 100",
-                                "Join Example": f"SELECT a.*, b.* FROM {selected_table} a JOIN another_table b ON a.id = b.id LIMIT 100"
+                                "Join Example": f"SELECT a.*, b.* FROM {selected_table} a JOIN another_table b ON a.id = b.id LIMIT 100",
                             }
 
                             if selected_table == "companies":
@@ -218,18 +221,34 @@ if os.path.exists(db_path):
                                 sample_queries["Company Count"] = "SELECT COUNT(*) FROM companies"
 
                             if selected_table == "filings":
-                                sample_queries["Recent Filings"] = "SELECT * FROM filings ORDER BY filing_date DESC LIMIT 10"
-                                sample_queries["Filings by Type"] = "SELECT filing_type, COUNT(*) FROM filings GROUP BY filing_type"
-                                sample_queries["Filings by Company"] = "SELECT ticker, COUNT(*) FROM filings GROUP BY ticker ORDER BY COUNT(*) DESC"
+                                sample_queries["Recent Filings"] = (
+                                    "SELECT * FROM filings ORDER BY filing_date DESC LIMIT 10"
+                                )
+                                sample_queries["Filings by Type"] = (
+                                    "SELECT filing_type, COUNT(*) FROM filings GROUP BY filing_type"
+                                )
+                                sample_queries["Filings by Company"] = (
+                                    "SELECT ticker, COUNT(*) FROM filings GROUP BY ticker ORDER BY COUNT(*) DESC"
+                                )
 
                             if selected_table == "financial_facts":
-                                sample_queries["Recent Facts"] = "SELECT * FROM financial_facts ORDER BY period_end_date DESC LIMIT 10"
-                                sample_queries["Facts by Metric"] = "SELECT metric_name, COUNT(*) FROM financial_facts GROUP BY metric_name ORDER BY COUNT(*) DESC"
+                                sample_queries["Recent Facts"] = (
+                                    "SELECT * FROM financial_facts ORDER BY period_end_date DESC LIMIT 10"
+                                )
+                                sample_queries["Facts by Metric"] = (
+                                    "SELECT metric_name, COUNT(*) FROM financial_facts GROUP BY metric_name ORDER BY COUNT(*) DESC"
+                                )
 
                             if selected_table == "time_series_metrics":
-                                sample_queries["Recent Metrics"] = "SELECT * FROM time_series_metrics ORDER BY end_date DESC LIMIT 10"
-                                sample_queries["Metrics by Company"] = "SELECT ticker, COUNT(*) FROM time_series_metrics GROUP BY ticker ORDER BY COUNT(*) DESC"
-                                sample_queries["Revenue Metrics"] = "SELECT * FROM time_series_metrics WHERE metric_name = 'Revenue' ORDER BY end_date DESC LIMIT 10"
+                                sample_queries["Recent Metrics"] = (
+                                    "SELECT * FROM time_series_metrics ORDER BY end_date DESC LIMIT 10"
+                                )
+                                sample_queries["Metrics by Company"] = (
+                                    "SELECT ticker, COUNT(*) FROM time_series_metrics GROUP BY ticker ORDER BY COUNT(*) DESC"
+                                )
+                                sample_queries["Revenue Metrics"] = (
+                                    "SELECT * FROM time_series_metrics WHERE metric_name = 'Revenue' ORDER BY end_date DESC LIMIT 10"
+                                )
 
                             selected_sample = st.selectbox("Sample Queries", list(sample_queries.keys()))
 
@@ -265,12 +284,12 @@ if os.path.exists(db_path):
                                         try:
                                             # Create a DataFrame for CSV export
                                             export_df = pd.DataFrame(result_list)
-                                            csv = export_df.to_csv(index=False).encode('utf-8')
+                                            csv = export_df.to_csv(index=False).encode("utf-8")
                                             st.download_button(
                                                 label="Download as CSV",
                                                 data=csv,
                                                 file_name=f"query_result.csv",
-                                                mime="text/csv"
+                                                mime="text/csv",
                                             )
                                         except Exception as csv_error:
                                             logger.error(f"Could not create CSV download: {csv_error}")

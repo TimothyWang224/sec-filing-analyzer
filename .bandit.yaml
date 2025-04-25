@@ -1,0 +1,39 @@
+exclude_dirs:
+  - tests
+  - scripts
+  - archive
+  - chat_app
+  - external_libs
+  - notebooks
+  - docs
+  - .github
+  - .logs
+  - check_company_filings.py
+  - check_db.py
+  - check_financial_data.py
+  - check_nvda_data.py
+  - debug_sec_financial_data.py
+  - monitor_logs.py
+  - organize_root_directory.py
+  - run_app.py
+  - run_chat_app.py
+  - run_chat_app_alt.py
+  - add_nvda.py
+  - test_*.py
+
+skips:
+  - B101  # Use of assert detected
+  - B104  # Possible binding to all interfaces
+  - B105  # Password hardcoded in config file
+  - B108  # Insecure usage of temp file
+  - B110  # Try, except, pass detected
+  - B303  # Use of insecure MD2, MD4, MD5, or SHA1 hash function
+  - B307  # Blacklisted call to eval()
+  - B311  # Standard pseudo-random generators are not suitable for security/cryptographic purposes
+  - B314  # Blacklisted calls to xml.etree.ElementTree
+  - B324  # Use of insecure MD2, MD4, MD5, or SHA1 hash function
+  - B404  # Import of subprocess module
+  - B603  # subprocess call - check for execution of untrusted input
+  - B605  # Starting a process with a shell
+  - B607  # Starting a process with a partial executable path
+  - B608  # Possible SQL injection vector

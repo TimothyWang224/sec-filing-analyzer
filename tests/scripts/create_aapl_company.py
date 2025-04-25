@@ -22,14 +22,17 @@ print("AAPL filings:", result)
 # Connect AAPL company to its filings
 if result:
     for filing in result:
-        filing_id = filing.get('filing_id')
+        filing_id = filing.get("filing_id")
         if filing_id:
-            connect_result = gs.query("""
+            connect_result = gs.query(
+                """
             MATCH (c:Company {ticker: 'AAPL'})
             MATCH (f:Filing {id: $filing_id})
             MERGE (c)-[:FILED]->(f)
             RETURN c.ticker as company, f.id as filing
-            """, filing_id=filing_id)
+            """,
+                filing_id=filing_id,
+            )
             print(f"Connected AAPL to filing {filing_id}:", connect_result)
 
 # Verify connections

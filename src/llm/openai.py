@@ -5,7 +5,7 @@ OpenAI LLM implementation for SEC Filing Analyzer.
 import json
 import os
 import re
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import openai
 from openai import OpenAI
@@ -21,7 +21,7 @@ class OpenAILLM(LLM):
         model: str = "gpt-4o-mini",
         temperature: float = 0.7,
         max_tokens: int = 1000,
-        api_key: Optional[str] = None
+        api_key: Optional[str] = None,
     ):
         """
         Initialize the OpenAI LLM.
@@ -51,7 +51,7 @@ class OpenAILLM(LLM):
         max_tokens: Optional[int] = None,
         stop: Optional[Union[str, List[str]]] = None,
         json_mode: bool = False,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Generate text from the OpenAI LLM.
@@ -85,7 +85,7 @@ class OpenAILLM(LLM):
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stop": stop,
-            **kwargs
+            **kwargs,
         }
 
         # Add response_format for JSON mode if requested
@@ -105,7 +105,7 @@ class OpenAILLM(LLM):
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Generate structured JSON output from the OpenAI LLM.
@@ -122,11 +122,15 @@ class OpenAILLM(LLM):
             Generated JSON object
         """
         # Add JSON instructions to the prompt
-        json_prompt = f"{prompt}\n\nRespond with a JSON object that matches this schema:\n{json.dumps(output_schema, indent=2)}"
+        json_prompt = (
+            f"{prompt}\n\nRespond with a JSON object that matches this schema:\n{json.dumps(output_schema, indent=2)}"
+        )
 
         # Add JSON instructions to the system prompt
         if system_prompt:
-            system_prompt = f"{system_prompt}\nYou must respond with a valid JSON object that matches the specified schema."
+            system_prompt = (
+                f"{system_prompt}\nYou must respond with a valid JSON object that matches the specified schema."
+            )
         else:
             system_prompt = "You must respond with a valid JSON object that matches the specified schema."
 
@@ -137,7 +141,7 @@ class OpenAILLM(LLM):
             temperature=temperature,
             max_tokens=max_tokens,
             json_mode=True,  # Force the model to return valid JSON
-            **kwargs
+            **kwargs,
         )
 
         # Extract JSON from the response
@@ -146,7 +150,7 @@ class OpenAILLM(LLM):
             return json.loads(response_text)
         except json.JSONDecodeError:
             # If that fails, try to extract JSON using regex
-            json_match = re.search(r'```json\n(.*?)\n```', response_text, re.DOTALL)
+            json_match = re.search(r"```json\n(.*?)\n```", response_text, re.DOTALL)
             if json_match:
                 try:
                     return json.loads(json_match.group(1))
@@ -154,7 +158,7 @@ class OpenAILLM(LLM):
                     pass
 
             # Try another common pattern
-            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response_text, re.DOTALL)
             if json_match:
                 try:
                     return json.loads(json_match.group(0))

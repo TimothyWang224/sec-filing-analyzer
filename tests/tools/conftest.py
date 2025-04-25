@@ -2,8 +2,10 @@
 Pytest fixtures for the tools tests.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from src.tools.registry import ToolRegistry
 from src.tools.schema_registry import SchemaRegistry
 
@@ -15,10 +17,10 @@ def reset_registries():
     ToolRegistry._tools = {}
     ToolRegistry._schema_mappings = {}
     ToolRegistry._tool_specs = {}
-    
+
     # Clear the schema registry
     SchemaRegistry._db_schemas = {}
     SchemaRegistry._field_mappings = {}
     SchemaRegistry._schema_files = {}
-    
+
     yield

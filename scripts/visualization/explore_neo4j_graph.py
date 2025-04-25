@@ -18,27 +18,25 @@ Options:
 """
 
 import argparse
+import json
 import logging
 import os
-from typing import Dict, List, Any, Optional
-import json
 import tempfile
 import webbrowser
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from neo4j import GraphDatabase
-import networkx as nx
 import matplotlib.pyplot as plt
+import networkx as nx
 from matplotlib.colors import TABLEAU_COLORS
+from neo4j import GraphDatabase
 
 from sec_filing_analyzer.config import neo4j_config
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class Neo4jExplorer:
     """Explorer for Neo4j graph databases."""
@@ -48,7 +46,7 @@ class Neo4jExplorer:
         url: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        database: Optional[str] = None
+        database: Optional[str] = None,
     ):
         """Initialize the Neo4j explorer."""
         # Get Neo4j credentials from parameters or environment variables
@@ -66,7 +64,7 @@ class Neo4jExplorer:
 
     def close(self):
         """Close the Neo4j connection."""
-        if hasattr(self, 'driver'):
+        if hasattr(self, "driver"):
             self.driver.close()
             logger.info("Neo4j connection closed")
 
@@ -75,7 +73,7 @@ class Neo4jExplorer:
         summary = {
             "node_counts": self.count_nodes_by_label(),
             "relationship_counts": self.count_relationships_by_type(),
-            "schema": self.get_schema()
+            "schema": self.get_schema(),
         }
         return summary
 
@@ -140,10 +138,7 @@ class Neo4jExplorer:
                 else:
                     properties = []
 
-                schema[label] = {
-                    "properties": properties,
-                    "relationships": []
-                }
+                schema[label] = {"properties": properties, "relationships": []}
 
             # Get all relationship types
             rel_types_result = session.run("CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType")
@@ -163,123 +158,141 @@ class Neo4jExplorer:
 
                     for from_label in from_labels:
                         if from_label in schema:
-                            schema[from_label]["relationships"].append({
-                                "type": rel_type,
-                                "direction": "outgoing",
-                                "to_labels": to_labels
-                            })
+                            schema[from_label]["relationships"].append(
+                                {"type": rel_type, "direction": "outgoing", "to_labels": to_labels}
+                            )
 
                     for to_label in to_labels:
                         if to_label in schema:
-                            schema[to_label]["relationships"].append({
-                                "type": rel_type,
-                                "direction": "incoming",
-                                "from_labels": from_labels
-                            })
+                            schema[to_label]["relationships"].append(
+                                {"type": rel_type, "direction": "incoming", "from_labels": from_labels}
+                            )
 
         return schema
 
     def get_nodes_by_label(self, label: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get nodes with a specific label."""
         with self.driver.session(database=self.db) as session:
-            result = session.run(f"""
+            result = session.run(
+                f"""
                 MATCH (n:{label})
                 RETURN n, id(n) as neo4j_id
                 LIMIT $limit
-            """, limit=limit)
+            """,
+                limit=limit,
+            )
 
-            return [{
-                "id": record["neo4j_id"],
-                "properties": dict(record["n"])
-            } for record in result]
+            return [{"id": record["neo4j_id"], "properties": dict(record["n"])} for record in result]
 
     def get_relationships_by_type(self, rel_type: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get relationships of a specific type."""
         with self.driver.session(database=self.db) as session:
-            result = session.run(f"""
+            result = session.run(
+                f"""
                 MATCH (from)-[r:{rel_type}]->(to)
                 RETURN from, r, to, id(r) as rel_id
                 LIMIT $limit
-            """, limit=limit)
+            """,
+                limit=limit,
+            )
 
-            return [{
-                "id": record["rel_id"],
-                "from_node": dict(record["from"]),
-                "to_node": dict(record["to"]),
-                "properties": dict(record["r"])
-            } for record in result]
+            return [
+                {
+                    "id": record["rel_id"],
+                    "from_node": dict(record["from"]),
+                    "to_node": dict(record["to"]),
+                    "properties": dict(record["r"]),
+                }
+                for record in result
+            ]
 
     def traverse_from_node(self, node_id: str, depth: int = 2) -> Dict[str, Any]:
         """Traverse the graph starting from a node."""
         with self.driver.session(database=self.db) as session:
             # First, find the node
-            node_result = session.run("""
+            node_result = session.run(
+                """
                 MATCH (n)
                 WHERE n.id = $node_id OR id(n) = $node_id_int
                 RETURN n, labels(n) as labels
                 LIMIT 1
-            """, node_id=node_id, node_id_int=int(node_id) if node_id.isdigit() else -1)
+            """,
+                node_id=node_id,
+                node_id_int=int(node_id) if node_id.isdigit() else -1,
+            )
 
             node_record = node_result.single()
             if not node_record:
                 return {"error": f"Node with ID {node_id} not found"}
 
             # Then, traverse outgoing relationships
-            out_result = session.run("""
+            out_result = session.run(
+                """
                 MATCH (n)-[r]->(related)
                 WHERE n.id = $node_id OR id(n) = $node_id_int
                 RETURN type(r) as type, related, labels(related) as related_labels
                 LIMIT 100
-            """, node_id=node_id, node_id_int=int(node_id) if node_id.isdigit() else -1)
+            """,
+                node_id=node_id,
+                node_id_int=int(node_id) if node_id.isdigit() else -1,
+            )
 
-            outgoing = [{
-                "relationship_type": record["type"],
-                "target_node": dict(record["related"]),
-                "target_labels": record["related_labels"]
-            } for record in out_result]
+            outgoing = [
+                {
+                    "relationship_type": record["type"],
+                    "target_node": dict(record["related"]),
+                    "target_labels": record["related_labels"],
+                }
+                for record in out_result
+            ]
 
             # Traverse incoming relationships
-            in_result = session.run("""
+            in_result = session.run(
+                """
                 MATCH (related)-[r]->(n)
                 WHERE n.id = $node_id OR id(n) = $node_id_int
                 RETURN type(r) as type, related, labels(related) as related_labels
                 LIMIT 100
-            """, node_id=node_id, node_id_int=int(node_id) if node_id.isdigit() else -1)
+            """,
+                node_id=node_id,
+                node_id_int=int(node_id) if node_id.isdigit() else -1,
+            )
 
-            incoming = [{
-                "relationship_type": record["type"],
-                "source_node": dict(record["related"]),
-                "source_labels": record["related_labels"]
-            } for record in in_result]
+            incoming = [
+                {
+                    "relationship_type": record["type"],
+                    "source_node": dict(record["related"]),
+                    "source_labels": record["related_labels"],
+                }
+                for record in in_result
+            ]
 
             return {
                 "node": dict(node_record["n"]),
                 "labels": node_record["labels"],
                 "outgoing_relationships": outgoing,
-                "incoming_relationships": incoming
+                "incoming_relationships": incoming,
             }
 
     def find_paths(self, from_label: str, to_label: str, max_depth: int = 4, limit: int = 5) -> List[Dict[str, Any]]:
         """Find paths between two node labels."""
         with self.driver.session(database=self.db) as session:
-            result = session.run("""
+            result = session.run(
+                """
                 MATCH path = (from:{from_label})-[*1..{max_depth}]->(to:{to_label})
                 RETURN path
                 LIMIT $limit
-            """.format(from_label=from_label, to_label=to_label, max_depth=max_depth), limit=limit)
+            """.format(from_label=from_label, to_label=to_label, max_depth=max_depth),
+                limit=limit,
+            )
 
             paths = []
             for record in result:
                 path = record["path"]
                 path_data = {
                     "nodes": [dict(node) for node in path.nodes],
-                    "relationships": [
-                        {
-                            "type": rel.type,
-                            "properties": dict(rel)
-                        } for rel in path.relationships
-                    ],
-                    "length": len(path.relationships)
+                    "relationships": [{"type": rel.type, "properties": dict(rel)} for rel in path.relationships],
+                    "length": len(path.relationships),
                 }
                 paths.append(path_data)
 
@@ -292,11 +305,14 @@ class Neo4jExplorer:
 
         with self.driver.session(database=self.db) as session:
             # Get a sample of nodes
-            result = session.run("""
+            result = session.run(
+                """
                 MATCH (n)
                 RETURN n, labels(n) as labels
                 LIMIT $limit
-            """, limit=limit_nodes)
+            """,
+                limit=limit_nodes,
+            )
 
             # Add nodes to the graph
             for record in result:
@@ -345,8 +361,8 @@ class Neo4jExplorer:
         pos = nx.spring_layout(G, seed=42)
 
         # Get unique node types and relationship types
-        node_types = set(nx.get_node_attributes(G, 'label').values())
-        edge_types = set(nx.get_edge_attributes(G, 'type').values())
+        node_types = set(nx.get_node_attributes(G, "label").values())
+        edge_types = set(nx.get_edge_attributes(G, "type").values())
 
         # Create a color map for node types
         color_list = list(TABLEAU_COLORS.values())
@@ -354,58 +370,48 @@ class Neo4jExplorer:
 
         # Draw nodes by type
         for node_type in node_types:
-            node_list = [node for node, data in G.nodes(data=True) if data.get('label') == node_type]
+            node_list = [node for node, data in G.nodes(data=True) if data.get("label") == node_type]
             nx.draw_networkx_nodes(
-                G, pos,
-                nodelist=node_list,
-                node_color=node_colors[node_type],
-                node_size=500,
-                alpha=0.8,
-                label=node_type
+                G, pos, nodelist=node_list, node_color=node_colors[node_type], node_size=500, alpha=0.8, label=node_type
             )
 
         # Draw edges by type
         for edge_type in edge_types:
-            edge_list = [(u, v) for u, v, data in G.edges(data=True) if data.get('type') == edge_type]
-            nx.draw_networkx_edges(
-                G, pos,
-                edgelist=edge_list,
-                width=1.5,
-                alpha=0.7,
-                edge_color='gray',
-                label=edge_type
-            )
+            edge_list = [(u, v) for u, v, data in G.edges(data=True) if data.get("type") == edge_type]
+            nx.draw_networkx_edges(G, pos, edgelist=edge_list, width=1.5, alpha=0.7, edge_color="gray", label=edge_type)
 
         # Draw node labels
-        labels = {node: data.get('name', str(node)) for node, data in G.nodes(data=True)}
+        labels = {node: data.get("name", str(node)) for node, data in G.nodes(data=True)}
         nx.draw_networkx_labels(G, pos, labels, font_size=10)
 
         # Add a legend
         plt.legend()
 
         # Remove axis
-        plt.axis('off')
+        plt.axis("off")
 
         # Add a title
-        plt.title('Neo4j Graph Visualization')
+        plt.title("Neo4j Graph Visualization")
 
         # Save or show the visualization
         if output_file:
-            plt.savefig(output_file, bbox_inches='tight')
+            plt.savefig(output_file, bbox_inches="tight")
             return output_file
         else:
             # Create a temporary file
-            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                 temp_path = tmp.name
 
-            plt.savefig(temp_path, bbox_inches='tight')
+            plt.savefig(temp_path, bbox_inches="tight")
             plt.close()
 
             return temp_path
 
+
 def print_json(data: Any):
     """Print data as formatted JSON."""
     print(json.dumps(data, indent=2, default=str))
+
 
 def main():
     """Main function."""
@@ -433,12 +439,7 @@ def main():
 
     try:
         # Initialize Neo4j explorer
-        explorer = Neo4jExplorer(
-            url=args.url,
-            username=args.username,
-            password=args.password,
-            database=args.database
-        )
+        explorer = Neo4jExplorer(url=args.url, username=args.username, password=args.password, database=args.database)
 
         # Execute the requested command
         if args.summary:
@@ -579,8 +580,9 @@ def main():
     except Exception as e:
         logger.error(f"Error: {str(e)}")
     finally:
-        if 'explorer' in locals():
+        if "explorer" in locals():
             explorer.close()
+
 
 if __name__ == "__main__":
     main()

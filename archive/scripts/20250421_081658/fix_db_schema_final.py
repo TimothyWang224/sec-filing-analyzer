@@ -4,9 +4,11 @@ Fix database schema for the SEC Filing Analyzer.
 This script fixes the database schema to match what the sync_manager.py file expects.
 """
 
-import duckdb
 import os
 from pathlib import Path
+
+import duckdb
+
 
 def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb"):
     """Fix the database schema to match what the sync_manager.py file expects."""
@@ -22,12 +24,25 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
 
     try:
         # Check if the filings table exists
-        filings_exists = conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'").fetchone()[0] > 0
+        filings_exists = (
+            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'").fetchone()[0]
+            > 0
+        )
 
         if filings_exists:
             # Check if both id and filing_id columns exist in the filings table
-            id_exists = conn.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'id'").fetchone()[0] > 0
-            filing_id_exists = conn.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id'").fetchone()[0] > 0
+            id_exists = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'id'"
+                ).fetchone()[0]
+                > 0
+            )
+            filing_id_exists = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id'"
+                ).fetchone()[0]
+                > 0
+            )
 
             if id_exists and filing_id_exists:
                 print("Both id and filing_id columns exist in filings table. Updating filing_id values...")
@@ -57,10 +72,13 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
                 """)
 
                 # Get the maximum filing_id value
-                max_id = conn.execute("SELECT COALESCE(MAX(filing_id), 0) FROM filings WHERE filing_id IS NOT NULL").fetchone()[0]
+                max_id = conn.execute(
+                    "SELECT COALESCE(MAX(filing_id), 0) FROM filings WHERE filing_id IS NOT NULL"
+                ).fetchone()[0]
 
                 # Insert data from the old table to the new table with auto-incrementing filing_id
-                conn.execute("""
+                conn.execute(
+                    """
                 INSERT INTO filings_new (
                     filing_id, company_id, accession_number, filing_type, filing_date,
                     fiscal_year, fiscal_period, fiscal_period_end_date, document_url,
@@ -72,7 +90,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
                     fiscal_year, fiscal_period, fiscal_period_end_date, document_url,
                     local_file_path, has_xbrl, created_at, updated_at
                 FROM filings
-                """, [max_id])
+                """,
+                    [max_id],
+                )
 
                 print("Created new filings table with updated filing_id values")
 
@@ -101,11 +121,19 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
                 print("Removed id column from filings table")
 
         # Check if the companies table exists
-        companies_exists = conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'").fetchone()[0] > 0
+        companies_exists = (
+            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'").fetchone()[0]
+            > 0
+        )
 
         if companies_exists:
             # Check if the updated_at column exists in the companies table
-            updated_at_exists = conn.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'companies' AND column_name = 'updated_at'").fetchone()[0] > 0
+            updated_at_exists = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'companies' AND column_name = 'updated_at'"
+                ).fetchone()[0]
+                > 0
+            )
 
             if not updated_at_exists:
                 print("Adding updated_at column to companies table...")
@@ -124,6 +152,7 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     # Fix the database schema

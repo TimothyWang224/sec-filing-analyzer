@@ -6,30 +6,29 @@ It can process a single filing or all filings for a company.
 """
 
 import argparse
-import logging
-import sys
-import os
-from pathlib import Path
 import json
-from typing import List, Dict, Any, Optional
+import logging
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.data_processing.xbrl_extractor import XBRLExtractor
-from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
 import edgar
 
+from sec_filing_analyzer.data_processing.xbrl_extractor import XBRLExtractor
+from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
+
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-def process_filing(ticker: str, accession_number: str,
-                  xbrl_extractor: XBRLExtractor,
-                  financial_store: FinancialDataStore) -> bool:
+
+def process_filing(
+    ticker: str, accession_number: str, xbrl_extractor: XBRLExtractor, financial_store: FinancialDataStore
+) -> bool:
     """Process a single filing.
 
     Args:
@@ -47,9 +46,7 @@ def process_filing(ticker: str, accession_number: str,
 
         # Extract XBRL data
         xbrl_data = xbrl_extractor.extract_financials(
-            ticker=ticker,
-            filing_id=filing_id,
-            accession_number=accession_number
+            ticker=ticker, filing_id=filing_id, accession_number=accession_number
         )
 
         # Store XBRL data
@@ -65,9 +62,10 @@ def process_filing(ticker: str, accession_number: str,
         logger.error(f"Error processing filing {ticker} {accession_number}: {e}")
         return False
 
-def process_company(ticker: str, filing_type: str, limit: int,
-                   xbrl_extractor: XBRLExtractor,
-                   financial_store: FinancialDataStore) -> int:
+
+def process_company(
+    ticker: str, filing_type: str, limit: int, xbrl_extractor: XBRLExtractor, financial_store: FinancialDataStore
+) -> int:
     """Process all filings for a company.
 
     Args:
@@ -104,7 +102,7 @@ def process_company(ticker: str, filing_type: str, limit: int,
                 ticker=ticker,
                 accession_number=accession_number,
                 xbrl_extractor=xbrl_extractor,
-                financial_store=financial_store
+                financial_store=financial_store,
             )
 
             if success:
@@ -115,6 +113,7 @@ def process_company(ticker: str, filing_type: str, limit: int,
     except Exception as e:
         logger.error(f"Error processing company {ticker}: {e}")
         return 0
+
 
 def main():
     """Main function."""
@@ -139,7 +138,7 @@ def main():
             ticker=args.ticker,
             accession_number=args.accession,
             xbrl_extractor=xbrl_extractor,
-            financial_store=financial_store
+            financial_store=financial_store,
         )
     elif args.ticker:
         # Process all filings for a company
@@ -148,11 +147,12 @@ def main():
             filing_type=args.filing_type,
             limit=args.limit,
             xbrl_extractor=xbrl_extractor,
-            financial_store=financial_store
+            financial_store=financial_store,
         )
     else:
         logger.error("Please provide a ticker symbol")
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()

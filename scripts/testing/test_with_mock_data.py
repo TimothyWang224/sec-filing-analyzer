@@ -2,40 +2,39 @@
 Test the improved DuckDB store with mock data.
 """
 
-import os
 import logging
-import duckdb
+import os
 from datetime import date
+
+import duckdb
+from rich import box
 from rich.console import Console
 from rich.table import Table
-from rich import box
 
 from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Set up console
 console = Console()
 
+
 def create_test_database(db_path):
     """Create a test database with mock data."""
     print(f"Creating test database at {db_path}...")
-    
+
     # Create the database directory if it doesn't exist
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    
+
     # Connect to the database
     print(f"Connecting to {db_path}...")
     conn = duckdb.connect(db_path)
-    
+
     # Create tables
     print("Creating tables...")
-    
+
     # Companies table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS companies (
@@ -51,7 +50,7 @@ def create_test_database(db_path):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     # Filings table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS filings (
@@ -69,7 +68,7 @@ def create_test_database(db_path):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     # Metrics table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS metrics (
@@ -85,7 +84,7 @@ def create_test_database(db_path):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     # Facts table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS facts (
@@ -105,7 +104,7 @@ def create_test_database(db_path):
             UNIQUE (filing_id, metric_id, context_id)
         )
     """)
-    
+
     # XBRL tag mappings
     conn.execute("""
         CREATE TABLE IF NOT EXISTS xbrl_tag_mappings (
@@ -119,10 +118,10 @@ def create_test_database(db_path):
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     # Create views
     print("Creating views...")
-    
+
     # Time series view
     conn.execute("""
         CREATE VIEW IF NOT EXISTS time_series_view AS
@@ -148,7 +147,7 @@ def create_test_database(db_path):
         JOIN 
             metrics m ON fa.metric_id = m.metric_id
     """)
-    
+
     # Company metrics view
     conn.execute("""
         CREATE VIEW IF NOT EXISTS company_metrics_view AS
@@ -174,7 +173,7 @@ def create_test_database(db_path):
         ORDER BY 
             c.ticker, f.fiscal_year, f.fiscal_period, m.category, m.metric_name
     """)
-    
+
     # Company comparison view
     conn.execute("""
         CREATE VIEW IF NOT EXISTS company_comparison_view AS
@@ -198,10 +197,10 @@ def create_test_database(db_path):
         ORDER BY 
             f.fiscal_year, f.fiscal_period, m.category, m.metric_name, c.ticker
     """)
-    
+
     # Insert mock data
     print("Inserting mock data...")
-    
+
     # Insert companies
     conn.execute("""
         INSERT INTO companies (company_id, ticker, name, cik, sic, sector, industry, exchange)
@@ -210,7 +209,7 @@ def create_test_database(db_path):
         (2, 'AAPL', 'Apple Inc.', '0000320193', '3571', 'Technology', 'Hardware', 'NASDAQ'),
         (3, 'GOOGL', 'Alphabet Inc.', '0001652044', '7370', 'Technology', 'Internet', 'NASDAQ')
     """)
-    
+
     # Insert filings
     conn.execute("""
         INSERT INTO filings (
@@ -222,7 +221,7 @@ def create_test_database(db_path):
         (2, 1, '0000789019-22-000004', '10-Q', '2022-01-25', 2022, 'Q2', '2021-12-31', 'https://www.sec.gov/Archives/edgar/data/789019/000078901922000004/msft-20211231.htm', TRUE),
         (3, 2, '0000320193-22-000108', '10-K', '2022-10-28', 2022, 'FY', '2022-09-24', 'https://www.sec.gov/Archives/edgar/data/320193/000032019322000108/aapl-20220924.htm', TRUE)
     """)
-    
+
     # Insert metrics
     conn.execute("""
         INSERT INTO metrics (
@@ -238,7 +237,7 @@ def create_test_database(db_path):
         (7, 'eps_basic', 'EPS (Basic)', 'Basic earnings per share', 'income_statement', 'USD/share', FALSE),
         (8, 'eps_diluted', 'EPS (Diluted)', 'Diluted earnings per share', 'income_statement', 'USD/share', FALSE)
     """)
-    
+
     # Insert facts
     conn.execute("""
         INSERT INTO facts (
@@ -276,7 +275,7 @@ def create_test_database(db_path):
         (23, 3, 7, 6.15, TRUE, 6.15, 'duration', '2021-09-26', '2022-09-24', 'FY2022', 2),
         (24, 3, 8, 6.11, TRUE, 6.11, 'duration', '2021-09-26', '2022-09-24', 'FY2022', 2)
     """)
-    
+
     # Insert XBRL tag mappings
     conn.execute("""
         INSERT INTO xbrl_tag_mappings (
@@ -294,69 +293,70 @@ def create_test_database(db_path):
         (9, 'EarningsPerShareBasic', 7, FALSE, 'us-gaap'),
         (10, 'EarningsPerShareDiluted', 8, FALSE, 'us-gaap')
     """)
-    
+
     # Close the connection
     print("Closing connection...")
     conn.close()
-    
+
     print(f"Test database created at {db_path}")
+
 
 def test_improved_duckdb_store(db_path):
     """Test the improved DuckDB store with the mock data."""
     print(f"Testing improved DuckDB store with database at {db_path}...")
-    
+
     # Create the store
     db = ImprovedDuckDBStore(db_path=db_path)
-    
+
     try:
         # Get database stats
         stats = db.get_database_stats()
-        
+
         console.print("\n[bold]Database Statistics:[/bold]")
         console.print(f"Companies: {stats.get('companies_count', 'N/A')}")
         console.print(f"Filings: {stats.get('filings_count', 'N/A')}")
         console.print(f"Metrics: {stats.get('metrics_count', 'N/A')}")
         console.print(f"Facts: {stats.get('facts_count', 'N/A')}")
         console.print(f"Year Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}")
-        
+
         # Get all companies
         companies = db.get_all_companies()
-        
+
         console.print("\n[bold]Companies:[/bold]")
         console.print(companies)
-        
+
         # Get company filings
         ticker = "MSFT"
         filings = db.get_company_filings(ticker)
-        
+
         console.print(f"\n[bold]Filings for {ticker}:[/bold]")
         console.print(filings)
-        
+
         # Get filing facts
         filing_id = 1
         facts = db.get_filing_facts(filing_id)
-        
+
         console.print(f"\n[bold]Facts for Filing ID {filing_id}:[/bold]")
         console.print(facts.head())
-        
+
         # Query time series
         time_series = db.query_time_series(ticker, ["revenue", "net_income"], include_quarterly=True)
-        
+
         console.print(f"\n[bold]Time Series for {ticker}:[/bold]")
         console.print(time_series)
-        
+
         # Query company comparison
         comparison = db.query_company_comparison(["MSFT", "AAPL"], "revenue")
-        
+
         console.print("\n[bold]Company Comparison for Revenue:[/bold]")
         console.print(comparison)
-        
+
         # Query latest metrics
         latest_metrics = db.query_latest_metrics(ticker)
-        
+
         console.print(f"\n[bold]Latest Metrics for {ticker}:[/bold]")
         console.print(latest_metrics)
-        
+
         # Run a custom query
         custom_query = """
             SELECT 
@@ -379,29 +379,31 @@ def test_improved_duckdb_store(db_path):
                 c.ticker, f.fiscal_year, m.metric_name
         """
         custom_result = db.run_custom_query(custom_query)
-        
+
         console.print("\n[bold]Custom Query Result:[/bold]")
         console.print(custom_result)
-        
+
         return True
-    
+
     except Exception as e:
         console.print(f"[red]Error testing improved DuckDB store: {e}[/red]")
         return False
-    
+
     finally:
         # Close the database connection
         db.close()
 
+
 def main():
     # Define parameters
     db_path = "data/test_mock_data.duckdb"
-    
+
     # Create the test database
     create_test_database(db_path)
-    
+
     # Test the improved DuckDB store
     test_improved_duckdb_store(db_path)
+
 
 if __name__ == "__main__":
     main()

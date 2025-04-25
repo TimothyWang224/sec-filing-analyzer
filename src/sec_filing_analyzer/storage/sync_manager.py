@@ -8,24 +8,26 @@ This module provides functionality to synchronize data between different storage
 - Neo4j (graph database)
 """
 
-import os
-import logging
-import duckdb
-import json
 import hashlib
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple, Set
-
-import numpy as np
+import json
+import logging
+import os
 
 # Import the DuckDB manager
 import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
+import duckdb
+import numpy as np
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Get logger
 logger = logging.getLogger(__name__)
+
 
 class StorageSyncManager:
     """
@@ -38,7 +40,7 @@ class StorageSyncManager:
         vector_store_path: str = "data/vector_store",
         filings_dir: str = "data/filings",
         graph_store_dir: str = "data/graph_store",
-        read_only: bool = True
+        read_only: bool = True,
     ):
         """
         Initialize the storage synchronization manager.
@@ -90,7 +92,7 @@ class StorageSyncManager:
             "vector_store": {"found": 0, "added": 0, "updated": 0, "errors": 0},
             "file_system": {"found": 0, "added": 0, "updated": 0, "errors": 0},
             "mismatches": {"detected": 0, "fixed": 0},
-            "total_filings": 0
+            "total_filings": 0,
         }
 
         # Sync vector store
@@ -210,7 +212,7 @@ class StorageSyncManager:
                             # Check if this filing is already in DuckDB
                             existing = self.conn.execute(
                                 "SELECT filing_id, document_url, fiscal_period FROM filings WHERE accession_number = ?",
-                                [accession_number]
+                                [accession_number],
                             ).fetchone()
 
                             if existing:
@@ -222,7 +224,7 @@ class StorageSyncManager:
                                         SET fiscal_period = 'Q3', updated_at = CURRENT_TIMESTAMP
                                         WHERE accession_number = ?
                                         """,
-                                        [accession_number]
+                                        [accession_number],
                                     )
                                     results["updated"] += 1
                             else:
@@ -250,7 +252,15 @@ class StorageSyncManager:
                                             fiscal_period, created_at, updated_at
                                         ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                         """,
-                                        [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, filing_type, filing_date, "Q3"]
+                                        [
+                                            f"{ticker}_{accession_number}",
+                                            filing_id,
+                                            company_id,
+                                            accession_number,
+                                            filing_type,
+                                            filing_date,
+                                            "Q3",
+                                        ],
                                     )
 
                                     # Make sure company exists
@@ -271,7 +281,7 @@ class StorageSyncManager:
                                             id, filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
                                         ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                         """,
-                                        [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"]
+                                        [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"],
                                     )
 
                                     # Make sure company exists
@@ -376,7 +386,7 @@ class StorageSyncManager:
                         # Check if this filing is already in DuckDB
                         existing = self.conn.execute(
                             "SELECT filing_id, document_url, fiscal_period FROM filings WHERE accession_number = ?",
-                            [accession_number]
+                            [accession_number],
                         ).fetchone()
 
                         if existing:
@@ -388,7 +398,7 @@ class StorageSyncManager:
                                     SET document_url = ?, updated_at = CURRENT_TIMESTAMP
                                     WHERE accession_number = ?
                                     """,
-                                    [str(file_path), accession_number]
+                                    [str(file_path), accession_number],
                                 )
                                 results["updated"] += 1
                         else:
@@ -410,8 +420,16 @@ class StorageSyncManager:
                                     document_url, fiscal_period, created_at, updated_at
                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                 """,
-                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, filing_type, filing_date,
-                                 str(file_path), "Q1"]
+                                [
+                                    f"{ticker}_{accession_number}",
+                                    filing_id,
+                                    company_id,
+                                    accession_number,
+                                    filing_type,
+                                    filing_date,
+                                    str(file_path),
+                                    "Q1",
+                                ],
                             )
 
                             # Make sure company exists
@@ -520,10 +538,11 @@ class StorageSyncManager:
             # YYYYMMDD
             r"(\d{8})",
             # YYYY_MM_DD
-            r"(\d{4}_\d{2}_\d{2})"
+            r"(\d{4}_\d{2}_\d{2})",
         ]
 
         import re
+
         for pattern in date_patterns:
             match = re.search(pattern, filename)
             if match:
@@ -560,10 +579,7 @@ class StorageSyncManager:
             Company ID
         """
         # Check if company exists
-        existing = self.conn.execute(
-            "SELECT company_id FROM companies WHERE ticker = ?",
-            [ticker]
-        ).fetchone()
+        existing = self.conn.execute("SELECT company_id FROM companies WHERE ticker = ?", [ticker]).fetchone()
 
         if existing:
             return existing[0]
@@ -578,7 +594,7 @@ class StorageSyncManager:
                     """INSERT INTO companies (
                         company_id, ticker, name, created_at, updated_at
                     ) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
-                    [company_id, ticker, ticker]
+                    [company_id, ticker, ticker],
                 )
                 logger.info(f"Added company {ticker} (ID: {company_id}) to database")
                 return company_id
@@ -595,7 +611,7 @@ class StorageSyncManager:
                         """INSERT INTO companies (
                             company_id, ticker, name, created_at, updated_at
                         ) VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
-                        [company_id, ticker, ticker]
+                        [company_id, ticker, ticker],
                     )
                     self.conn.execute("PRAGMA foreign_keys = ON")
                     logger.info(f"Added company {ticker} (ID: {company_id}) to database with foreign keys disabled")
@@ -647,8 +663,8 @@ class StorageSyncManager:
 
             # Process each filing
             for _, filing in filings.iterrows():
-                ticker = filing['ticker']
-                accession_number = filing['accession_number']
+                ticker = filing["ticker"]
+                accession_number = filing["accession_number"]
 
                 # Try to find the file
                 file_path = self._find_filing_file(ticker, accession_number)
@@ -661,7 +677,7 @@ class StorageSyncManager:
                         SET local_file_path = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE accession_number = ?
                         """,
-                        [str(file_path), accession_number]
+                        [str(file_path), accession_number],
                     )
                     results["updated"] += 1
                 else:
@@ -764,7 +780,7 @@ class StorageSyncManager:
                     JOIN companies c ON f.company_id = c.company_id
                     WHERE f.filing_id = ?
                     """,
-                    [filing['filing_id']]
+                    [filing["filing_id"]],
                 ).fetchone()
 
                 if not company_info:
@@ -772,7 +788,7 @@ class StorageSyncManager:
                     continue
 
                 ticker = company_info[0]
-                accession_number = filing['accession_number']
+                accession_number = filing["accession_number"]
 
                 # Determine processing status
                 status = self._determine_processing_status(ticker, accession_number)
@@ -784,7 +800,7 @@ class StorageSyncManager:
                     "embedded": "Q3",
                     "xbrl_processed": "Q4",
                     "error": "FY",
-                    "unknown": None
+                    "unknown": None,
                 }
                 fiscal_period = status_map.get(status, None)
 
@@ -796,7 +812,7 @@ class StorageSyncManager:
                         updated_at = CURRENT_TIMESTAMP
                     WHERE filing_id = ?
                     """,
-                    [fiscal_period, filing['filing_id']]
+                    [fiscal_period, filing["filing_id"]],
                 )
 
                 results["updated"] += 1
@@ -867,18 +883,15 @@ class StorageSyncManager:
                 "Q3": "embedded",
                 "Q4": "xbrl_processed",
                 "FY": "completed",
-                None: "unknown"
+                None: "unknown",
             }
 
             # Transform the status counts
             status_counts_records = []
             for _, row in status_counts.iterrows():
-                fiscal_period = row['fiscal_period']
+                fiscal_period = row["fiscal_period"]
                 status_name = status_map.get(fiscal_period, "unknown")
-                status_counts_records.append({
-                    "processing_status": status_name,
-                    "count": row['count']
-                })
+                status_counts_records.append({"processing_status": status_name, "count": row["count"]})
 
             # Get counts by company
             company_counts = self.conn.execute("""
@@ -910,7 +923,7 @@ class StorageSyncManager:
                 "status_counts": status_counts_records,
                 "company_counts": company_counts.to_dict(orient="records"),
                 "type_counts": type_counts.to_dict(orient="records"),
-                "year_counts": year_counts.to_dict(orient="records")
+                "year_counts": year_counts.to_dict(orient="records"),
             }
 
         except Exception as e:
@@ -936,24 +949,11 @@ class StorageSyncManager:
         """
         results = {
             "mismatches": {
-                "companies": {
-                    "in_files_not_in_db": [],
-                    "in_db_not_in_files": []
-                },
-                "filings": {
-                    "in_files_not_in_db": [],
-                    "in_db_not_in_files": []
-                },
-                "embeddings": {
-                    "exist_but_not_tracked": []
-                }
+                "companies": {"in_files_not_in_db": [], "in_db_not_in_files": []},
+                "filings": {"in_files_not_in_db": [], "in_db_not_in_files": []},
+                "embeddings": {"exist_but_not_tracked": []},
             },
-            "fixes": {
-                "companies_added": [],
-                "filings_added": [],
-                "filings_updated": [],
-                "errors": []
-            }
+            "fixes": {"companies_added": [], "filings_added": [], "filings_updated": [], "errors": []},
         }
 
         try:
@@ -961,7 +961,7 @@ class StorageSyncManager:
             db_companies = self.conn.execute("""
                 SELECT ticker FROM companies
             """).fetchdf()
-            db_company_tickers = set(db_companies['ticker'].tolist() if not db_companies.empty else [])
+            db_company_tickers = set(db_companies["ticker"].tolist() if not db_companies.empty else [])
 
             # 2. Get companies from the file system
             file_company_tickers = set()
@@ -1007,8 +1007,8 @@ class StorageSyncManager:
             db_filings_dict = {}
             if not db_filings.empty:
                 for _, row in db_filings.iterrows():
-                    ticker = row['ticker']
-                    accession_number = row['accession_number']
+                    ticker = row["ticker"]
+                    accession_number = row["accession_number"]
                     if ticker not in db_filings_dict:
                         db_filings_dict[ticker] = set()
                     db_filings_dict[ticker].add(accession_number)
@@ -1061,18 +1061,16 @@ class StorageSyncManager:
                 # Filings in files but not in DB
                 filings_in_files_not_in_db = file_filings_for_ticker - db_filings_for_ticker
                 for accession_number in filings_in_files_not_in_db:
-                    results["mismatches"]["filings"]["in_files_not_in_db"].append({
-                        "ticker": ticker,
-                        "accession_number": accession_number
-                    })
+                    results["mismatches"]["filings"]["in_files_not_in_db"].append(
+                        {"ticker": ticker, "accession_number": accession_number}
+                    )
 
                 # Filings in DB but not in files
                 filings_in_db_not_in_files = db_filings_for_ticker - file_filings_for_ticker
                 for accession_number in filings_in_db_not_in_files:
-                    results["mismatches"]["filings"]["in_db_not_in_files"].append({
-                        "ticker": ticker,
-                        "accession_number": accession_number
-                    })
+                    results["mismatches"]["filings"]["in_db_not_in_files"].append(
+                        {"ticker": ticker, "accession_number": accession_number}
+                    )
 
             # 9. Find embeddings that exist but aren't properly tracked
             for ticker in embedding_filings_dict:
@@ -1083,23 +1081,27 @@ class StorageSyncManager:
                     # Check if this filing is in the database
                     if accession_number in db_filings_for_ticker:
                         # Check if it's marked as embedded
-                        is_embedded = self.conn.execute("""
+                        is_embedded = (
+                            self.conn.execute(
+                                """
                             SELECT 1 FROM filings f
                             JOIN companies c ON f.company_id = c.company_id
                             WHERE c.ticker = ? AND f.accession_number = ? AND f.fiscal_period = 'Q3'
-                        """, [ticker, accession_number]).fetchone() is not None
+                        """,
+                                [ticker, accession_number],
+                            ).fetchone()
+                            is not None
+                        )
 
                         if not is_embedded:
-                            results["mismatches"]["embeddings"]["exist_but_not_tracked"].append({
-                                "ticker": ticker,
-                                "accession_number": accession_number
-                            })
+                            results["mismatches"]["embeddings"]["exist_but_not_tracked"].append(
+                                {"ticker": ticker, "accession_number": accession_number}
+                            )
                     else:
                         # Embedding exists but filing is not in DB
-                        results["mismatches"]["embeddings"]["exist_but_not_tracked"].append({
-                            "ticker": ticker,
-                            "accession_number": accession_number
-                        })
+                        results["mismatches"]["embeddings"]["exist_but_not_tracked"].append(
+                            {"ticker": ticker, "accession_number": accession_number}
+                        )
 
             # 10. Auto-fix: Add missing filings to the database
             if auto_fix:
@@ -1142,7 +1144,7 @@ class StorageSyncManager:
                                 "embedded": "Q3",
                                 "xbrl_processed": "Q4",
                                 "error": "FY",
-                                "unknown": None
+                                "unknown": None,
                             }
                             fiscal_period = status_map.get(status, None)
 
@@ -1154,18 +1156,23 @@ class StorageSyncManager:
                                     document_url, fiscal_period, created_at, updated_at
                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                 """,
-                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, filing_type, filing_date,
-                                 str(file_path), fiscal_period]
+                                [
+                                    f"{ticker}_{accession_number}",
+                                    filing_id,
+                                    company_id,
+                                    accession_number,
+                                    filing_type,
+                                    filing_date,
+                                    str(file_path),
+                                    fiscal_period,
+                                ],
                             )
 
-                            results["fixes"]["filings_added"].append({
-                                "ticker": ticker,
-                                "accession_number": accession_number
-                            })
+                            results["fixes"]["filings_added"].append(
+                                {"ticker": ticker, "accession_number": accession_number}
+                            )
                     except Exception as e:
-                        results["fixes"]["errors"].append(
-                            f"Error adding filing {ticker}/{accession_number}: {str(e)}"
-                        )
+                        results["fixes"]["errors"].append(f"Error adding filing {ticker}/{accession_number}: {str(e)}")
 
                 # Update filings with embeddings that aren't tracked
                 for filing_info in results["mismatches"]["embeddings"]["exist_but_not_tracked"]:
@@ -1174,25 +1181,30 @@ class StorageSyncManager:
 
                     try:
                         # Check if filing exists in database
-                        existing = self.conn.execute("""
+                        existing = self.conn.execute(
+                            """
                             SELECT 1 FROM filings f
                             JOIN companies c ON f.company_id = c.company_id
                             WHERE c.ticker = ? AND f.accession_number = ?
-                        """, [ticker, accession_number]).fetchone()
+                        """,
+                            [ticker, accession_number],
+                        ).fetchone()
 
                         if existing:
                             # Update fiscal period to indicate embedding exists
-                            self.conn.execute("""
+                            self.conn.execute(
+                                """
                                 UPDATE filings
                                 SET fiscal_period = 'Q3', updated_at = CURRENT_TIMESTAMP
                                 WHERE accession_number = ? AND
                                       company_id = (SELECT company_id FROM companies WHERE ticker = ?)
-                            """, [accession_number, ticker])
+                            """,
+                                [accession_number, ticker],
+                            )
 
-                            results["fixes"]["filings_updated"].append({
-                                "ticker": ticker,
-                                "accession_number": accession_number
-                            })
+                            results["fixes"]["filings_updated"].append(
+                                {"ticker": ticker, "accession_number": accession_number}
+                            )
                         else:
                             # Filing doesn't exist, add it
                             # Get company_id
@@ -1209,13 +1221,12 @@ class StorageSyncManager:
                                     id, filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
                                 ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                 """,
-                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"]
+                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"],
                             )
 
-                            results["fixes"]["filings_added"].append({
-                                "ticker": ticker,
-                                "accession_number": accession_number
-                            })
+                            results["fixes"]["filings_added"].append(
+                                {"ticker": ticker, "accession_number": accession_number}
+                            )
                     except Exception as e:
                         results["fixes"]["errors"].append(
                             f"Error updating filing {ticker}/{accession_number}: {str(e)}"
@@ -1237,10 +1248,21 @@ if __name__ == "__main__":
     parser.add_argument("--vector-store-path", default="data/vector_store", help="Path to vector store")
     parser.add_argument("--filings-dir", default="data/filings", help="Path to filings directory")
     parser.add_argument("--graph-store-dir", default="data/graph_store", help="Path to graph store directory")
-    parser.add_argument("--action", choices=["sync-all", "sync-vector-store", "sync-file-system",
-                                            "update-paths", "update-status", "summary", "detect-mismatches",
-                                            "fix-mismatches"],
-                        default="sync-all", help="Action to perform")
+    parser.add_argument(
+        "--action",
+        choices=[
+            "sync-all",
+            "sync-vector-store",
+            "sync-file-system",
+            "update-paths",
+            "update-status",
+            "summary",
+            "detect-mismatches",
+            "fix-mismatches",
+        ],
+        default="sync-all",
+        help="Action to perform",
+    )
 
     args = parser.parse_args()
 
@@ -1249,7 +1271,7 @@ if __name__ == "__main__":
         db_path=args.db_path,
         vector_store_path=args.vector_store_path,
         filings_dir=args.filings_dir,
-        graph_store_dir=args.graph_store_dir
+        graph_store_dir=args.graph_store_dir,
     )
 
     # Perform action

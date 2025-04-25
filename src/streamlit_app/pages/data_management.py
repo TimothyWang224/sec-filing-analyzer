@@ -4,33 +4,31 @@ Data Management Page
 This page provides tools for managing data across different storage systems.
 """
 
-import streamlit as st
-import pandas as pd
+import json
+import logging
 import os
 import sys
-import logging
-from pathlib import Path
-from datetime import datetime
-import json
 import time
+from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 # Import the lifecycle manager
+from src.sec_filing_analyzer.config import ConfigProvider, ETLConfig, StorageConfig
 from src.sec_filing_analyzer.storage.lifecycle_manager import DataLifecycleManager
-from src.sec_filing_analyzer.config import ConfigProvider, StorageConfig, ETLConfig
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('data_management.log')
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("data_management.log")],
 )
-logger = logging.getLogger('data_management')
+logger = logging.getLogger("data_management")
 
 # Log startup information
 logger.info("Data Management page starting up")
@@ -46,16 +44,11 @@ etl_config = ConfigProvider.get_config(ETLConfig)
 lifecycle_manager = DataLifecycleManager(
     db_path=etl_config.db_path,  # Use db_path from ETLConfig
     vector_store_path=storage_config.vector_store_path,
-    filings_dir=etl_config.filings_dir
+    filings_dir=etl_config.filings_dir,
 )
 
 # Set page config
-st.set_page_config(
-    page_title="Data Management",
-    page_icon="🗄️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Data Management", page_icon="🗄️", layout="wide", initial_sidebar_state="expanded")
 
 # Title and description
 st.title("Data Management")
@@ -87,10 +80,7 @@ with tabs[0]:
         # Create a formatted list for the selectbox
         company_options = [f"{row['ticker']} - {row['company_name']}" for _, row in companies_df.iterrows()]
 
-        selected_company = st.selectbox(
-            "Select Company",
-            options=company_options
-        )
+        selected_company = st.selectbox("Select Company", options=company_options)
 
         # Extract ticker from selection
         selected_ticker = selected_company.split(" - ")[0]
@@ -106,10 +96,7 @@ with tabs[0]:
             # Create a selectbox for filing types
             filing_type_options = [f"{ft['filing_type']} ({ft['count']})" for ft in filing_types_result["filing_types"]]
 
-            selected_filing_type_option = st.selectbox(
-                "Select Filing Type",
-                options=filing_type_options
-            )
+            selected_filing_type_option = st.selectbox("Select Filing Type", options=filing_type_options)
 
             # Extract filing type from selection
             selected_filing_type = selected_filing_type_option.split(" (")[0]
@@ -124,14 +111,10 @@ with tabs[0]:
             else:
                 # Create a selectbox for filing dates
                 filing_date_options = [
-                    f"{fd['filing_date']} - {fd['accession_number']}"
-                    for fd in filing_dates_result["filing_dates"]
+                    f"{fd['filing_date']} - {fd['accession_number']}" for fd in filing_dates_result["filing_dates"]
                 ]
 
-                selected_filing_date_option = st.selectbox(
-                    "Select Filing",
-                    options=filing_date_options
-                )
+                selected_filing_date_option = st.selectbox("Select Filing", options=filing_date_options)
 
                 # Extract accession number from selection
                 selected_accession_number = selected_filing_date_option.split(" - ")[1]
@@ -165,7 +148,10 @@ with tabs[0]:
 
                     with col5:
                         vector_store_info = filing_info["vector_store"]
-                        has_embeddings = vector_store_info["document_embedding_exists"] or vector_store_info["chunk_embeddings_count"] > 0
+                        has_embeddings = (
+                            vector_store_info["document_embedding_exists"]
+                            or vector_store_info["chunk_embeddings_count"] > 0
+                        )
                         st.metric("Vector Store", "✅" if has_embeddings else "❌")
 
                     with col6:
@@ -178,17 +164,19 @@ with tabs[0]:
 
                     # Display detailed info in expandable sections
                     with st.expander("DuckDB Information"):
-                        st.json({
-                            "id": filing_info["id"],
-                            "ticker": filing_info["ticker"],
-                            "accession_number": filing_info["accession_number"],
-                            "filing_type": filing_info["filing_type"],
-                            "filing_date": filing_info["filing_date"],
-                            "document_url": filing_info["document_url"],
-                            "local_file_path": filing_info["local_file_path"],
-                            "processing_status": filing_info["processing_status"],
-                            "last_updated": filing_info["last_updated"]
-                        })
+                        st.json(
+                            {
+                                "id": filing_info["id"],
+                                "ticker": filing_info["ticker"],
+                                "accession_number": filing_info["accession_number"],
+                                "filing_type": filing_info["filing_type"],
+                                "filing_date": filing_info["filing_date"],
+                                "document_url": filing_info["document_url"],
+                                "local_file_path": filing_info["local_file_path"],
+                                "processing_status": filing_info["processing_status"],
+                                "last_updated": filing_info["last_updated"],
+                            }
+                        )
 
                     with st.expander("Vector Store Information"):
                         st.json(filing_info["vector_store"])
@@ -217,11 +205,7 @@ with tabs[1]:
         # Create a formatted list for the selectbox
         company_options = [f"{row['ticker']} - {row['company_name']}" for _, row in companies_df.iterrows()]
 
-        selected_company = st.selectbox(
-            "Select Company",
-            options=company_options,
-            key="delete_company"
-        )
+        selected_company = st.selectbox("Select Company", options=company_options, key="delete_company")
 
         # Extract ticker from selection
         selected_ticker = selected_company.split(" - ")[0]
@@ -238,9 +222,7 @@ with tabs[1]:
             filing_type_options = [f"{ft['filing_type']} ({ft['count']})" for ft in filing_types_result["filing_types"]]
 
             selected_filing_type_option = st.selectbox(
-                "Select Filing Type",
-                options=filing_type_options,
-                key="delete_filing_type"
+                "Select Filing Type", options=filing_type_options, key="delete_filing_type"
             )
 
             # Extract filing type from selection
@@ -256,14 +238,11 @@ with tabs[1]:
             else:
                 # Create a selectbox for filing dates
                 filing_date_options = [
-                    f"{fd['filing_date']} - {fd['accession_number']}"
-                    for fd in filing_dates_result["filing_dates"]
+                    f"{fd['filing_date']} - {fd['accession_number']}" for fd in filing_dates_result["filing_dates"]
                 ]
 
                 selected_filing_date_option = st.selectbox(
-                    "Select Filing",
-                    options=filing_date_options,
-                    key="delete_filing_date"
+                    "Select Filing", options=filing_date_options, key="delete_filing_date"
                 )
 
                 # Extract accession number from selection
@@ -295,8 +274,7 @@ with tabs[1]:
 
                     # Confirmation
                     confirmation = st.text_input(
-                        f"Type '{selected_ticker}' to confirm deletion",
-                        key="delete_confirmation"
+                        f"Type '{selected_ticker}' to confirm deletion", key="delete_confirmation"
                     )
 
                     # Delete button
@@ -306,8 +284,7 @@ with tabs[1]:
                             with st.spinner("Deleting filing..."):
                                 # Delete filing
                                 deletion_result = lifecycle_manager.delete_filing(
-                                    selected_accession_number,
-                                    dry_run=dry_run
+                                    selected_accession_number, dry_run=dry_run
                                 )
 
                                 if "error" in deletion_result:
@@ -330,7 +307,7 @@ with tabs[1]:
                                         st.metric(
                                             "DuckDB",
                                             "✅" if duckdb_status == "success" else "❌",
-                                            help=f"Status: {duckdb_status}"
+                                            help=f"Status: {duckdb_status}",
                                         )
 
                                     with col2:
@@ -338,7 +315,7 @@ with tabs[1]:
                                         st.metric(
                                             "Vector Store",
                                             "✅" if vector_store_status == "success" else "❌",
-                                            help=f"Status: {vector_store_status}"
+                                            help=f"Status: {vector_store_status}",
                                         )
 
                                     with col3:
@@ -346,7 +323,7 @@ with tabs[1]:
                                         st.metric(
                                             "File System",
                                             "✅" if file_system_status == "success" else "❌",
-                                            help=f"Status: {file_system_status}"
+                                            help=f"Status: {file_system_status}",
                                         )
 
                                     # Display detailed results in expandable sections
@@ -510,9 +487,11 @@ with tabs[2]:
 st.markdown("---")
 st.info("This page is under development. More features will be added in future versions.")
 
+
 # Close lifecycle manager when the app is closed
 def on_close():
     lifecycle_manager.close()
+
 
 # Register the on_close function to be called when the app is closed
 st.experimental_set_query_params(on_close=on_close)

@@ -3,50 +3,44 @@ Tool for getting detailed information about other tools.
 """
 
 import logging
-from typing import Dict, Any, Optional, Type
+from typing import Any, Dict, Optional, Type
 
-from .base import Tool
-from .registry import ToolRegistry
-from .decorator import tool
 from ..contracts import BaseModel, field_validator
+from .base import Tool
+from .decorator import tool
+from .registry import ToolRegistry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Define parameter models
 class ToolDetailsParams(BaseModel):
     """Parameters for tool details queries."""
+
     tool_name: str
 
-    @field_validator('tool_name')
+    @field_validator("tool_name")
     @classmethod
     def validate_tool_name(cls, v):
         if not v or not isinstance(v, str):
             raise ValueError("Tool name must be a non-empty string")
         return v
 
+
 # Map query types to parameter models
-SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
-    "tool_details": ToolDetailsParams
-}
+SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {"tool_details": ToolDetailsParams}
 
 # The tool registration is handled by the @tool decorator
 # The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
-@tool(
-    name="tool_details",
-    tags=["meta", "tools"],
-    compact_description="Get detailed information about a specific tool"
-)
+
+@tool(name="tool_details", tags=["meta", "tools"], compact_description="Get detailed information about a specific tool")
 class ToolDetailsTool(Tool):
     """Tool for getting detailed information about other tools."""
 
-    def validate_args(
-        self,
-        query_type: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
         """
         Validate the tool arguments.
 
@@ -79,12 +73,7 @@ class ToolDetailsTool(Tool):
             logger.error(f"Validation error: {str(e)}")
             return False
 
-
-    async def _execute(
-        self,
-        query_type: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Get detailed information about a specific tool.
 
@@ -119,7 +108,7 @@ class ToolDetailsTool(Tool):
                 return self.format_error_response(
                     query_type=query_type,
                     parameters=parameters,
-                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}"
+                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}",
                 )
 
             # Validate parameters using the appropriate model
@@ -130,9 +119,7 @@ class ToolDetailsTool(Tool):
                 params = param_model(**parameters)
             except Exception as e:
                 return self.format_error_response(
-                    query_type=query_type,
-                    parameters=parameters,
-                    error_message=f"Parameter validation error: {str(e)}"
+                    query_type=query_type, parameters=parameters, error_message=f"Parameter validation error: {str(e)}"
                 )
 
             # Extract parameters
@@ -151,7 +138,7 @@ class ToolDetailsTool(Tool):
                         "results": [],
                         "output_key": self.name,
                         "success": False,
-                        "available_tools": list(ToolRegistry.list_tools().keys())
+                        "available_tools": list(ToolRegistry.list_tools().keys()),
                     }
                     return response
 
@@ -159,11 +146,7 @@ class ToolDetailsTool(Tool):
                 detailed_docs = ToolRegistry.get_tool_documentation(name=tool_name, format="text")
 
                 # Create a custom result with additional fields
-                result = self.format_success_response(
-                    query_type=query_type,
-                    parameters=parameters,
-                    results={}
-                )
+                result = self.format_success_response(query_type=query_type, parameters=parameters, results={})
 
                 # Add fields directly to the result
                 result["tool_name"] = tool_name
@@ -176,15 +159,11 @@ class ToolDetailsTool(Tool):
             except Exception as e:
                 logger.error(f"Error getting tool details: {str(e)}")
                 return self.format_error_response(
-                    query_type=query_type,
-                    parameters=parameters,
-                    error_message=f"Error getting tool details: {str(e)}"
+                    query_type=query_type, parameters=parameters, error_message=f"Error getting tool details: {str(e)}"
                 )
 
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return self.format_error_response(
-                query_type=query_type,
-                parameters=parameters,
-                error_message=f"Unexpected error: {str(e)}"
+                query_type=query_type, parameters=parameters, error_message=f"Unexpected error: {str(e)}"
             )

@@ -5,9 +5,9 @@ This module provides utilities for retrying plan steps with proper object conver
 """
 
 import logging
-from typing import Dict, Any, Union, Optional
+from typing import Any, Dict, Optional, Union
 
-from ...contracts import PlanStep, Plan
+from ...contracts import Plan, PlanStep
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 def convert_to_plan_step(step_dict: Dict[str, Any]) -> PlanStep:
     """
     Convert a dictionary to a PlanStep object.
-    
+
     Args:
         step_dict: Dictionary representation of a plan step
-        
+
     Returns:
         PlanStep object
     """
@@ -33,28 +33,28 @@ def convert_to_plan_step(step_dict: Dict[str, Any]) -> PlanStep:
             step_id=step_dict.get("step_id", 0),
             description=step_dict.get("description", "Unknown step"),
             tool=step_dict.get("tool"),
-            parameters=step_dict.get("parameters", {})
+            parameters=step_dict.get("parameters", {}),
         )
 
 
 def prepare_step_for_retry(step: Union[Dict[str, Any], PlanStep]) -> PlanStep:
     """
     Prepare a step for retry by ensuring it's a PlanStep object.
-    
+
     Args:
         step: Step to prepare (dictionary or PlanStep)
-        
+
     Returns:
         PlanStep object ready for retry
     """
     # If it's already a PlanStep, return it
     if isinstance(step, PlanStep):
         return step
-    
+
     # If it's a dictionary, convert it to a PlanStep
     if isinstance(step, dict):
         return convert_to_plan_step(step)
-    
+
     # If it's something else, try to convert it to a dictionary first
     try:
         step_dict = dict(step)
@@ -62,9 +62,4 @@ def prepare_step_for_retry(step: Union[Dict[str, Any], PlanStep]) -> PlanStep:
     except Exception as e:
         logger.error(f"Error preparing step for retry: {e}")
         # Create a minimal PlanStep as a fallback
-        return PlanStep(
-            step_id=0,
-            description="Error step",
-            tool=None,
-            parameters={}
-        )
+        return PlanStep(step_id=0, description="Error step", tool=None, parameters={})

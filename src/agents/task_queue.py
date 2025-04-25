@@ -4,8 +4,8 @@ Task Queue
 This module provides a task queue for managing multiple tasks in agents.
 """
 
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 class Task:
@@ -45,17 +45,13 @@ class Task:
             "started_at": self.started_at.isoformat() if self.started_at else None,
             "completed_at": self.completed_at.isoformat() if self.completed_at else None,
             "dependencies": self.dependencies,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Task':
+    def from_dict(cls, data: Dict[str, Any]) -> "Task":
         """Create task from dictionary."""
-        task = cls(
-            task_id=data["task_id"],
-            input_text=data["input_text"],
-            priority=data.get("priority", 0)
-        )
+        task = cls(task_id=data["task_id"], input_text=data["input_text"], priority=data.get("priority", 0))
         task.status = data.get("status", "pending")
         task.plan = data.get("plan")
         task.result = data.get("result")
@@ -187,10 +183,7 @@ class TaskQueue:
         self.current_task_id = None
 
         # Find all pending tasks
-        pending_tasks = [
-            task for task in self.tasks.values()
-            if task.status == "pending"
-        ]
+        pending_tasks = [task for task in self.tasks.values() if task.status == "pending"]
 
         if not pending_tasks:
             return
@@ -287,11 +280,11 @@ class TaskQueue:
         return {
             "tasks": {task_id: task.to_dict() for task_id, task in self.tasks.items()},
             "current_task_id": self.current_task_id,
-            "task_history": self.task_history
+            "task_history": self.task_history,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'TaskQueue':
+    def from_dict(cls, data: Dict[str, Any]) -> "TaskQueue":
         """Create task queue from dictionary."""
         queue = cls()
         queue.current_task_id = data.get("current_task_id")

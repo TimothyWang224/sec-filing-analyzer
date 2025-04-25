@@ -5,14 +5,14 @@ This module provides functionality to extract financial data from SEC filings
 using the edgar library's XBRL parsing capabilities and store it in a DuckDB database.
 """
 
-import logging
 import hashlib
+import logging
 import uuid
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-import pandas as pd
 import edgar
+import pandas as pd
 from edgar.financials import Financials
 from edgar.xbrl.xbrldata import XBRLData
 
@@ -21,6 +21,7 @@ from ..storage.optimized_duckdb_store import OptimizedDuckDBStore
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class EdgarXBRLToDuckDBExtractor:
     """
@@ -38,7 +39,9 @@ class EdgarXBRLToDuckDBExtractor:
             read_only: Whether to open the database in read-only mode
         """
         self.db = OptimizedDuckDBStore(db_path=db_path, batch_size=batch_size, read_only=read_only)
-        logger.info(f"Initialized Edgar XBRL to DuckDB extractor with database at {self.db.db_path} (read_only={read_only})")
+        logger.info(
+            f"Initialized Edgar XBRL to DuckDB extractor with database at {self.db.db_path} (read_only={read_only})"
+        )
 
     def process_filing(self, ticker: str, accession_number: str) -> Dict[str, Any]:
         """
@@ -75,7 +78,7 @@ class EdgarXBRLToDuckDBExtractor:
                 return {"error": f"Filing not found: {accession_number}"}
 
             # Check if the filing has XBRL data
-            has_xbrl = hasattr(filing, 'is_xbrl') and filing.is_xbrl
+            has_xbrl = hasattr(filing, "is_xbrl") and filing.is_xbrl
 
             # Generate a unique filing ID
             filing_id = f"{ticker}_{accession_number}"
@@ -88,7 +91,7 @@ class EdgarXBRLToDuckDBExtractor:
                 "filing_type": filing.form,
                 "filing_date": filing.filing_date,
                 "document_url": filing.filing_url,
-                "has_xbrl": has_xbrl
+                "has_xbrl": has_xbrl,
             }
 
             # Store filing information
@@ -101,7 +104,7 @@ class EdgarXBRLToDuckDBExtractor:
                     "status": "success",
                     "message": "Filing processed but no XBRL data available",
                     "filing_id": filing_id,
-                    "has_xbrl": False
+                    "has_xbrl": False,
                 }
 
             # Extract XBRL data
@@ -116,7 +119,7 @@ class EdgarXBRLToDuckDBExtractor:
                     "status": "success",
                     "message": "Filing processed but could not extract financials",
                     "filing_id": filing_id,
-                    "has_xbrl": True
+                    "has_xbrl": True,
                 }
 
             # Extract fiscal period information from DEI facts
@@ -139,7 +142,7 @@ class EdgarXBRLToDuckDBExtractor:
                 "message": "Filing processed successfully",
                 "filing_id": filing_id,
                 "has_xbrl": True,
-                "fiscal_info": fiscal_info
+                "fiscal_info": fiscal_info,
             }
 
         except Exception as e:
@@ -159,10 +162,10 @@ class EdgarXBRLToDuckDBExtractor:
                 "ticker": ticker,
                 "name": entity.name,
                 "cik": entity.cik,
-                "sic": getattr(entity, 'sic', None),
-                "sector": getattr(entity, 'sector', None),
-                "industry": getattr(entity, 'industry', None),
-                "exchange": getattr(entity, 'exchange', None)
+                "sic": getattr(entity, "sic", None),
+                "sector": getattr(entity, "sector", None),
+                "industry": getattr(entity, "industry", None),
+                "exchange": getattr(entity, "exchange", None),
             }
             self.db.store_company(company_data)
         except Exception as e:
@@ -182,7 +185,7 @@ class EdgarXBRLToDuckDBExtractor:
 
         try:
             # Get fiscal year and period from DEI facts
-            if hasattr(xbrl_data, 'instance'):
+            if hasattr(xbrl_data, "instance"):
                 fiscal_year = xbrl_data.instance.get_fiscal_year_focus()
                 fiscal_period = xbrl_data.instance.get_fiscal_period_focus()
                 period_end_date = xbrl_data.instance.get_document_period()
@@ -202,8 +205,9 @@ class EdgarXBRLToDuckDBExtractor:
 
         return fiscal_info
 
-    def _process_financial_statements(self, financials: Financials, filing_id: str,
-                                     ticker: str, fiscal_info: Dict[str, Any]):
+    def _process_financial_statements(
+        self, financials: Financials, filing_id: str, ticker: str, fiscal_info: Dict[str, Any]
+    ):
         """
         Process financial statements and store them in the database.
 
@@ -234,8 +238,9 @@ class EdgarXBRLToDuckDBExtractor:
         except Exception as e:
             logger.warning(f"Error processing financial statements: {e}")
 
-    def _process_statement(self, statement, statement_type: str, filing_id: str,
-                          ticker: str, fiscal_info: Dict[str, Any]):
+    def _process_statement(
+        self, statement, statement_type: str, filing_id: str, ticker: str, fiscal_info: Dict[str, Any]
+    ):
         """
         Process a financial statement and store its data in the database.
 
@@ -248,7 +253,7 @@ class EdgarXBRLToDuckDBExtractor:
         """
         try:
             # Convert statement to DataFrame
-            if hasattr(statement, 'data') and isinstance(statement.data, pd.DataFrame):
+            if hasattr(statement, "data") and isinstance(statement.data, pd.DataFrame):
                 df = statement.data.reset_index()
 
                 # Process each row in the DataFrame
@@ -256,16 +261,16 @@ class EdgarXBRLToDuckDBExtractor:
                 metrics = []
 
                 for _, row in df.iterrows():
-                    concept = row.get('concept')
+                    concept = row.get("concept")
                     if not concept:
                         continue
 
                     # Get the label
-                    label = row.get('label', self._normalize_concept_name(concept))
+                    label = row.get("label", self._normalize_concept_name(concept))
 
                     # Process each period column
                     for col in df.columns:
-                        if col not in ['concept', 'label', 'level']:
+                        if col not in ["concept", "label", "level"]:
                             value = row.get(col)
                             if pd.notna(value):
                                 # Try to convert to float
@@ -293,7 +298,7 @@ class EdgarXBRLToDuckDBExtractor:
                                     "end_date": period_info.get("end_date"),
                                     "segment": statement_type,
                                     "context_id": None,
-                                    "decimals": None
+                                    "decimals": None,
                                 }
                                 facts.append(fact)
 
@@ -307,7 +312,7 @@ class EdgarXBRLToDuckDBExtractor:
                                         "value": value,
                                         "unit": "USD",
                                         "filing_id": filing_id,
-                                        "statement_type": statement_type
+                                        "statement_type": statement_type,
                                     }
                                     metrics.append(metric)
 
@@ -323,8 +328,7 @@ class EdgarXBRLToDuckDBExtractor:
         except Exception as e:
             logger.warning(f"Error processing {statement_type}: {e}")
 
-    def _process_us_gaap_facts(self, xbrl_data: XBRLData, filing_id: str,
-                              ticker: str, fiscal_info: Dict[str, Any]):
+    def _process_us_gaap_facts(self, xbrl_data: XBRLData, filing_id: str, ticker: str, fiscal_info: Dict[str, Any]):
         """
         Process US-GAAP facts and store them in the database.
 
@@ -335,12 +339,12 @@ class EdgarXBRLToDuckDBExtractor:
             fiscal_info: Fiscal period information
         """
         try:
-            if not hasattr(xbrl_data, 'instance'):
+            if not hasattr(xbrl_data, "instance"):
                 logger.warning(f"XBRL data does not have instance attribute")
                 return
 
             # Query all US-GAAP facts
-            us_gaap_facts = xbrl_data.instance.query_facts(schema='us-gaap')
+            us_gaap_facts = xbrl_data.instance.query_facts(schema="us-gaap")
 
             if us_gaap_facts.empty:
                 logger.warning(f"No US-GAAP facts found")
@@ -351,8 +355,8 @@ class EdgarXBRLToDuckDBExtractor:
             metrics = []
 
             for _, row in us_gaap_facts.iterrows():
-                concept = row.get('concept')
-                value = row.get('value')
+                concept = row.get("concept")
+                value = row.get("value")
 
                 # Skip if no value
                 if pd.isna(value):
@@ -374,13 +378,13 @@ class EdgarXBRLToDuckDBExtractor:
                     "xbrl_tag": concept,
                     "metric_name": self._normalize_concept_name(concept),
                     "value": value,
-                    "unit": row.get('units'),
-                    "period_type": row.get('period_type'),
-                    "start_date": row.get('start_date'),
-                    "end_date": row.get('end_date'),
+                    "unit": row.get("units"),
+                    "period_type": row.get("period_type"),
+                    "start_date": row.get("start_date"),
+                    "end_date": row.get("end_date"),
                     "segment": None,
-                    "context_id": row.get('context_id'),
-                    "decimals": row.get('decimals')
+                    "context_id": row.get("context_id"),
+                    "decimals": row.get("decimals"),
                 }
                 facts.append(fact)
 
@@ -392,9 +396,9 @@ class EdgarXBRLToDuckDBExtractor:
                         "fiscal_year": fiscal_info.get("fiscal_year"),
                         "fiscal_quarter": fiscal_info.get("fiscal_quarter"),
                         "value": value,
-                        "unit": row.get('units'),
+                        "unit": row.get("units"),
                         "filing_id": filing_id,
-                        "statement_type": "us_gaap_fact"
+                        "statement_type": "us_gaap_fact",
                     }
                     metrics.append(metric)
 
@@ -421,14 +425,14 @@ class EdgarXBRLToDuckDBExtractor:
             Normalized concept name
         """
         # Remove namespace prefix if present
-        if ':' in concept:
-            concept = concept.split(':')[1]
+        if ":" in concept:
+            concept = concept.split(":")[1]
 
         # Convert camel case to snake case
-        result = ''
+        result = ""
         for i, char in enumerate(concept):
-            if i > 0 and char.isupper() and concept[i-1].islower():
-                result += '_'
+            if i > 0 and char.isupper() and concept[i - 1].islower():
+                result += "_"
             result += char.lower()
 
         return result
@@ -446,8 +450,8 @@ class EdgarXBRLToDuckDBExtractor:
         period_info = {}
 
         try:
-            if ' to ' in period_str:
-                start_date, end_date = period_str.split(' to ')
+            if " to " in period_str:
+                start_date, end_date = period_str.split(" to ")
                 period_info["period_type"] = "duration"
                 period_info["start_date"] = start_date
                 period_info["end_date"] = end_date

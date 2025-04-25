@@ -6,11 +6,11 @@ semantic data from SEC filings.
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
-from ..data_retrieval.sec_downloader import SECFilingsDownloader
 from ..data_processing.chunking import FilingChunker
+from ..data_retrieval.sec_downloader import SECFilingsDownloader
 from ..semantic.embeddings.embedding_generator import EmbeddingGenerator
 from ..semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
 from ..semantic.storage.vector_store import VectorStore
@@ -18,6 +18,7 @@ from ..semantic.storage.vector_store import VectorStore
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class SemanticETLPipeline:
     """
@@ -31,7 +32,7 @@ class SemanticETLPipeline:
         embedding_generator: Optional[EmbeddingGenerator] = None,
         vector_store: Optional[VectorStore] = None,
         chunk_size: int = 1500,
-        chunk_overlap: int = 150
+        chunk_overlap: int = 150,
     ):
         """
         Initialize the semantic ETL pipeline.
@@ -57,7 +58,7 @@ class SemanticETLPipeline:
         filing_type: str,
         filing_date: Optional[str] = None,
         accession_number: Optional[str] = None,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process a single filing through the semantic ETL pipeline.
@@ -78,11 +79,7 @@ class SemanticETLPipeline:
             # Step 1: Download the filing
             # Get the filing object
             filings = self.downloader.get_filings(
-                ticker=ticker,
-                filing_types=[filing_type],
-                start_date=filing_date,
-                end_date=filing_date,
-                limit=1
+                ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
             )
 
             if not filings:
@@ -128,7 +125,9 @@ class SemanticETLPipeline:
 
             # Log any fallbacks
             if embedding_metadata.get("any_fallbacks", False):
-                logger.warning(f"Some embeddings used fallbacks: {embedding_metadata.get('fallback_count', 0)}/{len(chunk_texts)}")
+                logger.warning(
+                    f"Some embeddings used fallbacks: {embedding_metadata.get('fallback_count', 0)}/{len(chunk_texts)}"
+                )
 
             if not embeddings:
                 logger.error(f"Failed to generate embeddings for {filing_type} filing for {ticker}")
@@ -160,7 +159,7 @@ class SemanticETLPipeline:
                     "chunk_id": i,
                     "chunk_text": chunk_text,
                     "section": section,
-                    "page": page
+                    "page": page,
                 }
                 metadata_list.append(metadata)
 
@@ -174,7 +173,7 @@ class SemanticETLPipeline:
                 "ticker": ticker,
                 "filing_type": filing_type,
                 "num_chunks": len(chunks),
-                "num_embeddings": len(embeddings)
+                "num_embeddings": len(embeddings),
             }
 
         except Exception as e:
@@ -188,7 +187,7 @@ class SemanticETLPipeline:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit: int = 10,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process multiple filings for a company through the semantic ETL pipeline.
@@ -209,15 +208,11 @@ class SemanticETLPipeline:
 
             # Default to 10-K and 10-Q filings if not specified
             if filing_types is None:
-                filing_types = ['10-K', '10-Q']
+                filing_types = ["10-K", "10-Q"]
 
             # Step 1: Get the list of filings
             filings = self.downloader.get_filings(
-                ticker=ticker,
-                filing_types=filing_types,
-                start_date=start_date,
-                end_date=end_date,
-                limit=limit
+                ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
             )
 
             if not filings:
@@ -231,18 +226,13 @@ class SemanticETLPipeline:
                     ticker=ticker,
                     filing_type=filing.get("filing_type"),
                     accession_number=filing.get("accession_number"),
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 results.append(result)
 
             logger.info(f"Successfully processed {len(results)} filings for {ticker}")
 
-            return {
-                "status": "success",
-                "ticker": ticker,
-                "num_filings": len(results),
-                "results": results
-            }
+            return {"status": "success", "ticker": ticker, "num_filings": len(results), "results": results}
 
         except Exception as e:
             logger.error(f"Error processing filings for {ticker}: {e}")
@@ -255,7 +245,7 @@ class SemanticETLPipeline:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         limit_per_company: int = 5,
-        force_download: bool = False
+        force_download: bool = False,
     ) -> Dict[str, Any]:
         """
         Process filings for multiple companies through the semantic ETL pipeline.
@@ -283,17 +273,13 @@ class SemanticETLPipeline:
                     start_date=start_date,
                     end_date=end_date,
                     limit=limit_per_company,
-                    force_download=force_download
+                    force_download=force_download,
                 )
                 results[ticker] = result
 
             logger.info(f"Successfully processed filings for {len(tickers)} companies")
 
-            return {
-                "status": "success",
-                "num_companies": len(tickers),
-                "results": results
-            }
+            return {"status": "success", "num_companies": len(tickers), "results": results}
 
         except Exception as e:
             logger.error(f"Error processing multiple companies: {e}")

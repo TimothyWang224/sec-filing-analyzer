@@ -8,6 +8,7 @@ financial data from SEC filings.
 import json
 import logging
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Import the XBRL extractor factory
@@ -17,11 +18,9 @@ from sec_filing_analyzer.data_processing import XBRLExtractorFactory
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def test_edgar_xbrl_extractor():
     """Test the EdgarXBRLExtractor with a known filing."""
@@ -33,7 +32,7 @@ def test_edgar_xbrl_extractor():
         # Create the extractor
         extractor = XBRLExtractorFactory.create_extractor(
             extractor_type="simplified",  # Use simplified extractor for now
-            cache_dir="data/xbrl_cache"
+            cache_dir="data/xbrl_cache",
         )
 
         # Use a known 10-K filing for Microsoft
@@ -43,11 +42,7 @@ def test_edgar_xbrl_extractor():
 
         # Extract XBRL data
         logger.info(f"Extracting XBRL data for {ticker} {accession_number}...")
-        xbrl_data = extractor.extract_financials(
-            ticker=ticker,
-            filing_id=filing_id,
-            accession_number=accession_number
-        )
+        xbrl_data = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
         # Check if extraction was successful
         if "error" in xbrl_data:
@@ -74,9 +69,9 @@ def test_edgar_xbrl_extractor():
         logger.info(f"  Number of Statements: {len(xbrl_data.get('statements', {}))}")
 
         # Print available statements
-        if 'statements' in xbrl_data:
+        if "statements" in xbrl_data:
             logger.info("Available statements:")
-            for statement_name in xbrl_data['statements'].keys():
+            for statement_name in xbrl_data["statements"].keys():
                 logger.info(f"  - {statement_name}")
 
         return xbrl_data
@@ -84,6 +79,7 @@ def test_edgar_xbrl_extractor():
     except Exception as e:
         logger.error(f"Error in test: {e}")
         return None
+
 
 def compare_extractors():
     """Compare the EdgarXBRLExtractor with the SimplifiedXBRLExtractor."""
@@ -94,13 +90,11 @@ def compare_extractors():
 
         # Create both extractors
         edgar_extractor = XBRLExtractorFactory.create_extractor(
-            extractor_type="edgar",
-            cache_dir="data/xbrl_cache/edgar"
+            extractor_type="edgar", cache_dir="data/xbrl_cache/edgar"
         )
 
         simplified_extractor = XBRLExtractorFactory.create_extractor(
-            extractor_type="simplified",
-            cache_dir="data/xbrl_cache/simplified"
+            extractor_type="simplified", cache_dir="data/xbrl_cache/simplified"
         )
 
         # Use a known 10-K filing for Microsoft
@@ -112,15 +106,11 @@ def compare_extractors():
         logger.info(f"Extracting XBRL data for {ticker} {accession_number} using both extractors...")
 
         edgar_data = edgar_extractor.extract_financials(
-            ticker=ticker,
-            filing_id=filing_id,
-            accession_number=accession_number
+            ticker=ticker, filing_id=filing_id, accession_number=accession_number
         )
 
         simplified_data = simplified_extractor.extract_financials(
-            ticker=ticker,
-            filing_id=filing_id,
-            accession_number=accession_number
+            ticker=ticker, filing_id=filing_id, accession_number=accession_number
         )
 
         # Save the extracted data to files for comparison
@@ -144,14 +134,12 @@ def compare_extractors():
         logger.info(f"  Edgar Statements: {len(edgar_data.get('statements', {}))}")
         logger.info(f"  Simplified Statements: {len(simplified_data.get('statements', {}))}")
 
-        return {
-            "edgar": edgar_data,
-            "simplified": simplified_data
-        }
+        return {"edgar": edgar_data, "simplified": simplified_data}
 
     except Exception as e:
         logger.error(f"Error in comparison: {e}")
         return None
+
 
 if __name__ == "__main__":
     test_edgar_xbrl_extractor()

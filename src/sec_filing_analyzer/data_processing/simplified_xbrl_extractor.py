@@ -5,10 +5,10 @@ This module provides a simplified interface to extract financial data from XBRL 
 using the edgartools library (aliased as edgar).
 """
 
-import logging
 import json
+import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 # For data processing
 import pandas as pd
@@ -19,6 +19,7 @@ from ..utils import edgar_utils
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class SimplifiedXBRLExtractor:
     """
@@ -36,11 +37,7 @@ class SimplifiedXBRLExtractor:
         logger.info(f"Initialized simplified XBRL extractor with cache at {self.cache_dir}")
 
     def extract_financials(
-        self,
-        ticker: str,
-        filing_id: str,
-        accession_number: str,
-        filing_url: Optional[str] = None
+        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """Extract financial data from XBRL filings.
 
@@ -58,7 +55,7 @@ class SimplifiedXBRLExtractor:
             cache_file = self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
             if cache_file.exists():
                 logger.info(f"Loading XBRL data from cache for {ticker} {accession_number}")
-                with open(cache_file, 'r') as f:
+                with open(cache_file, "r") as f:
                     return json.load(f)
 
             # Get filing by accession number using standardized utility
@@ -107,7 +104,7 @@ class SimplifiedXBRLExtractor:
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "accession_number": accession_number,
-                    "error": f"Failed to load XBRL data: {str(e)}"
+                    "error": f"Failed to load XBRL data: {str(e)}",
                 }
 
             # Extract filing metadata
@@ -116,7 +113,7 @@ class SimplifiedXBRLExtractor:
             report_date = str(filing_obj.report_date) if filing_obj.report_date else None
 
             # Determine fiscal year and quarter
-            fiscal_year = int(report_date.split('-')[0]) if report_date and '-' in report_date else None
+            fiscal_year = int(report_date.split("-")[0]) if report_date and "-" in report_date else None
             fiscal_quarter = self._determine_fiscal_quarter(report_date, filing_type)
 
             # Initialize financials dictionary
@@ -131,22 +128,22 @@ class SimplifiedXBRLExtractor:
                 "filing_type": filing_type,
                 "facts": [],
                 "metrics": {},
-                "statements": {}
+                "statements": {},
             }
 
             # Extract financial statements
             try:
                 # Get the statements from the filing
-                if hasattr(filing_obj, 'statements') and filing_obj.statements:
+                if hasattr(filing_obj, "statements") and filing_obj.statements:
                     statements = filing_obj.statements
 
                     # Check if statements is a dictionary-like object
-                    if hasattr(statements, 'items'):
+                    if hasattr(statements, "items"):
                         # Process each statement
                         for statement_name, statement_data in statements.items():
                             try:
                                 # Convert statement to pandas DataFrame if possible
-                                if hasattr(statement_data, 'to_pandas'):
+                                if hasattr(statement_data, "to_pandas"):
                                     df = statement_data.to_pandas()
                                 elif isinstance(statement_data, dict):
                                     df = pd.DataFrame(statement_data)
@@ -159,7 +156,7 @@ class SimplifiedXBRLExtractor:
                                     continue
 
                                 # Add statement to financials
-                                financials["statements"][statement_name] = df.to_dict(orient='records')
+                                financials["statements"][statement_name] = df.to_dict(orient="records")
 
                                 # Process statement data
                                 self._process_statement_data(df, statement_name, financials)
@@ -176,7 +173,7 @@ class SimplifiedXBRLExtractor:
             self._calculate_ratios(financials)
 
             # Cache the results
-            with open(cache_file, 'w') as f:
+            with open(cache_file, "w") as f:
                 json.dump(financials, f, indent=2)
 
             logger.info(f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}")
@@ -184,14 +181,7 @@ class SimplifiedXBRLExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
-            return {
-                "filing_id": filing_id,
-                "ticker": ticker,
-                "accession_number": accession_number,
-                "error": str(e)
-            }
-
-
+            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
 
     def _get_filing_type_from_url(self, filing_url: str) -> Optional[str]:
         """Extract filing type from filing URL.
@@ -204,18 +194,18 @@ class SimplifiedXBRLExtractor:
         """
         try:
             # Try to extract from URL
-            if '10-K' in filing_url:
-                return '10-K'
-            elif '10-Q' in filing_url:
-                return '10-Q'
-            elif '8-K' in filing_url:
-                return '8-K'
-            elif '20-F' in filing_url:
-                return '20-F'
-            elif '40-F' in filing_url:
-                return '40-F'
-            elif '6-K' in filing_url:
-                return '6-K'
+            if "10-K" in filing_url:
+                return "10-K"
+            elif "10-Q" in filing_url:
+                return "10-Q"
+            elif "8-K" in filing_url:
+                return "8-K"
+            elif "20-F" in filing_url:
+                return "20-F"
+            elif "40-F" in filing_url:
+                return "40-F"
+            elif "6-K" in filing_url:
+                return "6-K"
 
             return None
         except Exception as e:
@@ -237,11 +227,11 @@ class SimplifiedXBRLExtractor:
                 return None
 
             # For 10-K, assume it's Q4
-            if filing_type == '10-K':
+            if filing_type == "10-K":
                 return 4
 
             # For 10-Q, determine from month
-            if filing_type == '10-Q' and len(filing_date) >= 7:
+            if filing_type == "10-Q" and len(filing_date) >= 7:
                 month = int(filing_date[5:7])
                 # Approximate quarter from month
                 return (month - 1) // 3 + 1
@@ -267,16 +257,16 @@ class SimplifiedXBRLExtractor:
             for _, row in df.iterrows():
                 try:
                     # Skip rows without a concept
-                    if 'concept' not in row or not row['concept']:
+                    if "concept" not in row or not row["concept"]:
                         continue
 
                     # Get concept name
-                    concept = row['concept']
+                    concept = row["concept"]
 
                     # Get value from the first non-concept column
                     value = None
                     for col in df.columns:
-                        if col != 'concept' and not pd.isna(row[col]):
+                        if col != "concept" and not pd.isna(row[col]):
                             try:
                                 value = float(row[col])
                                 break
@@ -296,7 +286,7 @@ class SimplifiedXBRLExtractor:
                         "metric_name": standard_name,
                         "value": value,
                         "statement": statement_name,
-                        "category": category
+                        "category": category,
                     }
 
                     # Add to facts list
@@ -320,14 +310,14 @@ class SimplifiedXBRLExtractor:
             Normalized concept name
         """
         # Remove namespace prefix if present
-        if ':' in concept:
-            concept = concept.split(':')[1]
+        if ":" in concept:
+            concept = concept.split(":")[1]
 
         # Convert camel case to snake case
-        result = ''
+        result = ""
         for i, char in enumerate(concept):
-            if i > 0 and char.isupper() and concept[i-1].islower():
-                result += '_'
+            if i > 0 and char.isupper() and concept[i - 1].islower():
+                result += "_"
             result += char.lower()
 
         return result
@@ -343,16 +333,16 @@ class SimplifiedXBRLExtractor:
         """
         statement_name_lower = statement_name.lower()
 
-        if any(term in statement_name_lower for term in ['income', 'operations', 'earnings']):
-            return 'income_statement'
-        elif any(term in statement_name_lower for term in ['balance', 'financial position']):
-            return 'balance_sheet'
-        elif any(term in statement_name_lower for term in ['cash flow', 'cash flows']):
-            return 'cash_flow'
-        elif any(term in statement_name_lower for term in ['equity', 'stockholders', 'shareholders']):
-            return 'equity'
+        if any(term in statement_name_lower for term in ["income", "operations", "earnings"]):
+            return "income_statement"
+        elif any(term in statement_name_lower for term in ["balance", "financial position"]):
+            return "balance_sheet"
+        elif any(term in statement_name_lower for term in ["cash flow", "cash flows"]):
+            return "cash_flow"
+        elif any(term in statement_name_lower for term in ["equity", "stockholders", "shareholders"]):
+            return "equity"
         else:
-            return 'other'
+            return "other"
 
     def _extract_data_from_text(self, filing_obj: Any, financials: Dict[str, Any]) -> None:
         """Extract financial data from filing text.
@@ -374,16 +364,17 @@ class SimplifiedXBRLExtractor:
                 "net_income": r"(?:Net|Total)\s+[Ii]ncome\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
                 "total_assets": r"(?:Total|All)\s+[Aa]ssets\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
                 "total_liabilities": r"(?:Total|All)\s+[Ll]iabilities\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
-                "stockholders_equity": r"(?:Total|All)\s+(?:[Ss]tockholders'?|[Ss]hareholders'?)\s+[Ee]quity\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$"
+                "stockholders_equity": r"(?:Total|All)\s+(?:[Ss]tockholders'?|[Ss]hareholders'?)\s+[Ee]quity\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
             }
 
             # Extract metrics
             for metric_name, pattern in patterns.items():
                 import re
+
                 matches = re.findall(pattern, text, re.MULTILINE)
                 if matches:
                     # Use the first match
-                    value_str = matches[0].replace(',', '')
+                    value_str = matches[0].replace(",", "")
                     try:
                         value = float(value_str)
 
@@ -395,7 +386,7 @@ class SimplifiedXBRLExtractor:
                             "xbrl_tag": metric_name,
                             "metric_name": metric_name,
                             "value": value,
-                            "category": "extracted_from_text"
+                            "category": "extracted_from_text",
                         }
                         financials["facts"].append(fact)
                     except ValueError:

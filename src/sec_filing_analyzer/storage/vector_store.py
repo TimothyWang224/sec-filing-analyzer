@@ -4,36 +4,36 @@ Vector Store Implementation
 This module provides a focused implementation of vector storage operations.
 """
 
-import os
-import logging
 import json
-from typing import List, Dict, Any, Optional, Union
-import numpy as np
+import logging
+import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
+from llama_index.core import Document, StorageContext, VectorStoreIndex
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.schema import QueryBundle
+from llama_index.core.vector_stores import SimpleVectorStore
 
 from .interfaces import VectorStoreInterface
-from llama_index.core import VectorStoreIndex, Document, StorageContext
-from llama_index.core.vector_stores import SimpleVectorStore
-from llama_index.core.schema import QueryBundle
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class PineconeVectorStore(VectorStoreInterface):
     """Pinecone implementation of vector store."""
 
     def __init__(
-        self,
-        api_key: Optional[str] = None,
-        environment: str = "gcp-starter",
-        index_name: str = "sec-filings"
+        self, api_key: Optional[str] = None, environment: str = "gcp-starter", index_name: str = "sec-filings"
     ):
         """Initialize Pinecone vector store."""
         try:
             import pinecone
+
             self.api_key = api_key or os.getenv("PINECONE_API_KEY")
             if not self.api_key:
                 raise ValueError("Pinecone API key not found")
@@ -41,11 +41,7 @@ class PineconeVectorStore(VectorStoreInterface):
             pinecone.init(api_key=self.api_key, environment=environment)
 
             if index_name not in pinecone.list_indexes():
-                pinecone.create_index(
-                    name=index_name,
-                    dimension=1536,
-                    metric="cosine"
-                )
+                pinecone.create_index(name=index_name, dimension=1536, metric="cosine")
 
             self.index = pinecone.Index(index_name)
             logger.info(f"Initialized Pinecone vector store with index: {index_name}")
@@ -58,25 +54,18 @@ class PineconeVectorStore(VectorStoreInterface):
             raise
 
     def upsert_vectors(
-        self,
-        vectors: List[List[float]],
-        ids: List[str],
-        metadata: Optional[List[Dict[str, Any]]] = None
+        self, vectors: List[List[float]], ids: List[str], metadata: Optional[List[Dict[str, Any]]] = None
     ) -> bool:
         """Upsert vectors to Pinecone."""
         try:
             vectors_to_upsert = []
             for i, (vector, id_) in enumerate(zip(vectors, ids)):
-                vector_data = {
-                    "id": id_,
-                    "values": vector,
-                    "metadata": metadata[i] if metadata else {}
-                }
+                vector_data = {"id": id_, "values": vector, "metadata": metadata[i] if metadata else {}}
                 vectors_to_upsert.append(vector_data)
 
             batch_size = 100
             for i in range(0, len(vectors_to_upsert), batch_size):
-                batch = vectors_to_upsert[i:i+batch_size]
+                batch = vectors_to_upsert[i : i + batch_size]
                 self.index.upsert(vectors=batch)
 
             logger.info(f"Successfully upserted {len(vectors)} vectors to Pinecone")
@@ -87,56 +76,31 @@ class PineconeVectorStore(VectorStoreInterface):
             return False
 
     def search_vectors(
-        self,
-        query_vector: List[float],
-        top_k: int = 10,
-        filter_metadata: Optional[Dict[str, Any]] = None
+        self, query_vector: List[float], top_k: int = 10, filter_metadata: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors in Pinecone."""
         try:
-            results = self.index.query(
-                vector=query_vector,
-                top_k=top_k,
-                include_metadata=True,
-                filter=filter_metadata
-            )
+            results = self.index.query(vector=query_vector, top_k=top_k, include_metadata=True, filter=filter_metadata)
 
-            return [
-                {
-                    "id": match.id,
-                    "score": match.score,
-                    "metadata": match.metadata
-                }
-                for match in results.matches
-            ]
+            return [{"id": match.id, "score": match.score, "metadata": match.metadata} for match in results.matches]
 
         except Exception as e:
             logger.error(f"Error searching vectors in Pinecone: {str(e)}")
             return []
 
-    def get_vector(
-        self,
-        vector_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_vector(self, vector_id: str) -> Optional[Dict[str, Any]]:
         """Get a vector by ID from Pinecone."""
         try:
             result = self.index.fetch(ids=[vector_id])
             if vector_id in result.vectors:
                 vector = result.vectors[vector_id]
-                return {
-                    "id": vector.id,
-                    "values": vector.values,
-                    "metadata": vector.metadata
-                }
+                return {"id": vector.id, "values": vector.values, "metadata": vector.metadata}
             return None
         except Exception as e:
             logger.error(f"Error getting vector from Pinecone: {str(e)}")
             return None
 
-    def delete_vector(
-        self,
-        vector_id: str
-    ) -> bool:
+    def delete_vector(self, vector_id: str) -> bool:
         """Delete a vector by ID from Pinecone."""
         try:
             self.index.delete(ids=[vector_id])
@@ -144,6 +108,7 @@ class PineconeVectorStore(VectorStoreInterface):
         except Exception as e:
             logger.error(f"Error deleting vector from Pinecone: {str(e)}")
             return False
+
 
 class LlamaIndexVectorStore:
     """
@@ -202,7 +167,7 @@ class LlamaIndexVectorStore:
         vectors: List[List[float]],
         ids: List[str],
         metadata: Optional[List[Dict[str, Any]]] = None,
-        texts: Optional[List[str]] = None
+        texts: Optional[List[str]] = None,
     ) -> None:
         """Add vectors and their associated text to the store.
 
@@ -224,21 +189,21 @@ class LlamaIndexVectorStore:
                 logger.debug(f"Creating node for ID {id_} with metadata: {meta}")
 
                 # Add original document ID to metadata
-                meta['original_doc_id'] = id_
+                meta["original_doc_id"] = id_
 
                 # Limit metadata size to avoid LlamaIndex errors
                 limited_meta = {}
                 for key, value in meta.items():
-                    if key in ['ticker', 'form', 'filing_date', 'company', 'cik', 'item', 'original_doc_id']:
+                    if key in ["ticker", "form", "filing_date", "company", "cik", "item", "original_doc_id"]:
                         limited_meta[key] = value
 
                 # Add chunk metadata if it's a chunk
-                if 'chunk_metadata' in meta and isinstance(meta['chunk_metadata'], dict):
-                    chunk_meta = meta['chunk_metadata']
-                    if 'item' in chunk_meta:
-                        limited_meta['item'] = chunk_meta['item']
-                    if 'is_table' in chunk_meta:
-                        limited_meta['is_table'] = chunk_meta['is_table']
+                if "chunk_metadata" in meta and isinstance(meta["chunk_metadata"], dict):
+                    chunk_meta = meta["chunk_metadata"]
+                    if "item" in chunk_meta:
+                        limited_meta["item"] = chunk_meta["item"]
+                    if "is_table" in chunk_meta:
+                        limited_meta["is_table"] = chunk_meta["is_table"]
 
                 # Create node
                 node = Document(
@@ -246,7 +211,7 @@ class LlamaIndexVectorStore:
                     embedding=vector,
                     metadata=limited_meta,
                     doc_id=id_,
-                    id_=id_  # Use the original ID as the node ID
+                    id_=id_,  # Use the original ID as the node ID
                 )
                 nodes.append(node)
 
@@ -280,7 +245,7 @@ class LlamaIndexVectorStore:
         self,
         query_vector: str,  # This is now a query string, not a vector
         top_k: int = 5,
-        metadata_filter: Optional[Dict[str, Any]] = None
+        metadata_filter: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors and return their associated text.
 
@@ -305,16 +270,11 @@ class LlamaIndexVectorStore:
                 return []
 
             # Create a retriever with the specified parameters
-            retriever = self.index.as_retriever(
-                similarity_top_k=top_k
-            )
+            retriever = self.index.as_retriever(similarity_top_k=top_k)
 
             # Apply metadata filters if provided
             if metadata_filter:
-                retriever = self.index.as_retriever(
-                    similarity_top_k=top_k,
-                    filters=metadata_filter
-                )
+                retriever = self.index.as_retriever(similarity_top_k=top_k, filters=metadata_filter)
 
             # Create a query engine from the retriever
             query_engine = RetrieverQueryEngine.from_args(retriever)
@@ -324,7 +284,7 @@ class LlamaIndexVectorStore:
             results = query_engine.query(query_vector)
 
             # Get source nodes from the response
-            source_nodes = results.source_nodes if hasattr(results, 'source_nodes') else []
+            source_nodes = results.source_nodes if hasattr(results, "source_nodes") else []
 
             logger.info(f"Found {len(source_nodes)} results")
 
@@ -333,26 +293,32 @@ class LlamaIndexVectorStore:
             for node in source_nodes:
                 try:
                     # LlamaIndex 0.9+ uses NodeWithScore objects
-                    if hasattr(node, 'node'):
+                    if hasattr(node, "node"):
                         # This is a NodeWithScore object
                         doc_id = node.node.node_id
                         score = node.score
                     else:
                         # Fallback for older versions or different node types
-                        doc_id = node.doc_id if hasattr(node, 'doc_id') else node.node_id if hasattr(node, 'node_id') else 'unknown'
-                        score = node.score if hasattr(node, 'score') else 0.0
+                        doc_id = (
+                            node.doc_id
+                            if hasattr(node, "doc_id")
+                            else node.node_id
+                            if hasattr(node, "node_id")
+                            else "unknown"
+                        )
+                        score = node.score if hasattr(node, "score") else 0.0
 
                     # Try to get the original document ID from the node's metadata
                     original_doc_id = None
-                    if hasattr(node, 'node') and hasattr(node.node, 'metadata'):
-                        original_doc_id = node.node.metadata.get('original_doc_id')
+                    if hasattr(node, "node") and hasattr(node.node, "metadata"):
+                        original_doc_id = node.node.metadata.get("original_doc_id")
 
                     # Use the original document ID if available
                     if original_doc_id:
                         doc_id = original_doc_id
 
                     # Get metadata and text directly from the node if possible
-                    if hasattr(node, 'node'):
+                    if hasattr(node, "node"):
                         node_metadata = node.node.metadata
                         node_text = node.node.text
 
@@ -380,12 +346,7 @@ class LlamaIndexVectorStore:
                             logger.debug(f"Skipping {doc_id} due to metadata filter")
                             continue
 
-                    formatted_results.append({
-                        "id": doc_id,
-                        "score": score,
-                        "metadata": metadata,
-                        "text": text
-                    })
+                    formatted_results.append({"id": doc_id, "score": score, "metadata": metadata, "text": text})
                 except Exception as e:
                     logger.warning(f"Error formatting node: {e}")
                     # Skip this node
@@ -411,6 +372,7 @@ class LlamaIndexVectorStore:
                         doc_id = file_path.stem
                         with open(file_path, "r", encoding="utf-8") as f:
                             import json
+
                             metadata = json.load(f)
                             metadata_store[doc_id] = metadata
                     except Exception as e:
@@ -451,12 +413,13 @@ class LlamaIndexVectorStore:
         """
         try:
             # Create a safe filename by replacing invalid characters
-            safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+            safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
             # Save to disk
             metadata_path = self.metadata_dir / f"{safe_id}.json"
             with open(metadata_path, "w", encoding="utf-8") as f:
                 import json
+
                 json.dump(metadata, f, ensure_ascii=False, indent=2)
 
             logger.debug(f"Saved metadata for {doc_id} to {metadata_path}")
@@ -472,7 +435,7 @@ class LlamaIndexVectorStore:
         """
         try:
             # Create a safe filename by replacing invalid characters
-            safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+            safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
             # Save to disk
             text_path = self.text_dir / f"{safe_id}.txt"
@@ -495,12 +458,13 @@ class LlamaIndexVectorStore:
             self.embedding_store[doc_id] = embedding
 
             # Create a safe filename by replacing invalid characters
-            safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+            safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
             # Save to disk
             embedding_path = self.embeddings_dir / f"{safe_id}.json"
             with open(embedding_path, "w") as f:
                 import json
+
                 json.dump(embedding, f)
 
             logger.debug(f"Saved embedding for {doc_id} to {embedding_path}")
@@ -525,6 +489,7 @@ class LlamaIndexVectorStore:
                 try:
                     with open(file_path, "r", encoding="utf-8") as f:
                         import json
+
                         metadata = json.load(f)
                         if "accession_number" in metadata:
                             on_disk_ids.add(metadata["accession_number"])
@@ -556,7 +521,7 @@ class LlamaIndexVectorStore:
             return metadata
 
         # Create a safe filename by replacing invalid characters
-        safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
         # Try to load from disk
         try:
@@ -564,6 +529,7 @@ class LlamaIndexVectorStore:
             if metadata_path.exists():
                 with open(metadata_path, "r", encoding="utf-8") as f:
                     import json
+
                     metadata = json.load(f)
                     # Cache in memory for future use
                     self.metadata_store[doc_id] = metadata
@@ -588,7 +554,7 @@ class LlamaIndexVectorStore:
             return text
 
         # Create a safe filename by replacing invalid characters
-        safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
         # Try to load from disk
         try:
@@ -619,7 +585,7 @@ class LlamaIndexVectorStore:
             return embedding
 
         # Create a safe filename by replacing invalid characters
-        safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
         # Try to load from disk
         try:
@@ -627,6 +593,7 @@ class LlamaIndexVectorStore:
             if embedding_path.exists():
                 with open(embedding_path, "r") as f:
                     import json
+
                     embedding = json.load(f)
                     # Cache in memory for future use
                     self.embedding_store[doc_id] = embedding
@@ -662,7 +629,9 @@ class LlamaIndexVectorStore:
             if not metadata_json_path.exists():
                 error_msg = f"Vector store metadata.json not found at {metadata_json_path}. This file is required for vector store initialization."
                 logger.error(error_msg)
-                logger.error("Please run the ETL pipeline to populate the vector store or check the VECTOR_STORE_DIR path.")
+                logger.error(
+                    "Please run the ETL pipeline to populate the vector store or check the VECTOR_STORE_DIR path."
+                )
                 # Raise an exception to fail fast
                 raise FileNotFoundError(error_msg)
 
@@ -671,8 +640,7 @@ class LlamaIndexVectorStore:
             if index_path.exists() and not force_rebuild:
                 logger.info(f"Loading existing index from {index_path}")
                 self.index = VectorStoreIndex.from_vector_store(
-                    vector_store=self.vector_store,
-                    storage_context=self.storage_context
+                    vector_store=self.vector_store, storage_context=self.storage_context
                 )
                 logger.info("Successfully loaded existing index")
             else:
@@ -694,23 +662,18 @@ class LlamaIndexVectorStore:
                             # Limit metadata size to avoid LlamaIndex errors
                             limited_metadata = {}
                             for key, value in metadata.items():
-                                if key in ['ticker', 'form', 'filing_date', 'company', 'cik', 'item']:
+                                if key in ["ticker", "form", "filing_date", "company", "cik", "item"]:
                                     limited_metadata[key] = value
 
                             # Add chunk metadata if it's a chunk
-                            if 'chunk_metadata' in metadata and isinstance(metadata['chunk_metadata'], dict):
-                                chunk_meta = metadata['chunk_metadata']
-                                if 'item' in chunk_meta:
-                                    limited_metadata['item'] = chunk_meta['item']
-                                if 'is_table' in chunk_meta:
-                                    limited_metadata['is_table'] = chunk_meta['is_table']
+                            if "chunk_metadata" in metadata and isinstance(metadata["chunk_metadata"], dict):
+                                chunk_meta = metadata["chunk_metadata"]
+                                if "item" in chunk_meta:
+                                    limited_metadata["item"] = chunk_meta["item"]
+                                if "is_table" in chunk_meta:
+                                    limited_metadata["is_table"] = chunk_meta["is_table"]
 
-                            doc = Document(
-                                text=text,
-                                metadata=limited_metadata,
-                                embedding=embedding,
-                                doc_id=doc_id
-                            )
+                            doc = Document(text=text, metadata=limited_metadata, embedding=embedding, doc_id=doc_id)
                             documents.append(doc)
                     except Exception as e:
                         logger.warning(f"Error loading document {doc_id}: {e}")
@@ -718,8 +681,7 @@ class LlamaIndexVectorStore:
                 if documents:
                     logger.info(f"Creating index with {len(documents)} documents")
                     self.index = VectorStoreIndex.from_documents(
-                        documents=documents,
-                        storage_context=self.storage_context
+                        documents=documents, storage_context=self.storage_context
                     )
                     # Persist the index
                     self.index.storage_context.persist(persist_dir=str(self.index_dir))
@@ -728,8 +690,7 @@ class LlamaIndexVectorStore:
                     logger.info("No documents found, creating empty index")
                     # Create an empty index
                     self.index = VectorStoreIndex.from_documents(
-                        documents=[Document(text="", doc_id="temp")],
-                        storage_context=self.storage_context
+                        documents=[Document(text="", doc_id="temp")], storage_context=self.storage_context
                     )
                     # Remove temporary document
                     self.vector_store.delete("temp")
@@ -752,7 +713,7 @@ class LlamaIndexVectorStore:
             Metadata dictionary or None if not found
         """
         # Create a safe filename by replacing invalid characters
-        safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
         # Try to load from disk
         try:
@@ -776,7 +737,7 @@ class LlamaIndexVectorStore:
             Document text or None if not found
         """
         # Create a safe filename by replacing invalid characters
-        safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
         # Try to load from disk
         try:
@@ -800,7 +761,7 @@ class LlamaIndexVectorStore:
             Embedding vector or None if not found
         """
         # Create a safe filename by replacing invalid characters
-        safe_id = doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        safe_id = doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
         # Try to load from disk
         try:

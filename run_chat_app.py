@@ -5,16 +5,18 @@ This script launches the Streamlit-based chat app for interacting with the
 Financial Diligence Coordinator agent.
 """
 
-import subprocess
-import sys
 import os
 import socket
+import subprocess
+import sys
 from pathlib import Path
+
 
 def is_port_in_use(port):
     """Check if a port is in use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
+        return s.connect_ex(("localhost", port)) == 0
+
 
 def find_available_port(start_port, max_attempts=10):
     """Find an available port starting from start_port.
@@ -30,6 +32,7 @@ def find_available_port(start_port, max_attempts=10):
         if not is_port_in_use(port):
             return port
     return None
+
 
 def main():
     """Run the SEC Filing Analyzer Chat App."""
@@ -63,13 +66,13 @@ def main():
         # Run the Streamlit app
         print(f"Starting SEC Filing Analyzer Chat App on port {port}...")
         subprocess.run(
-            [sys.executable, "-m", "streamlit", "run", "chat_app/app.py", f"--server.port={port}"],
-            check=True
+            [sys.executable, "-m", "streamlit", "run", "chat_app/app.py", f"--server.port={port}"], check=True
         )
     except subprocess.CalledProcessError as e:
         print(f"Error running Streamlit app: {e}")
     except KeyboardInterrupt:
         print("Chat app stopped by user.")
+
 
 if __name__ == "__main__":
     main()

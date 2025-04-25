@@ -7,32 +7,30 @@ how parameters flow from the agent to the tools.
 
 import asyncio
 import json
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from src.agents.financial_analyst import FinancialAnalystAgent
-from src.llm.openai import OpenAILLM
 from src.capabilities.planning import PlanningCapability
-from src.tools.registry import ToolRegistry
 from src.environments.base import Environment
+from src.llm.openai import OpenAILLM
 from src.tools.base import Tool
+from src.tools.registry import ToolRegistry
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('scripts/tests/outputs/tool_parameters_test.log')
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("scripts/tests/outputs/tool_parameters_test.log")],
 )
 logger = logging.getLogger(__name__)
+
 
 # Create a simple test tool
 class TestFinancialDataTool(Tool):
@@ -42,11 +40,7 @@ class TestFinancialDataTool(Tool):
     description = "Retrieve financial data for testing purposes"
     tags = ["test", "financial"]
 
-    async def execute(
-        self,
-        query_type: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute the test financial data tool.
 
@@ -61,61 +55,35 @@ class TestFinancialDataTool(Tool):
 
         # Validate parameters
         if not self.validate_args(query_type, parameters):
-            return {
-                "error": "Invalid parameters",
-                "query_type": query_type,
-                "parameters": parameters
-            }
+            return {"error": "Invalid parameters", "query_type": query_type, "parameters": parameters}
 
         # Process based on query_type
         if query_type == "revenue":
             return {
                 "query_type": query_type,
                 "parameters": parameters,
-                "result": {
-                    "ticker": parameters.get("ticker"),
-                    "revenue": {
-                        "2022": 100000000,
-                        "2023": 120000000
-                    }
-                }
+                "result": {"ticker": parameters.get("ticker"), "revenue": {"2022": 100000000, "2023": 120000000}},
             }
         elif query_type == "profit":
             return {
                 "query_type": query_type,
                 "parameters": parameters,
-                "result": {
-                    "ticker": parameters.get("ticker"),
-                    "profit": {
-                        "2022": 20000000,
-                        "2023": 25000000
-                    }
-                }
+                "result": {"ticker": parameters.get("ticker"), "profit": {"2022": 20000000, "2023": 25000000}},
             }
         elif query_type == "metrics":
             return {
                 "query_type": query_type,
                 "parameters": parameters,
-                "result": {
-                    "ticker": parameters.get("ticker"),
-                    "metrics": {
-                        "pe_ratio": 15.2,
-                        "debt_to_equity": 0.8
-                    }
-                }
+                "result": {"ticker": parameters.get("ticker"), "metrics": {"pe_ratio": 15.2, "debt_to_equity": 0.8}},
             }
         else:
             return {
                 "error": f"Unsupported query_type: {query_type}",
                 "query_type": query_type,
-                "parameters": parameters
+                "parameters": parameters,
             }
 
-    def validate_args(
-        self,
-        query_type: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
         """
         Validate the tool arguments.
 
@@ -164,7 +132,9 @@ class LoggingEnvironment(Environment):
         tool_name = action.get("tool")
         args = action.get("args", {})
 
-        logger.info(f"LoggingEnvironment.execute_action called with tool={tool_name}, args={json.dumps(args, indent=2)}")
+        logger.info(
+            f"LoggingEnvironment.execute_action called with tool={tool_name}, args={json.dumps(args, indent=2)}"
+        )
 
         try:
             result = await super().execute_action(action)
@@ -179,12 +149,7 @@ class LoggingEnvironment(Environment):
 class LoggingPlanningCapability(PlanningCapability):
     """Planning capability that logs parameter handling."""
 
-    async def process_action(
-        self,
-        agent: Any,
-        context: Dict[str, Any],
-        action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Any, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action with detailed logging.
 
@@ -208,6 +173,7 @@ class LoggingPlanningCapability(PlanningCapability):
 # Register the test tool
 ToolRegistry._register_tool(TestFinancialDataTool, name="test_financial_data", tags=["test", "financial"])
 
+
 async def main():
     """Run the test script."""
     # Create an LLM instance
@@ -215,10 +181,7 @@ async def main():
 
     # Create a logging planning capability
     planning_capability = LoggingPlanningCapability(
-        enable_dynamic_replanning=False,
-        enable_step_reflection=False,
-        max_plan_steps=3,
-        plan_detail_level="high"
+        enable_dynamic_replanning=False, enable_step_reflection=False, max_plan_steps=3, plan_detail_level="high"
     )
 
     # Create a logging environment
@@ -231,7 +194,7 @@ async def main():
         llm_temperature=0.3,
         llm_max_tokens=1000,
         max_iterations=3,
-        environment=environment
+        environment=environment,
     )
 
     # Simple input that should trigger the test_financial_data tool
@@ -262,11 +225,11 @@ async def main():
     print(f"Number of tool calls: {len(tool_calls)}")
 
     for i, call in enumerate(tool_calls):
-        print(f"\nTool Call {i+1}:")
+        print(f"\nTool Call {i + 1}:")
         print(f"Tool: {call.get('tool')}")
         print(f"Args: {json.dumps(call.get('args', {}), indent=2)}")
         print(f"Success: {call.get('success', False)}")
-        if not call.get('success', False):
+        if not call.get("success", False):
             print(f"Error: {call.get('error', 'Unknown error')}")
 
     return result

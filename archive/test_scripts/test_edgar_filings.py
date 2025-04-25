@@ -1,10 +1,11 @@
-import edgar
-from datetime import datetime, timedelta
 import sys
+from datetime import datetime, timedelta
+
+import edgar
 
 # Set up date range for 3 years
 today = datetime.now()
-three_years_ago = today - timedelta(days=365*3)
+three_years_ago = today - timedelta(days=365 * 3)
 date_range = f"{three_years_ago.strftime('%Y-%m-%d')}:{today.strftime('%Y-%m-%d')}"
 
 print(f"Testing edgar library with date range: {date_range}")
@@ -49,4 +50,4 @@ except Exception as e:
 if all_filings:
     print("\nFirst few filings:")
     for i, filing in enumerate(all_filings[:5]):
-        print(f"{i+1}. {filing.form} - {filing.filing_date} - {filing.accession_number}")
+        print(f"{i + 1}. {filing.form} - {filing.filing_date} - {filing.accession_number}")

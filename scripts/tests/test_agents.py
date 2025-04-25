@@ -3,16 +3,17 @@ Test script for the agent implementations.
 """
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from src.agents import QASpecialistAgent, FinancialAnalystAgent, RiskAnalystAgent, FinancialDiligenceCoordinator
-from src.environments.financial import FinancialEnvironment
+from src.agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
 from src.capabilities.logging import LoggingCapability
 from src.capabilities.time_awareness import TimeAwarenessCapability
+from src.environments.financial import FinancialEnvironment
+
 
 async def test_qa_specialist():
     """Test the QA Specialist agent."""
@@ -23,12 +24,7 @@ async def test_qa_specialist():
 
     # Create agent with capabilities
     agent = QASpecialistAgent(
-        capabilities=[
-            LoggingCapability(),
-            TimeAwarenessCapability()
-        ],
-        environment=environment,
-        max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
     )
 
     # Run the agent
@@ -41,6 +37,7 @@ async def test_qa_specialist():
 
     return result
 
+
 async def test_financial_analyst():
     """Test the Financial Analyst agent."""
     print("\n=== Testing Financial Analyst Agent ===")
@@ -50,12 +47,7 @@ async def test_financial_analyst():
 
     # Create agent with capabilities
     agent = FinancialAnalystAgent(
-        capabilities=[
-            LoggingCapability(),
-            TimeAwarenessCapability()
-        ],
-        environment=environment,
-        max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
     )
 
     # Run the agent
@@ -68,6 +60,7 @@ async def test_financial_analyst():
 
     return result
 
+
 async def test_risk_analyst():
     """Test the Risk Analyst agent."""
     print("\n=== Testing Risk Analyst Agent ===")
@@ -77,12 +70,7 @@ async def test_risk_analyst():
 
     # Create agent with capabilities
     agent = RiskAnalystAgent(
-        capabilities=[
-            LoggingCapability(),
-            TimeAwarenessCapability()
-        ],
-        environment=environment,
-        max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
     )
 
     # Run the agent
@@ -95,6 +83,7 @@ async def test_risk_analyst():
 
     return result
 
+
 async def test_coordinator():
     """Test the Financial Diligence Coordinator agent."""
     print("\n=== Testing Financial Diligence Coordinator Agent ===")
@@ -104,12 +93,7 @@ async def test_coordinator():
 
     # Create agent with capabilities
     agent = FinancialDiligenceCoordinator(
-        capabilities=[
-            LoggingCapability(),
-            TimeAwarenessCapability()
-        ],
-        environment=environment,
-        max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
     )
 
     # Run the agent
@@ -121,6 +105,7 @@ async def test_coordinator():
     print(f"Key Findings: {result.get('diligence_report', {}).get('key_findings', [])}")
 
     return result
+
 
 async def main():
     """Run all agent tests."""
@@ -135,6 +120,7 @@ async def main():
 
     # Test Coordinator
     await test_coordinator()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

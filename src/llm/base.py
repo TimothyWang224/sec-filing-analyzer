@@ -3,7 +3,7 @@ Base LLM interface for SEC Filing Analyzer.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 class LLM(ABC):
@@ -17,7 +17,7 @@ class LLM(ABC):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         stop: Optional[Union[str, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Generate text from the LLM.
@@ -43,7 +43,7 @@ class LLM(ABC):
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Generate structured JSON output from the LLM.

@@ -1,7 +1,7 @@
 import duckdb
 
 # Connect to the database
-conn = duckdb.connect('data/db_backup/financial_data.duckdb', read_only=True)
+conn = duckdb.connect("data/db_backup/financial_data.duckdb", read_only=True)
 
 # Query GOOGL revenue for 2023
 query = """

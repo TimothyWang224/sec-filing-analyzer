@@ -5,43 +5,43 @@ This page shows what companies and filings are currently stored in the system.
 """
 
 import streamlit as st
-# Set page config first (must be the first Streamlit command)
-st.set_page_config(
-    page_title="ETL Data Inventory",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
-import pandas as pd
+# Set page config first (must be the first Streamlit command)
+st.set_page_config(page_title="ETL Data Inventory", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+
+import logging
 import os
 import sys
-import logging
-from pathlib import Path
-from datetime import datetime, timedelta
-import duckdb
 import time
+from datetime import datetime, timedelta
+from pathlib import Path
+
+import duckdb
+import pandas as pd
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import terminal output component
-from streamlit_app.components.terminal_output import TerminalOutputCapture, display_terminal_output, run_with_output_capture
+from streamlit_app.components.terminal_output import (
+    TerminalOutputCapture,
+    display_terminal_output,
+    run_with_output_capture,
+)
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 # Import utility functions
-from src.streamlit_app.utils import launch_duckdb_ui, app_state
-
-# Import the ETL service
-from src.streamlit_app.services import get_etl_service
-
 # Import the DuckDB manager
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
+# Import the ETL service
+from src.streamlit_app.services import get_etl_service
+from src.streamlit_app.utils import app_state, launch_duckdb_ui
+
 # Configure logger
-logger = logging.getLogger('etl_data_inventory')
+logger = logging.getLogger("etl_data_inventory")
 
 # Log startup information
 logger.info("ETL Data Inventory starting up")
@@ -54,16 +54,17 @@ etl_service = get_etl_service()
 # Page config is already set at the top of the file
 
 # Initialize session state for refresh tracking
-if 'last_data_load' not in st.session_state:
+if "last_data_load" not in st.session_state:
     st.session_state.last_data_load = datetime.now()
-if 'refresh_duration' not in st.session_state:
+if "refresh_duration" not in st.session_state:
     st.session_state.refresh_duration = 0.0
-if 'is_refreshing' not in st.session_state:
+if "is_refreshing" not in st.session_state:
     st.session_state.is_refreshing = False
-if 'refresh_start_time' not in st.session_state:
+if "refresh_start_time" not in st.session_state:
     st.session_state.refresh_start_time = 0
-if 'refresh_id' not in st.session_state:
+if "refresh_id" not in st.session_state:
     st.session_state.refresh_id = 0
+
 
 # Function to refresh data
 def refresh_data():
@@ -76,6 +77,7 @@ def refresh_data():
 
     # Force a rerun to refresh the data
     st.rerun()
+
 
 # Function to track data load time
 def track_data_load():
@@ -90,10 +92,11 @@ def track_data_load():
 
         # Update last data load timestamp
         st.session_state.last_data_load = datetime.now()
-    elif 'first_load' not in st.session_state:
+    elif "first_load" not in st.session_state:
         # If this is the first load, update the timestamp
         st.session_state.last_data_load = datetime.now()
         st.session_state.first_load = True
+
 
 # Title and description
 st.title("ETL Data Inventory")
@@ -111,16 +114,23 @@ with top_col1:
 
 with top_col2:
     # Button to launch DuckDB UI
-    if st.button("🌐 Launch DuckDB UI", key="top_launch_duckdb_ui", use_container_width=True, help="Launch the native DuckDB UI in a new browser tab"):
+    if st.button(
+        "🌐 Launch DuckDB UI",
+        key="top_launch_duckdb_ui",
+        use_container_width=True,
+        help="Launch the native DuckDB UI in a new browser tab",
+    ):
         # Log the button click
         logger.info("Launch DuckDB UI button clicked")
 
         # Launch DuckDB UI
         from src.streamlit_app.utils import launch_duckdb_ui
+
         launch_duckdb_ui()
 
 # Add a separator
 st.markdown("---")
+
 
 # Function to get data from DuckDB
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -142,10 +152,10 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
         # Get filings with improved schema
         # First check if the filings_new table exists and what columns it has
         table_info = conn.execute("PRAGMA table_info(filings_new)").fetchdf()
-        column_names = table_info['name'].tolist() if not table_info.empty else []
+        column_names = table_info["name"].tolist() if not table_info.empty else []
 
         # Build a query based on available columns
-        if 'filing_id' in column_names:
+        if "filing_id" in column_names:
             # Improved schema
             filings_query = """
             SELECT
@@ -154,9 +164,9 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
             """
 
             # Add fiscal_period if it exists
-            if 'fiscal_period' in column_names:
+            if "fiscal_period" in column_names:
                 filings_query += "fiscal_period, "
-            elif 'fiscal_quarter' in column_names:
+            elif "fiscal_quarter" in column_names:
                 filings_query += "fiscal_quarter as fiscal_period, "
             else:
                 filings_query += "NULL as fiscal_period, "
@@ -167,7 +177,7 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
             """
 
             # Add updated_at if it exists
-            if 'updated_at' in column_names:
+            if "updated_at" in column_names:
                 filings_query += "updated_at"
             else:
                 filings_query += "created_at as updated_at"
@@ -198,7 +208,10 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
 
         # Get filing counts by company, type, and fiscal period
         # Build a query based on available columns
-        if 'company_id' in column_names and 'ticker' in conn.execute("PRAGMA table_info(companies)").fetchdf()['name'].tolist():
+        if (
+            "company_id" in column_names
+            and "ticker" in conn.execute("PRAGMA table_info(companies)").fetchdf()["name"].tolist()
+        ):
             # Improved schema with company_id foreign key
             filing_counts_query = """
             SELECT
@@ -208,11 +221,11 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
             """
 
             # Add fiscal_period if it exists
-            if 'fiscal_period' in column_names:
+            if "fiscal_period" in column_names:
                 filing_counts_query += """
                 f.fiscal_period,
                 """
-            elif 'fiscal_quarter' in column_names:
+            elif "fiscal_quarter" in column_names:
                 filing_counts_query += """
                 f.fiscal_quarter as fiscal_period,
                 """
@@ -234,9 +247,9 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
             """
 
             # Add fiscal_period to GROUP BY if it exists
-            if 'fiscal_period' in column_names:
+            if "fiscal_period" in column_names:
                 filing_counts_query += "f.fiscal_period"
-            elif 'fiscal_quarter' in column_names:
+            elif "fiscal_quarter" in column_names:
                 filing_counts_query += "f.fiscal_quarter"
             else:
                 filing_counts_query += "'Unknown'"
@@ -276,6 +289,7 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
         logger.error(f"Error retrieving data from DuckDB: {e}")
         return None, None, None
 
+
 # Function to get data from vector store
 @st.cache_data(ttl=300)  # Cache for 5 minutes
 def get_vector_store_data(vector_store_path="data/vector_store", _refresh_id=None):
@@ -312,11 +326,12 @@ def get_vector_store_data(vector_store_path="data/vector_store", _refresh_id=Non
             "companies": companies,
             "embedding_counts": embedding_counts,
             "path": vector_store_path,
-            "index_exists": index_exists
+            "index_exists": index_exists,
         }
     except Exception as e:
         logger.error(f"Error retrieving data from vector store: {e}")
         return None
+
 
 # Function to get inventory summary
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -325,11 +340,14 @@ def get_inventory_summary(_refresh_id=None):
     try:
         # Get inventory summary from ETL service
         summary = etl_service.get_inventory_summary()
-        logger.info(f"Retrieved inventory summary: {len(summary.get('company_counts', []))} companies, {summary.get('total_filings', 0)} filings")
+        logger.info(
+            f"Retrieved inventory summary: {len(summary.get('company_counts', []))} companies, {summary.get('total_filings', 0)} filings"
+        )
         return summary
     except Exception as e:
         logger.error(f"Error retrieving inventory summary: {e}")
         return None
+
 
 # Function to sync storage
 def sync_storage():
@@ -358,6 +376,7 @@ def sync_storage():
         logger.error(f"Error synchronizing storage: {e}")
         return {"error": str(e)}
 
+
 # Main content
 # Sidebar filters
 st.sidebar.header("Filters")
@@ -366,15 +385,13 @@ st.sidebar.header("Filters")
 st.sidebar.subheader("Processing Status")
 all_processing_statuses = ["downloaded", "processed", "embedded", "xbrl_processed", "error", "unknown"]
 selected_processing_statuses = st.sidebar.multiselect(
-    "Select Processing Status",
-    options=all_processing_statuses,
-    default=all_processing_statuses
+    "Select Processing Status", options=all_processing_statuses, default=all_processing_statuses
 )
 
 # Date range filter
 st.sidebar.subheader("Date Range")
 today = datetime.now()
-default_start_date = today - timedelta(days=365*2)  # 2 years ago
+default_start_date = today - timedelta(days=365 * 2)  # 2 years ago
 default_end_date = today
 
 start_date = st.sidebar.date_input("Start Date", default_start_date)
@@ -404,8 +421,8 @@ if st.sidebar.button("🔄 Rebuild Vector Index", use_container_width=True):
         # Force rebuild the index
         if etl_service and etl_service.pipeline and etl_service.pipeline.vector_store:
             # Create a new vector store with force_rebuild=True
-            from sec_filing_analyzer.storage.vector_store import LlamaIndexVectorStore
             from sec_filing_analyzer.config import ConfigProvider, StorageConfig
+            from sec_filing_analyzer.storage.vector_store import LlamaIndexVectorStore
 
             # Get the storage config
             ConfigProvider.initialize()
@@ -415,7 +432,7 @@ if st.sidebar.button("🔄 Rebuild Vector Index", use_container_width=True):
             vector_store = LlamaIndexVectorStore(
                 store_path=storage_config.vector_store_path,
                 force_rebuild=True,  # Force rebuild the index
-                lazy_load=False  # Don't use lazy loading when explicitly rebuilding
+                lazy_load=False,  # Don't use lazy loading when explicitly rebuilding
             )
 
             # Replace the vector store in the pipeline
@@ -442,8 +459,8 @@ vector_store_data = get_vector_store_data(_refresh_id=st.session_state.refresh_i
 track_data_load()
 
 # Check if vector store index exists and show status
-if vector_store_data and 'index_exists' in vector_store_data:
-    index_exists = vector_store_data['index_exists']
+if vector_store_data and "index_exists" in vector_store_data:
+    index_exists = vector_store_data["index_exists"]
     if not index_exists and not index_needs_rebuild:
         st.sidebar.warning("⚠️ Vector index not found. Please rebuild the vector index for search functionality.")
     elif index_exists and not index_needs_rebuild:
@@ -452,24 +469,24 @@ if vector_store_data and 'index_exists' in vector_store_data:
 # Display data
 if companies_df is not None and filings_df is not None and filing_counts_df is not None:
     # Convert date strings to datetime objects for filtering
-    if 'filing_date' in filings_df.columns:
-        filings_df['filing_date'] = pd.to_datetime(filings_df['filing_date'])
+    if "filing_date" in filings_df.columns:
+        filings_df["filing_date"] = pd.to_datetime(filings_df["filing_date"])
 
-    if 'earliest_date' in filing_counts_df.columns and 'latest_date' in filing_counts_df.columns:
-        filing_counts_df['earliest_date'] = pd.to_datetime(filing_counts_df['earliest_date'])
-        filing_counts_df['latest_date'] = pd.to_datetime(filing_counts_df['latest_date'])
+    if "earliest_date" in filing_counts_df.columns and "latest_date" in filing_counts_df.columns:
+        filing_counts_df["earliest_date"] = pd.to_datetime(filing_counts_df["earliest_date"])
+        filing_counts_df["latest_date"] = pd.to_datetime(filing_counts_df["latest_date"])
 
     # Apply date filters
-    if 'filing_date' in filings_df.columns:
+    if "filing_date" in filings_df.columns:
         filtered_filings_df = filings_df[
-            (filings_df['filing_date'] >= pd.Timestamp(start_date)) &
-            (filings_df['filing_date'] <= pd.Timestamp(end_date))
+            (filings_df["filing_date"] >= pd.Timestamp(start_date))
+            & (filings_df["filing_date"] <= pd.Timestamp(end_date))
         ]
     else:
         filtered_filings_df = filings_df
 
     # Apply fiscal period filter instead of processing status
-    if 'fiscal_period' in filtered_filings_df.columns and selected_processing_statuses:
+    if "fiscal_period" in filtered_filings_df.columns and selected_processing_statuses:
         # Map processing statuses to fiscal periods for compatibility
         fiscal_period_map = {
             "downloaded": "Q1",
@@ -477,26 +494,30 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
             "embedded": "Q3",
             "xbrl_processed": "Q4",
             "error": "FY",
-            "unknown": None
+            "unknown": None,
         }
-        selected_fiscal_periods = [fiscal_period_map.get(status) for status in selected_processing_statuses if fiscal_period_map.get(status) is not None]
+        selected_fiscal_periods = [
+            fiscal_period_map.get(status)
+            for status in selected_processing_statuses
+            if fiscal_period_map.get(status) is not None
+        ]
 
         if selected_fiscal_periods:
             filtered_filings_df = filtered_filings_df[
-                filtered_filings_df['fiscal_period'].isin(selected_fiscal_periods)
+                filtered_filings_df["fiscal_period"].isin(selected_fiscal_periods)
             ]
 
     # Filter filing counts
-    if 'latest_date' in filing_counts_df.columns:
+    if "latest_date" in filing_counts_df.columns:
         filtered_counts_df = filing_counts_df[
-            (filing_counts_df['latest_date'] >= pd.Timestamp(start_date)) &
-            (filing_counts_df['earliest_date'] <= pd.Timestamp(end_date))
+            (filing_counts_df["latest_date"] >= pd.Timestamp(start_date))
+            & (filing_counts_df["earliest_date"] <= pd.Timestamp(end_date))
         ]
     else:
         filtered_counts_df = filing_counts_df
 
     # Apply fiscal period filter to filing counts instead of processing status
-    if 'fiscal_period' in filtered_counts_df.columns and selected_processing_statuses:
+    if "fiscal_period" in filtered_counts_df.columns and selected_processing_statuses:
         # Map processing statuses to fiscal periods for compatibility
         fiscal_period_map = {
             "downloaded": "Q1",
@@ -504,22 +525,24 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
             "embedded": "Q3",
             "xbrl_processed": "Q4",
             "error": "FY",
-            "unknown": None
+            "unknown": None,
         }
-        selected_fiscal_periods = [fiscal_period_map.get(status) for status in selected_processing_statuses if fiscal_period_map.get(status) is not None]
+        selected_fiscal_periods = [
+            fiscal_period_map.get(status)
+            for status in selected_processing_statuses
+            if fiscal_period_map.get(status) is not None
+        ]
 
         if selected_fiscal_periods:
-            filtered_counts_df = filtered_counts_df[
-                filtered_counts_df['fiscal_period'].isin(selected_fiscal_periods)
-            ]
+            filtered_counts_df = filtered_counts_df[filtered_counts_df["fiscal_period"].isin(selected_fiscal_periods)]
 
     # Display summary
     col1, col2, col3, col4, col5 = st.columns([5, 3, 3, 3, 3])
 
     # Check if vector store index exists
     index_exists = False
-    if vector_store_data and 'index_exists' in vector_store_data:
-        index_exists = vector_store_data['index_exists']
+    if vector_store_data and "index_exists" in vector_store_data:
+        index_exists = vector_store_data["index_exists"]
 
     with col1:
         st.header("Data Summary")
@@ -535,12 +558,19 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
 
     with col4:
         # Add refresh button for data summary
-        if st.button("🔄 Refresh Summary", key="refresh_summary", help="Refresh the data summary to see the latest changes"):
+        if st.button(
+            "🔄 Refresh Summary", key="refresh_summary", help="Refresh the data summary to see the latest changes"
+        ):
             refresh_data()
 
     with col5:
         # Add refresh button for data summary
-        if st.button("🔄 Refresh Data", key="refresh_data_button", use_container_width=True, help="Refresh the data to see the latest changes"):
+        if st.button(
+            "🔄 Refresh Data",
+            key="refresh_data_button",
+            use_container_width=True,
+            help="Refresh the data to see the latest changes",
+        ):
             refresh_data()
 
     summary_col1, summary_col2, summary_col3 = st.columns(3)
@@ -562,40 +592,39 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
         st.write("Available columns in filtered_counts_df:", list(filtered_counts_df.columns))
 
         # Check if 'company_name' column exists
-        if 'company_name' in filtered_counts_df.columns:
+        if "company_name" in filtered_counts_df.columns:
             # Use company_name directly
-            companies = filtered_counts_df[['ticker', 'company_name']].drop_duplicates()
-        elif 'name' in filtered_counts_df.columns:
+            companies = filtered_counts_df[["ticker", "company_name"]].drop_duplicates()
+        elif "name" in filtered_counts_df.columns:
             # Use name and rename to company_name
-            companies = filtered_counts_df[['ticker', 'name']].drop_duplicates()
+            companies = filtered_counts_df[["ticker", "name"]].drop_duplicates()
             # Rename 'name' to 'company_name' for consistency
-            companies = companies.rename(columns={'name': 'company_name'})
+            companies = companies.rename(columns={"name": "company_name"})
         else:
             # Create a fallback with just ticker
             st.warning("Company name column not found in the data. Using ticker only.")
-            companies = filtered_counts_df[['ticker']].drop_duplicates()
+            companies = filtered_counts_df[["ticker"]].drop_duplicates()
             # Add a placeholder company_name column
-            companies['company_name'] = companies['ticker'] + " (Unknown)"
+            companies["company_name"] = companies["ticker"] + " (Unknown)"
 
         for _, company_row in companies.iterrows():
-            ticker = company_row['ticker']
-            company_name = company_row['company_name']
+            ticker = company_row["ticker"]
+            company_name = company_row["company_name"]
 
             # Create an expander for each company
             with st.expander(f"{ticker} - {company_name}"):
                 # Get filing types for this company
-                company_filings = filtered_counts_df[filtered_counts_df['ticker'] == ticker]
+                company_filings = filtered_counts_df[filtered_counts_df["ticker"] == ticker]
 
                 # Display as a table
                 st.dataframe(
-                    company_filings[['filing_type', 'count', 'earliest_date', 'latest_date']],
-                    use_container_width=True
+                    company_filings[["filing_type", "count", "earliest_date", "latest_date"]], use_container_width=True
                 )
 
                 # Add a button to view details
                 if st.button(f"View Details for {ticker}", key=f"details_{ticker}"):
                     st.subheader(f"Detailed Filings for {ticker}")
-                    company_detailed_filings = filtered_filings_df[filtered_filings_df['ticker'] == ticker]
+                    company_detailed_filings = filtered_filings_df[filtered_filings_df["ticker"] == ticker]
                     st.dataframe(company_detailed_filings, use_container_width=True)
     else:
         st.warning("No filings found for the selected date range.")
@@ -634,6 +663,7 @@ with col3:
 
 # Create tabs for different views
 inventory_tabs = st.tabs(["By Company", "By Filing Type", "By Date"])
+
 
 # Function to get file path for a filing
 def get_filing_path(ticker, filing_type, filing_date, accession_number=None, local_file_path=None):
@@ -690,7 +720,7 @@ def get_filing_path(ticker, filing_type, filing_date, accession_number=None, loc
                 base_path / "raw" / ticker / file_name,
                 base_path / "html" / ticker / file_name,
                 base_path / "processed" / ticker / file_name.replace(".html", "_processed.json"),
-                base_path / f"{ticker}_{filing_type}_{formatted_date}.html"
+                base_path / f"{ticker}_{filing_type}_{formatted_date}.html",
             ]
 
             for path in alt_paths:
@@ -700,6 +730,7 @@ def get_filing_path(ticker, filing_type, filing_date, accession_number=None, loc
     # If no file found, return None
     return None
 
+
 # Function to check if a file exists
 def check_file_exists(file_path):
     """Check if a file exists."""
@@ -707,6 +738,7 @@ def check_file_exists(file_path):
         return False
 
     return os.path.exists(file_path)
+
 
 # By Company tab
 with inventory_tabs[0]:
@@ -718,11 +750,11 @@ with inventory_tabs[0]:
         for _, filing in filings_df.iterrows():
             # Get ticker from either 'ticker' or 'company_id' field
             ticker = None
-            if 'ticker' in filing:
-                ticker = filing['ticker']
-            elif 'company_id' in filing:
+            if "ticker" in filing:
+                ticker = filing["ticker"]
+            elif "company_id" in filing:
                 # Convert company_id to string if it's used as a ticker
-                ticker = str(filing['company_id'])
+                ticker = str(filing["company_id"])
 
             if ticker:
                 if ticker not in company_filings:
@@ -733,13 +765,13 @@ with inventory_tabs[0]:
         for ticker, filings in company_filings.items():
             # Get company name
             company_name = "Unknown"
-            company_row = companies_df[companies_df['ticker'] == ticker]
+            company_row = companies_df[companies_df["ticker"] == ticker]
             if not company_row.empty:
                 # Check which column exists
-                if 'name' in company_row.columns:
-                    company_name = company_row.iloc[0]['name']
-                elif 'company_name' in company_row.columns:
-                    company_name = company_row.iloc[0]['company_name']
+                if "name" in company_row.columns:
+                    company_name = company_row.iloc[0]["name"]
+                elif "company_name" in company_row.columns:
+                    company_name = company_row.iloc[0]["company_name"]
                 else:
                     company_name = ticker + " (Unknown)"
 
@@ -749,14 +781,14 @@ with inventory_tabs[0]:
                 company_filings_data = []
 
                 for filing in filings:
-                    filing_date = filing['filing_date']
+                    filing_date = filing["filing_date"]
                     if isinstance(filing_date, pd.Timestamp):
                         filing_date = filing_date.date()
 
                     # Get filing details
-                    accession_number = filing.get('accession_number', None)
-                    document_url = filing.get('document_url', None)
-                    fiscal_period = filing.get('fiscal_period', "unknown")
+                    accession_number = filing.get("accession_number", None)
+                    document_url = filing.get("document_url", None)
+                    fiscal_period = filing.get("fiscal_period", "unknown")
 
                     # Map fiscal period to a status for display
                     status_map = {
@@ -765,12 +797,12 @@ with inventory_tabs[0]:
                         "Q3": "embedded",
                         "Q4": "xbrl_processed",
                         "FY": "completed",
-                        None: "unknown"
+                        None: "unknown",
                     }
                     processing_status = status_map.get(fiscal_period, "unknown")
 
                     # Check if file exists on disk
-                    file_path = get_filing_path(ticker, filing['filing_type'], filing_date, accession_number, None)
+                    file_path = get_filing_path(ticker, filing["filing_type"], filing_date, accession_number, None)
                     file_exists = file_path is not None
 
                     # Create status icon based on processing status
@@ -780,18 +812,20 @@ with inventory_tabs[0]:
                         "embedded": "🔍",
                         "xbrl_processed": "📊",
                         "error": "❌",
-                        "unknown": "❓"
+                        "unknown": "❓",
                     }
                     status_icon = status_icons.get(processing_status, "❓")
 
-                    company_filings_data.append({
-                        "Filing Type": filing['filing_type'],
-                        "Filing Date": filing_date,
-                        "Accession Number": accession_number if accession_number else "N/A",
-                        "Status": f"{status_icon} {processing_status}",
-                        "On Disk": "✅" if file_exists else "❌",
-                        "Path": str(file_path) if file_path else "Not found"
-                    })
+                    company_filings_data.append(
+                        {
+                            "Filing Type": filing["filing_type"],
+                            "Filing Date": filing_date,
+                            "Accession Number": accession_number if accession_number else "N/A",
+                            "Status": f"{status_icon} {processing_status}",
+                            "On Disk": "✅" if file_exists else "❌",
+                            "Path": str(file_path) if file_path else "Not found",
+                        }
+                    )
 
                 # Convert to dataframe and display
                 if company_filings_data:
@@ -801,7 +835,9 @@ with inventory_tabs[0]:
                     # Add a button to view files
                     if st.button(f"Open Files Directory for {ticker}", key=f"open_dir_{ticker}"):
                         # This would normally open the file explorer
-                        st.info(f"In a production environment, this would open the file explorer to the directory containing {ticker}'s filings.")
+                        st.info(
+                            f"In a production environment, this would open the file explorer to the directory containing {ticker}'s filings."
+                        )
                 else:
                     st.info(f"No filings found for {ticker}.")
     else:
@@ -811,12 +847,12 @@ with inventory_tabs[0]:
 with inventory_tabs[1]:
     if filings_df is not None:
         # Group filings by type
-        filing_types = filings_df['filing_type'].unique()
+        filing_types = filings_df["filing_type"].unique()
 
         # Create expanders for each filing type
         for filing_type in filing_types:
             # Get filings of this type
-            type_filings = filings_df[filings_df['filing_type'] == filing_type]
+            type_filings = filings_df[filings_df["filing_type"] == filing_type]
 
             # Create expander
             with st.expander(f"{filing_type} ({len(type_filings)} filings)"):
@@ -826,18 +862,18 @@ with inventory_tabs[1]:
                 for _, filing in type_filings.iterrows():
                     # Get ticker from either 'ticker' or 'company_id' field
                     ticker = None
-                    if 'ticker' in filing:
-                        ticker = filing['ticker']
-                    elif 'company_id' in filing:
+                    if "ticker" in filing:
+                        ticker = filing["ticker"]
+                    elif "company_id" in filing:
                         # Convert company_id to string if it's used as a ticker
-                        ticker = str(filing['company_id'])
+                        ticker = str(filing["company_id"])
                     else:
                         # Skip this filing if we can't identify the company
                         continue
 
                     # Get filing date
-                    if 'filing_date' in filing:
-                        filing_date = filing['filing_date']
+                    if "filing_date" in filing:
+                        filing_date = filing["filing_date"]
                         if isinstance(filing_date, pd.Timestamp):
                             filing_date = filing_date.date()
                     else:
@@ -845,20 +881,20 @@ with inventory_tabs[1]:
 
                     # Get company name
                     company_name = "Unknown"
-                    company_row = companies_df[companies_df['ticker'] == ticker]
+                    company_row = companies_df[companies_df["ticker"] == ticker]
                     if not company_row.empty:
                         # Check which column exists
-                        if 'name' in company_row.columns:
-                            company_name = company_row.iloc[0]['name']
-                        elif 'company_name' in company_row.columns:
-                            company_name = company_row.iloc[0]['company_name']
+                        if "name" in company_row.columns:
+                            company_name = company_row.iloc[0]["name"]
+                        elif "company_name" in company_row.columns:
+                            company_name = company_row.iloc[0]["company_name"]
                         else:
                             company_name = ticker + " (Unknown)"
 
                     # Get filing details
-                    accession_number = filing.get('accession_number', None)
-                    document_url = filing.get('document_url', None)
-                    fiscal_period = filing.get('fiscal_period', "unknown")
+                    accession_number = filing.get("accession_number", None)
+                    document_url = filing.get("document_url", None)
+                    fiscal_period = filing.get("fiscal_period", "unknown")
 
                     # Map fiscal period to a status for display
                     status_map = {
@@ -867,7 +903,7 @@ with inventory_tabs[1]:
                         "Q3": "embedded",
                         "Q4": "xbrl_processed",
                         "FY": "completed",
-                        None: "unknown"
+                        None: "unknown",
                     }
                     processing_status = status_map.get(fiscal_period, "unknown")
 
@@ -882,19 +918,21 @@ with inventory_tabs[1]:
                         "embedded": "🔍",
                         "xbrl_processed": "📊",
                         "error": "❌",
-                        "unknown": "❓"
+                        "unknown": "❓",
                     }
                     status_icon = status_icons.get(processing_status, "❓")
 
-                    type_filings_data.append({
-                        "Ticker": ticker,
-                        "Company": company_name,
-                        "Filing Date": filing_date,
-                        "Accession Number": accession_number if accession_number else "N/A",
-                        "Status": f"{status_icon} {processing_status}",
-                        "On Disk": "✅" if file_exists else "❌",
-                        "Path": str(file_path) if file_path else "Not found"
-                    })
+                    type_filings_data.append(
+                        {
+                            "Ticker": ticker,
+                            "Company": company_name,
+                            "Filing Date": filing_date,
+                            "Accession Number": accession_number if accession_number else "N/A",
+                            "Status": f"{status_icon} {processing_status}",
+                            "On Disk": "✅" if file_exists else "❌",
+                            "Path": str(file_path) if file_path else "Not found",
+                        }
+                    )
 
                 # Convert to dataframe and display
                 if type_filings_data:
@@ -909,21 +947,21 @@ with inventory_tabs[1]:
 with inventory_tabs[2]:
     if filings_df is not None:
         # Convert filing_date to datetime if it's not already
-        if 'filing_date' in filings_df.columns and not pd.api.types.is_datetime64_any_dtype(filings_df['filing_date']):
-            filings_df['filing_date'] = pd.to_datetime(filings_df['filing_date'])
+        if "filing_date" in filings_df.columns and not pd.api.types.is_datetime64_any_dtype(filings_df["filing_date"]):
+            filings_df["filing_date"] = pd.to_datetime(filings_df["filing_date"])
 
         # Group filings by year and quarter
-        filings_df['year'] = filings_df['filing_date'].dt.year
-        filings_df['quarter'] = (filings_df['filing_date'].dt.month - 1) // 3 + 1
-        filings_df['year_quarter'] = filings_df['year'].astype(str) + "-Q" + filings_df['quarter'].astype(str)
+        filings_df["year"] = filings_df["filing_date"].dt.year
+        filings_df["quarter"] = (filings_df["filing_date"].dt.month - 1) // 3 + 1
+        filings_df["year_quarter"] = filings_df["year"].astype(str) + "-Q" + filings_df["quarter"].astype(str)
 
         # Get unique year-quarters
-        year_quarters = sorted(filings_df['year_quarter'].unique(), reverse=True)
+        year_quarters = sorted(filings_df["year_quarter"].unique(), reverse=True)
 
         # Create expanders for each year-quarter
         for yq in year_quarters:
             # Get filings from this year-quarter
-            yq_filings = filings_df[filings_df['year_quarter'] == yq]
+            yq_filings = filings_df[filings_df["year_quarter"] == yq]
 
             # Create expander
             with st.expander(f"{yq} ({len(yq_filings)} filings)"):
@@ -933,21 +971,21 @@ with inventory_tabs[2]:
                 for _, filing in yq_filings.iterrows():
                     # Get ticker from either 'ticker' or 'company_id' field
                     ticker = None
-                    if 'ticker' in filing:
-                        ticker = filing['ticker']
-                    elif 'company_id' in filing:
+                    if "ticker" in filing:
+                        ticker = filing["ticker"]
+                    elif "company_id" in filing:
                         # Convert company_id to string if it's used as a ticker
-                        ticker = str(filing['company_id'])
+                        ticker = str(filing["company_id"])
                     else:
                         # Skip this filing if we can't identify the company
                         continue
 
                     # Get filing type
-                    filing_type = filing.get('filing_type', 'Unknown')
+                    filing_type = filing.get("filing_type", "Unknown")
 
                     # Get filing date
-                    if 'filing_date' in filing:
-                        filing_date = filing['filing_date']
+                    if "filing_date" in filing:
+                        filing_date = filing["filing_date"]
                         if isinstance(filing_date, pd.Timestamp):
                             filing_date = filing_date.date()
                     else:
@@ -955,20 +993,20 @@ with inventory_tabs[2]:
 
                     # Get company name
                     company_name = "Unknown"
-                    company_row = companies_df[companies_df['ticker'] == ticker]
+                    company_row = companies_df[companies_df["ticker"] == ticker]
                     if not company_row.empty:
                         # Check which column exists
-                        if 'name' in company_row.columns:
-                            company_name = company_row.iloc[0]['name']
-                        elif 'company_name' in company_row.columns:
-                            company_name = company_row.iloc[0]['company_name']
+                        if "name" in company_row.columns:
+                            company_name = company_row.iloc[0]["name"]
+                        elif "company_name" in company_row.columns:
+                            company_name = company_row.iloc[0]["company_name"]
                         else:
                             company_name = ticker + " (Unknown)"
 
                     # Get filing details
-                    accession_number = filing.get('accession_number', None)
-                    local_file_path = filing.get('local_file_path', None)
-                    processing_status = filing.get('processing_status', "unknown")
+                    accession_number = filing.get("accession_number", None)
+                    local_file_path = filing.get("local_file_path", None)
+                    processing_status = filing.get("processing_status", "unknown")
 
                     # Check if file exists on disk
                     file_path = get_filing_path(ticker, filing_type, filing_date, accession_number, local_file_path)
@@ -981,20 +1019,22 @@ with inventory_tabs[2]:
                         "embedded": "🔍",
                         "xbrl_processed": "📊",
                         "error": "❌",
-                        "unknown": "❓"
+                        "unknown": "❓",
                     }
                     status_icon = status_icons.get(processing_status, "❓")
 
-                    yq_filings_data.append({
-                        "Ticker": ticker,
-                        "Company": company_name,
-                        "Filing Type": filing_type,
-                        "Filing Date": filing_date,
-                        "Accession Number": accession_number if accession_number else "N/A",
-                        "Status": f"{status_icon} {processing_status}",
-                        "On Disk": "✅" if file_exists else "❌",
-                        "Path": str(file_path) if file_path else "Not found"
-                    })
+                    yq_filings_data.append(
+                        {
+                            "Ticker": ticker,
+                            "Company": company_name,
+                            "Filing Type": filing_type,
+                            "Filing Date": filing_date,
+                            "Accession Number": accession_number if accession_number else "N/A",
+                            "Status": f"{status_icon} {processing_status}",
+                            "On Disk": "✅" if file_exists else "❌",
+                            "Path": str(file_path) if file_path else "Not found",
+                        }
+                    )
 
                 # Convert to dataframe and display
                 if yq_filings_data:
@@ -1027,23 +1067,23 @@ with col1:
         # Display available companies as a reference
         with st.expander("Available Companies in Database"):
             # Check which column exists
-            if 'name' in companies_df.columns:
-                available_companies = companies_df[['ticker', 'name']].drop_duplicates()
+            if "name" in companies_df.columns:
+                available_companies = companies_df[["ticker", "name"]].drop_duplicates()
                 # Create a formatted list for display
                 company_list = [f"{row['ticker']} - {row['name']}" for _, row in available_companies.iterrows()]
-            elif 'company_name' in companies_df.columns:
-                available_companies = companies_df[['ticker', 'company_name']].drop_duplicates()
+            elif "company_name" in companies_df.columns:
+                available_companies = companies_df[["ticker", "company_name"]].drop_duplicates()
                 # Create a formatted list for display
                 company_list = [f"{row['ticker']} - {row['company_name']}" for _, row in available_companies.iterrows()]
             else:
                 # Just use tickers if no name column is available
-                available_companies = companies_df[['ticker']].drop_duplicates()
+                available_companies = companies_df[["ticker"]].drop_duplicates()
                 company_list = [f"{row['ticker']}" for _, row in available_companies.iterrows()]
             st.write("\n".join(company_list))
 
             # Add an "Use All Companies" button
             if st.button("Use All Companies"):
-                default_tickers = ", ".join(list(companies_df['ticker'].unique()))
+                default_tickers = ", ".join(list(companies_df["ticker"].unique()))
     else:
         st.info("No companies in database yet. Enter ticker symbols to retrieve data.")
 
@@ -1059,8 +1099,8 @@ with col2:
     filing_types = ["10-K", "10-Q", "8-K", "S-1", "DEF 14A"]
 
     # Add any additional filing types from the database
-    if filings_df is not None and 'filing_type' in filings_df.columns:
-        additional_types = list(filings_df['filing_type'].unique())
+    if filings_df is not None and "filing_type" in filings_df.columns:
+        additional_types = list(filings_df["filing_type"].unique())
         filing_types = list(set(filing_types + additional_types))
 
     # Create checkboxes for filing types
@@ -1083,11 +1123,11 @@ with col2:
 st.subheader("Date Range for Retrieval")
 
 # Initialize session state for date range if not already set
-if 'retrieval_start_date' not in st.session_state:
+if "retrieval_start_date" not in st.session_state:
     st.session_state.retrieval_start_date = start_date
-if 'retrieval_end_date' not in st.session_state:
+if "retrieval_end_date" not in st.session_state:
     st.session_state.retrieval_end_date = end_date
-if 'selected_period_name' not in st.session_state:
+if "selected_period_name" not in st.session_state:
     st.session_state.selected_period_name = "Custom Range"
 
 # Create tabs for different date selection methods
@@ -1096,12 +1136,14 @@ date_tabs = st.tabs(["Quick Select", "Quarterly", "Custom Range"])
 # Current date for calculations
 today = datetime.now().date()
 
+
 # Function to update date range
 def update_date_range(start_date, end_date, period_name):
     st.session_state.retrieval_start_date = start_date
     st.session_state.retrieval_end_date = end_date
     st.session_state.selected_period_name = period_name
     return
+
 
 # Quick Select tab
 with date_tabs[0]:
@@ -1149,7 +1191,7 @@ with date_tabs[0]:
                 next_quarter_start = datetime(today.year, quarter_start_month + 3, 1).date()
             else:
                 next_quarter_start = datetime(today.year + 1, 1, 1).date()
-            quarter_end = (next_quarter_start - timedelta(days=1))
+            quarter_end = next_quarter_start - timedelta(days=1)
             update_date_range(quarter_start, quarter_end, f"Q{current_quarter} {today.year}")
 
     # Button for All Time
@@ -1195,7 +1237,9 @@ with date_tabs[1]:
             st.write(f"Selected date range: {quarterly_start} to {quarterly_end}")
 
             # Show the quarters in a more readable format
-            quarters_text = ", ".join([f"{q.split()[0]} {y}" for y in sorted(selected_years) for q in selected_quarters])
+            quarters_text = ", ".join(
+                [f"{q.split()[0]} {y}" for y in sorted(selected_years) for q in selected_quarters]
+            )
             st.write(f"Selected quarters: {quarters_text}")
 
             # Button to apply quarterly selection
@@ -1229,7 +1273,9 @@ with date_tabs[2]:
             st.error("End date must be after start date.")
 
 # Display the final selected date range with the period name
-st.info(f"Selected Retrieval Period: **{st.session_state.selected_period_name}** ({st.session_state.retrieval_start_date} to {st.session_state.retrieval_end_date})")
+st.info(
+    f"Selected Retrieval Period: **{st.session_state.selected_period_name}** ({st.session_state.retrieval_start_date} to {st.session_state.retrieval_end_date})"
+)
 
 # Use these variables for the rest of the code
 retrieval_start_date = st.session_state.retrieval_start_date
@@ -1242,7 +1288,7 @@ st.subheader("Processing Options")
 force_reprocessing = st.checkbox(
     "Force Reprocessing",
     value=False,
-    help="If checked, existing filings will be reprocessed even if they already exist in the database."
+    help="If checked, existing filings will be reprocessed even if they already exist in the database.",
 )
 
 # Preview and Run buttons
@@ -1274,7 +1320,7 @@ with col1:
             tickers=selected_tickers,
             filing_types=selected_filing_types,
             start_date=retrieval_start_date.strftime("%Y-%m-%d"),
-            end_date=retrieval_end_date.strftime("%Y-%m-%d")
+            end_date=retrieval_end_date.strftime("%Y-%m-%d"),
         )
 
         # Display estimates
@@ -1289,7 +1335,7 @@ with col2:
             tickers=selected_tickers,
             filing_types=selected_filing_types,
             start_date=retrieval_start_date.strftime("%Y-%m-%d"),
-            end_date=retrieval_end_date.strftime("%Y-%m-%d")
+            end_date=retrieval_end_date.strftime("%Y-%m-%d"),
         )
 
         # Create a job in the ETL service
@@ -1299,7 +1345,7 @@ with col2:
             start_date=retrieval_start_date.strftime("%Y-%m-%d"),
             end_date=retrieval_end_date.strftime("%Y-%m-%d"),
             estimated_filings=estimated_filings,
-            force_reprocessing=force_reprocessing
+            force_reprocessing=force_reprocessing,
         )
 
         # Create a container for the ETL job details
@@ -1352,7 +1398,7 @@ with col2:
                         formatted_logs.append(f"[INFO] {log}")
 
                     # Update terminal display
-                    terminal_placeholder.code('\n'.join(formatted_logs), language="bash")
+                    terminal_placeholder.code("\n".join(formatted_logs), language="bash")
 
                 # Check if job is completed or failed
                 if job.status in ["Completed", "Failed"]:
@@ -1378,7 +1424,9 @@ with col2:
                                 st.warning("The ETL pipeline completed, but some companies had errors:")
                                 for error in error_details:
                                     st.markdown(error)
-                                st.info("The successful filings have been processed and are available in the inventory.")
+                                st.info(
+                                    "The successful filings have been processed and are available in the inventory."
+                                )
                     else:
                         # Show error message
                         st.error(f"ETL Pipeline failed: {job.results.get('error', 'Unknown error')}")
@@ -1421,7 +1469,9 @@ with data_mgmt_tabs[0]:
             # Display results
             if "error" in results:
                 st.error(f"Error synchronizing storage: {results['error']}")
-                st.info("Try refreshing the page and attempting synchronization again. If the issue persists, check the logs for more details.")
+                st.info(
+                    "Try refreshing the page and attempting synchronization again. If the issue persists, check the logs for more details."
+                )
             elif "warning" in results:
                 st.success("Storage synchronization partially completed!")
                 st.warning(results["warning"])
@@ -1522,7 +1572,11 @@ with data_mgmt_tabs[1]:
         # Display status counts
         st.subheader("Filing Status Counts")
         status_counts_df = pd.DataFrame(summary.get("status_counts", []))
-        if not status_counts_df.empty and "processing_status" in status_counts_df.columns and "count" in status_counts_df.columns:
+        if (
+            not status_counts_df.empty
+            and "processing_status" in status_counts_df.columns
+            and "count" in status_counts_df.columns
+        ):
             st.bar_chart(status_counts_df.set_index("processing_status")["count"])
             st.dataframe(status_counts_df, use_container_width=True)
         else:
@@ -1531,7 +1585,11 @@ with data_mgmt_tabs[1]:
         # Display company counts
         st.subheader("Filings by Company")
         company_counts_df = pd.DataFrame(summary.get("company_counts", []))
-        if not company_counts_df.empty and "ticker" in company_counts_df.columns and "count" in company_counts_df.columns:
+        if (
+            not company_counts_df.empty
+            and "ticker" in company_counts_df.columns
+            and "count" in company_counts_df.columns
+        ):
             # Display top 10 companies
             top_companies = company_counts_df.head(10)
             st.bar_chart(top_companies.set_index("ticker")["count"])

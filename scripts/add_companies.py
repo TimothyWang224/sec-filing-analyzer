@@ -2,16 +2,15 @@
 Script to add companies to the DuckDB database
 """
 
-import duckdb
 import logging
 from pathlib import Path
 
+import duckdb
+
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def add_companies(db_path="data/financial_data.duckdb"):
     """
@@ -36,7 +35,7 @@ def add_companies(db_path="data/financial_data.duckdb"):
             ("NVDA", "NVIDIA Corporation"),
             ("JPM", "JPMorgan Chase & Co."),
             ("V", "Visa Inc."),
-            ("JNJ", "Johnson & Johnson")
+            ("JNJ", "Johnson & Johnson"),
         ]
 
         # First, check the schema of the companies table
@@ -53,10 +52,7 @@ def add_companies(db_path="data/financial_data.duckdb"):
 
         # Insert companies into temporary table
         for ticker, name in companies:
-            conn.execute(
-                "INSERT INTO temp_companies VALUES (?, ?)",
-                [ticker, name]
-            )
+            conn.execute("INSERT INTO temp_companies VALUES (?, ?)", [ticker, name])
 
         # Insert companies that don't already exist
         result = conn.execute("""
@@ -83,6 +79,7 @@ def add_companies(db_path="data/financial_data.duckdb"):
     except Exception as e:
         logger.error(f"Error adding companies: {e}")
         return False
+
 
 if __name__ == "__main__":
     add_companies()

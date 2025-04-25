@@ -16,5 +16,6 @@ st.write(f"You selected: {number}")
 # Display some information about the environment
 st.subheader("Environment Information")
 import sys
+
 st.write(f"Python version: {sys.version}")
 st.write(f"Streamlit version: {st.__version__}")

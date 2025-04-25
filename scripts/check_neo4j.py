@@ -11,16 +11,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     from src.sec_filing_analyzer.storage.graph_store import GraphStore
-    
+
     def check_neo4j():
         """Check Neo4j database structure and content."""
         try:
             # Initialize GraphStore
             graph_store = GraphStore(use_neo4j=True)
-            
+
             # Check if connected
             print("Connected to Neo4j:", graph_store._driver is not None)
-            
+
             # Get node counts by label
             print("\nNode counts by label:")
             labels = ["Company", "Filing", "Section", "Fact", "Metric"]
@@ -30,7 +30,7 @@ try:
                     print(f"{label}: {count[0]['count']}")
                 else:
                     print(f"{label}: 0")
-            
+
             # Get relationship counts
             print("\nRelationship counts:")
             relationships = ["FILED", "CONTAINS", "HAS_VALUE", "RELATED_TO"]
@@ -40,13 +40,13 @@ try:
                     print(f"{rel}: {count[0]['count']}")
                 else:
                     print(f"{rel}: 0")
-            
+
             # Get sample companies
             print("\nSample companies:")
             companies = graph_store.run_query("MATCH (c:Company) RETURN c.ticker as ticker, c.name as name LIMIT 5")
             for company in companies:
                 print(f"{company['ticker']} - {company['name']}")
-            
+
             # Get sample filings
             print("\nSample filings:")
             filings = graph_store.run_query("""
@@ -56,8 +56,10 @@ try:
                 LIMIT 5
             """)
             for filing in filings:
-                print(f"{filing['ticker']} - {filing['type']} - {filing['date']} - {filing.get('file_path', 'No path')}")
-            
+                print(
+                    f"{filing['ticker']} - {filing['type']} - {filing['date']} - {filing.get('file_path', 'No path')}"
+                )
+
             # Check if file paths are stored
             print("\nChecking for file paths in Neo4j:")
             file_paths = graph_store.run_query("""
@@ -71,13 +73,13 @@ try:
                     print(f"{path['labels']}: {path['file_path']}")
             else:
                 print("No file paths found in Neo4j")
-            
+
         except Exception as e:
             print(f"Error connecting to Neo4j: {e}")
-    
+
     if __name__ == "__main__":
         check_neo4j()
-        
+
 except ImportError as e:
     print(f"Import error: {e}")
     print("Make sure you're running this script from the project root directory.")

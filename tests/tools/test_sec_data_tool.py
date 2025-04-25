@@ -3,6 +3,7 @@ Unit tests for the SECDataTool.
 """
 
 import pytest
+
 from src.tools.sec_data import SECDataTool
 
 
@@ -30,8 +31,8 @@ class TestSECDataTool:
                 "filing_type": "10-K",
                 "start_date": "2023-01-01",
                 "end_date": "2023-12-31",
-                "sections": ["Financial Statements"]
-            }
+                "sections": ["Financial Statements"],
+            },
         )
 
         # Check that the result is correct
@@ -48,12 +49,7 @@ class TestSECDataTool:
     async def test_execute_minimal_parameters(self, tool):
         """Test executing the tool with minimal parameters."""
         # Execute the tool
-        result = await tool.execute(
-            query_type="sec_data",
-            parameters={
-                "ticker": "AAPL"
-            }
-        )
+        result = await tool.execute(query_type="sec_data", parameters={"ticker": "AAPL"})
 
         # Check that the result is correct
         assert result["ticker"] == "AAPL"
@@ -64,12 +60,7 @@ class TestSECDataTool:
     async def test_execute_invalid_query_type(self, tool):
         """Test executing the tool with an invalid query type."""
         # Execute the tool with an invalid query type
-        result = await tool.execute(
-            query_type="invalid_query",
-            parameters={
-                "ticker": "AAPL"
-            }
-        )
+        result = await tool.execute(query_type="invalid_query", parameters={"ticker": "AAPL"})
 
         # Check that the result contains an error message
         assert result["query_type"] == "invalid_query"
@@ -81,10 +72,7 @@ class TestSECDataTool:
     async def test_execute_missing_ticker(self, tool):
         """Test executing the tool without a ticker."""
         # Execute the tool without a ticker
-        result = await tool.execute(
-            query_type="sec_data",
-            parameters={}
-        )
+        result = await tool.execute(query_type="sec_data", parameters={})
 
         # Check that the result contains an error message
         assert result["query_type"] == "sec_data"
@@ -96,13 +84,7 @@ class TestSECDataTool:
     async def test_execute_invalid_filing_type(self, tool):
         """Test executing the tool with an invalid filing type."""
         # Execute the tool with an invalid filing type
-        result = await tool.execute(
-            query_type="sec_data",
-            parameters={
-                "ticker": "AAPL",
-                "filing_type": "invalid"
-            }
-        )
+        result = await tool.execute(query_type="sec_data", parameters={"ticker": "AAPL", "filing_type": "invalid"})
 
         # Check that the result contains an error message
         assert result["query_type"] == "sec_data"
@@ -118,8 +100,8 @@ class TestSECDataTool:
             query_type="sec_data",
             parameters={
                 "ticker": "AAPL",
-                "start_date": "01/01/2023"  # Wrong format
-            }
+                "start_date": "01/01/2023",  # Wrong format
+            },
         )
 
         # Check that the result contains an error message
@@ -138,8 +120,8 @@ class TestSECDataTool:
                 "filing_type": "10-K",
                 "start_date": "2023-01-01",
                 "end_date": "2023-12-31",
-                "sections": ["Financial Statements"]
-            }
+                "sections": ["Financial Statements"],
+            },
         )
 
         # Check that validation passed
@@ -148,12 +130,7 @@ class TestSECDataTool:
     def test_validate_args_invalid_query_type(self, tool):
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
-        result = tool.validate_args(
-            query_type="invalid_query",
-            parameters={
-                "ticker": "AAPL"
-            }
-        )
+        result = tool.validate_args(query_type="invalid_query", parameters={"ticker": "AAPL"})
 
         # Check that validation failed
         assert not result

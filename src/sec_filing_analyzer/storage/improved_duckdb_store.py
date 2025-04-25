@@ -5,25 +5,25 @@ A module for working with the improved DuckDB schema for financial data.
 """
 
 import logging
-from typing import Dict, List, Optional, Any
-import pandas as pd
-import duckdb
 import os
-from pathlib import Path
 
 # Add the project root to the Python path
 import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import duckdb
+import pandas as pd
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import the DuckDB manager
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class ImprovedDuckDBStore:
     """
@@ -72,10 +72,7 @@ class ImprovedDuckDBStore:
             Company ID or None if not found
         """
         try:
-            result = self.conn.execute(
-                "SELECT company_id FROM companies WHERE ticker = ?",
-                [ticker]
-            ).fetchone()
+            result = self.conn.execute("SELECT company_id FROM companies WHERE ticker = ?", [ticker]).fetchone()
             return result[0] if result else None
         except Exception as e:
             logger.error(f"Error getting company ID for {ticker}: {e}")
@@ -104,7 +101,7 @@ class ImprovedDuckDBStore:
             Company ID if successful, None otherwise
         """
         try:
-            ticker = company_data.get('ticker')
+            ticker = company_data.get("ticker")
             if not ticker:
                 logger.error("Ticker is required for storing company data")
                 return None
@@ -126,14 +123,14 @@ class ImprovedDuckDBStore:
                     WHERE company_id = ?
                     """,
                     [
-                        company_data.get('name'),
-                        company_data.get('cik'),
-                        company_data.get('sic'),
-                        company_data.get('sector'),
-                        company_data.get('industry'),
-                        company_data.get('exchange'),
-                        company_id
-                    ]
+                        company_data.get("name"),
+                        company_data.get("cik"),
+                        company_data.get("sic"),
+                        company_data.get("sector"),
+                        company_data.get("industry"),
+                        company_data.get("exchange"),
+                        company_id,
+                    ],
                 )
                 logger.info(f"Updated company {ticker} (ID: {company_id})")
                 return company_id
@@ -153,13 +150,13 @@ class ImprovedDuckDBStore:
                     [
                         new_id,
                         ticker,
-                        company_data.get('name'),
-                        company_data.get('cik'),
-                        company_data.get('sic'),
-                        company_data.get('sector'),
-                        company_data.get('industry'),
-                        company_data.get('exchange')
-                    ]
+                        company_data.get("name"),
+                        company_data.get("cik"),
+                        company_data.get("sic"),
+                        company_data.get("sector"),
+                        company_data.get("industry"),
+                        company_data.get("exchange"),
+                    ],
                 )
                 logger.info(f"Inserted new company {ticker} (ID: {new_id})")
                 return new_id
@@ -185,21 +182,21 @@ class ImprovedDuckDBStore:
                 FROM companies
                 WHERE ticker = ?
                 """,
-                [ticker]
+                [ticker],
             ).fetchone()
 
             if result:
                 return {
-                    'company_id': result[0],
-                    'ticker': result[1],
-                    'name': result[2],
-                    'cik': result[3],
-                    'sic': result[4],
-                    'sector': result[5],
-                    'industry': result[6],
-                    'exchange': result[7],
-                    'created_at': result[8],
-                    'updated_at': result[9]
+                    "company_id": result[0],
+                    "ticker": result[1],
+                    "name": result[2],
+                    "cik": result[3],
+                    "sic": result[4],
+                    "sector": result[5],
+                    "industry": result[6],
+                    "exchange": result[7],
+                    "created_at": result[8],
+                    "updated_at": result[9],
                 }
             return None
         except Exception as e:
@@ -239,8 +236,7 @@ class ImprovedDuckDBStore:
         """
         try:
             result = self.conn.execute(
-                "SELECT filing_id FROM filings WHERE accession_number = ?",
-                [accession_number]
+                "SELECT filing_id FROM filings WHERE accession_number = ?", [accession_number]
             ).fetchone()
             return result[0] if result else None
         except Exception as e:
@@ -271,15 +267,15 @@ class ImprovedDuckDBStore:
             Filing ID if successful, None otherwise
         """
         try:
-            accession_number = filing_data.get('accession_number')
+            accession_number = filing_data.get("accession_number")
             if not accession_number:
                 logger.error("Accession number is required for storing filing data")
                 return None
 
             # Get company_id from ticker if not provided
-            company_id = filing_data.get('company_id')
-            if not company_id and 'ticker' in filing_data:
-                company_id = self.get_company_id(filing_data['ticker'])
+            company_id = filing_data.get("company_id")
+            if not company_id and "ticker" in filing_data:
+                company_id = self.get_company_id(filing_data["ticker"])
                 if not company_id:
                     logger.error(f"Company with ticker {filing_data['ticker']} not found")
                     return None
@@ -308,15 +304,15 @@ class ImprovedDuckDBStore:
                     """,
                     [
                         company_id,
-                        filing_data.get('filing_type'),
-                        filing_data.get('filing_date'),
-                        filing_data.get('fiscal_year'),
-                        filing_data.get('fiscal_period'),
-                        filing_data.get('fiscal_period_end_date'),
-                        filing_data.get('document_url'),
-                        filing_data.get('has_xbrl'),
-                        filing_id
-                    ]
+                        filing_data.get("filing_type"),
+                        filing_data.get("filing_date"),
+                        filing_data.get("fiscal_year"),
+                        filing_data.get("fiscal_period"),
+                        filing_data.get("fiscal_period_end_date"),
+                        filing_data.get("document_url"),
+                        filing_data.get("has_xbrl"),
+                        filing_id,
+                    ],
                 )
                 logger.info(f"Updated filing {accession_number} (ID: {filing_id})")
                 return filing_id
@@ -327,9 +323,9 @@ class ImprovedDuckDBStore:
                 new_id = 1 if max_id is None else max_id + 1
 
                 # Convert fiscal_quarter to fiscal_period if needed
-                fiscal_period = filing_data.get('fiscal_period')
-                if not fiscal_period and 'fiscal_quarter' in filing_data:
-                    fiscal_quarter = filing_data.get('fiscal_quarter')
+                fiscal_period = filing_data.get("fiscal_period")
+                if not fiscal_period and "fiscal_quarter" in filing_data:
+                    fiscal_quarter = filing_data.get("fiscal_quarter")
                     fiscal_period = f"Q{fiscal_quarter}" if fiscal_quarter in [1, 2, 3] else "FY"
 
                 self.conn.execute(
@@ -344,14 +340,14 @@ class ImprovedDuckDBStore:
                         new_id,
                         company_id,
                         accession_number,
-                        filing_data.get('filing_type'),
-                        filing_data.get('filing_date'),
-                        filing_data.get('fiscal_year'),
+                        filing_data.get("filing_type"),
+                        filing_data.get("filing_date"),
+                        filing_data.get("fiscal_year"),
                         fiscal_period,
-                        filing_data.get('fiscal_period_end_date'),
-                        filing_data.get('document_url'),
-                        filing_data.get('has_xbrl', True)
-                    ]
+                        filing_data.get("fiscal_period_end_date"),
+                        filing_data.get("document_url"),
+                        filing_data.get("has_xbrl", True),
+                    ],
                 )
                 logger.info(f"Inserted new filing {accession_number} (ID: {new_id})")
                 return new_id
@@ -379,32 +375,37 @@ class ImprovedDuckDBStore:
                 JOIN companies c ON f.company_id = c.company_id
                 WHERE f.accession_number = ?
                 """,
-                [accession_number]
+                [accession_number],
             ).fetchone()
 
             if result:
                 return {
-                    'filing_id': result[0],
-                    'company_id': result[1],
-                    'accession_number': result[2],
-                    'filing_type': result[3],
-                    'filing_date': result[4],
-                    'fiscal_year': result[5],
-                    'fiscal_period': result[6],
-                    'fiscal_period_end_date': result[7],
-                    'document_url': result[8],
-                    'has_xbrl': result[9],
-                    'created_at': result[10],
-                    'updated_at': result[11],
-                    'ticker': result[12]
+                    "filing_id": result[0],
+                    "company_id": result[1],
+                    "accession_number": result[2],
+                    "filing_type": result[3],
+                    "filing_date": result[4],
+                    "fiscal_year": result[5],
+                    "fiscal_period": result[6],
+                    "fiscal_period_end_date": result[7],
+                    "document_url": result[8],
+                    "has_xbrl": result[9],
+                    "created_at": result[10],
+                    "updated_at": result[11],
+                    "ticker": result[12],
                 }
             return None
         except Exception as e:
             logger.error(f"Error getting filing {accession_number}: {e}")
             return None
 
-    def get_company_filings(self, ticker: str, filing_type: Optional[str] = None,
-                           start_year: Optional[int] = None, end_year: Optional[int] = None) -> pd.DataFrame:
+    def get_company_filings(
+        self,
+        ticker: str,
+        filing_type: Optional[str] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+    ) -> pd.DataFrame:
         """Get filings for a company.
 
         Args:
@@ -464,10 +465,7 @@ class ImprovedDuckDBStore:
             Metric ID or None if not found
         """
         try:
-            result = self.conn.execute(
-                "SELECT metric_id FROM metrics WHERE metric_name = ?",
-                [metric_name]
-            ).fetchone()
+            result = self.conn.execute("SELECT metric_id FROM metrics WHERE metric_name = ?", [metric_name]).fetchone()
             return result[0] if result else None
         except Exception as e:
             logger.error(f"Error getting metric ID for {metric_name}: {e}")
@@ -497,7 +495,7 @@ class ImprovedDuckDBStore:
             Metric ID if successful, None otherwise
         """
         try:
-            metric_name = metric_data.get('metric_name')
+            metric_name = metric_data.get("metric_name")
             if not metric_name:
                 logger.error("Metric name is required for storing metric data")
                 return None
@@ -519,14 +517,14 @@ class ImprovedDuckDBStore:
                     WHERE metric_id = ?
                     """,
                     [
-                        metric_data.get('display_name'),
-                        metric_data.get('description'),
-                        metric_data.get('category'),
-                        metric_data.get('unit_of_measure'),
-                        metric_data.get('is_calculated'),
-                        metric_data.get('calculation_formula'),
-                        metric_id
-                    ]
+                        metric_data.get("display_name"),
+                        metric_data.get("description"),
+                        metric_data.get("category"),
+                        metric_data.get("unit_of_measure"),
+                        metric_data.get("is_calculated"),
+                        metric_data.get("calculation_formula"),
+                        metric_id,
+                    ],
                 )
                 logger.info(f"Updated metric {metric_name} (ID: {metric_id})")
                 return metric_id
@@ -537,9 +535,9 @@ class ImprovedDuckDBStore:
                 new_id = 1 if max_id is None else max_id + 1
 
                 # Generate display name if not provided
-                display_name = metric_data.get('display_name')
+                display_name = metric_data.get("display_name")
                 if not display_name:
-                    display_name = ' '.join(word.capitalize() for word in metric_name.split('_'))
+                    display_name = " ".join(word.capitalize() for word in metric_name.split("_"))
 
                 self.conn.execute(
                     """
@@ -553,12 +551,12 @@ class ImprovedDuckDBStore:
                         new_id,
                         metric_name,
                         display_name,
-                        metric_data.get('description', display_name),
-                        metric_data.get('category', 'other'),
-                        metric_data.get('unit_of_measure', 'USD'),
-                        metric_data.get('is_calculated', False),
-                        metric_data.get('calculation_formula')
-                    ]
+                        metric_data.get("description", display_name),
+                        metric_data.get("category", "other"),
+                        metric_data.get("unit_of_measure", "USD"),
+                        metric_data.get("is_calculated", False),
+                        metric_data.get("calculation_formula"),
+                    ],
                 )
                 logger.info(f"Inserted new metric {metric_name} (ID: {new_id})")
                 return new_id
@@ -585,21 +583,21 @@ class ImprovedDuckDBStore:
                 FROM metrics
                 WHERE metric_name = ?
                 """,
-                [metric_name]
+                [metric_name],
             ).fetchone()
 
             if result:
                 return {
-                    'metric_id': result[0],
-                    'metric_name': result[1],
-                    'display_name': result[2],
-                    'description': result[3],
-                    'category': result[4],
-                    'unit_of_measure': result[5],
-                    'is_calculated': result[6],
-                    'calculation_formula': result[7],
-                    'created_at': result[8],
-                    'updated_at': result[9]
+                    "metric_id": result[0],
+                    "metric_name": result[1],
+                    "display_name": result[2],
+                    "description": result[3],
+                    "category": result[4],
+                    "unit_of_measure": result[5],
+                    "is_calculated": result[6],
+                    "calculation_formula": result[7],
+                    "created_at": result[8],
+                    "updated_at": result[9],
                 }
             return None
         except Exception as e:
@@ -657,56 +655,64 @@ class ImprovedDuckDBStore:
         try:
             # Handle special values like 'INF', '-INF', and 'NaN'
             # Convert special values in 'value' field
-            if 'value' in fact_data:
-                if isinstance(fact_data['value'], str):
-                    upper_value = fact_data['value'].upper()
-                    if upper_value == 'INF':
-                        fact_data['value'] = float('inf')
+            if "value" in fact_data:
+                if isinstance(fact_data["value"], str):
+                    upper_value = fact_data["value"].upper()
+                    if upper_value == "INF":
+                        fact_data["value"] = float("inf")
                         logger.debug(f"Converted 'INF' value to float infinity for fact {fact_data.get('metric_name')}")
-                    elif upper_value == '-INF':
-                        fact_data['value'] = float('-inf')
-                        logger.debug(f"Converted '-INF' value to negative float infinity for fact {fact_data.get('metric_name')}")
-                    elif upper_value in ('NAN', 'NA', 'N/A'):
-                        fact_data['value'] = float('nan')
+                    elif upper_value == "-INF":
+                        fact_data["value"] = float("-inf")
+                        logger.debug(
+                            f"Converted '-INF' value to negative float infinity for fact {fact_data.get('metric_name')}"
+                        )
+                    elif upper_value in ("NAN", "NA", "N/A"):
+                        fact_data["value"] = float("nan")
                         logger.debug(f"Converted '{upper_value}' value to NaN for fact {fact_data.get('metric_name')}")
 
             # Convert special values in 'decimals' field
-            if 'decimals' in fact_data:
-                if isinstance(fact_data['decimals'], str):
-                    upper_decimals = fact_data['decimals'].upper()
-                    if upper_decimals in ('INF', '-INF', 'NAN', 'NA', 'N/A'):
-                        fact_data['decimals'] = None  # Use NULL for special values
-                        logger.debug(f"Converted '{fact_data['decimals']}' decimals to NULL for fact {fact_data.get('metric_name')}")
+            if "decimals" in fact_data:
+                if isinstance(fact_data["decimals"], str):
+                    upper_decimals = fact_data["decimals"].upper()
+                    if upper_decimals in ("INF", "-INF", "NAN", "NA", "N/A"):
+                        fact_data["decimals"] = None  # Use NULL for special values
+                        logger.debug(
+                            f"Converted '{fact_data['decimals']}' decimals to NULL for fact {fact_data.get('metric_name')}"
+                        )
 
             # Handle special values in 'normalized_value' field
-            if 'normalized_value' in fact_data:
-                if isinstance(fact_data['normalized_value'], str):
-                    upper_norm_value = fact_data['normalized_value'].upper()
-                    if upper_norm_value == 'INF':
-                        fact_data['normalized_value'] = float('inf')
-                        logger.debug(f"Converted 'INF' normalized_value to float infinity for fact {fact_data.get('metric_name')}")
-                    elif upper_norm_value == '-INF':
-                        fact_data['normalized_value'] = float('-inf')
-                        logger.debug(f"Converted '-INF' normalized_value to negative float infinity for fact {fact_data.get('metric_name')}")
-                    elif upper_norm_value in ('NAN', 'NA', 'N/A'):
-                        fact_data['normalized_value'] = float('nan')
-                        logger.debug(f"Converted '{upper_norm_value}' normalized_value to NaN for fact {fact_data.get('metric_name')}")
+            if "normalized_value" in fact_data:
+                if isinstance(fact_data["normalized_value"], str):
+                    upper_norm_value = fact_data["normalized_value"].upper()
+                    if upper_norm_value == "INF":
+                        fact_data["normalized_value"] = float("inf")
+                        logger.debug(
+                            f"Converted 'INF' normalized_value to float infinity for fact {fact_data.get('metric_name')}"
+                        )
+                    elif upper_norm_value == "-INF":
+                        fact_data["normalized_value"] = float("-inf")
+                        logger.debug(
+                            f"Converted '-INF' normalized_value to negative float infinity for fact {fact_data.get('metric_name')}"
+                        )
+                    elif upper_norm_value in ("NAN", "NA", "N/A"):
+                        fact_data["normalized_value"] = float("nan")
+                        logger.debug(
+                            f"Converted '{upper_norm_value}' normalized_value to NaN for fact {fact_data.get('metric_name')}"
+                        )
 
             # Check required fields
-            filing_id = fact_data.get('filing_id')
+            filing_id = fact_data.get("filing_id")
             if not filing_id:
                 logger.error("Filing ID is required for storing fact data")
                 return None
 
             # Get metric_id from metric_name if not provided
-            metric_id = fact_data.get('metric_id')
-            if not metric_id and 'metric_name' in fact_data:
-                metric_id = self.get_metric_id(fact_data['metric_name'])
+            metric_id = fact_data.get("metric_id")
+            if not metric_id and "metric_name" in fact_data:
+                metric_id = self.get_metric_id(fact_data["metric_name"])
                 if not metric_id:
                     # Create the metric if it doesn't exist
-                    metric_id = self.store_metric({
-                        'metric_name': fact_data['metric_name']
-                    })
+                    metric_id = self.store_metric({"metric_name": fact_data["metric_name"]})
                     if not metric_id:
                         logger.error(f"Failed to create metric {fact_data['metric_name']}")
                         return None
@@ -715,19 +721,19 @@ class ImprovedDuckDBStore:
                 logger.error("Either metric_id or metric_name is required for storing fact data")
                 return None
 
-            value = fact_data.get('value')
+            value = fact_data.get("value")
             if value is None:
                 logger.error("Value is required for storing fact data")
                 return None
 
             # Check if fact already exists
-            context_id = fact_data.get('context_id', '')
+            context_id = fact_data.get("context_id", "")
             existing_fact = self.conn.execute(
                 """
                 SELECT fact_id FROM facts
                 WHERE filing_id = ? AND metric_id = ? AND context_id = ?
                 """,
-                [filing_id, metric_id, context_id]
+                [filing_id, metric_id, context_id],
             ).fetchone()
 
             if existing_fact:
@@ -748,14 +754,14 @@ class ImprovedDuckDBStore:
                     """,
                     [
                         value,
-                        fact_data.get('as_reported'),
-                        fact_data.get('normalized_value', value),
-                        fact_data.get('period_type'),
-                        fact_data.get('start_date'),
-                        fact_data.get('end_date'),
-                        fact_data.get('decimals'),
-                        fact_id
-                    ]
+                        fact_data.get("as_reported"),
+                        fact_data.get("normalized_value", value),
+                        fact_data.get("period_type"),
+                        fact_data.get("start_date"),
+                        fact_data.get("end_date"),
+                        fact_data.get("decimals"),
+                        fact_id,
+                    ],
                 )
                 logger.debug(f"Updated fact ID: {fact_id}")
                 return fact_id
@@ -778,14 +784,14 @@ class ImprovedDuckDBStore:
                         filing_id,
                         metric_id,
                         value,
-                        fact_data.get('as_reported', True),
-                        fact_data.get('normalized_value', value),
-                        fact_data.get('period_type'),
-                        fact_data.get('start_date'),
-                        fact_data.get('end_date'),
+                        fact_data.get("as_reported", True),
+                        fact_data.get("normalized_value", value),
+                        fact_data.get("period_type"),
+                        fact_data.get("start_date"),
+                        fact_data.get("end_date"),
                         context_id,
-                        fact_data.get('decimals'),
-                    ]
+                        fact_data.get("decimals"),
+                    ],
                 )
                 logger.debug(f"Inserted new fact ID: {new_id}")
                 return new_id
@@ -807,7 +813,7 @@ class ImprovedDuckDBStore:
 
         successful = 0
         for i in range(0, len(facts), self.batch_size):
-            batch = facts[i:i+self.batch_size]
+            batch = facts[i : i + self.batch_size]
             for fact in batch:
                 if self.store_fact(fact) is not None:
                     successful += 1
@@ -857,9 +863,14 @@ class ImprovedDuckDBStore:
 
     # Query methods
 
-    def query_time_series(self, ticker: str, metric_names: Optional[List[str]] = None,
-                         start_year: Optional[int] = None, end_year: Optional[int] = None,
-                         include_quarterly: bool = False) -> pd.DataFrame:
+    def query_time_series(
+        self,
+        ticker: str,
+        metric_names: Optional[List[str]] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        include_quarterly: bool = False,
+    ) -> pd.DataFrame:
         """Query time series data for a company.
 
         Args:
@@ -910,21 +921,15 @@ class ImprovedDuckDBStore:
 
             # Pivot the result for easier analysis
             if not result.empty:
-                result['period'] = result.apply(
-                    lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index='period',
-                    columns='metric_name',
-                    values='value'
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1)
+                pivoted = result.pivot(index="period", columns="metric_name", values="value").reset_index()
 
                 # Add year and period columns
-                pivoted['fiscal_year'] = pivoted['period'].apply(lambda x: int(x.split('-')[0]))
-                pivoted['fiscal_period'] = pivoted['period'].apply(lambda x: x.split('-')[1])
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("-")[0]))
+                pivoted["fiscal_period"] = pivoted["period"].apply(lambda x: x.split("-")[1])
 
                 # Sort by year and period
-                pivoted = pivoted.sort_values(['fiscal_year', 'fiscal_period'])
+                pivoted = pivoted.sort_values(["fiscal_year", "fiscal_period"])
 
                 return pivoted
 
@@ -933,9 +938,14 @@ class ImprovedDuckDBStore:
             logger.error(f"Error querying time series for {ticker}: {e}")
             return pd.DataFrame()
 
-    def query_company_comparison(self, tickers: List[str], metric_name: str,
-                               start_year: Optional[int] = None, end_year: Optional[int] = None,
-                               include_quarterly: bool = False) -> pd.DataFrame:
+    def query_company_comparison(
+        self,
+        tickers: List[str],
+        metric_name: str,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        include_quarterly: bool = False,
+    ) -> pd.DataFrame:
         """Query data for comparing companies.
 
         Args:
@@ -981,21 +991,15 @@ class ImprovedDuckDBStore:
 
             # Pivot the result for easier comparison
             if not result.empty:
-                result['period'] = result.apply(
-                    lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index='period',
-                    columns='ticker',
-                    values='value'
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1)
+                pivoted = result.pivot(index="period", columns="ticker", values="value").reset_index()
 
                 # Add year and period columns
-                pivoted['fiscal_year'] = pivoted['period'].apply(lambda x: int(x.split('-')[0]))
-                pivoted['fiscal_period'] = pivoted['period'].apply(lambda x: x.split('-')[1])
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("-")[0]))
+                pivoted["fiscal_period"] = pivoted["period"].apply(lambda x: x.split("-")[1])
 
                 # Sort by year and period
-                pivoted = pivoted.sort_values(['fiscal_year', 'fiscal_period'])
+                pivoted = pivoted.sort_values(["fiscal_year", "fiscal_period"])
 
                 return pivoted
 
@@ -1086,38 +1090,32 @@ class ImprovedDuckDBStore:
 
             # Count companies
             companies_count = self.conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
-            stats['companies_count'] = companies_count
+            stats["companies_count"] = companies_count
 
             # Count filings
             filings_count = self.conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0]
-            stats['filings_count'] = filings_count
+            stats["filings_count"] = filings_count
 
             # Count metrics
             metrics_count = self.conn.execute("SELECT COUNT(*) FROM metrics").fetchone()[0]
-            stats['metrics_count'] = metrics_count
+            stats["metrics_count"] = metrics_count
 
             # Count facts
             facts_count = self.conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
-            stats['facts_count'] = facts_count
+            stats["facts_count"] = facts_count
 
             # Get year range
-            year_range = self.conn.execute(
-                "SELECT MIN(fiscal_year), MAX(fiscal_year) FROM filings"
-            ).fetchone()
-            stats['min_year'] = year_range[0]
-            stats['max_year'] = year_range[1]
+            year_range = self.conn.execute("SELECT MIN(fiscal_year), MAX(fiscal_year) FROM filings").fetchone()
+            stats["min_year"] = year_range[0]
+            stats["max_year"] = year_range[1]
 
             # Get filing types
-            filing_types = self.conn.execute(
-                "SELECT DISTINCT filing_type FROM filings ORDER BY filing_type"
-            ).fetchall()
-            stats['filing_types'] = [ft[0] for ft in filing_types]
+            filing_types = self.conn.execute("SELECT DISTINCT filing_type FROM filings ORDER BY filing_type").fetchall()
+            stats["filing_types"] = [ft[0] for ft in filing_types]
 
             # Get metric categories
-            metric_categories = self.conn.execute(
-                "SELECT DISTINCT category FROM metrics ORDER BY category"
-            ).fetchall()
-            stats['metric_categories'] = [mc[0] for mc in metric_categories]
+            metric_categories = self.conn.execute("SELECT DISTINCT category FROM metrics ORDER BY category").fetchall()
+            stats["metric_categories"] = [mc[0] for mc in metric_categories]
 
             return stats
         except Exception as e:

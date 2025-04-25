@@ -5,12 +5,12 @@ This module provides a more robust XBRL extraction implementation that leverages
 the edgar library's comprehensive XBRL handling capabilities.
 """
 
-import os
 import json
 import logging
-from pathlib import Path
-from typing import Dict, Any, Optional, List, Union
+import os
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
@@ -20,6 +20,7 @@ from ..utils import edgar_utils
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class EdgarXBRLExtractor:
     """
@@ -40,7 +41,9 @@ class EdgarXBRLExtractor:
         if cache_dir:
             os.makedirs(cache_dir, exist_ok=True)
 
-    def extract_financials(self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None) -> Dict[str, Any]:
+    def extract_financials(
+        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Extract financial data from an SEC filing using the edgar library.
 
@@ -58,7 +61,7 @@ class EdgarXBRLExtractor:
             cache_file = Path(self.cache_dir) / f"{ticker}_{accession_number}.json"
             if cache_file.exists():
                 logger.info(f"Using cached data for {ticker} {accession_number}")
-                with open(cache_file, 'r') as f:
+                with open(cache_file, "r") as f:
                     return json.load(f)
 
         try:
@@ -71,7 +74,7 @@ class EdgarXBRLExtractor:
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "accession_number": accession_number,
-                    "error": f"Filing not found: {accession_number}"
+                    "error": f"Filing not found: {accession_number}",
                 }
 
             # Get filing metadata
@@ -84,13 +87,13 @@ class EdgarXBRLExtractor:
                 "accession_number": accession_number,
                 "filing_url": metadata.get("filing_url", filing_url),
                 "filing_date": metadata.get("filing_date"),
-                "filing_type": metadata.get("form")
+                "filing_type": metadata.get("form"),
             }
 
             # Get XBRL data if available
             try:
                 # Check if the filing has XBRL data
-                has_xbrl = hasattr(filing, 'is_xbrl') and filing.is_xbrl
+                has_xbrl = hasattr(filing, "is_xbrl") and filing.is_xbrl
 
                 if not has_xbrl:
                     logger.warning(f"Filing {accession_number} does not have XBRL data")
@@ -105,15 +108,15 @@ class EdgarXBRLExtractor:
 
                 # Extract basic metadata from XBRL
                 # Check if these methods exist before calling them
-                if hasattr(xbrl_data, 'get_entity_name'):
+                if hasattr(xbrl_data, "get_entity_name"):
                     financials["entity_name"] = xbrl_data.get_entity_name()
-                if hasattr(xbrl_data, 'get_document_type'):
+                if hasattr(xbrl_data, "get_document_type"):
                     financials["document_type"] = xbrl_data.get_document_type()
-                if hasattr(xbrl_data, 'get_document_period'):
+                if hasattr(xbrl_data, "get_document_period"):
                     financials["document_period"] = xbrl_data.get_document_period()
-                if hasattr(xbrl_data, 'get_fiscal_year_focus'):
+                if hasattr(xbrl_data, "get_fiscal_year_focus"):
                     financials["fiscal_year"] = xbrl_data.get_fiscal_year_focus()
-                if hasattr(xbrl_data, 'get_fiscal_period_focus'):
+                if hasattr(xbrl_data, "get_fiscal_period_focus"):
                     financials["fiscal_period"] = xbrl_data.get_fiscal_period_focus()
 
                 # Extract facts
@@ -122,7 +125,7 @@ class EdgarXBRLExtractor:
                 statements = {}
 
                 # Process facts from the instance
-                if hasattr(xbrl_data, 'instance') and hasattr(xbrl_data.instance, 'facts'):
+                if hasattr(xbrl_data, "instance") and hasattr(xbrl_data.instance, "facts"):
                     # Get all facts
                     all_facts = xbrl_data.instance.facts
 
@@ -130,7 +133,7 @@ class EdgarXBRLExtractor:
                     for index, row in all_facts.iterrows():
                         # Check if this is a US-GAAP fact
                         concept = index[0] if isinstance(index, tuple) else index
-                        if not concept.startswith('us-gaap:'):
+                        if not concept.startswith("us-gaap:"):
                             continue
 
                         # Get the value for each period
@@ -144,7 +147,7 @@ class EdgarXBRLExtractor:
                             if not base_value:
                                 continue
 
-                            value = base_value.get('value')
+                            value = base_value.get("value")
                             if not value:
                                 continue
 
@@ -159,15 +162,15 @@ class EdgarXBRLExtractor:
                                 "xbrl_tag": concept,
                                 "metric_name": self._normalize_concept_name(concept),
                                 "value": numeric_value if numeric_value is not None else value,
-                                "units": base_value.get('units'),
-                                "decimals": base_value.get('decimals'),
+                                "units": base_value.get("units"),
+                                "decimals": base_value.get("decimals"),
                                 "period": period,
-                                "duration": base_value.get('duration')
+                                "duration": base_value.get("duration"),
                             }
 
                             # Parse period information
-                            if ' to ' in period:
-                                start_date, end_date = period.split(' to ')
+                            if " to " in period:
+                                start_date, end_date = period.split(" to ")
                                 fact_entry["start_date"] = start_date
                                 fact_entry["end_date"] = end_date
                                 fact_entry["period_type"] = "duration"
@@ -180,7 +183,11 @@ class EdgarXBRLExtractor:
                             for dim_key in period_values.keys():
                                 if dim_key != () and isinstance(dim_key, tuple):
                                     # Handle different tuple formats
-                                    if len(dim_key) == 2 and isinstance(dim_key[0], str) and isinstance(dim_key[1], str):
+                                    if (
+                                        len(dim_key) == 2
+                                        and isinstance(dim_key[0], str)
+                                        and isinstance(dim_key[1], str)
+                                    ):
                                         # Simple (dimension, member) tuple
                                         dimensions[dim_key[0]] = dim_key[1]
                                     else:
@@ -198,27 +205,27 @@ class EdgarXBRLExtractor:
                             metrics[fact_entry["metric_name"]] = fact_entry["value"]
 
                 # Extract financial statements if available
-                if hasattr(xbrl_data, 'statements_dict'):
+                if hasattr(xbrl_data, "statements_dict"):
                     # Get all available statements
                     for statement_key, statement_def in xbrl_data.statements_dict.items():
                         # Skip if not a financial statement
-                        if not statement_key.startswith('Statement'):
+                        if not statement_key.startswith("Statement"):
                             continue
 
                         # Get the statement name
-                        statement_name = statement_key.replace('Statement', '').lower()
+                        statement_name = statement_key.replace("Statement", "").lower()
 
                         # Map to standard statement names
-                        if 'income' in statement_name or 'operations' in statement_name:
-                            statement_type = 'income_statement'
-                        elif 'balance' in statement_name or 'financial position' in statement_name:
-                            statement_type = 'balance_sheet'
-                        elif 'cash' in statement_name:
-                            statement_type = 'cash_flow'
-                        elif 'equity' in statement_name or 'stockholder' in statement_name:
-                            statement_type = 'equity'
-                        elif 'comprehensive' in statement_name:
-                            statement_type = 'comprehensive_income'
+                        if "income" in statement_name or "operations" in statement_name:
+                            statement_type = "income_statement"
+                        elif "balance" in statement_name or "financial position" in statement_name:
+                            statement_type = "balance_sheet"
+                        elif "cash" in statement_name:
+                            statement_type = "cash_flow"
+                        elif "equity" in statement_name or "stockholder" in statement_name:
+                            statement_type = "equity"
+                        elif "comprehensive" in statement_name:
+                            statement_type = "comprehensive_income"
                         else:
                             statement_type = statement_name
 
@@ -231,7 +238,7 @@ class EdgarXBRLExtractor:
                             logger.warning(f"Error getting statement {statement_key}: {e}")
 
                 # Try direct statement methods as fallback
-                if 'balance_sheet' not in statements and hasattr(xbrl_data, 'get_balance_sheet'):
+                if "balance_sheet" not in statements and hasattr(xbrl_data, "get_balance_sheet"):
                     try:
                         balance_sheet = xbrl_data.get_balance_sheet()
                         if balance_sheet:
@@ -239,7 +246,7 @@ class EdgarXBRLExtractor:
                     except Exception as e:
                         logger.warning(f"Error getting balance sheet: {e}")
 
-                if 'income_statement' not in statements and hasattr(xbrl_data, 'get_income_statement'):
+                if "income_statement" not in statements and hasattr(xbrl_data, "get_income_statement"):
                     try:
                         income_statement = xbrl_data.get_income_statement()
                         if income_statement:
@@ -247,7 +254,7 @@ class EdgarXBRLExtractor:
                     except Exception as e:
                         logger.warning(f"Error getting income statement: {e}")
 
-                if 'cash_flow' not in statements and hasattr(xbrl_data, 'get_cash_flow_statement'):
+                if "cash_flow" not in statements and hasattr(xbrl_data, "get_cash_flow_statement"):
                     try:
                         cash_flow = xbrl_data.get_cash_flow_statement()
                         if cash_flow:
@@ -255,7 +262,7 @@ class EdgarXBRLExtractor:
                     except Exception as e:
                         logger.warning(f"Error getting cash flow statement: {e}")
 
-                if 'equity' not in statements and hasattr(xbrl_data, 'get_statement_of_changes_in_equity'):
+                if "equity" not in statements and hasattr(xbrl_data, "get_statement_of_changes_in_equity"):
                     try:
                         equity = xbrl_data.get_statement_of_changes_in_equity()
                         if equity:
@@ -279,19 +286,14 @@ class EdgarXBRLExtractor:
             # Cache the results if cache_dir is provided
             if self.cache_dir:
                 cache_file = Path(self.cache_dir) / f"{ticker}_{accession_number}.json"
-                with open(cache_file, 'w') as f:
+                with open(cache_file, "w") as f:
                     json.dump(financials, f, indent=2)
 
             return financials
 
         except Exception as e:
             logger.error(f"Error extracting financials for {ticker} {accession_number}: {e}")
-            return {
-                "filing_id": filing_id,
-                "ticker": ticker,
-                "accession_number": accession_number,
-                "error": str(e)
-            }
+            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
 
     def _statement_to_dict(self, statement) -> Dict[str, Any]:
         """
@@ -309,31 +311,31 @@ class EdgarXBRLExtractor:
         result = {}
 
         # Extract basic statement metadata
-        for attr in ['name', 'label', 'entity', 'display_name', 'role']:
+        for attr in ["name", "label", "entity", "display_name", "role"]:
             if hasattr(statement, attr):
                 value = getattr(statement, attr)
                 if value is not None:
                     result[attr] = value
 
         # Extract periods
-        if hasattr(statement, 'periods'):
+        if hasattr(statement, "periods"):
             result["periods"] = statement.periods
-        elif hasattr(statement, 'durations'):
+        elif hasattr(statement, "durations"):
             result["periods"] = list(statement.durations)
 
         # Extract line items
-        if hasattr(statement, 'line_items'):
+        if hasattr(statement, "line_items"):
             line_items = []
             for item in statement.line_items:
                 line_item = {}
-                for attr in ['concept', 'label', 'level', 'is_abstract', 'section_type', 'parent_section']:
+                for attr in ["concept", "label", "level", "is_abstract", "section_type", "parent_section"]:
                     if hasattr(item, attr):
                         value = getattr(item, attr)
                         if value is not None:
                             line_item[attr] = value
 
                 # Extract values
-                if hasattr(item, 'values'):
+                if hasattr(item, "values"):
                     values = {}
                     for period, period_values in item.values.items():
                         period_dict = {}
@@ -341,16 +343,16 @@ class EdgarXBRLExtractor:
                             # Handle empty tuple (base value)
                             if dim_key == ():
                                 # Base value
-                                period_dict['value'] = dim_value.get('value')
-                                period_dict['units'] = dim_value.get('units')
-                                period_dict['decimals'] = dim_value.get('decimals')
+                                period_dict["value"] = dim_value.get("value")
+                                period_dict["units"] = dim_value.get("units")
+                                period_dict["decimals"] = dim_value.get("decimals")
                             # Handle tuple of dimension-member pairs
                             elif isinstance(dim_key, tuple):
                                 # Handle different tuple formats
                                 if len(dim_key) == 2 and isinstance(dim_key[0], str) and isinstance(dim_key[1], str):
                                     # Simple (dimension, member) tuple
                                     dim_name = f"{dim_key[0]}:{dim_key[1]}"
-                                    period_dict[dim_name] = dim_value.get('value')
+                                    period_dict[dim_name] = dim_value.get("value")
                                 else:
                                     # Complex tuple of (dimension, member) pairs
                                     dim_parts = []
@@ -358,19 +360,19 @@ class EdgarXBRLExtractor:
                                         if isinstance(item, tuple) and len(item) == 2:
                                             dim_parts.append(f"{item[0]}:{item[1]}")
                                     if dim_parts:
-                                        dim_name = '_'.join(dim_parts)
-                                        period_dict[dim_name] = dim_value.get('value')
+                                        dim_name = "_".join(dim_parts)
+                                        period_dict[dim_name] = dim_value.get("value")
                         values[period] = period_dict
-                    line_item['values'] = values
+                    line_item["values"] = values
 
                 line_items.append(line_item)
             result["line_items"] = line_items
 
         # Convert DataFrame to dict if available
-        if hasattr(statement, 'data') and isinstance(statement.data, pd.DataFrame):
+        if hasattr(statement, "data") and isinstance(statement.data, pd.DataFrame):
             try:
                 # Try to convert to records
-                data_records = statement.data.reset_index().to_dict(orient='records')
+                data_records = statement.data.reset_index().to_dict(orient="records")
                 result["data"] = data_records
             except Exception as e:
                 # If conversion fails, just store the column and index information
@@ -399,12 +401,13 @@ class EdgarXBRLExtractor:
 
             # Extract common financial metrics using regex patterns
             import re
+
             patterns = {
                 "revenue": r"(?:Total|Net)\s+[Rr]evenue[s]?\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
                 "net_income": r"(?:Net|Total)\s+[Ii]ncome\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
                 "total_assets": r"(?:Total|All)\s+[Aa]ssets\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
                 "total_liabilities": r"(?:Total|All)\s+[Ll]iabilities\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
-                "stockholders_equity": r"(?:Total|All)\s+(?:[Ss]tockholders'?|[Ss]hareholders'?)\s+[Ee]quity\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$"
+                "stockholders_equity": r"(?:Total|All)\s+(?:[Ss]tockholders'?|[Ss]hareholders'?)\s+[Ee]quity\s*[:\-]?\s*[$]?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?)\s*(?:million|billion|thousand|\$)?\s*$",
             }
 
             # Initialize metrics dictionary if not present
@@ -420,7 +423,7 @@ class EdgarXBRLExtractor:
                 matches = re.findall(pattern, text, re.MULTILINE)
                 if matches:
                     # Use the first match
-                    value_str = matches[0].replace(',', '')
+                    value_str = matches[0].replace(",", "")
                     try:
                         value = float(value_str)
 
@@ -432,7 +435,7 @@ class EdgarXBRLExtractor:
                             "xbrl_tag": metric_name,
                             "metric_name": metric_name,
                             "value": value,
-                            "category": "extracted_from_text"
+                            "category": "extracted_from_text",
                         }
                         financials["facts"].append(fact)
                     except ValueError:
@@ -458,14 +461,14 @@ class EdgarXBRLExtractor:
             Normalized concept name
         """
         # Remove namespace prefix if present
-        if ':' in concept:
-            concept = concept.split(':')[1]
+        if ":" in concept:
+            concept = concept.split(":")[1]
 
         # Convert camel case to snake case
-        result = ''
+        result = ""
         for i, char in enumerate(concept):
-            if i > 0 and char.isupper() and concept[i-1].islower():
-                result += '_'
+            if i > 0 and char.isupper() and concept[i - 1].islower():
+                result += "_"
             result += char.lower()
 
         return result

@@ -6,24 +6,22 @@ This module provides functionality for saving and loading SEC filings to/from di
 
 import json
 import logging
-from typing import Dict, Any, Optional, List
-from pathlib import Path
 import shutil
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class FileStorage:
     """
     Handles saving and loading SEC filings to/from disk.
     """
 
-    def __init__(
-        self,
-        base_dir: Optional[Path] = None
-    ):
+    def __init__(self, base_dir: Optional[Path] = None):
         """
         Initialize the file storage.
 
@@ -50,13 +48,7 @@ class FileStorage:
 
         logger.info(f"Initialized file storage with base directory: {self.base_dir}")
 
-    def save_raw_filing(
-        self,
-        filing_id: str,
-        content: str,
-        metadata: Dict[str, Any],
-        format: str = "txt"
-    ) -> Path:
+    def save_raw_filing(self, filing_id: str, content: str, metadata: Dict[str, Any], format: str = "txt") -> Path:
         """
         Save raw filing content to disk.
 
@@ -93,12 +85,7 @@ class FileStorage:
         logger.info(f"Saved raw filing {filing_id} to {file_path}")
         return file_path
 
-    def save_html_filing(
-        self,
-        filing_id: str,
-        html_content: str,
-        metadata: Dict[str, Any]
-    ) -> Path:
+    def save_html_filing(self, filing_id: str, html_content: str, metadata: Dict[str, Any]) -> Path:
         """
         Save HTML filing content to disk.
 
@@ -134,12 +121,7 @@ class FileStorage:
         logger.info(f"Saved HTML filing {filing_id} to {file_path}")
         return file_path
 
-    def save_xml_filing(
-        self,
-        filing_id: str,
-        xml_content: str,
-        metadata: Dict[str, Any]
-    ) -> Path:
+    def save_xml_filing(self, filing_id: str, xml_content: str, metadata: Dict[str, Any]) -> Path:
         """
         Save XML filing content to disk.
 
@@ -175,12 +157,7 @@ class FileStorage:
         logger.info(f"Saved XML filing {filing_id} to {file_path}")
         return file_path
 
-    def save_processed_filing(
-        self,
-        filing_id: str,
-        processed_data: Dict[str, Any],
-        metadata: Dict[str, Any]
-    ) -> Path:
+    def save_processed_filing(self, filing_id: str, processed_data: Dict[str, Any], metadata: Dict[str, Any]) -> Path:
         """
         Save processed filing data to disk.
 
@@ -205,10 +182,7 @@ class FileStorage:
         file_path = year_dir / f"{filing_id}_processed.json"
 
         # Combine data and metadata
-        data = {
-            "metadata": metadata,
-            "processed_data": processed_data
-        }
+        data = {"metadata": metadata, "processed_data": processed_data}
 
         # Save data
         with open(file_path, "w", encoding="utf-8") as f:
@@ -217,11 +191,7 @@ class FileStorage:
         logger.info(f"Saved processed filing {filing_id} to {file_path}")
         return file_path
 
-    def cache_filing(
-        self,
-        filing_id: str,
-        filing_data: Dict[str, Any]
-    ) -> Path:
+    def cache_filing(self, filing_id: str, filing_data: Dict[str, Any]) -> Path:
         """
         Cache filing data for quick access.
 
@@ -243,10 +213,7 @@ class FileStorage:
         return file_path
 
     def load_raw_filing(
-        self,
-        filing_id: str,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Load raw filing from disk.
@@ -303,16 +270,10 @@ class FileStorage:
         with open(metadata_path, "r", encoding="utf-8") as f:
             metadata = json.load(f)
 
-        return {
-            "content": content,
-            "metadata": metadata
-        }
+        return {"content": content, "metadata": metadata}
 
     def load_html_filing(
-        self,
-        filing_id: str,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Load HTML filing from disk.
@@ -369,16 +330,10 @@ class FileStorage:
         with open(metadata_path, "r", encoding="utf-8") as f:
             metadata = json.load(f)
 
-        return {
-            "html_content": html_content,
-            "metadata": metadata
-        }
+        return {"html_content": html_content, "metadata": metadata}
 
     def load_xml_filing(
-        self,
-        filing_id: str,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Load XML filing from disk.
@@ -435,16 +390,10 @@ class FileStorage:
         with open(metadata_path, "r", encoding="utf-8") as f:
             metadata = json.load(f)
 
-        return {
-            "xml_content": xml_content,
-            "metadata": metadata
-        }
+        return {"xml_content": xml_content, "metadata": metadata}
 
     def get_processed_filing_path(
-        self,
-        filing_id: str,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Optional[Path]:
         """
         Get the path to a processed filing on disk.
@@ -484,10 +433,7 @@ class FileStorage:
         return None
 
     def load_processed_filing(
-        self,
-        filing_id: str,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Load processed filing from disk.
@@ -513,10 +459,7 @@ class FileStorage:
 
         return data
 
-    def load_cached_filing(
-        self,
-        filing_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def load_cached_filing(self, filing_id: str) -> Optional[Dict[str, Any]]:
         """
         Load cached filing from disk.
 
@@ -541,10 +484,7 @@ class FileStorage:
         return data
 
     def list_filings(
-        self,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None,
-        filing_type: Optional[str] = None
+        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         List available filings.
@@ -587,11 +527,7 @@ class FileStorage:
         return filings
 
     def save_xbrl_data(
-        self,
-        filing_id: str,
-        xbrl_data: Dict[str, Any],
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, xbrl_data: Dict[str, Any], ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Path:
         """
         Save XBRL data to disk.
@@ -637,10 +573,7 @@ class FileStorage:
         return file_path
 
     def load_xbrl_data(
-        self,
-        filing_id: str,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None
+        self, filing_id: str, ticker: Optional[str] = None, year: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Load XBRL data from disk.
@@ -698,7 +631,7 @@ class FileStorage:
         filing_id: str,
         ticker: Optional[str] = None,
         year: Optional[str] = None,
-        export_dir: Optional[Path] = None
+        export_dir: Optional[Path] = None,
     ) -> Path:
         """
         Export a filing to a specified directory.

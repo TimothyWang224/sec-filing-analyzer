@@ -2,23 +2,21 @@
 Test script for the Data Lifecycle Manager
 """
 
-import sys
-import logging
-from pathlib import Path
 import json
+import logging
+import sys
+from pathlib import Path
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.sec_filing_analyzer.config import ConfigProvider, ETLConfig, StorageConfig
 from src.sec_filing_analyzer.storage.lifecycle_manager import DataLifecycleManager
-from src.sec_filing_analyzer.config import ConfigProvider, StorageConfig, ETLConfig
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def test_lifecycle_manager():
     """Test the Data Lifecycle Manager."""
@@ -32,7 +30,7 @@ def test_lifecycle_manager():
         lifecycle_manager = DataLifecycleManager(
             db_path=etl_config.db_path,
             vector_store_path=storage_config.vector_store_path,
-            filings_dir=etl_config.filings_dir
+            filings_dir=etl_config.filings_dir,
         )
 
         # Get company filings
@@ -98,6 +96,7 @@ def test_lifecycle_manager():
     except Exception as e:
         logger.error(f"Error testing lifecycle manager: {e}")
         return False
+
 
 if __name__ == "__main__":
     test_lifecycle_manager()

@@ -4,10 +4,11 @@ ETL Service Fix for Streamlit Application
 This module provides a fix for the ETL service initialization issue.
 """
 
-import os
 import logging
-from edgar import set_identity
+import os
+
 from dotenv import load_dotenv
+from edgar import set_identity
 
 # Load environment variables
 load_dotenv()
@@ -16,15 +17,16 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def fix_etl_service():
     """
     Fix the ETL service by setting the SEC identity.
-    
+
     This function should be called before initializing the ETL service.
     """
     # Check if EDGAR_IDENTITY is set in environment variables
     edgar_identity = os.getenv("EDGAR_IDENTITY")
-    
+
     if edgar_identity:
         # Set the identity in the edgar package
         set_identity(edgar_identity)

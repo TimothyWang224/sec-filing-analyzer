@@ -5,21 +5,17 @@ Main entry point for the SEC Filing Analyzer Streamlit application.
 """
 
 import streamlit as st
-# Set page config first (must be the first Streamlit command)
-st.set_page_config(
-    page_title="SEC Filing Analyzer",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
-import os
-import sys
-from pathlib import Path
+# Set page config first (must be the first Streamlit command)
+st.set_page_config(page_title="SEC Filing Analyzer", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+
 import logging
-import threading
+import os
 import queue
+import sys
+import threading
 import time
+from pathlib import Path
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))

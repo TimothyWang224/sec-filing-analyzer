@@ -5,29 +5,28 @@ This script migrates the existing JSON-based vector store to the optimized NumPy
 It preserves all existing data while converting embeddings to a more efficient storage format.
 """
 
-import os
-import sys
 import json
 import logging
-import numpy as np
+import os
+import shutil
+import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import shutil
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 from tqdm import tqdm
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sec_filing_analyzer.storage.optimized_vector_store import OptimizedVectorStore
 from sec_filing_analyzer.config import StorageConfig
+from sec_filing_analyzer.storage.optimized_vector_store import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def backup_existing_store(vector_store_path: Path) -> Path:
     """Create a backup of the existing vector store.
@@ -51,6 +50,7 @@ def backup_existing_store(vector_store_path: Path) -> Path:
     logger.info(f"Backup created at {backup_path}")
 
     return backup_path
+
 
 def migrate_json_to_numpy(vector_store_path: Path) -> None:
     """Migrate JSON embeddings to NumPy binary format.
@@ -129,6 +129,7 @@ def migrate_json_to_numpy(vector_store_path: Path) -> None:
     logger.info(f"Migration complete. Converted {len(json_files)} embeddings to NumPy format")
     logger.info(f"Created company mapping for {len(company_to_docs)} companies")
 
+
 def main():
     """Main function to migrate the vector store."""
     import time
@@ -150,6 +151,7 @@ def main():
     logger.info("Migration successful!")
     logger.info(f"Vector store statistics: {stats}")
     logger.info(f"Backup of original store available at: {backup_path}")
+
 
 if __name__ == "__main__":
     main()

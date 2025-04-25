@@ -9,7 +9,7 @@ import asyncio
 import logging
 import random
 import time
-from typing import Dict, Any, Optional, Callable, Awaitable
+from typing import Any, Awaitable, Callable, Dict, Optional
 
 from .error_handling import ToolError, ToolErrorType
 
@@ -26,12 +26,7 @@ class AdaptiveRetryStrategy:
     backoff strategies based on the type of error.
     """
 
-    def __init__(
-        self,
-        base_delay: float = 1.0,
-        max_delay: float = 60.0,
-        jitter_factor: float = 0.5
-    ):
+    def __init__(self, base_delay: float = 1.0, max_delay: float = 60.0, jitter_factor: float = 0.5):
         """
         Initialize the adaptive retry strategy.
 
@@ -45,10 +40,7 @@ class AdaptiveRetryStrategy:
         self.jitter_factor = jitter_factor
 
     async def retry_with_strategy(
-        self,
-        func: Callable[[], Awaitable[Any]],
-        max_retries: int,
-        error_classifier: Callable[[Exception], ToolError]
+        self, func: Callable[[], Awaitable[Any]], max_retries: int, error_classifier: Callable[[Exception], ToolError]
     ) -> Dict[str, Any]:
         """
         Retry a function with an adaptive strategy based on error type.
@@ -75,7 +67,7 @@ class AdaptiveRetryStrategy:
                 error = error_classifier(e)
 
                 # Log the error
-                logger.error(f"Error on attempt {retry+1}/{max_retries+1}: {error}")
+                logger.error(f"Error on attempt {retry + 1}/{max_retries + 1}: {error}")
 
                 # Check if this is a repeated identical error
                 if previous_errors and str(error) == str(previous_errors[-1]):
@@ -87,7 +79,7 @@ class AdaptiveRetryStrategy:
                         "error": error,
                         "retries": retry,
                         "identical_errors": True,
-                        "error_message": str(error)
+                        "error_message": str(error),
                     }
 
                 # Add this error to the history
@@ -117,10 +109,7 @@ class AdaptiveRetryStrategy:
             retry: Current retry attempt (0-based)
         """
         # Calculate delay with exponential backoff
-        delay = min(
-            self.base_delay * (2 ** retry) + random.uniform(0, self.jitter_factor),
-            self.max_delay
-        )
+        delay = min(self.base_delay * (2**retry) + random.uniform(0, self.jitter_factor), self.max_delay)
 
         logger.info(f"Retrying with exponential backoff in {delay:.2f}s...")
         await asyncio.sleep(delay)
@@ -133,10 +122,7 @@ class AdaptiveRetryStrategy:
             retry: Current retry attempt (0-based)
         """
         # Calculate delay with more aggressive exponential backoff
-        delay = min(
-            self.base_delay * (4 ** retry) + random.uniform(0, self.jitter_factor * 2),
-            self.max_delay
-        )
+        delay = min(self.base_delay * (4**retry) + random.uniform(0, self.jitter_factor * 2), self.max_delay)
 
         logger.info(f"Rate limited. Retrying with longer backoff in {delay:.2f}s...")
         await asyncio.sleep(delay)
@@ -149,10 +135,7 @@ class AdaptiveRetryStrategy:
             retry: Current retry attempt (0-based)
         """
         # Calculate delay with linear backoff
-        delay = min(
-            self.base_delay * (retry + 1) + random.uniform(0, self.jitter_factor),
-            self.max_delay
-        )
+        delay = min(self.base_delay * (retry + 1) + random.uniform(0, self.jitter_factor), self.max_delay)
 
         logger.info(f"Retrying with default backoff in {delay:.2f}s...")
         await asyncio.sleep(delay)

@@ -6,25 +6,22 @@ vector store and graph store for more comprehensive search results.
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Union, Tuple
 import time
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from ..storage import OptimizedVectorStore, GraphStore
+from ..storage import GraphStore, OptimizedVectorStore
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class CoordinatedSearch:
     """
     Coordinated search class that combines vector and graph search capabilities.
     """
 
-    def __init__(
-        self,
-        vector_store: Optional[OptimizedVectorStore] = None,
-        graph_store: Optional[GraphStore] = None
-    ):
+    def __init__(self, vector_store: Optional[OptimizedVectorStore] = None, graph_store: Optional[GraphStore] = None):
         """Initialize the coordinated search.
 
         Args:
@@ -48,7 +45,7 @@ class CoordinatedSearch:
         keywords: Optional[List[str]] = None,
         keyword_match_type: str = "any",
         hybrid_search_weight: float = 0.5,
-        sort_by: str = "relevance"
+        sort_by: str = "relevance",
     ) -> Dict[str, Any]:
         """Perform a coordinated search across vector and graph stores.
 
@@ -84,7 +81,7 @@ class CoordinatedSearch:
             keywords=keywords,
             keyword_match_type=keyword_match_type,
             hybrid_search_weight=hybrid_search_weight,
-            sort_by=sort_by
+            sort_by=sort_by,
         )
         vector_time = time.time() - vector_start_time
 
@@ -96,19 +93,13 @@ class CoordinatedSearch:
             graph_start_time = time.time()
 
             for result in vector_results:
-                filing_id = result['id']
+                filing_id = result["id"]
 
                 # Get related documents from graph with same company filter
-                related_docs = self.graph_store.get_filing_relationships(
-                    filing_id=filing_id,
-                    companies=companies
-                )
+                related_docs = self.graph_store.get_filing_relationships(filing_id=filing_id, companies=companies)
 
                 # Add to enhanced results
-                enhanced_results.append({
-                    **result,
-                    "related_documents": related_docs
-                })
+                enhanced_results.append({**result, "related_documents": related_docs})
 
             graph_time = time.time() - graph_start_time
         else:
@@ -123,7 +114,7 @@ class CoordinatedSearch:
                 "total_time": total_time,
                 "vector_search_time": vector_time,
                 "graph_search_time": graph_time,
-                "result_count": len(enhanced_results)
+                "result_count": len(enhanced_results),
             },
             "filters": {
                 "companies": companies,
@@ -134,14 +125,12 @@ class CoordinatedSearch:
                 "keywords": keywords,
                 "keyword_match_type": keyword_match_type,
                 "hybrid_search_weight": hybrid_search_weight,
-                "sort_by": sort_by
-            }
+                "sort_by": sort_by,
+            },
         }
 
     def get_company_filings(
-        self,
-        companies: List[str],
-        filing_types: Optional[List[str]] = None
+        self, companies: List[str], filing_types: Optional[List[str]] = None
     ) -> List[Dict[str, Any]]:
         """Get all filings for specified companies.
 
@@ -152,17 +141,9 @@ class CoordinatedSearch:
         Returns:
             List of filing dictionaries
         """
-        return self.graph_store.get_filings_by_companies(
-            companies=companies,
-            filing_types=filing_types
-        )
+        return self.graph_store.get_filings_by_companies(companies=companies, filing_types=filing_types)
 
-    def search_within_filing(
-        self,
-        filing_id: str,
-        query_text: str,
-        top_k: int = 5
-    ) -> Dict[str, Any]:
+    def search_within_filing(self, filing_id: str, query_text: str, top_k: int = 5) -> Dict[str, Any]:
         """Search within a specific filing.
 
         Args:
@@ -191,10 +172,7 @@ class CoordinatedSearch:
                 # For in-memory graph
                 for node, attrs in self.graph_store.graph.nodes(data=True):
                     if attrs.get("type") == "filing" and node == filing_id:
-                        filing_metadata = {
-                            "ticker": attrs.get("ticker"),
-                            "filing_type": attrs.get("filing_type")
-                        }
+                        filing_metadata = {"ticker": attrs.get("ticker"), "filing_type": attrs.get("filing_type")}
                         break
         except Exception as e:
             logger.warning(f"Error getting filing metadata: {e}")
@@ -206,15 +184,12 @@ class CoordinatedSearch:
 
         # Search for chunks within this filing
         chunk_results = self.vector_store.search_vectors(
-            query_text=query_text,
-            companies=companies,
-            top_k=top_k,
-            metadata_filter={"original_doc_id": filing_id}
+            query_text=query_text, companies=companies, top_k=top_k, metadata_filter={"original_doc_id": filing_id}
         )
 
         return {
             "filing_id": filing_id,
             "filing_metadata": filing_metadata,
             "results": chunk_results,
-            "result_count": len(chunk_results)
+            "result_count": len(chunk_results),
         }

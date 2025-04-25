@@ -5,14 +5,16 @@ This script launches the Streamlit application without requiring the sec_filing_
 """
 
 import os
-import sys
 import socket
+import sys
 from pathlib import Path
+
 
 def is_port_in_use(port):
     """Check if a port is in use."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(('localhost', port)) == 0
+        return s.connect_ex(("localhost", port)) == 0
+
 
 def find_available_port(start_port, max_attempts=10):
     """Find an available port starting from start_port.
@@ -28,6 +30,7 @@ def find_available_port(start_port, max_attempts=10):
         if not is_port_in_use(port):
             return port
     return None
+
 
 def main():
     """Launch the Streamlit application."""
@@ -77,6 +80,7 @@ def main():
 
     # Run Streamlit directly
     os.system(f"streamlit run {app_path}")
+
 
 if __name__ == "__main__":
     main()

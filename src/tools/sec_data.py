@@ -1,39 +1,41 @@
 import logging
-from typing import Dict, Any, List, Optional, Type
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Type
 
+from ..contracts import BaseModel, field_validator
 from .base import Tool
 from .decorator import tool
-from ..contracts import BaseModel, field_validator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Define parameter models
 class SECDataParams(BaseModel):
     """Parameters for SEC data retrieval."""
+
     ticker: str
     filing_type: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     sections: Optional[List[str]] = None
 
-    @field_validator('ticker')
+    @field_validator("ticker")
     @classmethod
     def validate_ticker(cls, v):
         if not v or not isinstance(v, str):
             raise ValueError("Ticker must be a non-empty string")
         return v
 
-    @field_validator('filing_type')
+    @field_validator("filing_type")
     @classmethod
     def validate_filing_type(cls, v):
         if v is not None and v not in ["10-K", "10-Q", "8-K"]:
             raise ValueError("Filing type must be one of: 10-K, 10-Q, 8-K")
         return v
 
-    @field_validator('start_date', 'end_date')
+    @field_validator("start_date", "end_date")
     @classmethod
     def validate_date(cls, v):
         if v is not None:
@@ -43,24 +45,24 @@ class SECDataParams(BaseModel):
                 raise ValueError("Date must be in format 'YYYY-MM-DD'")
         return v
 
-    @field_validator('sections')
+    @field_validator("sections")
     @classmethod
     def validate_sections(cls, v):
         if v is not None and not isinstance(v, list):
             raise ValueError("Sections must be a list of strings")
         return v
 
+
 # Map query types to parameter models
-SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
-    "sec_data": SECDataParams
-}
+SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {"sec_data": SECDataParams}
 
 # The tool registration is handled by the @tool decorator
+
 
 @tool(
     name="sec_data",
     tags=["sec", "data"],
-    compact_description="Retrieve raw SEC filing data by ticker and filing type"
+    compact_description="Retrieve raw SEC filing data by ticker and filing type",
     # Not using schema mappings for this tool since it has a custom parameter structure
 )
 class SECDataTool(Tool):
@@ -73,11 +75,7 @@ class SECDataTool(Tool):
         """Initialize the SEC data tool."""
         super().__init__()
 
-    async def _execute(
-        self,
-        query_type: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute the SEC data retrieval tool.
 
@@ -112,7 +110,7 @@ class SECDataTool(Tool):
                 return self.format_error_response(
                     query_type=query_type,
                     parameters=parameters,
-                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}"
+                    error_message=f"Unsupported query type: {query_type}. Supported types: {supported_types}",
                 )
 
             # Validate parameters using the appropriate model
@@ -123,9 +121,7 @@ class SECDataTool(Tool):
                 params = param_model(**parameters)
             except Exception as e:
                 return self.format_error_response(
-                    query_type=query_type,
-                    parameters=parameters,
-                    error_message=f"Parameter validation error: {str(e)}"
+                    query_type=query_type, parameters=parameters, error_message=f"Parameter validation error: {str(e)}"
                 )
 
             # Extract parameters
@@ -146,45 +142,22 @@ class SECDataTool(Tool):
                 # Create mock data for demonstration purposes
                 mock_data = {
                     "financial_statements": {
-                        "balance_sheet": {
-                            "assets": "500M",
-                            "liabilities": "300M",
-                            "equity": "200M"
-                        },
-                        "income_statement": {
-                            "revenue": "100M",
-                            "net_income": "20M",
-                            "eps": "2.00"
-                        }
+                        "balance_sheet": {"assets": "500M", "liabilities": "300M", "equity": "200M"},
+                        "income_statement": {"revenue": "100M", "net_income": "20M", "eps": "2.00"},
                     },
                     "management_discussion": {
-                        "key_points": [
-                            "Strong revenue growth",
-                            "Improved margins",
-                            "Market expansion"
-                        ],
-                        "risks": [
-                            "Market competition",
-                            "Regulatory changes",
-                            "Economic conditions"
-                        ]
-                    }
+                        "key_points": ["Strong revenue growth", "Improved margins", "Market expansion"],
+                        "risks": ["Market competition", "Regulatory changes", "Economic conditions"],
+                    },
                 }
 
                 # Create a custom result with additional fields
-                result = self.format_success_response(
-                    query_type=query_type,
-                    parameters=parameters,
-                    results=mock_data
-                )
+                result = self.format_success_response(query_type=query_type, parameters=parameters, results=mock_data)
 
                 # Add additional fields
                 result["ticker"] = ticker
                 result["filing_type"] = filing_type
-                result["time_period"] = {
-                    "start": start_date,
-                    "end": end_date
-                }
+                result["time_period"] = {"start": start_date, "end": end_date}
                 result["sections"] = sections
                 result["data"] = mock_data
 
@@ -193,24 +166,16 @@ class SECDataTool(Tool):
             except Exception as e:
                 logger.error(f"Error retrieving SEC data: {str(e)}")
                 return self.format_error_response(
-                    query_type=query_type,
-                    parameters=parameters,
-                    error_message=f"Error retrieving SEC data: {str(e)}"
+                    query_type=query_type, parameters=parameters, error_message=f"Error retrieving SEC data: {str(e)}"
                 )
 
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return self.format_error_response(
-                query_type=query_type,
-                parameters=parameters,
-                error_message=f"Unexpected error: {str(e)}"
+                query_type=query_type, parameters=parameters, error_message=f"Unexpected error: {str(e)}"
             )
 
-    def validate_args(
-        self,
-        query_type: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
         """
         Validate the tool arguments.
 

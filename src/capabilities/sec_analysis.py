@@ -1,6 +1,8 @@
-from typing import Dict, Any, Optional
-from .base import Capability
+from typing import Any, Dict, Optional
+
 from ..agents.base import Agent
+from .base import Capability
+
 
 class SECAnalysisCapability(Capability):
     """Capability for analyzing SEC filings and extracting relevant information."""
@@ -8,8 +10,7 @@ class SECAnalysisCapability(Capability):
     def __init__(self):
         """Initialize the SEC analysis capability."""
         super().__init__(
-            name="sec_analysis",
-            description="Analyzes SEC filings to extract financial information and insights"
+            name="sec_analysis", description="Analyzes SEC filings to extract financial information and insights"
         )
 
     async def init(self, agent: Agent, context: Dict[str, Any]) -> None:
@@ -47,17 +48,13 @@ Format your response as a clear, structured prompt that will guide the analysis.
         enhanced_prompt = await agent.llm.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            temperature=0.3  # Lower temperature for more focused analysis
+            temperature=0.3,  # Lower temperature for more focused analysis
         )
 
         return enhanced_prompt
 
     async def process_response(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        prompt: str,
-        response: Dict[str, Any]
+        self, agent: Agent, context: Dict[str, Any], prompt: str, response: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Process the response to include SEC filing analysis.
@@ -80,42 +77,22 @@ Format your response as a clear, structured prompt that will guide the analysis.
 
 Format your analysis in a clear, structured way."""
 
-        analysis = await agent.llm.generate(
-            prompt=str(response),
-            system_prompt=system_prompt,
-            temperature=0.7
-        )
+        analysis = await agent.llm.generate(prompt=str(response), system_prompt=system_prompt, temperature=0.7)
 
         return {
             **response,
             "sec_analysis": {
                 "filing_types": ["10-K", "10-Q", "8-K"],
                 "time_period": "Last 12 months",
-                "key_metrics": {
-                    "revenue": "100M",
-                    "net_income": "20M",
-                    "assets": "500M"
-                },
-                "trends": [
-                    "Increasing revenue growth",
-                    "Stable profit margins",
-                    "Growing asset base"
-                ],
-                "insights": [
-                    "Strong financial performance",
-                    "Healthy balance sheet",
-                    "Positive growth trajectory"
-                ],
-                "llm_analysis": analysis
-            }
+                "key_metrics": {"revenue": "100M", "net_income": "20M", "assets": "500M"},
+                "trends": ["Increasing revenue growth", "Stable profit margins", "Growing asset base"],
+                "insights": ["Strong financial performance", "Healthy balance sheet", "Positive growth trajectory"],
+                "llm_analysis": analysis,
+            },
         }
 
     async def process_action(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        prompt: str,
-        action: Dict[str, Any]
+        self, agent: Agent, context: Dict[str, Any], prompt: str, action: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Process an action to include SEC filing analysis.
@@ -138,11 +115,7 @@ Format your analysis in a clear, structured way."""
 
 Format your response as a structured action plan."""
 
-        enhanced_action = await agent.llm.generate(
-            prompt=str(action),
-            system_prompt=system_prompt,
-            temperature=0.3
-        )
+        enhanced_action = await agent.llm.generate(prompt=str(action), system_prompt=system_prompt, temperature=0.3)
 
         return {
             **action,
@@ -150,17 +123,12 @@ Format your response as a structured action plan."""
                 "filing_type": "10-K",
                 "section": "Financial Statements",
                 "metrics": ["Revenue", "Net Income", "Assets"],
-                "llm_enhancement": enhanced_action
-            }
+                "llm_enhancement": enhanced_action,
+            },
         }
 
     async def process_result(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        prompt: str,
-        action: Dict[str, Any],
-        result: Dict[str, Any]
+        self, agent: Agent, context: Dict[str, Any], prompt: str, action: Dict[str, Any], result: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Process a result to include SEC filing analysis.
@@ -184,11 +152,7 @@ Format your response as a structured action plan."""
 
 Format your analysis in a clear, structured way."""
 
-        analysis = await agent.llm.generate(
-            prompt=str(result),
-            system_prompt=system_prompt,
-            temperature=0.7
-        )
+        analysis = await agent.llm.generate(prompt=str(result), system_prompt=system_prompt, temperature=0.7)
 
         return {
             **result,
@@ -196,6 +160,6 @@ Format your analysis in a clear, structured way."""
                 "financial_health": "Strong",
                 "growth_trajectory": "Positive",
                 "risk_factors": "Manageable",
-                "llm_analysis": analysis
-            }
+                "llm_analysis": analysis,
+            },
         }

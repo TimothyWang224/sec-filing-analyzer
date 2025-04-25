@@ -4,16 +4,16 @@ Logging Utilities Module
 This module provides enhanced logging functionality for the SEC Filing Analyzer.
 """
 
-import os
-import logging
-import traceback
 import json
+import logging
+import os
 import re
 import threading
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple, Set
+import traceback
 from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Global variable to store the current session ID
 _current_session_id = None
@@ -58,11 +58,11 @@ class SessionLogger:
     """
 
     # Class-level storage for session loggers
-    _loggers: Dict[str, 'SessionLogger'] = {}
+    _loggers: Dict[str, "SessionLogger"] = {}
     _lock = threading.Lock()
 
     @classmethod
-    def get_logger(cls, session_id: Optional[str] = None) -> 'SessionLogger':
+    def get_logger(cls, session_id: Optional[str] = None) -> "SessionLogger":
         """Get or create a session logger for the given session ID.
 
         Args:
@@ -76,7 +76,7 @@ class SessionLogger:
             session_id = get_current_session_id()
             if session_id is None:
                 # Generate a new session ID if none exists
-                session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+                session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
                 set_current_session_id(session_id)
 
         with cls._lock:
@@ -104,7 +104,7 @@ class SessionLogger:
         file_handler.setLevel(logging.INFO)
 
         # Create formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(formatter)
 
         # Add handler to logger
@@ -135,11 +135,7 @@ class SessionLogger:
 
                 def emit(self, record):
                     # Forward the log record to the session logger
-                    self.session_logger.log(
-                        record.levelno,
-                        record.getMessage(),
-                        self.agent_name
-                    )
+                    self.session_logger.log(record.levelno, record.getMessage(), self.agent_name)
 
             # Add the handler to the agent logger
             handler = SessionLogHandler(self, agent_name)
@@ -183,17 +179,19 @@ def get_session_log_path(session_id: Optional[str] = None) -> Path:
         session_id = get_current_session_id()
         if session_id is None:
             # Generate a new session ID if none exists
-            session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+            session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
             set_current_session_id(session_id)
 
     log_dir = get_standard_log_dir("sessions")
     return log_dir / f"session_{session_id}.log"
 
+
 # Create a custom logger for embedding errors
-embedding_logger = logging.getLogger('embedding_errors')
+embedding_logger = logging.getLogger("embedding_errors")
 
 # Ensure the logger doesn't propagate to the root logger
 embedding_logger.propagate = False
+
 
 def get_standard_log_dir(subdir: Optional[str] = None) -> Path:
     """Get the standard log directory path.
@@ -204,10 +202,11 @@ def get_standard_log_dir(subdir: Optional[str] = None) -> Path:
     Returns:
         Path to the standard log directory
     """
-    base_log_dir = Path('data/logs')
+    base_log_dir = Path("data/logs")
     if subdir:
         return base_log_dir / subdir
     return base_log_dir
+
 
 def setup_logging(log_dir: Optional[Path] = None) -> None:
     """Set up enhanced logging for the application.
@@ -222,12 +221,12 @@ def setup_logging(log_dir: Optional[Path] = None) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a file handler for embedding errors
-    embedding_log_file = log_dir / f'embedding_errors_{datetime.now().strftime("%Y%m%d")}.log'
+    embedding_log_file = log_dir / f"embedding_errors_{datetime.now().strftime('%Y%m%d')}.log"
     file_handler = logging.FileHandler(embedding_log_file)
     file_handler.setLevel(logging.ERROR)
 
     # Create a formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(formatter)
 
     # Add the handler to the logger
@@ -246,13 +245,14 @@ def setup_logging(log_dir: Optional[Path] = None) -> None:
     embedding_logger.addHandler(console_handler)
 
     # Create a summary file for embedding errors
-    summary_file = log_dir / 'embedding_errors_summary.json'
+    summary_file = log_dir / "embedding_errors_summary.json"
     if not summary_file.exists():
-        with open(summary_file, 'w') as f:
+        with open(summary_file, "w") as f:
             json.dump([], f)
 
     # Reduce noise from third-party libraries
     configure_noisy_loggers()
+
 
 def configure_noisy_loggers() -> None:
     """Configure logging levels for noisy third-party libraries.
@@ -268,26 +268,23 @@ def configure_noisy_loggers() -> None:
         "faiss.swigfaiss",
         "faiss.swigfaiss_avx2",
         "faiss.swigfaiss_avx512",
-
         # Neo4j related
         "neo4j",
         "neo4j.io",
         "neo4j.bolt",
         "neo4j.work",
         "neo4j.graph",
-
         # LlamaIndex related
         "llama_index",
         "llama_index.core",
         "llama_index.core.indices",
         "llama_index.core.vector_stores",
-
         # Other dependencies
         "httpx",
         "urllib3",
         "requests",
         "matplotlib",
-        "PIL"
+        "PIL",
     ]
 
     # Set logging level to WARNING for all noisy loggers
@@ -298,13 +295,14 @@ def configure_noisy_loggers() -> None:
     # Log that we've configured the loggers
     logging.getLogger(__name__).info("Configured logging levels for noisy third-party libraries")
 
+
 def log_embedding_error(
     error: Exception,
     filing_id: str,
     company: str,
     filing_type: str,
     batch_index: Optional[int] = None,
-    chunk_count: Optional[int] = None
+    chunk_count: Optional[int] = None,
 ) -> None:
     """Log detailed information about embedding errors.
 
@@ -330,30 +328,33 @@ def log_embedding_error(
     embedding_logger.error(f"{error_message}\n{stack_trace}")
 
     # Add to summary file
-    log_dir = Path('data/logs')
+    log_dir = Path("data/logs")
     log_dir.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
-    summary_file = log_dir / 'embedding_errors_summary.json'
+    summary_file = log_dir / "embedding_errors_summary.json"
 
     try:
-        with open(summary_file, 'r') as f:
+        with open(summary_file, "r") as f:
             summary = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         summary = []
 
     # Add new error to summary
-    summary.append({
-        'timestamp': datetime.now().isoformat(),
-        'filing_id': filing_id,
-        'company': company,
-        'filing_type': filing_type,
-        'error': str(error),
-        'batch_index': batch_index,
-        'chunk_count': chunk_count
-    })
+    summary.append(
+        {
+            "timestamp": datetime.now().isoformat(),
+            "filing_id": filing_id,
+            "company": company,
+            "filing_type": filing_type,
+            "error": str(error),
+            "batch_index": batch_index,
+            "chunk_count": chunk_count,
+        }
+    )
 
     # Write updated summary
-    with open(summary_file, 'w') as f:
+    with open(summary_file, "w") as f:
         json.dump(summary, f, indent=2)
+
 
 def generate_embedding_error_report() -> str:
     """Generate a report of embedding errors.
@@ -361,11 +362,11 @@ def generate_embedding_error_report() -> str:
     Returns:
         A formatted report of embedding errors
     """
-    log_dir = Path('data/logs')
-    summary_file = log_dir / 'embedding_errors_summary.json'
+    log_dir = Path("data/logs")
+    summary_file = log_dir / "embedding_errors_summary.json"
 
     try:
-        with open(summary_file, 'r') as f:
+        with open(summary_file, "r") as f:
             summary = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return "No embedding errors found or summary file not available."
@@ -378,14 +379,14 @@ def generate_embedding_error_report() -> str:
     error_types = {}
 
     for error in summary:
-        company = error['company']
+        company = error["company"]
         if company not in errors_by_company:
             errors_by_company[company] = []
         errors_by_company[company].append(error)
 
         # Track error types
-        error_msg = error['error']
-        error_type = error_msg.split(':', 1)[0] if ':' in error_msg else error_msg
+        error_msg = error["error"]
+        error_type = error_msg.split(":", 1)[0] if ":" in error_msg else error_msg
         if error_type not in error_types:
             error_types[error_type] = 0
         error_types[error_type] += 1

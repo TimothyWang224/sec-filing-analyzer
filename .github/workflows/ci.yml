@@ -1,0 +1,58 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'poetry'
+    - name: Install Poetry
+      uses: abatilo/actions-poetry@v3
+      with:
+        poetry-version: '1.8.2'
+    - run: poetry install --no-root
+
+    - name: Run tests
+      run: |
+        mkdir -p .logs
+        poetry run pytest -q tests/test_api.py tests/test_agents.py tests/test_tools.py tests/test_capabilities.py --cov=src --cov-report=xml 2>&1 | tee .logs/pytest.log
+      continue-on-error: true
+
+    - name: Security scan with Bandit
+      run: |
+        mkdir -p .logs
+        poetry run bandit -r src -ll --configfile .bandit.yaml 2>&1 | tee .logs/bandit.log
+      continue-on-error: true
+
+    - name: Run pre-commit
+      run: |
+        mkdir -p .logs
+        pre-commit run --all-files 2>&1 | tee .logs/precommit.log
+      continue-on-error: true
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-xml
+        path: coverage.xml
+
+    - name: Upload logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: ci-logs-${{ github.sha }}
+        path: .logs/
+        retention-days: 7  # Keep logs for 7 days to save storage
+
+    - name: Post lint summary
+      if: always()
+      run: |
+        if [ -f .logs/latest.log ]; then
+          echo "### Pre-commit Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 50 .logs/latest.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi

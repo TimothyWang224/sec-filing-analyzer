@@ -9,11 +9,12 @@ their mappings to tool parameters.
 import json
 import logging
 import os
-from typing import Dict, Any, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class SchemaRegistry:
     """Registry for database schemas and field mappings."""
@@ -40,7 +41,7 @@ class SchemaRegistry:
                 logger.error(f"Schema file not found: {schema_file}")
                 return False
 
-            with open(schema_file, 'r') as f:
+            with open(schema_file, "r") as f:
                 schema = json.load(f)
 
             cls._db_schemas[schema_name] = schema
@@ -72,7 +73,9 @@ class SchemaRegistry:
             if existing_field == field_name:
                 return
             # If it's different, log a warning but still update
-            logger.warning(f"Overwriting existing field mapping: {schema_name}.{param_name} -> {existing_field} with {field_name}")
+            logger.warning(
+                f"Overwriting existing field mapping: {schema_name}.{param_name} -> {existing_field} with {field_name}"
+            )
 
         # Register the mapping
         cls._field_mappings[schema_name][param_name] = field_name
@@ -164,7 +167,9 @@ class SchemaRegistry:
         if schema_name in cls._field_mappings:
             for param_name, field_name in cls._field_mappings[schema_name].items():
                 if field_name not in fields:
-                    errors.append(f"Field mapping '{param_name}' -> '{field_name}' references non-existent field in schema '{schema_name}'")
+                    errors.append(
+                        f"Field mapping '{param_name}' -> '{field_name}' references non-existent field in schema '{schema_name}'"
+                    )
 
         return len(errors) == 0, errors
 

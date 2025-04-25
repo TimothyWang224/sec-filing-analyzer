@@ -6,8 +6,9 @@ ensuring that tools and plan steps have a clear understanding of what
 each expects and provides.
 """
 
-from typing import List, Dict, Any, Optional, Union, Type
 from datetime import date
+from typing import Any, Dict, List, Optional, Type, Union
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -18,6 +19,7 @@ class ToolInput(BaseModel):
     This defines the standard structure for tool inputs, with a query_type
     and parameters dictionary.
     """
+
     query_type: str
     parameters: Dict[str, Any] = Field(default_factory=dict)
 
@@ -26,13 +28,14 @@ class FinancialFactsParams(BaseModel):
     """
     Parameters for financial facts queries.
     """
+
     ticker: str
     metrics: List[str]
     start_date: str
     end_date: str
     filing_type: Optional[str] = None
 
-    @field_validator('start_date', 'end_date')
+    @field_validator("start_date", "end_date")
     @classmethod
     def validate_date_format(cls, v):
         # Simple validation for YYYY-MM-DD format
@@ -44,7 +47,7 @@ class FinancialFactsParams(BaseModel):
             return v.isoformat()
 
         # Basic format check
-        parts = v.split('-')
+        parts = v.split("-")
         if len(parts) != 3:
             raise ValueError("Date must be in YYYY-MM-DD format")
 
@@ -55,6 +58,7 @@ class MetricsParams(BaseModel):
     """
     Parameters for metrics queries.
     """
+
     ticker: str
     year: Optional[int] = None
     quarter: Optional[int] = None
@@ -67,6 +71,7 @@ class ToolSpec(BaseModel):
 
     This serves as a contract for what a tool expects and what it returns.
     """
+
     name: str
     input_schema: Dict[str, Type[BaseModel]]  # query_type -> parameter model
     output_key: str  # canonical key placed in memory
@@ -80,6 +85,7 @@ class PlanStep(BaseModel):
     The contract fields (expected_key, output_path, done_check) formalize
     the relationship between the step and the tool it uses.
     """
+
     step_id: int
     description: str
     tool: Optional[str] = None  # None ⇒ "thinking" step
@@ -101,6 +107,7 @@ class Plan(BaseModel):
     """
     A complete plan with steps and metadata.
     """
+
     goal: str
     steps: List[PlanStep]
     status: str = "pending"  # pending | in_progress | completed

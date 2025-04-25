@@ -4,14 +4,16 @@ DuckDB UI Launcher
 Utility functions for launching the DuckDB UI.
 """
 
+import logging
 import os
 import webbrowser
-import logging
 from pathlib import Path
+
 import streamlit as st
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
 
 def launch_duckdb_ui(db_path: str = None):
     """
@@ -41,7 +43,9 @@ def launch_duckdb_ui(db_path: str = None):
 
         # For now, just show a message since we don't have a direct web UI for DuckDB
         st.info(f"Opening DuckDB database: {db_path}")
-        st.info("Note: DuckDB Web UI is not directly available. You can use DBeaver or another SQL client to connect to this database.")
+        st.info(
+            "Note: DuckDB Web UI is not directly available. You can use DBeaver or another SQL client to connect to this database."
+        )
 
         # Log the action
         logger.info(f"Attempted to launch DuckDB UI for database: {db_path}")

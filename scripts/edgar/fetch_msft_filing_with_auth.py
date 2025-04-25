@@ -2,15 +2,17 @@
 Fetch Microsoft's first 2022 filing (0000789019-22-000001) using the edgar package with proper authentication.
 """
 
-import edgar
 import asyncio
 import json
 import os
 from pathlib import Path
+
+import edgar
 from dotenv import load_dotenv
 
 # Load environment variables from .env file if it exists
 load_dotenv()
+
 
 def set_edgar_identity():
     """Set the edgar identity from environment variables or prompt the user."""
@@ -31,6 +33,7 @@ def set_edgar_identity():
     # Set the identity in the edgar package
     edgar.set_identity(edgar_identity)
     print(f"Set edgar identity to: {edgar_identity}")
+
 
 async def fetch_specific_filing():
     """
@@ -75,7 +78,7 @@ async def fetch_specific_filing():
             print(f"Saved filing text to {output_file}")
 
             # Try to get XBRL data if available
-            if hasattr(found_filing, 'is_xbrl') and found_filing.is_xbrl:
+            if hasattr(found_filing, "is_xbrl") and found_filing.is_xbrl:
                 print("Filing has XBRL data")
                 xbrl_data = found_filing.xbrl
 
@@ -88,7 +91,7 @@ async def fetch_specific_filing():
                 print("Filing does not have XBRL data")
 
             # Try to extract document content
-            if hasattr(found_filing, 'document'):
+            if hasattr(found_filing, "document"):
                 document = found_filing.document
                 doc_file = output_dir / f"MSFT_{target_accession}_document.html"
                 with open(doc_file, "w", encoding="utf-8") as f:
@@ -116,6 +119,7 @@ async def fetch_specific_filing():
         print(f"Error fetching filing: {e}")
         return None
 
+
 def main():
     """Main function to run the script."""
     try:
@@ -135,6 +139,7 @@ def main():
         asyncio.run(fetch_specific_filing())
     except Exception as e:
         print(f"Error in main function: {e}")
+
 
 if __name__ == "__main__":
     main()

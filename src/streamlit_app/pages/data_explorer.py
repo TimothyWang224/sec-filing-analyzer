@@ -4,23 +4,21 @@ Data Explorer Page
 This page provides a user interface for exploring the data extracted from SEC filings.
 """
 
-import streamlit as st
+import logging
 import os
 import sys
-import logging
 import traceback
 from pathlib import Path
+
+import streamlit as st
 
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('data_explorer_debug.log')
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler("data_explorer_debug.log")],
 )
-logger = logging.getLogger('data_explorer')
+logger = logging.getLogger("data_explorer")
 
 # Log startup information
 logger.info("Data Explorer starting up")
@@ -36,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 try:
     logger.info("Importing SEC Filing Analyzer components")
     from sec_filing_analyzer.config import ConfigProvider, StorageConfig
+
     # Import LlamaIndexVectorStore only if needed
     config_imports_successful = True
     logger.info("Successfully imported SEC Filing Analyzer components")
@@ -44,7 +43,9 @@ except ImportError as e:
     logger.error(error_msg)
     logger.error(traceback.format_exc())
     st.error(error_msg)
-    st.warning("Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly.")
+    st.warning(
+        "Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly."
+    )
     config_imports_successful = False
 
     # Define fallback classes for when imports fail
@@ -63,12 +64,10 @@ except ImportError as e:
             _ = args, kwargs  # Suppress unused variable warning
             return FallbackConfig()
 
+
 # Set page config
 st.set_page_config(
-    page_title="Data Explorer - SEC Filing Analyzer",
-    page_icon="🔍",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Data Explorer - SEC Filing Analyzer", page_icon="🔍", layout="wide", initial_sidebar_state="expanded"
 )
 
 # Initialize configuration
@@ -105,10 +104,7 @@ Note: For exploring quantitative data in DuckDB, please use the DuckDB UI button
 # Sidebar for navigation
 st.sidebar.header("Explorer Navigation")
 logger.info("Setting up sidebar navigation")
-explorer_type = st.sidebar.radio(
-    "Select Explorer",
-    ["Semantic Search", "Graph Explorer"]
-)
+explorer_type = st.sidebar.radio("Select Explorer", ["Semantic Search", "Graph Explorer"])
 logger.info(f"Selected explorer type: {explorer_type}")
 
 # Main content
@@ -162,9 +158,9 @@ if explorer_type == "Semantic Search":
                                         "company": "AAPL",
                                         "filing_type": "10-K",
                                         "filing_date": "2023-01-01",
-                                        "section": "Risk Factors"
+                                        "section": "Risk Factors",
                                     },
-                                    "score": 0.95
+                                    "score": 0.95,
                                 },
                                 {
                                     "text": "Another sample result with different metadata.",
@@ -172,19 +168,21 @@ if explorer_type == "Semantic Search":
                                         "company": "MSFT",
                                         "filing_type": "10-Q",
                                         "filing_date": "2023-03-31",
-                                        "section": "Management Discussion"
+                                        "section": "Management Discussion",
                                     },
-                                    "score": 0.85
-                                }
+                                    "score": 0.85,
+                                },
                             ]
 
                             # Display results
                             for i, result in enumerate(results):
-                                st.subheader(f"Result {i+1} (Score: {result['score']:.2f})")
+                                st.subheader(f"Result {i + 1} (Score: {result['score']:.2f})")
                                 st.write(f"**Company:** {result['metadata']['company']}")
-                                st.write(f"**Filing:** {result['metadata']['filing_type']} ({result['metadata']['filing_date']})")
+                                st.write(
+                                    f"**Filing:** {result['metadata']['filing_type']} ({result['metadata']['filing_date']})"
+                                )
                                 st.write(f"**Section:** {result['metadata']['section']}")
-                                st.text_area(f"Text {i+1}", result['text'], height=150)
+                                st.text_area(f"Text {i + 1}", result["text"], height=150)
                         except Exception as e:
                             st.error(f"Error performing search: {str(e)}")
 
@@ -198,7 +196,7 @@ if explorer_type == "Semantic Search":
                     "Companies": "25",
                     "Filing Types": "10-K, 10-Q, 8-K",
                     "Date Range": "2020-01-01 to 2023-12-31",
-                    "Embedding Model": "text-embedding-3-small"
+                    "Embedding Model": "text-embedding-3-small",
                 }
 
                 # Display statistics
@@ -260,7 +258,9 @@ elif explorer_type == "Graph Explorer":
     # Graph visualization placeholder
     st.subheader("Graph Visualization")
 
-    st.image("https://neo4j.com/wp-content/uploads/graph-example.png", caption="Sample Graph Visualization (Placeholder)")
+    st.image(
+        "https://neo4j.com/wp-content/uploads/graph-example.png", caption="Sample Graph Visualization (Placeholder)"
+    )
 
     # Cypher query
     st.subheader("Cypher Query")

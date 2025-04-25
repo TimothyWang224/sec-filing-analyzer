@@ -2,11 +2,12 @@
 Utility functions for the Streamlit application.
 """
 
-import streamlit as st
 import logging
 import os
 import sys
 from pathlib import Path
+
+import streamlit as st
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -17,6 +18,7 @@ from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("streamlit_utils")
+
 
 def launch_duckdb_ui(db_path="data/db_backup/improved_financial_data.duckdb"):
     """
@@ -51,8 +53,9 @@ def launch_duckdb_ui(db_path="data/db_backup/improved_financial_data.duckdb"):
 
     # Launch DuckDB's built-in web interface if available
     try:
-        import duckdb
         import webbrowser
+
+        import duckdb
 
         # Check DuckDB version
         duckdb_version = duckdb.__version__
@@ -62,7 +65,7 @@ def launch_duckdb_ui(db_path="data/db_backup/improved_financial_data.duckdb"):
         conn = duckdb.connect(abs_db_path, read_only=True)
 
         # Check if the GUI method exists (available in DuckDB 0.9.0+)
-        if hasattr(conn, 'gui') and callable(getattr(conn, 'gui')):
+        if hasattr(conn, "gui") and callable(conn.gui):
             # Show a message about launching the UI
             st.info("Launching DuckDB Web Interface. This will open in a new browser tab.")
 
@@ -94,7 +97,9 @@ def launch_duckdb_ui(db_path="data/db_backup/improved_financial_data.duckdb"):
             duckdb_ui_logger.warning(f"DuckDB GUI method not available in version {duckdb_version}")
 
             st.warning(f"The native DuckDB GUI is not available in your DuckDB version ({duckdb_version}).")
-            st.info("To use the native GUI feature, please upgrade to DuckDB 0.9.0 or later with: `pip install --upgrade duckdb`")
+            st.info(
+                "To use the native GUI feature, please upgrade to DuckDB 0.9.0 or later with: `pip install --upgrade duckdb`"
+            )
 
             # Show alternative access methods
             st.subheader("Alternative ways to access this database:")

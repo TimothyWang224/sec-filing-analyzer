@@ -2,28 +2,25 @@ import asyncio
 import json
 import logging
 from datetime import datetime
+
 from src.agents.qa_specialist import QASpecialistAgent
 from src.capabilities.planning import PlanningCapability
-from src.contracts import PlanStep, Plan, extract_value
-from src.tools.registry import ToolRegistry
+from src.contracts import Plan, PlanStep, extract_value
 from src.environments.base import Environment
+from src.tools.registry import ToolRegistry
 
 # Configure logging
-logging.basicConfig(level=logging.INFO,
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
 
 async def test_plan_step_tool_contract():
     """Test the Plan-Step ↔ Tool Contract with all tools."""
-    print("\n\n" + "="*80)
+    print("\n\n" + "=" * 80)
     print("TESTING PLAN-STEP ↔ TOOL CONTRACT")
-    print("="*80 + "\n")
+    print("=" * 80 + "\n")
 
     # Create a QA Specialist Agent
-    agent = QASpecialistAgent(
-        max_planning_iterations=2,
-        max_execution_iterations=5,
-        max_refinement_iterations=3
-    )
+    agent = QASpecialistAgent(max_planning_iterations=2, max_execution_iterations=5, max_refinement_iterations=3)
 
     # Add planning capability
     planning_capability = PlanningCapability(
@@ -31,7 +28,7 @@ async def test_plan_step_tool_contract():
         enable_step_reflection=True,
         min_steps_before_reflection=2,
         max_plan_steps=10,
-        plan_detail_level="high"
+        plan_detail_level="high",
     )
     agent.capabilities.append(planning_capability)
 
@@ -43,7 +40,7 @@ async def test_plan_step_tool_contract():
     plan = await planning_capability._create_plan("What was Apple's revenue in 2022?")
 
     print("\nPLAN:")
-    print("="*80)
+    print("=" * 80)
     print(f"Goal: {plan.goal}")
     print(f"Status: {plan.status}")
     print(f"Owner: {plan.owner}")
@@ -66,7 +63,7 @@ async def test_plan_step_tool_contract():
 
     # Test the contract with a specific tool
     print("\nTESTING CONTRACT WITH SEC_FINANCIAL_DATA TOOL:")
-    print("="*80)
+    print("=" * 80)
 
     # Create a step for the sec_financial_data tool
     step = PlanStep(
@@ -79,14 +76,14 @@ async def test_plan_step_tool_contract():
                 "ticker": "AAPL",
                 "metrics": ["Revenue"],
                 "start_date": "2022-01-01",
-                "end_date": "2022-12-31"
-            }
+                "end_date": "2022-12-31",
+            },
         },
         expected_key="revenue_data",
         output_path=["data", "Revenue"],
         done_check="True",
         dependencies=[],
-        status="pending"
+        status="pending",
     )
 
     # Get the tool spec
@@ -102,10 +99,7 @@ async def test_plan_step_tool_contract():
         print(f"Executing tool: {step.tool}")
         print(f"Parameters: {json.dumps(step.parameters, indent=2)}")
 
-        result = await environment.execute_tool(
-            tool_name=step.tool,
-            **step.parameters
-        )
+        result = await environment.execute_tool(tool_name=step.tool, **step.parameters)
 
         print(f"Result: {json.dumps(result, indent=2)}")
 
@@ -124,7 +118,7 @@ async def test_plan_step_tool_contract():
 
     # Test the contract with a skipped step
     print("\nTESTING CONTRACT WITH SKIPPED STEP:")
-    print("="*80)
+    print("=" * 80)
 
     # Create a plan with a step that should be skipped
     plan = Plan(
@@ -133,31 +127,30 @@ async def test_plan_step_tool_contract():
         status="in_progress",
         created_at=datetime.now().isoformat(),
         owner="agent",
-        can_modify=True
+        can_modify=True,
     )
 
     # Add the step result to memory
-    agent.add_to_memory({
-        "type": "tool_result",
-        "tool": "sec_financial_data",
-        "result": {
-            "data": {
-                "Revenue": 123456789
-            },
-            "output_key": "sec_financial_data"
-        },
-        "expected_key": "revenue_data"
-    })
+    agent.add_to_memory(
+        {
+            "type": "tool_result",
+            "tool": "sec_financial_data",
+            "result": {"data": {"Revenue": 123456789}, "output_key": "sec_financial_data"},
+            "expected_key": "revenue_data",
+        }
+    )
 
     # Add a step_skipped memory item
-    agent.add_to_memory({
-        "type": "step_skipped",
-        "step_id": 1,
-        "tool": "sec_financial_data",
-        "expected_key": "revenue_data",
-        "reason": "Success criterion already satisfied",
-        "timestamp": datetime.now().isoformat()
-    })
+    agent.add_to_memory(
+        {
+            "type": "step_skipped",
+            "step_id": 1,
+            "tool": "sec_financial_data",
+            "expected_key": "revenue_data",
+            "reason": "Success criterion already satisfied",
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
     # Check if the step should be skipped
     print(f"Checking if step should be skipped...")
@@ -189,6 +182,7 @@ async def test_plan_step_tool_contract():
         print("❌ Step was not skipped")
 
     return plan
+
 
 if __name__ == "__main__":
     asyncio.run(test_plan_step_tool_contract())

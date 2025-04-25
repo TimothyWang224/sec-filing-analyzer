@@ -4,15 +4,17 @@ Embeddings Module
 This module provides functionality for generating vector embeddings using OpenAI's API through LlamaIndex.
 """
 
-import os
 import logging
+import os
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
-from typing import List, Optional, Union, Dict, Any
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class EmbeddingGenerator:
     """Handles generation of vector embeddings using OpenAI's API through LlamaIndex."""
@@ -27,10 +29,7 @@ class EmbeddingGenerator:
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set. Please set it in your .env file.")
 
-        self.embed_model = OpenAIEmbedding(
-            model=model,
-            api_key=api_key
-        )
+        self.embed_model = OpenAIEmbedding(model=model, api_key=api_key)
         self.dimensions = 1536  # text-embedding-3-small has 1536 dimensions
         logger.info(f"Initialized LlamaIndex OpenAI embedding generator with model: {model}")
 
@@ -50,11 +49,7 @@ class EmbeddingGenerator:
         else:
             return list(embedding)
 
-    def generate_embeddings(
-        self,
-        texts: List[str],
-        batch_size: int = 100
-    ) -> List[List[float]]:
+    def generate_embeddings(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
         """Generate vector embeddings for a list of texts.
 
         Args:
@@ -76,7 +71,7 @@ class EmbeddingGenerator:
 
             # Process in batches to avoid rate limits
             for i in range(0, len(processed_texts), batch_size):
-                batch = processed_texts[i:i+batch_size]
+                batch = processed_texts[i : i + batch_size]
                 # Ensure batch is properly formatted for the OpenAI API
                 sanitized_batch = [str(text) if text is not None else "" for text in batch]
                 batch_embeddings = self.embed_model.get_text_embedding_batch(sanitized_batch)

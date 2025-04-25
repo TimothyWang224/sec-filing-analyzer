@@ -4,16 +4,14 @@ Explore Edgar XBRL Capabilities
 This script explores the XBRL extraction capabilities of the edgar package.
 """
 
+import logging
 import sys
 from pathlib import Path
-import logging
+
 import pandas as pd
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Add the src directory to the Python path
@@ -21,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import edgar
 import edgar
+
 
 def explore_entity_capabilities():
     """Explore the capabilities of the Entity class."""
@@ -39,7 +38,7 @@ def explore_entity_capabilities():
     # Print filing information
     print(f"\nFilings: {len(filings)}")
     for i, filing in enumerate(list(filings)[:3]):
-        print(f"\nFiling {i+1}:")
+        print(f"\nFiling {i + 1}:")
         print(f"  Attributes: {dir(filing)}")
         print(f"  Accession Number: {filing.accession_number}")
         print(f"  Form: {filing.form}")
@@ -49,13 +48,14 @@ def explore_entity_capabilities():
         try:
             print("\nTrying to get XBRL data...")
             # Check if there's a method to get XBRL data directly
-            if hasattr(filing, 'get_xbrl_data'):
+            if hasattr(filing, "get_xbrl_data"):
                 xbrl_data = filing.get_xbrl_data()
                 print(f"  XBRL data: {xbrl_data}")
             else:
                 print("  No direct method to get XBRL data")
         except Exception as e:
             print(f"  Error getting XBRL data: {e}")
+
 
 def explore_xbrl_capabilities():
     """Explore the capabilities of the XBRL module."""
@@ -85,7 +85,7 @@ def explore_xbrl_capabilities():
             # Construct the filing URL
             cik = entity.cik
             accession_number = filing.accession_number
-            accession_clean = accession_number.replace('-', '')
+            accession_clean = accession_number.replace("-", "")
             filing_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_clean}/{accession_number}-index.htm"
             print(f"Filing URL: {filing_url}")
 
@@ -96,7 +96,7 @@ def explore_xbrl_capabilities():
                 print(f"XBRL data attributes: {dir(xbrl_data)}")
 
                 # Check if there are statements
-                if hasattr(xbrl_data, 'statements'):
+                if hasattr(xbrl_data, "statements"):
                     print(f"\nStatements: {list(xbrl_data.statements.keys())}")
 
                     # Print the first statement
@@ -107,25 +107,25 @@ def explore_xbrl_capabilities():
                         print(f"Statement attributes: {dir(statement)}")
 
                         # Try to convert to pandas
-                        if hasattr(statement, 'to_pandas'):
+                        if hasattr(statement, "to_pandas"):
                             df = statement.to_pandas()
                             print(f"\nStatement as DataFrame:")
                             print(df.head())
 
                 # Check if there are facts
-                if hasattr(xbrl_data, 'facts'):
+                if hasattr(xbrl_data, "facts"):
                     print(f"\nFacts: {len(xbrl_data.facts)}")
 
                     # Print some facts
                     for i, fact in enumerate(list(xbrl_data.facts.values())[:5]):
-                        print(f"\nFact {i+1}:")
+                        print(f"\nFact {i + 1}:")
                         print(f"  Attributes: {dir(fact)}")
                         print(f"  Name: {fact.name if hasattr(fact, 'name') else 'N/A'}")
                         print(f"  Value: {fact.value if hasattr(fact, 'value') else 'N/A'}")
                         print(f"  Context: {fact.context if hasattr(fact, 'context') else 'N/A'}")
 
                 # Check if there's a method to get all US GAAP facts
-                if hasattr(xbrl_data, 'get_us_gaap_facts'):
+                if hasattr(xbrl_data, "get_us_gaap_facts"):
                     us_gaap_facts = xbrl_data.get_us_gaap_facts()
                     print(f"\nUS GAAP Facts: {len(us_gaap_facts)}")
                 else:
@@ -134,14 +134,14 @@ def explore_xbrl_capabilities():
                     # Try to filter facts by namespace
                     us_gaap_facts = {}
                     for name, fact in xbrl_data.facts.items():
-                        if name.startswith('us-gaap:'):
+                        if name.startswith("us-gaap:"):
                             us_gaap_facts[name] = fact
 
                     print(f"\nFiltered US GAAP Facts: {len(us_gaap_facts)}")
 
                     # Print some US GAAP facts
                     for i, (name, fact) in enumerate(list(us_gaap_facts.items())[:5]):
-                        print(f"\nUS GAAP Fact {i+1}:")
+                        print(f"\nUS GAAP Fact {i + 1}:")
                         print(f"  Name: {name}")
                         print(f"  Value: {fact.value if hasattr(fact, 'value') else 'N/A'}")
 
@@ -151,6 +151,7 @@ def explore_xbrl_capabilities():
             print("No filings found")
     except Exception as e:
         print(f"Error: {e}")
+
 
 if __name__ == "__main__":
     print("\n=== Exploring Entity Capabilities ===\n")

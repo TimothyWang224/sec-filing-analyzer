@@ -2,8 +2,10 @@
 Unit tests for the Tool base class.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+
 from src.tools.base import Tool
 from src.tools.registry import ToolRegistry
 from src.tools.schema_registry import SchemaRegistry
@@ -125,11 +127,7 @@ class TestToolBase:
         tool = TestTool()
 
         # Mock the ToolRegistry.get method to return a tool with a required parameter
-        mock_tool_info = {
-            "parameters": {
-                "required_param": {"required": True}
-            }
-        }
+        mock_tool_info = {"parameters": {"required_param": {"required": True}}}
         with patch("src.tools.registry.ToolRegistry.get", return_value=mock_tool_info):
             # Validate arguments without the required parameter
             with pytest.raises(ValueError) as excinfo:

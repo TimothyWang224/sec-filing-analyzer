@@ -2,12 +2,14 @@
 Check the schema of the improved financial database.
 """
 
-import duckdb
 import sys
 from pathlib import Path
 
+import duckdb
+
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 
 def check_database_schema(db_path="data/db_backup/improved_financial_data.duckdb", read_only=True):
     """Check the schema of the database."""
@@ -43,6 +45,7 @@ def check_database_schema(db_path="data/db_backup/improved_financial_data.duckdb
     except Exception as e:
         print(f"Error checking database schema: {e}")
         return False
+
 
 if __name__ == "__main__":
     check_database_schema()

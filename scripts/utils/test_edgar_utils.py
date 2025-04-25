@@ -8,6 +8,7 @@ to retrieve SEC filings in a consistent way.
 import logging
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Import standardized edgar utilities
@@ -17,19 +18,17 @@ from sec_filing_analyzer.utils import edgar_utils
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Set edgar logger to DEBUG level
-edgar_logger = logging.getLogger('edgar')
+edgar_logger = logging.getLogger("edgar")
 edgar_logger.setLevel(logging.DEBUG)
 
 # Set utils logger to DEBUG level
-utils_logger = logging.getLogger('sec_filing_analyzer.utils')
+utils_logger = logging.getLogger("sec_filing_analyzer.utils")
 utils_logger.setLevel(logging.DEBUG)
+
 
 def test_get_entity():
     """Test getting an entity by ticker."""
@@ -42,21 +41,18 @@ def test_get_entity():
         logger.error(f"Error getting entity: {e}")
         return None
 
+
 def test_get_filings(ticker="MSFT", form_type="8-K", limit=5):
     """Test getting filings for a company."""
     try:
         # Get filings for Microsoft
-        filings = edgar_utils.get_filings(
-            ticker=ticker,
-            form_type=form_type,
-            limit=limit
-        )
+        filings = edgar_utils.get_filings(ticker=ticker, form_type=form_type, limit=limit)
 
         logger.info(f"Found {len(filings)} {form_type} filings for {ticker}")
 
         # Print filing details
         for i, filing in enumerate(filings[:limit]):
-            logger.info(f"Filing {i+1}:")
+            logger.info(f"Filing {i + 1}:")
             logger.info(f"  Accession: {filing.accession_number}")
             logger.info(f"  Form: {filing.form}")
             logger.info(f"  Date: {filing.filing_date}")
@@ -66,6 +62,7 @@ def test_get_filings(ticker="MSFT", form_type="8-K", limit=5):
     except Exception as e:
         logger.error(f"Error getting filings: {e}")
         return []
+
 
 def test_get_filing_by_accession(ticker="MSFT", accession_number=None):
     """Test getting a filing by accession number."""
@@ -109,6 +106,7 @@ def test_get_filing_by_accession(ticker="MSFT", accession_number=None):
         logger.error(f"Error getting filing by accession number: {e}")
         return None
 
+
 def main():
     """Main function to run the tests."""
     logger.info("Testing edgar utilities...")
@@ -131,6 +129,7 @@ def main():
         logger.error("Failed to get filing by accession number")
 
     logger.info("Tests completed")
+
 
 if __name__ == "__main__":
     main()

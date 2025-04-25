@@ -1,17 +1,16 @@
-from typing import List, Dict, Any, Optional, Tuple, Union, Type
 import json
-import re
 import logging
+import re
 import time
-from pathlib import Path
-from datetime import datetime
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-from ..contracts import extract_value, PlanStep, Plan
+from ..contracts import Plan, PlanStep, extract_value
 from ..tools.registry import ToolRegistry
-
-from ..utils.json_utils import safe_parse_json, repair_json
+from ..utils.json_utils import repair_json, safe_parse_json
 
 
 def _to_dict(obj: Any) -> Dict[str, Any]:
@@ -60,34 +59,44 @@ def _to_object(obj: Any, model_class: Type = None) -> Any:
 
     return obj
 
-from .core.agent_state import AgentState
-from .core.tool_ledger import ToolLedger
-from .core.error_handling import ToolError, ToolErrorType, ErrorClassifier, ErrorAnalyzer, ToolCircuitBreaker
-from .core.adaptive_retry import AdaptiveRetryStrategy
-from .core.alternative_tools import AlternativeToolSelector
-from .core.error_recovery import ErrorRecoveryManager
-from ..environments.base import Environment
-from ..tools.registry import ToolRegistry
-from ..tools.llm_parameter_completer import LLMParameterCompleter
+
 from sec_filing_analyzer.llm import BaseLLM, OpenAILLM
 from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
-from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir, SessionLogger, get_current_session_id, set_current_session_id
-from ..sec_filing_analyzer.utils.timing import timed_function, TimingContext
+
+from ..environments.base import Environment
+from ..sec_filing_analyzer.utils.logging_utils import (
+    SessionLogger,
+    get_current_session_id,
+    get_standard_log_dir,
+    set_current_session_id,
+)
+from ..sec_filing_analyzer.utils.timing import TimingContext, timed_function
+from ..tools.llm_parameter_completer import LLMParameterCompleter
+from .core.adaptive_retry import AdaptiveRetryStrategy
+from .core.agent_state import AgentState
+from .core.alternative_tools import AlternativeToolSelector
+from .core.error_handling import ErrorAnalyzer, ErrorClassifier, ToolCircuitBreaker, ToolError, ToolErrorType
+from .core.error_recovery import ErrorRecoveryManager
+from .core.tool_ledger import ToolLedger
 
 # Try to import the ConfigProvider
 try:
-    from sec_filing_analyzer.config import ConfigProvider, AgentConfig
+    from sec_filing_analyzer.config import AgentConfig, ConfigProvider
+
     HAS_CONFIG_PROVIDER = True
 except ImportError:
     HAS_CONFIG_PROVIDER = False
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class Goal:
     """Represents a goal for an agent to achieve."""
+
     name: str
     description: str
+
 
 class Agent(ABC):
     """Base class for all agents in the system with integrated LLM tool calling."""
@@ -119,7 +128,7 @@ class Agent(ABC):
         enable_dynamic_termination: Optional[bool] = None,
         min_confidence_threshold: Optional[float] = None,
         # Agent type for configuration
-        agent_type: Optional[str] = None
+        agent_type: Optional[str] = None,
     ):
         """
         Initialize an agent with its goals and capabilities.
@@ -164,44 +173,74 @@ class Agent(ABC):
         config = self._get_config(agent_type)
 
         # Set iteration parameters with fallbacks
-        self.max_iterations = max_iterations if max_iterations is not None else config.get("max_iterations", None)  # Legacy parameter
-        self.max_planning_iterations = max_planning_iterations if max_planning_iterations is not None else config.get("max_planning_iterations", 2)
-        self.max_execution_iterations = max_execution_iterations if max_execution_iterations is not None else config.get("max_execution_iterations", 3)
-        self.max_refinement_iterations = max_refinement_iterations if max_refinement_iterations is not None else config.get("max_refinement_iterations", 1)
+        self.max_iterations = (
+            max_iterations if max_iterations is not None else config.get("max_iterations", None)
+        )  # Legacy parameter
+        self.max_planning_iterations = (
+            max_planning_iterations if max_planning_iterations is not None else config.get("max_planning_iterations", 2)
+        )
+        self.max_execution_iterations = (
+            max_execution_iterations
+            if max_execution_iterations is not None
+            else config.get("max_execution_iterations", 3)
+        )
+        self.max_refinement_iterations = (
+            max_refinement_iterations
+            if max_refinement_iterations is not None
+            else config.get("max_refinement_iterations", 1)
+        )
 
         # Compute effective max iterations
         self.max_iterations_effective = self._compute_effective_max_iterations()
 
         # Set tool execution parameters with fallbacks
         self.max_tool_retries = max_tool_retries if max_tool_retries is not None else config.get("max_tool_retries", 2)
-        self.tools_per_iteration = tools_per_iteration if tools_per_iteration is not None else config.get("tools_per_iteration", 1)
+        self.tools_per_iteration = (
+            tools_per_iteration if tools_per_iteration is not None else config.get("tools_per_iteration", 1)
+        )
 
         # Set runtime parameters with fallbacks
-        self.max_duration_seconds = max_duration_seconds if max_duration_seconds is not None else config.get("max_duration_seconds", 180)
+        self.max_duration_seconds = (
+            max_duration_seconds if max_duration_seconds is not None else config.get("max_duration_seconds", 180)
+        )
 
         # Set token budget parameters with fallbacks
-        self.max_total_tokens = max_total_tokens if max_total_tokens is not None else config.get("max_total_tokens", 3000)
+        self.max_total_tokens = (
+            max_total_tokens if max_total_tokens is not None else config.get("max_total_tokens", 3000)
+        )
         self.token_budgets = token_budgets if token_budgets is not None else config.get("token_budgets", None)
 
         # Set termination parameters with fallbacks
-        self.enable_dynamic_termination = enable_dynamic_termination if enable_dynamic_termination is not None else config.get("enable_dynamic_termination", False)
-        self.min_confidence_threshold = min_confidence_threshold if min_confidence_threshold is not None else config.get("min_confidence_threshold", 0.8)
+        self.enable_dynamic_termination = (
+            enable_dynamic_termination
+            if enable_dynamic_termination is not None
+            else config.get("enable_dynamic_termination", False)
+        )
+        self.min_confidence_threshold = (
+            min_confidence_threshold
+            if min_confidence_threshold is not None
+            else config.get("min_confidence_threshold", 0.8)
+        )
 
         # Get LLM parameters with fallbacks
         llm_model = llm_model if llm_model is not None else config.get("model", config.get("llm_model", "gpt-4o-mini"))
-        llm_temperature = llm_temperature if llm_temperature is not None else config.get("temperature", config.get("llm_temperature", 0.7))
-        llm_max_tokens = llm_max_tokens if llm_max_tokens is not None else config.get("max_tokens", config.get("llm_max_tokens", 4000))
+        llm_temperature = (
+            llm_temperature
+            if llm_temperature is not None
+            else config.get("temperature", config.get("llm_temperature", 0.7))
+        )
+        llm_max_tokens = (
+            llm_max_tokens
+            if llm_max_tokens is not None
+            else config.get("max_tokens", config.get("llm_max_tokens", 4000))
+        )
 
         # Initialize state and tool ledger
         self.state = AgentState()
         self.tool_ledger = ToolLedger()
 
         # Initialize LLM
-        self.llm = OpenAILLM(
-            model=llm_model,
-            temperature=llm_temperature,
-            max_tokens=llm_max_tokens
-        )
+        self.llm = OpenAILLM(model=llm_model, temperature=llm_temperature, max_tokens=llm_max_tokens)
 
         # Initialize parameter completer
         self.parameter_completer = LLMParameterCompleter(self.llm)
@@ -212,7 +251,7 @@ class Agent(ABC):
             max_retries=self.max_tool_retries,
             base_delay=1.0,
             circuit_breaker_threshold=3,
-            circuit_breaker_reset_timeout=300
+            circuit_breaker_reset_timeout=300,
         )
 
         # Initialize environment
@@ -225,14 +264,16 @@ class Agent(ABC):
             self.session_id = current_session_id
         else:
             # Generate a new session ID and set it as current
-            self.session_id = datetime.now().strftime('%Y%m%d_%H%M%S')
+            self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
             set_current_session_id(self.session_id)
 
         # Set up basic logging
         self.logger = self._setup_basic_logger()
 
         # Log effective max iterations
-        self.logger.info(f"Effective max iterations: {self.max_iterations_effective} (derived from planning={self.max_planning_iterations}, execution={self.max_execution_iterations}, refinement={self.max_refinement_iterations})")
+        self.logger.info(
+            f"Effective max iterations: {self.max_iterations_effective} (derived from planning={self.max_planning_iterations}, execution={self.max_execution_iterations}, refinement={self.max_refinement_iterations})"
+        )
 
         # Configure token budgets
         self._configure_token_budgets()
@@ -256,8 +297,8 @@ class Agent(ABC):
                     # Use the class name as the agent type if not specified
                     class_name = self.__class__.__name__
                     # Convert CamelCase to snake_case and remove 'Agent' suffix
-                    agent_type = re.sub(r'(?<!^)(?=[A-Z])', '_', class_name).lower()
-                    agent_type = agent_type.replace('_agent', '')
+                    agent_type = re.sub(r"(?<!^)(?=[A-Z])", "_", class_name).lower()
+                    agent_type = agent_type.replace("_agent", "")
                     return ConfigProvider.get_agent_config(agent_type)
             except Exception as e:
                 logger.warning(f"Error getting config from ConfigProvider: {str(e)}")
@@ -289,7 +330,7 @@ class Agent(ABC):
         self.state.update_context({"input": input_text})
 
         # Check if we have a plan and should respect it
-        if hasattr(self, 'state') and hasattr(self.state, 'get_context'):
+        if hasattr(self, "state") and hasattr(self.state, "get_context"):
             planning_context = self.state.get_context().get("planning", {})
             current_plan = planning_context.get("plan", {})
             current_step = planning_context.get("current_step", {})
@@ -302,10 +343,7 @@ class Agent(ABC):
                 tool_name = current_step.get("tool")
                 if tool_name:
                     # Create a tool call from the plan step
-                    tool_calls = [{
-                        "tool": tool_name,
-                        "args": current_step.get("parameters", {})
-                    }]
+                    tool_calls = [{"tool": tool_name, "args": current_step.get("parameters", {})}]
                     self.logger.info(f"Using tool from plan: {tool_name}")
                     return tool_calls
 
@@ -346,14 +384,13 @@ class Agent(ABC):
                 system_prompt=system_prompt,
                 temperature=0.2,
                 json_mode=True,  # Force the model to return valid JSON
-                return_usage=True  # Get token usage information
+                return_usage=True,  # Get token usage information
             )
 
             # Count tokens
             if isinstance(initial_response, dict) and "usage" in initial_response:
                 self.state.count_tokens(initial_response["usage"]["total_tokens"])
                 initial_response = initial_response["content"]
-
 
             # Parse tool calls from response
             initial_tool_calls = await self._parse_tool_calls(initial_response)
@@ -371,10 +408,9 @@ class Agent(ABC):
                     requested_tool = call.get("args", {}).get("tool_name")
                     if requested_tool:
                         self.logger.info(f"Requesting details for tool: {requested_tool}")
-                        tool_details[requested_tool] = await self.environment.execute_action({
-                            "tool": "tool_details",
-                            "args": {"tool_name": requested_tool}
-                        })
+                        tool_details[requested_tool] = await self.environment.execute_action(
+                            {"tool": "tool_details", "args": {"tool_name": requested_tool}}
+                        )
                 else:
                     # Add to final tool calls
                     final_tool_calls.append(call)
@@ -406,7 +442,7 @@ class Agent(ABC):
                     system_prompt=system_prompt,
                     temperature=0.2,
                     json_mode=True,  # Force the model to return valid JSON
-                    return_usage=True  # Get token usage information
+                    return_usage=True,  # Get token usage information
                 )
 
                 # Count tokens
@@ -444,7 +480,7 @@ class Agent(ABC):
             return results
 
         # Limit the number of tool calls to execute based on tools_per_iteration
-        tool_calls_to_execute = tool_calls[:self.tools_per_iteration]
+        tool_calls_to_execute = tool_calls[: self.tools_per_iteration]
 
         for tool_call in tool_calls_to_execute:
             tool_name = tool_call.get("tool")
@@ -461,7 +497,7 @@ class Agent(ABC):
                     tool_name=tool_name,
                     partial_parameters=tool_args,
                     user_input=user_input,
-                    context=self.state.get_context()
+                    context=self.state.get_context(),
                 )
 
                 # Update tool arguments with completed parameters
@@ -483,10 +519,7 @@ class Agent(ABC):
 
             # Define a function to execute the tool
             async def execute_tool(tool_name, args):
-                return await self.environment.execute_action({
-                    "tool": tool_name,
-                    "args": args
-                })
+                return await self.environment.execute_action({"tool": tool_name, "args": args})
 
             # Get the current user input from state context
             user_input = self.state.get_context().get("input", "")
@@ -498,7 +531,7 @@ class Agent(ABC):
                 tool_args=tool_args,
                 execute_func=execute_tool,
                 user_input=user_input,
-                context=self.state.get_context()
+                context=self.state.get_context(),
             )
             tool_duration = time.time() - tool_start_time
 
@@ -510,7 +543,7 @@ class Agent(ABC):
                     "args": tool_args,
                     "result": recovery_result["result"],
                     "success": True,
-                    "duration": tool_duration
+                    "duration": tool_duration,
                 }
 
                 # Add recovery strategy information if available
@@ -545,8 +578,8 @@ class Agent(ABC):
                     metadata={
                         "duration": tool_duration,
                         "retries": recovery_result.get("retries", 0),
-                        "recovery_strategy": recovery_result.get("recovery_strategy", None)
-                    }
+                        "recovery_strategy": recovery_result.get("recovery_strategy", None),
+                    },
                 )
 
                 # Add to agent memory for future reference
@@ -559,8 +592,8 @@ class Agent(ABC):
                     "timestamp": datetime.now().isoformat(),
                     "recovery_info": {
                         "strategy": recovery_result.get("recovery_strategy", None),
-                        "alternative_tool": recovery_result.get("alternative_tool", None)
-                    }
+                        "alternative_tool": recovery_result.get("alternative_tool", None),
+                    },
                 }
 
                 # Check if the result has an output_key
@@ -576,7 +609,9 @@ class Agent(ABC):
 
                         # Store the result in memory using the expected_key
                         self.state.memory[expected_key] = result_data
-                        self.logger.info(f"Stored result for {expected_key} in memory with output_key {result_data['output_key']}")
+                        self.logger.info(
+                            f"Stored result for {expected_key} in memory with output_key {result_data['output_key']}"
+                        )
 
                 self.add_to_memory(memory_item)
             else:
@@ -596,7 +631,7 @@ class Agent(ABC):
                     "error_type": error_type,
                     "user_message": user_message,
                     "success": False,
-                    "duration": tool_duration
+                    "duration": tool_duration,
                 }
 
                 # Add suggestions if available
@@ -623,26 +658,26 @@ class Agent(ABC):
                     metadata={
                         "duration": tool_duration,
                         "error_type": error_type,
-                        "recovery_attempted": recovery_result.get("recovery_attempted", False)
-                    }
+                        "recovery_attempted": recovery_result.get("recovery_attempted", False),
+                    },
                 )
 
                 # Add to agent memory for future reference
-                self.add_to_memory({
-                    "type": "tool_error",
-                    "tool": tool_name,
-                    "args": tool_args,
-                    "error": error_message,
-                    "error_type": error_type,
-                    "user_message": user_message,
-                    "timestamp": datetime.now().isoformat(),
-                    "recovery_attempted": recovery_result.get("recovery_attempted", False),
-                    "suggestions": recovery_result.get("suggestions", [])
-                })
+                self.add_to_memory(
+                    {
+                        "type": "tool_error",
+                        "tool": tool_name,
+                        "args": tool_args,
+                        "error": error_message,
+                        "error_type": error_type,
+                        "user_message": user_message,
+                        "timestamp": datetime.now().isoformat(),
+                        "recovery_attempted": recovery_result.get("recovery_attempted", False),
+                        "suggestions": recovery_result.get("suggestions", []),
+                    }
+                )
 
         return results
-
-
 
     def _should_skip(self, step: Union[Dict[str, Any], PlanStep]) -> bool:
         """
@@ -739,7 +774,7 @@ class Agent(ABC):
             # Console handler
             console_handler = logging.StreamHandler()
             console_handler.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             console_handler.setFormatter(formatter)
             agent_logger.addHandler(console_handler)
 
@@ -766,9 +801,9 @@ class Agent(ABC):
         """
         # Default token budget percentages
         DEFAULT_PERCENTAGES = {
-            "planning": 0.10,   # 10% for planning
+            "planning": 0.10,  # 10% for planning
             "execution": 0.40,  # 40% for execution
-            "refinement": 0.50  # 50% for refinement
+            "refinement": 0.50,  # 50% for refinement
         }
 
         # Default total token budget
@@ -786,8 +821,7 @@ class Agent(ABC):
             if hasattr(self, "max_total_tokens") and self.max_total_tokens is not None:
                 # Calculate budgets based on percentages
                 calculated_budgets = {
-                    phase: int(total_tokens * percentage)
-                    for phase, percentage in DEFAULT_PERCENTAGES.items()
+                    phase: int(total_tokens * percentage) for phase, percentage in DEFAULT_PERCENTAGES.items()
                 }
                 self.state.token_budget = calculated_budgets
             # Otherwise, use the default token budget from AgentState
@@ -803,11 +837,7 @@ class Agent(ABC):
             return self.max_iterations
 
         # Otherwise, compute from phase iterations with a small buffer
-        phase_sum = (
-            self.max_planning_iterations +
-            self.max_execution_iterations +
-            self.max_refinement_iterations
-        )
+        phase_sum = self.max_planning_iterations + self.max_execution_iterations + self.max_refinement_iterations
 
         # Add a small buffer (10%) to account for potential phase transitions
         # or other edge cases, with a minimum of 1 extra iteration
@@ -823,7 +853,7 @@ class Agent(ABC):
             tool_calls = safe_parse_json(response, default_value=[], expected_type="array")
 
             # If parsing failed and we have an LLM instance, try to repair
-            if not tool_calls and hasattr(self, 'llm'):
+            if not tool_calls and hasattr(self, "llm"):
                 # Create a repair function that uses the agent's LLM
                 async def repair_with_agent_llm(text, expected_type):
                     return await repair_json(text, self.llm, default_value=[], expected_type=expected_type)
@@ -921,19 +951,25 @@ class Agent(ABC):
                 step_obj.skipped = True
 
             # Add to memory that we skipped this step
-            self.add_to_memory({
-                "type": "step_skipped",
-                "step_id": step_dict["step_id"],
-                "description": step_dict["description"],
-                "expected_key": step_dict.get("expected_key"),
-                "output_path": step_dict.get("output_path"),
-                "done_check": step_dict.get("done_check"),
-                "timestamp": datetime.now().isoformat()
-            })
+            self.add_to_memory(
+                {
+                    "type": "step_skipped",
+                    "step_id": step_dict["step_id"],
+                    "description": step_dict["description"],
+                    "expected_key": step_dict.get("expected_key"),
+                    "output_path": step_dict.get("output_path"),
+                    "done_check": step_dict.get("done_check"),
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
             # If we have a tool and expected_key, store the result in memory
-            if ("tool" in step_dict and "expected_key" in step_dict) or \
-               (hasattr(step_obj, 'tool') and step_obj.tool and hasattr(step_obj, 'expected_key') and step_obj.expected_key):
+            if ("tool" in step_dict and "expected_key" in step_dict) or (
+                hasattr(step_obj, "tool")
+                and step_obj.tool
+                and hasattr(step_obj, "expected_key")
+                and step_obj.expected_key
+            ):
                 tool_name = step_dict["tool"]
                 expected_key = step_dict["expected_key"]
 
@@ -944,26 +980,30 @@ class Agent(ABC):
                     self.state.memory[expected_key] = {
                         "skipped": True,
                         "reason": "Success criterion already satisfied",
-                        "output_key": tool_spec.output_key
+                        "output_key": tool_spec.output_key,
                     }
 
                     # Add a memory item for the skipped step
-                    self.add_to_memory({
-                        "type": "step_skipped",
-                        "step_id": step_dict.get("step_id"),
-                        "tool": tool_name,
-                        "expected_key": expected_key,
-                        "reason": "Success criterion already satisfied",
-                        "timestamp": datetime.now().isoformat()
-                    })
+                    self.add_to_memory(
+                        {
+                            "type": "step_skipped",
+                            "step_id": step_dict.get("step_id"),
+                            "tool": tool_name,
+                            "expected_key": expected_key,
+                            "reason": "Success criterion already satisfied",
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
 
                     # Log that we stored the result
-                    self.logger.info(f"Stored result for {expected_key} in memory with output_key {tool_spec.output_key}")
+                    self.logger.info(
+                        f"Stored result for {expected_key} in memory with output_key {tool_spec.output_key}"
+                    )
 
             return True
 
         # 2. Validation: If the step has a tool, validate the parameters
-        if ("tool" in step_dict and step_dict["tool"]) or (hasattr(step_obj, 'tool') and step_obj.tool):
+        if ("tool" in step_dict and step_dict["tool"]) or (hasattr(step_obj, "tool") and step_obj.tool):
             tool_name = step_dict["tool"]
             parameters = step_dict.get("parameters", {})
 
@@ -995,13 +1035,15 @@ class Agent(ABC):
                             # But we can add it to the dictionary for memory
 
                         # Add to memory that the step failed
-                        self.add_to_memory({
-                            "type": "step_failed",
-                            "step_id": step_dict["step_id"],
-                            "tool": tool_name,
-                            "error": error_message,
-                            "timestamp": datetime.now().isoformat()
-                        })
+                        self.add_to_memory(
+                            {
+                                "type": "step_failed",
+                                "step_id": step_dict["step_id"],
+                                "tool": tool_name,
+                                "error": error_message,
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                        )
 
                         # Log the error
                         self.logger.error(f"Step {step_dict['step_id']} failed validation: {error_message}")
@@ -1035,20 +1077,28 @@ class Agent(ABC):
         """
         # Check iteration count against effective max iterations
         if self.state.current_iteration >= self.max_iterations_effective:
-            self.logger.info(f"Terminating: Reached max iterations ({self.state.current_iteration}/{self.max_iterations_effective})")
+            self.logger.info(
+                f"Terminating: Reached max iterations ({self.state.current_iteration}/{self.max_iterations_effective})"
+            )
             return True
 
         # Check phase-specific iteration limits
-        if hasattr(self.state, 'current_phase'):
+        if hasattr(self.state, "current_phase"):
             phase = self.state.current_phase
-            if phase == 'planning' and self.state.phase_iterations[phase] >= self.max_planning_iterations:
-                self.logger.info(f"Terminating: Reached max planning iterations ({self.state.phase_iterations[phase]}/{self.max_planning_iterations})")
+            if phase == "planning" and self.state.phase_iterations[phase] >= self.max_planning_iterations:
+                self.logger.info(
+                    f"Terminating: Reached max planning iterations ({self.state.phase_iterations[phase]}/{self.max_planning_iterations})"
+                )
                 return True
-            elif phase == 'execution' and self.state.phase_iterations[phase] >= self.max_execution_iterations:
-                self.logger.info(f"Terminating: Reached max execution iterations ({self.state.phase_iterations[phase]}/{self.max_execution_iterations})")
+            elif phase == "execution" and self.state.phase_iterations[phase] >= self.max_execution_iterations:
+                self.logger.info(
+                    f"Terminating: Reached max execution iterations ({self.state.phase_iterations[phase]}/{self.max_execution_iterations})"
+                )
                 return True
-            elif phase == 'refinement' and self.state.phase_iterations[phase] >= self.max_refinement_iterations:
-                self.logger.info(f"Terminating: Reached max refinement iterations ({self.state.phase_iterations[phase]}/{self.max_refinement_iterations})")
+            elif phase == "refinement" and self.state.phase_iterations[phase] >= self.max_refinement_iterations:
+                self.logger.info(
+                    f"Terminating: Reached max refinement iterations ({self.state.phase_iterations[phase]}/{self.max_refinement_iterations})"
+                )
                 return True
 
         # Check token budget exhaustion
@@ -1065,12 +1115,12 @@ class Agent(ABC):
             memory = self.get_memory()
             if memory:
                 latest_item = memory[-1]
-                if 'confidence' in latest_item and latest_item['confidence'] >= self.min_confidence_threshold:
+                if "confidence" in latest_item and latest_item["confidence"] >= self.min_confidence_threshold:
                     self.logger.info(f"Terminating: Reached confidence threshold ({latest_item['confidence']})")
                     return True
 
         # Check maximum runtime duration
-        if hasattr(self.state, 'start_time'):
+        if hasattr(self.state, "start_time"):
             elapsed_time = time.time() - self.state.start_time
             if elapsed_time >= self.max_duration_seconds:
                 self.logger.info(f"Terminating: Reached max duration ({elapsed_time:.1f}s)")
@@ -1124,12 +1174,12 @@ class Agent(ABC):
             self.state.context["input"] = input_text
 
             # If update_context method exists, use it as well
-            if hasattr(self.state, 'update_context'):
+            if hasattr(self.state, "update_context"):
                 self.state.update_context({"input": input_text})
         except Exception as e:
             self.logger.error(f"Error updating context: {str(e)}")
             # Fallback: create context if it doesn't exist
-            if not hasattr(self.state, 'context'):
+            if not hasattr(self.state, "context"):
                 self.state.context = {}
                 self.state.context["input"] = input_text
 
@@ -1137,7 +1187,9 @@ class Agent(ABC):
         tool_selection_start = time.time()
         tool_calls = await self.select_tools(input_text)
         tool_selection_duration = time.time() - tool_selection_start
-        self.logger.info(f"Tool selection completed in {tool_selection_duration:.3f}s, selected {len(tool_calls)} tools")
+        self.logger.info(
+            f"Tool selection completed in {tool_selection_duration:.3f}s, selected {len(tool_calls)} tools"
+        )
 
         # 2. Execute tool calls
         execution_start = time.time()
@@ -1156,6 +1208,6 @@ class Agent(ABC):
             "timing": {
                 "total": total_duration,
                 "tool_selection": tool_selection_duration,
-                "tool_execution": execution_duration
-            }
+                "tool_execution": execution_duration,
+            },
         }

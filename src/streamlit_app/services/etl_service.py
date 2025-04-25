@@ -10,13 +10,13 @@ import threading
 import time
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Callable, Dict, List, Optional
 
-from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
+from sec_filing_analyzer.config import ConfigProvider, ETLConfig, StorageConfig
 from sec_filing_analyzer.data_retrieval import SECFilingsDownloader
+from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
 from sec_filing_analyzer.storage.sync_manager_enhanced import EnhancedStorageSyncManager
-from sec_filing_analyzer.config import ConfigProvider, ETLConfig, StorageConfig
 
 # Import the edgar identity initialization function
 from .etl_service_init import initialize_edgar_identity
@@ -24,6 +24,7 @@ from .etl_service_init import initialize_edgar_identity
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ETLJob:
     """Class representing an ETL job."""
@@ -37,7 +38,7 @@ class ETLJob:
         end_date: str,
         estimated_filings: int,
         submitted_at: datetime,
-        force_reprocessing: bool = False
+        force_reprocessing: bool = False,
     ):
         """Initialize an ETL job."""
         self.job_id = job_id
@@ -67,7 +68,7 @@ class ETLJob:
             "force_reprocessing": self.force_reprocessing,
             "submitted": self.submitted_at.strftime("%Y-%m-%d %H:%M"),
             "completed": self.completed_at.strftime("%Y-%m-%d %H:%M") if self.completed_at else None,
-            "progress": self.progress
+            "progress": self.progress,
         }
 
     def add_log(self, message: str) -> None:
@@ -128,7 +129,7 @@ class ETLService:
             vector_store = LlamaIndexVectorStore(
                 store_path=storage_config.vector_store_path,
                 force_rebuild=False,  # Don't force rebuild the index on startup
-                lazy_load=True  # Use lazy loading to avoid rebuilding the index on startup
+                lazy_load=True,  # Use lazy loading to avoid rebuilding the index on startup
             )
             sec_downloader = SECFilingsDownloader()
 
@@ -143,7 +144,7 @@ class ETLService:
                 use_parallel=etl_config.use_parallel,
                 process_semantic=True,
                 process_quantitative=True,
-                db_path=etl_config.db_path  # Use db_path from ETLConfig instead of StorageConfig
+                db_path=etl_config.db_path,  # Use db_path from ETLConfig instead of StorageConfig
             )
 
             logger.info("ETL pipeline initialized successfully")
@@ -168,6 +169,7 @@ class ETLService:
             # Check if we already have a read-write connection to the database
             logger.info("Checking for existing database connections")
             from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
+
             self.duckdb_manager = duckdb_manager  # Store reference to duckdb_manager for later use
             read_write_key = f"{etl_config.db_path}:False"
             read_only = etl_config.db_read_only
@@ -182,6 +184,7 @@ class ETLService:
 
             # Make sure the database directory exists
             import os
+
             db_dir = os.path.dirname(etl_config.db_path)
             logger.info(f"Ensuring database directory exists: {db_dir}")
             os.makedirs(db_dir, exist_ok=True)
@@ -200,7 +203,7 @@ class ETLService:
                 db_path=etl_config.db_path,  # Use db_path from ETLConfig instead of StorageConfig
                 vector_store_path=storage_config.vector_store_path,
                 filings_dir=etl_config.filings_dir,
-                read_only=read_only  # Use adjusted read_only value
+                read_only=read_only,  # Use adjusted read_only value
             )
 
             # Store the database path for later use
@@ -210,6 +213,7 @@ class ETLService:
         except Exception as e:
             logger.error(f"Error initializing storage sync manager: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             self.sync_manager = None
             self.db_path = None
@@ -217,7 +221,7 @@ class ETLService:
 
     def _close_write_connection(self) -> None:
         """Close the write connection to the database."""
-        if hasattr(self, 'duckdb_manager') and self.duckdb_manager and hasattr(self, 'db_path') and self.db_path:
+        if hasattr(self, "duckdb_manager") and self.duckdb_manager and hasattr(self, "db_path") and self.db_path:
             try:
                 # Close the read-write connection to the database
                 self.duckdb_manager.close_connection(self.db_path, read_only=False)
@@ -232,7 +236,7 @@ class ETLService:
         start_date: str,
         end_date: str,
         estimated_filings: int,
-        force_reprocessing: bool = False
+        force_reprocessing: bool = False,
     ) -> str:
         """
         Create a new ETL job.
@@ -260,7 +264,7 @@ class ETLService:
             end_date=end_date,
             estimated_filings=estimated_filings,
             submitted_at=datetime.now(),
-            force_reprocessing=force_reprocessing
+            force_reprocessing=force_reprocessing,
         )
 
         # Add job to jobs dictionary
@@ -313,10 +317,7 @@ class ETLService:
         job.add_log("Starting ETL job")
 
         # Start job in a separate thread
-        thread = threading.Thread(
-            target=self._run_job,
-            args=(job, log_callback)
-        )
+        thread = threading.Thread(target=self._run_job, args=(job, log_callback))
         thread.daemon = True
         thread.start()
 
@@ -340,7 +341,7 @@ class ETLService:
             results = {}
             for i, ticker in enumerate(job.tickers):
                 # Update progress
-                progress = (i / len(job.tickers))
+                progress = i / len(job.tickers)
                 stage = f"Processing {ticker}"
                 job.update_progress(progress, stage)
 
@@ -352,13 +353,16 @@ class ETLService:
                 # Process company filings
                 try:
                     # Check if the pipeline supports force_download parameter
-                    if hasattr(self.pipeline, 'process_company') and 'force_download' in inspect.signature(self.pipeline.process_company).parameters:
+                    if (
+                        hasattr(self.pipeline, "process_company")
+                        and "force_download" in inspect.signature(self.pipeline.process_company).parameters
+                    ):
                         company_result = self.pipeline.process_company(
                             ticker=ticker,
                             filing_types=job.filing_types,
                             start_date=job.start_date,
                             end_date=job.end_date,
-                            force_download=job.force_reprocessing
+                            force_download=job.force_reprocessing,
                         )
                     else:
                         # Use the standard parameters without force_download
@@ -366,7 +370,7 @@ class ETLService:
                             ticker=ticker,
                             filing_types=job.filing_types,
                             start_date=job.start_date,
-                            end_date=job.end_date
+                            end_date=job.end_date,
                         )
 
                     # Add result to results dictionary
@@ -401,15 +405,23 @@ class ETLService:
                 sync_results = self.sync_manager.sync_all()
 
                 # Check sync status
-                if sync_results.get('overall_status') == 'success':
-                    job.add_log(f"Storage synchronization completed successfully: {sync_results['total_filings']} total filings")
+                if sync_results.get("overall_status") == "success":
+                    job.add_log(
+                        f"Storage synchronization completed successfully: {sync_results['total_filings']} total filings"
+                    )
                     if log_callback:
-                        log_callback(f"Storage synchronization completed successfully: {sync_results['total_filings']} total filings")
-                elif sync_results.get('overall_status') == 'partial_success':
-                    failed_components = ', '.join(sync_results.get('failed_components', []))
-                    job.add_log(f"Storage synchronization partially completed: {sync_results['total_filings']} total filings. Failed components: {failed_components}")
+                        log_callback(
+                            f"Storage synchronization completed successfully: {sync_results['total_filings']} total filings"
+                        )
+                elif sync_results.get("overall_status") == "partial_success":
+                    failed_components = ", ".join(sync_results.get("failed_components", []))
+                    job.add_log(
+                        f"Storage synchronization partially completed: {sync_results['total_filings']} total filings. Failed components: {failed_components}"
+                    )
                     if log_callback:
-                        log_callback(f"Storage synchronization partially completed. Failed components: {failed_components}")
+                        log_callback(
+                            f"Storage synchronization partially completed. Failed components: {failed_components}"
+                        )
                         log_callback(f"The successful parts have been synchronized and are available in the inventory.")
                 else:
                     job.add_log("Storage synchronization failed")
@@ -422,10 +434,13 @@ class ETLService:
 
             # Set flag that index needs rebuilding
             from src.streamlit_app.utils import app_state
+
             app_state.set("index_needs_rebuild", True)
             job.add_log("Set flag that vector index needs rebuilding")
             if log_callback:
-                log_callback("Vector index needs rebuilding. Please use the 'Rebuild Vector Index' button in the ETL Data Inventory page.")
+                log_callback(
+                    "Vector index needs rebuilding. Please use the 'Rebuild Vector Index' button in the ETL Data Inventory page."
+                )
 
             # Complete job
             job.complete(results)
@@ -532,6 +547,7 @@ class ETLService:
         except Exception as e:
             logger.error(f"Error forcing initialization of storage sync manager: {e}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             return False
 
@@ -563,11 +579,13 @@ class ETLService:
             logger.info(f"sync_all() returned: {results}")
 
             # Add a user-friendly message based on the sync status
-            if results.get('overall_status') == 'success':
+            if results.get("overall_status") == "success":
                 results["message"] = "Storage synchronization completed successfully."
-            elif results.get('overall_status') == 'partial_success':
-                failed_components = ', '.join(results.get('failed_components', []))
-                results["message"] = f"Storage synchronization partially completed. Failed components: {failed_components}"
+            elif results.get("overall_status") == "partial_success":
+                failed_components = ", ".join(results.get("failed_components", []))
+                results["message"] = (
+                    f"Storage synchronization partially completed. Failed components: {failed_components}"
+                )
                 results["warning"] = "Some components failed to synchronize, but the successful parts are available."
             else:
                 results["message"] = "Storage synchronization failed."
@@ -610,11 +628,7 @@ class ETLService:
             return {"error": str(e)}
 
     def estimate_filings_count(
-        self,
-        tickers: List[str],
-        filing_types: List[str],
-        start_date: str,
-        end_date: str
+        self, tickers: List[str], filing_types: List[str], start_date: str, end_date: str
     ) -> int:
         """
         Estimate the number of filings to retrieve.
@@ -656,7 +670,7 @@ class ETLService:
             "F-1": 0.2,
             "F-3": 0.2,
             "F-4": 0.1,
-            "F-10": 0.1
+            "F-10": 0.1,
         }
 
         # Calculate estimated filings
@@ -671,6 +685,7 @@ class ETLService:
 
 # Create a singleton instance
 _instance = None
+
 
 def get_etl_service() -> ETLService:
     """Get the ETL service singleton instance."""

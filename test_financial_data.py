@@ -6,10 +6,7 @@ db_store = OptimizedDuckDBStore(db_path="data/db_backup/financial_data.duckdb", 
 # Test query_financial_facts
 print("Testing query_financial_facts for MSFT Revenue in 2022:")
 results = db_store.query_financial_facts(
-    ticker="MSFT",
-    metrics=["Revenue"],
-    start_date="2022-01-01",
-    end_date="2022-12-31"
+    ticker="MSFT", metrics=["Revenue"], start_date="2022-01-01", end_date="2022-12-31"
 )
 
 # Print results

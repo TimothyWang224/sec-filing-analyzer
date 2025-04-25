@@ -4,11 +4,12 @@ Parallel SEC Filing Processor
 This module provides functionality for processing SEC filings in parallel.
 """
 
-import logging
-from typing import Dict, List, Any, Optional, Union
-import numpy as np
 import concurrent.futures
+import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 
 from ..storage import GraphStore, LlamaIndexVectorStore
 from .file_storage import FileStorage
@@ -16,6 +17,7 @@ from .file_storage import FileStorage
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ParallelFilingProcessor:
     """
@@ -27,7 +29,7 @@ class ParallelFilingProcessor:
         graph_store: Optional[GraphStore] = None,
         vector_store: Optional[LlamaIndexVectorStore] = None,
         file_storage: Optional[FileStorage] = None,
-        max_workers: int = 4
+        max_workers: int = 4,
     ):
         """Initialize the parallel filing processor."""
         self.graph_store = graph_store or GraphStore()
@@ -68,10 +70,7 @@ class ParallelFilingProcessor:
                 # Return a zero vector as fallback
                 return [0.0] * 1536
 
-    def process_filings_parallel(
-        self,
-        filings_data: List[Dict[str, Any]]
-    ) -> Dict[str, List[str]]:
+    def process_filings_parallel(self, filings_data: List[Dict[str, Any]]) -> Dict[str, List[str]]:
         """
         Process multiple filings in parallel.
 
@@ -81,10 +80,7 @@ class ParallelFilingProcessor:
         Returns:
             Dictionary with completed and failed filing IDs
         """
-        results = {
-            "completed": [],
-            "failed": []
-        }
+        results = {"completed": [], "failed": []}
 
         if not filings_data:
             return results
@@ -94,8 +90,7 @@ class ParallelFilingProcessor:
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(filings_data))) as executor:
             # Submit tasks
             future_to_filing = {
-                executor.submit(self.process_filing, filing): filing.get("id", "unknown")
-                for filing in filings_data
+                executor.submit(self.process_filing, filing): filing.get("id", "unknown") for filing in filings_data
             }
 
             # Process results as they complete
@@ -160,14 +155,16 @@ class ParallelFilingProcessor:
                     vectors=[embedding_list],
                     ids=[filing_id],
                     metadata=[metadata],
-                    texts=[text]  # Store the full text
+                    texts=[text],  # Store the full text
                 )
 
                 # Add chunks to vector store if available
                 if chunks and chunk_embeddings and chunk_texts:
                     # Check if chunk_embeddings is a dict (from embedding_metadata)
                     if isinstance(chunk_embeddings, dict):
-                        logger.warning(f"chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing.")
+                        logger.warning(
+                            f"chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing."
+                        )
                         return processed_data
 
                     # Generate unique IDs for each chunk
@@ -176,19 +173,23 @@ class ParallelFilingProcessor:
                     chunk_texts_to_store = []
                     chunk_embeddings_to_store = []
 
-                    for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
+                    for i, (chunk, chunk_embedding, chunk_text) in enumerate(
+                        zip(chunks, chunk_embeddings, chunk_texts)
+                    ):
                         chunk_id = f"{filing_id}_chunk_{i}"
 
                         # Create metadata for chunk
                         chunk_meta = metadata.copy()
-                        chunk_meta.update({
-                            "chunk_id": chunk_id,
-                            "chunk_index": i,
-                            "parent_id": filing_id,
-                            "item": chunk.get("item", ""),
-                            "is_table": chunk.get("is_table", False),
-                            "is_signature": chunk.get("is_signature", False)
-                        })
+                        chunk_meta.update(
+                            {
+                                "chunk_id": chunk_id,
+                                "chunk_index": i,
+                                "parent_id": filing_id,
+                                "item": chunk.get("item", ""),
+                                "is_table": chunk.get("is_table", False),
+                                "is_signature": chunk.get("is_signature", False),
+                            }
+                        )
 
                         # Ensure chunk embedding is a list of floats
                         chunk_embedding_list = self._ensure_list_format(chunk_embedding)
@@ -204,7 +205,7 @@ class ParallelFilingProcessor:
                         vectors=chunk_embeddings_to_store,
                         ids=chunk_ids,
                         metadata=chunk_metadata,
-                        texts=chunk_texts_to_store  # Store the chunk texts
+                        texts=chunk_texts_to_store,  # Store the chunk texts
                     )
 
                 # Store in graph store
@@ -224,7 +225,7 @@ class ParallelFilingProcessor:
                 vectors=[embedding_list],
                 ids=[filing_id],
                 metadata=[metadata],
-                texts=[text]  # Store the full text
+                texts=[text],  # Store the full text
             )
 
             # Add chunks to vector store if available
@@ -241,19 +242,23 @@ class ParallelFilingProcessor:
                     chunk_texts_to_store = []
                     chunk_embeddings_to_store = []
 
-                    for i, (chunk, chunk_embedding, chunk_text) in enumerate(zip(chunks, chunk_embeddings, chunk_texts)):
+                    for i, (chunk, chunk_embedding, chunk_text) in enumerate(
+                        zip(chunks, chunk_embeddings, chunk_texts)
+                    ):
                         chunk_id = f"{filing_id}_chunk_{i}"
 
                         # Create metadata for chunk
                         chunk_meta = metadata.copy()
-                        chunk_meta.update({
-                            "chunk_id": chunk_id,
-                            "chunk_index": i,
-                            "parent_id": filing_id,
-                            "item": chunk.get("item", ""),
-                            "is_table": chunk.get("is_table", False),
-                            "is_signature": chunk.get("is_signature", False)
-                        })
+                        chunk_meta.update(
+                            {
+                                "chunk_id": chunk_id,
+                                "chunk_index": i,
+                                "parent_id": filing_id,
+                                "item": chunk.get("item", ""),
+                                "is_table": chunk.get("is_table", False),
+                                "is_signature": chunk.get("is_signature", False),
+                            }
+                        )
 
                         # Ensure chunk embedding is a list of floats
                         chunk_embedding_list = self._ensure_list_format(chunk_embedding)
@@ -269,7 +274,7 @@ class ParallelFilingProcessor:
                     vectors=chunk_embeddings_to_store,
                     ids=chunk_ids,
                     metadata=chunk_metadata,
-                    texts=chunk_texts_to_store  # Store the chunk texts
+                    texts=chunk_texts_to_store,  # Store the chunk texts
                 )
 
             # Store in graph store
@@ -283,13 +288,10 @@ class ParallelFilingProcessor:
                 "metadata": metadata,
                 "chunks": chunks,
                 "chunk_embeddings": chunk_embeddings,
-                "chunk_texts": chunk_texts
+                "chunk_texts": chunk_texts,
             }
 
-            self.file_storage.cache_filing(filing_id, {
-                "metadata": filing_data,
-                "processed_data": processed_data
-            })
+            self.file_storage.cache_filing(filing_id, {"metadata": filing_data, "processed_data": processed_data})
 
             return processed_data
 
@@ -325,10 +327,7 @@ class ParallelFilingProcessor:
         return None
 
     def list_filings(
-        self,
-        ticker: Optional[str] = None,
-        year: Optional[str] = None,
-        filing_type: Optional[str] = None
+        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         List available filings.
@@ -341,8 +340,4 @@ class ParallelFilingProcessor:
         Returns:
             List of filing metadata
         """
-        return self.file_storage.list_filings(
-            ticker=ticker,
-            year=year,
-            filing_type=filing_type
-        )
+        return self.file_storage.list_filings(ticker=ticker, year=year, filing_type=filing_type)

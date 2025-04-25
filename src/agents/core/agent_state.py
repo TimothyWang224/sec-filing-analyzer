@@ -2,17 +2,18 @@
 Unified state management for agents.
 """
 
-from typing import Dict, Any, List, Optional, Literal
 import time
+from typing import Any, Dict, List, Literal, Optional
+
 
 class AgentState:
     """Unified state management for agents."""
 
     # Default token budget for agents
     DEFAULT_TOKEN_BUDGET = {
-        'planning': 25000,    # 10% for planning
-        'execution': 100000,   # 40% for execution
-        'refinement': 125000   # 50% for refinement
+        "planning": 25000,  # 10% for planning
+        "execution": 100000,  # 40% for execution
+        "refinement": 125000,  # 50% for refinement
     }
 
     def __init__(self):
@@ -21,17 +22,9 @@ class AgentState:
         self.context: Dict[str, Any] = {}
         self.current_iteration: int = 0
         self.start_time: float = time.time()
-        self.current_phase: Literal['planning', 'execution', 'refinement'] = 'planning'
-        self.phase_iterations: Dict[str, int] = {
-            'planning': 0,
-            'execution': 0,
-            'refinement': 0
-        }
-        self.tokens_used: Dict[str, int] = {
-            'planning': 0,
-            'execution': 0,
-            'refinement': 0
-        }
+        self.current_phase: Literal["planning", "execution", "refinement"] = "planning"
+        self.phase_iterations: Dict[str, int] = {"planning": 0, "execution": 0, "refinement": 0}
+        self.tokens_used: Dict[str, int] = {"planning": 0, "execution": 0, "refinement": 0}
         # Initialize with default token budget
         self.token_budget: Dict[str, int] = self.DEFAULT_TOKEN_BUDGET.copy()
 
@@ -73,18 +66,14 @@ class AgentState:
 
     def get_full_state(self) -> Dict[str, Any]:
         """Get the agent's full state."""
-        return {
-            "memory": self.memory,
-            "context": self.context,
-            "current_iteration": self.current_iteration
-        }
+        return {"memory": self.memory, "context": self.context, "current_iteration": self.current_iteration}
 
     def increment_iteration(self) -> None:
         """Increment the current iteration counter."""
         self.current_iteration += 1
         self.phase_iterations[self.current_phase] += 1
 
-    def set_phase(self, phase: Literal['planning', 'execution', 'refinement']) -> None:
+    def set_phase(self, phase: Literal["planning", "execution", "refinement"]) -> None:
         """
         Set the current phase of the agent.
 
@@ -137,14 +126,6 @@ class AgentState:
         self.context = {}
         self.current_iteration = 0
         self.start_time = time.time()
-        self.current_phase = 'planning'
-        self.phase_iterations = {
-            'planning': 0,
-            'execution': 0,
-            'refinement': 0
-        }
-        self.tokens_used = {
-            'planning': 0,
-            'execution': 0,
-            'refinement': 0
-        }
+        self.current_phase = "planning"
+        self.phase_iterations = {"planning": 0, "execution": 0, "refinement": 0}
+        self.tokens_used = {"planning": 0, "execution": 0, "refinement": 0}

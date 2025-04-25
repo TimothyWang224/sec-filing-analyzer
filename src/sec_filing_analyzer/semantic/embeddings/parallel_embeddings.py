@@ -4,14 +4,15 @@ Parallel Embeddings Module
 This module provides functionality for generating vector embeddings in parallel using OpenAI's API through LlamaIndex.
 """
 
-import os
-import logging
-import numpy as np
 import concurrent.futures
+import logging
+import os
+import random
 import time
 import traceback
-import random
-from typing import List, Optional, Union, Dict, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 # Import logging utilities
@@ -21,12 +22,15 @@ except ImportError:
     # Fallback if logging utils not available
     def log_embedding_error(*args, **kwargs):
         pass
+
     def setup_logging(*args, **kwargs):
         pass
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ParallelEmbeddingGenerator:
     """Handles generation of vector embeddings in parallel using OpenAI's API through LlamaIndex."""
@@ -39,7 +43,7 @@ class ParallelEmbeddingGenerator:
         filing_metadata: Optional[Dict[str, Any]] = None,
         max_retries: int = 5,  # Increased max retries
         retry_base_delay: float = 2.0,  # Increased base delay
-        batch_size: int = 25  # Reduced batch size to avoid rate limiting
+        batch_size: int = 25,  # Reduced batch size to avoid rate limiting
     ):
         """Initialize the parallel embedding generator.
 
@@ -52,10 +56,7 @@ class ParallelEmbeddingGenerator:
         if not api_key:
             raise ValueError("OPENAI_API_KEY environment variable not set. Please set it in your .env file.")
 
-        self.embed_model = OpenAIEmbedding(
-            model=model,
-            api_key=api_key
-        )
+        self.embed_model = OpenAIEmbedding(model=model, api_key=api_key)
         self.dimensions = 1536  # text-embedding-3-small has 1536 dimensions
         self.max_workers = max_workers
         self.rate_limit = rate_limit
@@ -64,12 +65,7 @@ class ParallelEmbeddingGenerator:
         self.max_retries = max_retries
         self.retry_base_delay = retry_base_delay
         self.batch_size = batch_size
-        self.token_usage = {
-            "total_tokens": 0,
-            "requests": 0,
-            "failed_requests": 0,
-            "retried_requests": 0
-        }
+        self.token_usage = {"total_tokens": 0, "requests": 0, "failed_requests": 0, "retried_requests": 0}
 
         # Set up enhanced logging
         try:
@@ -174,14 +170,14 @@ class ParallelEmbeddingGenerator:
 
                     # Log detailed error information
                     if self.filing_metadata:
-                        batch_idx = getattr(self, '_current_batch_idx', None)
+                        batch_idx = getattr(self, "_current_batch_idx", None)
                         log_embedding_error(
                             error=e,
-                            filing_id=self.filing_metadata.get('accession_number', 'unknown'),
-                            company=self.filing_metadata.get('ticker', 'unknown'),
-                            filing_type=self.filing_metadata.get('form', 'unknown'),
+                            filing_id=self.filing_metadata.get("accession_number", "unknown"),
+                            company=self.filing_metadata.get("ticker", "unknown"),
+                            filing_type=self.filing_metadata.get("form", "unknown"),
                             batch_index=batch_idx,
-                            chunk_count=len(batch) if batch else 0
+                            chunk_count=len(batch) if batch else 0,
                         )
 
                     # Return zero vectors as fallback
@@ -189,9 +185,7 @@ class ParallelEmbeddingGenerator:
                     return [[0.0] * self.dimensions for _ in range(len(batch))], True
 
     def generate_embeddings(
-        self,
-        texts: List[str],
-        batch_size: Optional[int] = None
+        self, texts: List[str], batch_size: Optional[int] = None
     ) -> Tuple[List[List[float]], Dict[str, Any]]:
         """Generate vector embeddings for a list of texts in parallel.
 
@@ -217,7 +211,7 @@ class ParallelEmbeddingGenerator:
             # Create batches with smaller size for better rate limit handling
             batches = []
             for i in range(0, len(processed_texts), batch_size):
-                batches.append(processed_texts[i:i+batch_size])
+                batches.append(processed_texts[i : i + batch_size])
 
             logger.info(f"Processing {len(processed_texts)} texts in {len(batches)} batches with size {batch_size}")
 
@@ -229,8 +223,7 @@ class ParallelEmbeddingGenerator:
             with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(batches))) as executor:
                 # Submit batch tasks
                 future_to_batch_idx = {
-                    executor.submit(self._process_batch, batch): i
-                    for i, batch in enumerate(batches)
+                    executor.submit(self._process_batch, batch): i for i, batch in enumerate(batches)
                 }
 
                 # Collect results
@@ -253,7 +246,9 @@ class ParallelEmbeddingGenerator:
                             for i in range(start_idx, end_idx):
                                 fallback_flags[i] = True
 
-                        logger.info(f"Completed batch {batch_idx+1}/{len(batches)} {'(fallback)' if is_fallback else ''}")
+                        logger.info(
+                            f"Completed batch {batch_idx + 1}/{len(batches)} {'(fallback)' if is_fallback else ''}"
+                        )
                     except Exception as e:
                         error_msg = f"Error processing batch {batch_idx}: {str(e)}"
                         logger.error(error_msg)
@@ -262,11 +257,11 @@ class ParallelEmbeddingGenerator:
                         if self.filing_metadata:
                             log_embedding_error(
                                 error=e,
-                                filing_id=self.filing_metadata.get('accession_number', 'unknown'),
-                                company=self.filing_metadata.get('ticker', 'unknown'),
-                                filing_type=self.filing_metadata.get('form', 'unknown'),
+                                filing_id=self.filing_metadata.get("accession_number", "unknown"),
+                                company=self.filing_metadata.get("ticker", "unknown"),
+                                filing_type=self.filing_metadata.get("form", "unknown"),
                                 batch_index=batch_idx,
-                                chunk_count=len(batches[batch_idx]) if batch_idx < len(batches) else 0
+                                chunk_count=len(batches[batch_idx]) if batch_idx < len(batches) else 0,
                             )
 
                         # Use zero vectors as fallback
@@ -289,7 +284,7 @@ class ParallelEmbeddingGenerator:
                 "fallback_flags": fallback_flags,
                 "any_fallbacks": any(fallback_flags),
                 "fallback_count": sum(fallback_flags),
-                "token_usage": self.token_usage
+                "token_usage": self.token_usage,
             }
 
             return all_embeddings, metadata
@@ -302,10 +297,10 @@ class ParallelEmbeddingGenerator:
             if self.filing_metadata:
                 log_embedding_error(
                     error=e,
-                    filing_id=self.filing_metadata.get('accession_number', 'unknown'),
-                    company=self.filing_metadata.get('ticker', 'unknown'),
-                    filing_type=self.filing_metadata.get('form', 'unknown'),
-                    chunk_count=len(texts) if texts else 0
+                    filing_id=self.filing_metadata.get("accession_number", "unknown"),
+                    company=self.filing_metadata.get("ticker", "unknown"),
+                    filing_type=self.filing_metadata.get("form", "unknown"),
+                    chunk_count=len(texts) if texts else 0,
                 )
 
             # Return zero vectors as fallback with metadata
@@ -317,7 +312,7 @@ class ParallelEmbeddingGenerator:
                 "any_fallbacks": True,
                 "fallback_count": len(texts),
                 "token_usage": self.token_usage,
-                "error": str(e)
+                "error": str(e),
             }
 
             return [[0.0] * self.dimensions for _ in range(len(texts))], metadata

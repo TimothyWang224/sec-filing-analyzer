@@ -5,32 +5,40 @@ This module provides an optimized parallel processor for SEC filings
 that balances throughput with API rate limits.
 """
 
-import time
-import logging
 import concurrent.futures
+import logging
 import threading
-from typing import List, Dict, Any, Optional, Tuple, Union
+import time
 from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from ..config import ConfigProvider, ETLConfig
+from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
+from ..data_retrieval.sec_downloader import SECFilingsDownloader
+from ..semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
+from ..storage.graph_store import GraphStore
+from ..storage.vector_store import LlamaIndexVectorStore
+from ..utils.adaptive_rate_limiter import AdaptiveRateLimiter
 from ..utils.etl_logging import (
-    setup_etl_logging, generate_run_id, log_etl_start, log_etl_end,
-    log_company_processing, log_filing_processing, log_api_call,
-    log_rate_limit_adjustment, log_embedding_stats, log_phase_timing
+    generate_run_id,
+    log_api_call,
+    log_company_processing,
+    log_embedding_stats,
+    log_etl_end,
+    log_etl_start,
+    log_filing_processing,
+    log_phase_timing,
+    log_rate_limit_adjustment,
+    setup_etl_logging,
 )
 
-from ..utils.adaptive_rate_limiter import AdaptiveRateLimiter
-from ..semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
-from ..config import ETLConfig, ConfigProvider
-from ..data_retrieval.sec_downloader import SECFilingsDownloader
-from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
-from ..storage.vector_store import LlamaIndexVectorStore
-from ..storage.graph_store import GraphStore
-
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ProcessingStats:
     """Statistics for the processing run."""
+
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
     total_filings: int = 0
@@ -57,8 +65,9 @@ class ProcessingStats:
             "skipped_filings": self.skipped_filings,
             "success_rate": f"{(self.processed_filings / max(1, self.total_filings)) * 100:.1f}%",
             "processing_rate": f"{self.processed_filings / max(1, duration):.2f} filings/second",
-            "embedding_stats": self.embedding_stats
+            "embedding_stats": self.embedding_stats,
         }
+
 
 class OptimizedParallelProcessor:
     """
@@ -82,7 +91,7 @@ class OptimizedParallelProcessor:
         file_storage: Optional[Any] = None,
         sec_downloader: Optional[SECFilingsDownloader] = None,
         process_semantic: bool = True,
-        process_quantitative: bool = True
+        process_quantitative: bool = True,
     ):
         """Initialize the optimized parallel processor.
 
@@ -116,13 +125,12 @@ class OptimizedParallelProcessor:
             "total_requests": 0,
             "total_successes": 0,
             "total_failures": 0,
-            "lock": threading.Lock()
+            "lock": threading.Lock(),
         }
 
         # Create adaptive rate limiter
         self.rate_limiter = AdaptiveRateLimiter(
-            initial_rate_limit=initial_rate_limit,
-            shared_state=self.rate_limiter_state
+            initial_rate_limit=initial_rate_limit, shared_state=self.rate_limiter_state
         )
 
         # Create robust embedding generator with adaptive rate limiting
@@ -131,7 +139,7 @@ class OptimizedParallelProcessor:
             max_tokens_per_chunk=8000,  # Safe limit below the 8192 max
             rate_limit=initial_rate_limit,
             batch_size=batch_size,
-            max_retries=5
+            max_retries=5,
         )
 
         # Create filing processor
@@ -139,7 +147,7 @@ class OptimizedParallelProcessor:
             vector_store=self.vector_store,
             graph_store=self.graph_store,
             file_storage=self.file_storage,
-            max_workers=max_workers
+            max_workers=max_workers,
         )
 
         # Initialize stats
@@ -213,10 +221,7 @@ class OptimizedParallelProcessor:
             return max(2, min(self.max_workers, int(filing_count * complexity_factor)))
 
     def process_filings(
-        self,
-        filings: List[Dict[str, Any]],
-        force_reprocess: bool = False,
-        run_id: Optional[str] = None
+        self, filings: List[Dict[str, Any]], force_reprocess: bool = False, run_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Process a list of filings in parallel.
 
@@ -251,7 +256,7 @@ class OptimizedParallelProcessor:
             "batch_size": self.batch_size,
             "rate_limit": self.rate_limiter_state["rate_limit"],
             "process_semantic": self.process_semantic,
-            "process_quantitative": self.process_quantitative
+            "process_quantitative": self.process_quantitative,
         }
         log_etl_start(run_id, parameters, f"Processing {len(filings)} filings")
 
@@ -280,7 +285,7 @@ class OptimizedParallelProcessor:
                         company=filing.get("ticker", "unknown"),
                         filing_type=filing.get("type", "unknown"),
                         status="skipped",
-                        processing_time=0.0
+                        processing_time=0.0,
                     )
                     continue
 
@@ -307,12 +312,12 @@ class OptimizedParallelProcessor:
                             company=filing.get("ticker", "unknown"),
                             filing_type=filing.get("type", "unknown"),
                             status="completed",
-                            processing_time=result.get('processing_time', 0.0)
+                            processing_time=result.get("processing_time", 0.0),
                         )
                     else:
                         results["failed"].append(filing_id)
                         self.stats.failed_filings += 1
-                        error_msg = result.get('error', 'Unknown error')
+                        error_msg = result.get("error", "Unknown error")
                         logger.error(f"Failed to process filing {filing_id}: {error_msg}")
 
                         # Log filing failed
@@ -322,8 +327,8 @@ class OptimizedParallelProcessor:
                             company=filing.get("ticker", "unknown"),
                             filing_type=filing.get("type", "unknown"),
                             status="failed",
-                            processing_time=result.get('processing_time', 0.0),
-                            error=error_msg
+                            processing_time=result.get("processing_time", 0.0),
+                            error=error_msg,
                         )
                 except Exception as e:
                     results["failed"].append(filing_id)
@@ -339,7 +344,7 @@ class OptimizedParallelProcessor:
                         filing_type=filing.get("type", "unknown"),
                         status="failed",
                         processing_time=0.0,
-                        error=error_msg
+                        error=error_msg,
                     )
 
         # Update embedding stats
@@ -351,7 +356,7 @@ class OptimizedParallelProcessor:
             run_id=run_id,
             tokens_used=self.embedding_generator.token_usage.get("total_tokens", 0),
             chunks_processed=len(filings),
-            fallback_count=self.embedding_generator.token_usage.get("fallbacks", 0)
+            fallback_count=self.embedding_generator.token_usage.get("fallbacks", 0),
         )
 
         # Log ETL end
@@ -391,7 +396,7 @@ class OptimizedParallelProcessor:
                                     return {
                                         "success": False,
                                         "error": "Failed to download filing content",
-                                        "processing_time": time.time() - start_time
+                                        "processing_time": time.time() - start_time,
                                     }
                                 filing["content"] = content
                             except Exception as e:
@@ -407,7 +412,7 @@ class OptimizedParallelProcessor:
                     rate_limit=self.rate_limiter_state["rate_limit"],
                     filing_metadata=filing,
                     batch_size=self.batch_size,
-                    max_retries=5
+                    max_retries=5,
                 )
 
             # Process filing
@@ -416,7 +421,7 @@ class OptimizedParallelProcessor:
                     filing,
                     embedding_generator=filing_embedding_generator,
                     process_semantic=self.process_semantic,
-                    process_quantitative=self.process_quantitative
+                    process_quantitative=self.process_quantitative,
                 )
 
             # Update rate limiter based on embedding generation results
@@ -434,7 +439,7 @@ class OptimizedParallelProcessor:
                             run_id=run_id,
                             old_rate=old_rate,
                             new_rate=new_rate,
-                            reason=f"Fallbacks detected in filing {filing_id}"
+                            reason=f"Fallbacks detected in filing {filing_id}",
                         )
 
             processing_time = time.time() - start_time
@@ -453,7 +458,7 @@ class OptimizedParallelProcessor:
         end_date: Optional[str] = None,
         limit: Optional[int] = None,
         force_reprocess: bool = False,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Process filings for a specific company.
 
@@ -485,7 +490,7 @@ class OptimizedParallelProcessor:
             "start_date": start_date,
             "end_date": end_date,
             "limit": limit,
-            "force_reprocess": force_reprocess
+            "force_reprocess": force_reprocess,
         }
         log_etl_start(run_id, parameters, f"Processing filings for {ticker}")
 
@@ -495,11 +500,7 @@ class OptimizedParallelProcessor:
             try:
                 with self.rate_limiter:
                     filings = self.sec_downloader.download_company_filings(
-                        ticker=ticker,
-                        filing_types=filing_types,
-                        start_date=start_date,
-                        end_date=end_date,
-                        limit=limit
+                        ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
                     )
                 api_time = time.time() - api_start
                 log_api_call(run_id, "SEC_API_COMPANY", True, api_time)
@@ -507,33 +508,21 @@ class OptimizedParallelProcessor:
                 api_time = time.time() - api_start
                 log_api_call(run_id, "SEC_API_COMPANY", False, api_time, str(e))
                 log_company_processing(
-                    run_id=run_id,
-                    ticker=ticker,
-                    status="failed",
-                    error=f"Failed to download filings: {str(e)}"
+                    run_id=run_id, ticker=ticker, status="failed", error=f"Failed to download filings: {str(e)}"
                 )
                 log_etl_end(run_id, status="failed", error=f"Failed to download filings for {ticker}: {str(e)}")
                 return {
                     "status": "error",
                     "error": f"Failed to download filings: {str(e)}",
                     "stats": self.stats.to_dict(),
-                    "run_id": run_id
+                    "run_id": run_id,
                 }
 
         if not filings:
             logger.warning(f"No filings found for {ticker}")
-            log_company_processing(
-                run_id=run_id,
-                ticker=ticker,
-                status="completed",
-                filings_processed=0
-            )
+            log_company_processing(run_id=run_id, ticker=ticker, status="completed", filings_processed=0)
             log_etl_end(run_id, status="completed", error=f"No filings found for {ticker}")
-            return {
-                "status": "no_filings",
-                "stats": self.stats.to_dict(),
-                "run_id": run_id
-            }
+            return {"status": "no_filings", "stats": self.stats.to_dict(), "run_id": run_id}
 
         # Process filings
         with log_phase_timing(run_id, f"process_{ticker}"):
@@ -547,7 +536,7 @@ class OptimizedParallelProcessor:
             status="completed",
             filings_processed=len(results.get("completed", [])),
             filings_failed=len(results.get("failed", [])),
-            filings_skipped=len(results.get("skipped", []))
+            filings_skipped=len(results.get("skipped", [])),
         )
 
         return results
@@ -561,7 +550,7 @@ class OptimizedParallelProcessor:
         limit_per_company: Optional[int] = None,
         force_reprocess: bool = False,
         max_companies_in_parallel: Optional[int] = None,
-        run_id: Optional[str] = None
+        run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Process filings for multiple companies.
 
@@ -604,7 +593,7 @@ class OptimizedParallelProcessor:
             "end_date": end_date,
             "limit_per_company": limit_per_company,
             "force_reprocess": force_reprocess,
-            "max_companies_in_parallel": max_companies_in_parallel
+            "max_companies_in_parallel": max_companies_in_parallel,
         }
         log_etl_start(run_id, parameters, f"Processing filings for {len(tickers)} companies")
 
@@ -623,8 +612,9 @@ class OptimizedParallelProcessor:
                     end_date,
                     limit_per_company,
                     force_reprocess,
-                    run_id
-                ): ticker for ticker in tickers
+                    run_id,
+                ): ticker
+                for ticker in tickers
             }
 
             # Process results as they complete
@@ -650,12 +640,7 @@ class OptimizedParallelProcessor:
                     results["companies"][ticker] = {"status": "error", "error": error_msg}
 
                     # Log company processing error
-                    log_company_processing(
-                        run_id=run_id,
-                        ticker=ticker,
-                        status="failed",
-                        error=error_msg
-                    )
+                    log_company_processing(run_id=run_id, ticker=ticker, status="failed", error=error_msg)
 
         # Update overall stats
         overall_stats.end_time = time.time()

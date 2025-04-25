@@ -4,12 +4,13 @@ Agent Workflow Page
 This page provides a user interface for interacting with the agent workflow.
 """
 
-import streamlit as st
-import pandas as pd
 import asyncio
 import sys
-from pathlib import Path
 import uuid
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
@@ -18,18 +19,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 try:
     from sec_filing_analyzer.config import ConfigProvider
     from sec_filing_analyzer.llm.llm_config import LLMConfigFactory, get_agent_types
-    from src.agents import (
-        FinancialAnalystAgent,
-        RiskAnalystAgent,
-        QASpecialistAgent,
-        FinancialDiligenceCoordinator
-    )
+    from src.agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
+    from src.capabilities import LoggingCapability, TimeAwarenessCapability
     from src.environments import FinancialEnvironment
-    from src.capabilities import TimeAwarenessCapability, LoggingCapability
+
     imports_successful = True
 except ImportError as e:
     st.error(f"Error importing SEC Filing Analyzer components: {e}")
-    st.warning("Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly.")
+    st.warning(
+        "Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly."
+    )
     imports_successful = False
 
     # Define fallback functions and classes
@@ -39,7 +38,11 @@ except ImportError as e:
     class FallbackConfigFactory:
         @staticmethod
         def get_available_models():
-            return {"gpt-4o": "OpenAI GPT-4o", "gpt-4o-mini": "OpenAI GPT-4o Mini", "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo"}
+            return {
+                "gpt-4o": "OpenAI GPT-4o",
+                "gpt-4o-mini": "OpenAI GPT-4o Mini",
+                "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo",
+            }
 
         @staticmethod
         def get_recommended_config(**kwargs):
@@ -47,12 +50,10 @@ except ImportError as e:
             _ = kwargs  # Suppress unused variable warning
             return {"model": "gpt-4o-mini", "temperature": 0.7, "max_tokens": 4000}
 
+
 # Set page config
 st.set_page_config(
-    page_title="Agent Workflow - SEC Filing Analyzer",
-    page_icon="🤖",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Agent Workflow - SEC Filing Analyzer", page_icon="🤖", layout="wide", initial_sidebar_state="expanded"
 )
 
 # Initialize configuration
@@ -91,9 +92,7 @@ else:
     agent_types = get_agent_types()
 
 agent_type = st.sidebar.selectbox(
-    "Select Agent Type",
-    agent_types,
-    index=agent_types.index("coordinator") if "coordinator" in agent_types else 0
+    "Select Agent Type", agent_types, index=agent_types.index("coordinator") if "coordinator" in agent_types else 0
 )
 
 # LLM model selection
@@ -103,7 +102,11 @@ if imports_successful:
         available_models = LLMConfigFactory.get_available_models()
     except Exception as e:
         st.error(f"Error getting available models: {e}")
-        available_models = {"gpt-4o": "OpenAI GPT-4o", "gpt-4o-mini": "OpenAI GPT-4o Mini", "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo"}
+        available_models = {
+            "gpt-4o": "OpenAI GPT-4o",
+            "gpt-4o-mini": "OpenAI GPT-4o Mini",
+            "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo",
+        }
 else:
     available_models = FallbackConfigFactory.get_available_models()
 
@@ -111,36 +114,18 @@ model_options = list(available_models.keys())
 model_descriptions = [f"{model} - {desc}" for model, desc in available_models.items()]
 
 selected_model_index = st.sidebar.selectbox(
-    "Select LLM Model",
-    range(len(model_options)),
-    format_func=lambda i: model_descriptions[i]
+    "Select LLM Model", range(len(model_options)), format_func=lambda i: model_descriptions[i]
 )
 selected_model = model_options[selected_model_index]
 
 # Temperature setting
-temperature = st.sidebar.slider(
-    "Temperature",
-    min_value=0.0,
-    max_value=1.0,
-    value=0.7,
-    step=0.1
-)
+temperature = st.sidebar.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
 
 # Max tokens setting
-max_tokens = st.sidebar.slider(
-    "Max Tokens",
-    min_value=500,
-    max_value=8000,
-    value=4000,
-    step=500
-)
+max_tokens = st.sidebar.slider("Max Tokens", min_value=500, max_value=8000, value=4000, step=500)
 
 # Task complexity
-task_complexity = st.sidebar.radio(
-    "Task Complexity",
-    ["low", "medium", "high"],
-    index=1
-)
+task_complexity = st.sidebar.radio("Task Complexity", ["low", "medium", "high"], index=1)
 
 # Advanced agent settings
 with st.sidebar.expander("Advanced Settings"):
@@ -163,30 +148,27 @@ if st.sidebar.button("Initialize Agent"):
                 # Get recommended configuration
                 try:
                     config = LLMConfigFactory.get_recommended_config(
-                        agent_type=agent_type,
-                        task_complexity=task_complexity
+                        agent_type=agent_type, task_complexity=task_complexity
                     )
                 except Exception as config_error:
                     st.warning(f"Error getting recommended config: {config_error}")
                     # Use default config
-                    config = {
-                        "model": selected_model,
-                        "temperature": temperature,
-                        "max_tokens": max_tokens
-                    }
+                    config = {"model": selected_model, "temperature": temperature, "max_tokens": max_tokens}
 
                 # Override with user settings
-                config.update({
-                    "model": selected_model,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                    "max_iterations": max_iterations,
-                    "max_planning_iterations": max_planning_iterations,
-                    "max_execution_iterations": max_execution_iterations,
-                    "max_refinement_iterations": max_refinement_iterations,
-                    "max_tool_retries": max_tool_retries,
-                    "max_duration_seconds": max_duration_seconds
-                })
+                config.update(
+                    {
+                        "model": selected_model,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                        "max_iterations": max_iterations,
+                        "max_planning_iterations": max_planning_iterations,
+                        "max_execution_iterations": max_execution_iterations,
+                        "max_refinement_iterations": max_refinement_iterations,
+                        "max_tool_retries": max_tool_retries,
+                        "max_duration_seconds": max_duration_seconds,
+                    }
+                )
 
                 # Initialize environment
                 environment = None
@@ -204,10 +186,7 @@ if st.sidebar.button("Initialize Agent"):
                 else:
                     # Initialize capabilities
                     try:
-                        capabilities = [
-                            TimeAwarenessCapability(),
-                            LoggingCapability()
-                        ]
+                        capabilities = [TimeAwarenessCapability(), LoggingCapability()]
                     except Exception as cap_error:
                         st.error(f"Error initializing capabilities: {cap_error}")
                         capabilities = []
@@ -216,27 +195,19 @@ if st.sidebar.button("Initialize Agent"):
                     try:
                         if agent_type == "coordinator":
                             st.session_state.agent = FinancialDiligenceCoordinator(
-                                environment=environment,
-                                capabilities=capabilities,
-                                **config
+                                environment=environment, capabilities=capabilities, **config
                             )
                         elif agent_type == "financial_analyst":
                             st.session_state.agent = FinancialAnalystAgent(
-                                environment=environment,
-                                capabilities=capabilities,
-                                **config
+                                environment=environment, capabilities=capabilities, **config
                             )
                         elif agent_type == "risk_analyst":
                             st.session_state.agent = RiskAnalystAgent(
-                                environment=environment,
-                                capabilities=capabilities,
-                                **config
+                                environment=environment, capabilities=capabilities, **config
                             )
                         elif agent_type == "qa_specialist":
                             st.session_state.agent = QASpecialistAgent(
-                                environment=environment,
-                                capabilities=capabilities,
-                                **config
+                                environment=environment, capabilities=capabilities, **config
                             )
 
                         st.session_state.agent_initialized = True
@@ -316,12 +287,9 @@ with col2:
         conversation_df = pd.DataFrame(st.session_state.messages)
 
         # Convert to CSV
-        csv = conversation_df.to_csv(index=False).encode('utf-8')
+        csv = conversation_df.to_csv(index=False).encode("utf-8")
 
         # Create a download button
         st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name=f"conversation_{uuid.uuid4().hex[:8]}.csv",
-            mime="text/csv"
+            label="Download CSV", data=csv, file_name=f"conversation_{uuid.uuid4().hex[:8]}.csv", mime="text/csv"
         )

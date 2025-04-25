@@ -5,34 +5,29 @@ This script tests the functionality of the LoggingCapability by
 running a QA Specialist Agent with logging enabled.
 """
 
-import logging
+import argparse
 import asyncio
 import json
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-import argparse
+import logging
 import os
 import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Add the project root to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.agents.qa_specialist import QASpecialistAgent
-from src.environments.financial import FinancialEnvironment
 from src.capabilities.logging import LoggingCapability
+from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+
 async def test_logging_capability(
-    question: str,
-    log_dir: str = "data/logs/test",
-    log_level: str = "DEBUG",
-    include_prompts: bool = False
+    question: str, log_dir: str = "data/logs/test", log_level: str = "DEBUG", include_prompts: bool = False
 ):
     """Test the logging capability with a QA specialist agent."""
     try:
@@ -55,14 +50,11 @@ async def test_logging_capability(
             include_results=True,
             include_prompts=include_prompts,
             include_responses=include_prompts,  # Match prompts setting
-            max_content_length=500  # Shorter for testing
+            max_content_length=500,  # Shorter for testing
         )
 
         # Initialize QA specialist agent with logging capability
-        agent = QASpecialistAgent(
-            capabilities=[logging_capability],
-            environment=environment
-        )
+        agent = QASpecialistAgent(capabilities=[logging_capability], environment=environment)
 
         # Debug: Check if agent has the environment
         print(f"Agent environment has tools: {[k for k in agent.environment.context.keys() if k.startswith('tool_')]}")
@@ -88,7 +80,7 @@ async def test_logging_capability(
                 print(f"\nLog file created at: {log_file}")
 
                 # Print sample from log file
-                with open(log_file, 'r') as f:
+                with open(log_file, "r") as f:
                     log_lines = f.readlines()
                     sample_size = min(5, len(log_lines))
                     print(f"\nSample from log file (first {sample_size} lines):")
@@ -101,7 +93,7 @@ async def test_logging_capability(
                 print(f"\nJSON log file created at: {json_log_file}")
 
                 # Print summary from JSON log file
-                with open(json_log_file, 'r') as f:
+                with open(json_log_file, "r") as f:
                     log_data = json.load(f)
                     print(f"\nJSON log summary:")
                     print(f"  Session ID: {log_data.get('session_id')}")
@@ -115,31 +107,34 @@ async def test_logging_capability(
         logger.error(f"Error testing logging capability: {str(e)}")
         raise
 
+
 def main():
     """Main function to run the test script."""
     parser = argparse.ArgumentParser(description="Test the Logging Capability")
-    parser.add_argument("--question", type=str,
-                        default="What was Apple's revenue in 2023?",
-                        help="Financial question to ask")
-    parser.add_argument("--log_dir", type=str,
-                        default="data/logs/test",
-                        help="Directory to store log files")
-    parser.add_argument("--log_level", type=str,
-                        default="DEBUG",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                        help="Logging level")
-    parser.add_argument("--include_prompts", action="store_true",
-                        help="Include LLM prompts in logs (may contain sensitive data)")
+    parser.add_argument(
+        "--question", type=str, default="What was Apple's revenue in 2023?", help="Financial question to ask"
+    )
+    parser.add_argument("--log_dir", type=str, default="data/logs/test", help="Directory to store log files")
+    parser.add_argument(
+        "--log_level",
+        type=str,
+        default="DEBUG",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
+    parser.add_argument(
+        "--include_prompts", action="store_true", help="Include LLM prompts in logs (may contain sensitive data)"
+    )
 
     args = parser.parse_args()
 
     # Run the test
-    asyncio.run(test_logging_capability(
-        question=args.question,
-        log_dir=args.log_dir,
-        log_level=args.log_level,
-        include_prompts=args.include_prompts
-    ))
+    asyncio.run(
+        test_logging_capability(
+            question=args.question, log_dir=args.log_dir, log_level=args.log_level, include_prompts=args.include_prompts
+        )
+    )
+
 
 if __name__ == "__main__":
     main()

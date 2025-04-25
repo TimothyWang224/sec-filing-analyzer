@@ -6,14 +6,16 @@ It ensures consistent usage of edgar's capabilities throughout the codebase.
 """
 
 import logging
-from typing import List, Optional, Dict, Any, Union
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Union
+
 import edgar
 from edgar import Filing
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def get_entity(ticker: str) -> Any:
     """
@@ -37,12 +39,13 @@ def get_entity(ticker: str) -> Any:
         logger.error(f"Error getting entity for ticker {ticker}: {e}")
         raise ValueError(f"Failed to get entity for ticker {ticker}: {str(e)}")
 
+
 def get_filings(
     ticker: str,
     form_type: Optional[Union[str, List[str]]] = None,
     start_date: Optional[Union[str, date]] = None,
     end_date: Optional[Union[str, date]] = None,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
 ) -> List[Filing]:
     """
     Get filings for a company using edgar's built-in capabilities.
@@ -106,6 +109,7 @@ def get_filings(
         logger.error(f"Error getting filings for ticker {ticker}: {e}")
         raise ValueError(f"Failed to get filings for ticker {ticker}: {str(e)}")
 
+
 def get_filing_by_accession(ticker: str, accession_number: str) -> Optional[Filing]:
     """
     Get a specific filing by accession number using edgar's built-in capabilities.
@@ -133,6 +137,7 @@ def get_filing_by_accession(ticker: str, accession_number: str) -> Optional[Fili
         logger.error(f"Error getting filing by accession number for ticker {ticker}: {e}")
         return None
 
+
 def get_filing_content(filing: Filing) -> Dict[str, Any]:
     """
     Get content from a filing using edgar's built-in capabilities.
@@ -143,12 +148,7 @@ def get_filing_content(filing: Filing) -> Dict[str, Any]:
     Returns:
         Dictionary containing text, html, and xml content if available
     """
-    content = {
-        "text": None,
-        "html": None,
-        "xml": None,
-        "xbrl": None
-    }
+    content = {"text": None, "html": None, "xml": None, "xbrl": None}
 
     try:
         # Get text content
@@ -170,12 +170,13 @@ def get_filing_content(filing: Filing) -> Dict[str, Any]:
 
     try:
         # Get XBRL data if available
-        if hasattr(filing, 'is_xbrl') and filing.is_xbrl:
+        if hasattr(filing, "is_xbrl") and filing.is_xbrl:
             content["xbrl"] = filing.xbrl
     except Exception as e:
         logger.warning(f"Error getting XBRL data for filing {filing.accession_number}: {e}")
 
     return content
+
 
 def get_filing_metadata(filing: Filing, ticker: str) -> Dict[str, Any]:
     """
@@ -203,7 +204,7 @@ def get_filing_metadata(filing: Filing, ticker: str) -> Dict[str, Any]:
             "company": filing.company,
             "ticker": ticker,
             "cik": filing.cik,
-            "filing_url": filing.filing_url
+            "filing_url": filing.filing_url,
         }
         return metadata
     except Exception as e:
@@ -213,5 +214,5 @@ def get_filing_metadata(filing: Filing, ticker: str) -> Dict[str, Any]:
             "accession_number": filing.accession_number,
             "id": filing.accession_number,  # Add id field as a duplicate of accession_number
             "form": filing.form,
-            "ticker": ticker
+            "ticker": ticker,
         }

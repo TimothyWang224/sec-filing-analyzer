@@ -1,7 +1,9 @@
-from typing import Any, Dict, Optional, List, Callable, Type, Union
 from abc import ABC
-from ..tools.registry import ToolRegistry
+from typing import Any, Callable, Dict, List, Optional, Type, Union
+
 from ..tools.base import Tool
+from ..tools.registry import ToolRegistry
+
 
 class Environment:
     """Unified environment for agent interactions with tools and context."""
@@ -71,10 +73,7 @@ class Environment:
         Returns:
             The result of the tool execution
         """
-        return await self.execute_action({
-            "tool": tool_name,
-            "args": kwargs
-        })
+        return await self.execute_action({"tool": tool_name, "args": kwargs})
 
     def get_context(self) -> Dict[str, Any]:
         """Get the current environment context."""

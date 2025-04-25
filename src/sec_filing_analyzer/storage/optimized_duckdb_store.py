@@ -6,14 +6,16 @@ extracted from SEC filings using DuckDB with batch operations.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
-import duckdb
-import pandas as pd
 import os
-from pathlib import Path
 
 # Add the project root to the Python path
 import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import duckdb
+import pandas as pd
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import the DuckDB manager
@@ -22,6 +24,7 @@ from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class OptimizedDuckDBStore:
     """
@@ -200,7 +203,7 @@ class OptimizedDuckDBStore:
                     "sic": company.get("sic"),
                     "sector": company.get("sector"),
                     "industry": company.get("industry"),
-                    "exchange": company.get("exchange")
+                    "exchange": company.get("exchange"),
                 }
                 data.append(row)
 
@@ -213,16 +216,16 @@ class OptimizedDuckDBStore:
             # Insert or replace companies
             # Get the column names from the companies table
             columns_result = self.conn.execute("PRAGMA table_info(companies)").fetchdf()
-            column_names = columns_result['name'].tolist()
+            column_names = columns_result["name"].tolist()
 
             # Remove the created_at column as it has a default value
-            if 'created_at' in column_names:
-                column_names.remove('created_at')
+            if "created_at" in column_names:
+                column_names.remove("created_at")
 
             # Create a temporary table with the same structure
             self.conn.execute(f"""
                 CREATE TEMPORARY TABLE IF NOT EXISTS temp_companies AS
-                SELECT {', '.join(column_names)} FROM companies LIMIT 0
+                SELECT {", ".join(column_names)} FROM companies LIMIT 0
             """)
 
             # Register the DataFrame and insert into temp table
@@ -233,14 +236,14 @@ class OptimizedDuckDBStore:
             common_columns = [col for col in column_names if col in df_columns]
 
             self.conn.execute(f"""
-                INSERT INTO temp_companies ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_df
+                INSERT INTO temp_companies ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_df
             """)
 
             # Insert or replace into the main table
             self.conn.execute(f"""
-                INSERT OR REPLACE INTO companies ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_companies
+                INSERT OR REPLACE INTO companies ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_companies
             """)
 
             # Drop the temporary table
@@ -344,7 +347,7 @@ class OptimizedDuckDBStore:
                     "fiscal_quarter": filing.get("fiscal_quarter"),
                     "fiscal_period_end_date": filing.get("fiscal_period_end_date"),
                     "document_url": filing.get("document_url"),
-                    "has_xbrl": filing.get("has_xbrl", True)
+                    "has_xbrl": filing.get("has_xbrl", True),
                 }
                 data.append(row)
 
@@ -357,16 +360,16 @@ class OptimizedDuckDBStore:
             # Insert or replace filings
             # Get the column names from the filings table
             columns_result = self.conn.execute("PRAGMA table_info(filings)").fetchdf()
-            column_names = columns_result['name'].tolist()
+            column_names = columns_result["name"].tolist()
 
             # Remove the created_at column as it has a default value
-            if 'created_at' in column_names:
-                column_names.remove('created_at')
+            if "created_at" in column_names:
+                column_names.remove("created_at")
 
             # Create a temporary table with the same structure
             self.conn.execute(f"""
                 CREATE TEMPORARY TABLE IF NOT EXISTS temp_filings AS
-                SELECT {', '.join(column_names)} FROM filings LIMIT 0
+                SELECT {", ".join(column_names)} FROM filings LIMIT 0
             """)
 
             # Register the DataFrame and insert into temp table
@@ -377,14 +380,14 @@ class OptimizedDuckDBStore:
             common_columns = [col for col in column_names if col in df_columns]
 
             self.conn.execute(f"""
-                INSERT INTO temp_filings ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_df
+                INSERT INTO temp_filings ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_df
             """)
 
             # Insert or replace into the main table
             self.conn.execute(f"""
-                INSERT OR REPLACE INTO filings ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_filings
+                INSERT OR REPLACE INTO filings ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_filings
             """)
 
             # Drop the temporary table
@@ -455,7 +458,7 @@ class OptimizedDuckDBStore:
                     "start_date": fact.get("start_date"),
                     "end_date": fact.get("end_date"),
                     "segment": fact.get("segment", ""),
-                    "context_id": fact.get("context_id", "")
+                    "context_id": fact.get("context_id", ""),
                 }
                 data.append(row)
 
@@ -465,7 +468,7 @@ class OptimizedDuckDBStore:
             # Process in batches to avoid memory issues
             total_stored = 0
             for i in range(0, len(data), self.batch_size):
-                batch = data[i:i + self.batch_size]
+                batch = data[i : i + self.batch_size]
 
                 # Convert to DataFrame for batch insert
                 df = pd.DataFrame(batch)
@@ -473,16 +476,16 @@ class OptimizedDuckDBStore:
                 # Insert or replace facts
                 # Get the column names from the financial_facts table
                 columns_result = self.conn.execute("PRAGMA table_info(financial_facts)").fetchdf()
-                column_names = columns_result['name'].tolist()
+                column_names = columns_result["name"].tolist()
 
                 # Remove the created_at column as it has a default value
-                if 'created_at' in column_names:
-                    column_names.remove('created_at')
+                if "created_at" in column_names:
+                    column_names.remove("created_at")
 
                 # Create a temporary table with the same structure
                 self.conn.execute(f"""
                     CREATE TEMPORARY TABLE IF NOT EXISTS temp_facts AS
-                    SELECT {', '.join(column_names)} FROM financial_facts LIMIT 0
+                    SELECT {", ".join(column_names)} FROM financial_facts LIMIT 0
                 """)
 
                 # Register the DataFrame and insert into temp table
@@ -493,14 +496,14 @@ class OptimizedDuckDBStore:
                 common_columns = [col for col in column_names if col in df_columns]
 
                 self.conn.execute(f"""
-                    INSERT INTO temp_facts ({', '.join(common_columns)})
-                    SELECT {', '.join(common_columns)} FROM temp_df
+                    INSERT INTO temp_facts ({", ".join(common_columns)})
+                    SELECT {", ".join(common_columns)} FROM temp_df
                 """)
 
                 # Insert or replace into the main table
                 self.conn.execute(f"""
-                    INSERT OR REPLACE INTO financial_facts ({', '.join(common_columns)})
-                    SELECT {', '.join(common_columns)} FROM temp_facts
+                    INSERT OR REPLACE INTO financial_facts ({", ".join(common_columns)})
+                    SELECT {", ".join(common_columns)} FROM temp_facts
                 """)
 
                 # Drop the temporary table
@@ -555,7 +558,14 @@ class OptimizedDuckDBStore:
                 value = metric.get("value")
                 filing_id = metric.get("filing_id")
 
-                if not ticker or not metric_name or not fiscal_year or not fiscal_quarter or value is None or not filing_id:
+                if (
+                    not ticker
+                    or not metric_name
+                    or not fiscal_year
+                    or not fiscal_quarter
+                    or value is None
+                    or not filing_id
+                ):
                     continue
 
                 # Skip non-numeric values
@@ -571,7 +581,7 @@ class OptimizedDuckDBStore:
                     "fiscal_quarter": fiscal_quarter,
                     "value": value,
                     "unit": metric.get("unit", "USD"),
-                    "filing_id": filing_id
+                    "filing_id": filing_id,
                 }
                 data.append(row)
 
@@ -584,16 +594,16 @@ class OptimizedDuckDBStore:
             # Insert or replace metrics
             # Get the column names from the time_series_metrics table
             columns_result = self.conn.execute("PRAGMA table_info(time_series_metrics)").fetchdf()
-            column_names = columns_result['name'].tolist()
+            column_names = columns_result["name"].tolist()
 
             # Remove the created_at column as it has a default value
-            if 'created_at' in column_names:
-                column_names.remove('created_at')
+            if "created_at" in column_names:
+                column_names.remove("created_at")
 
             # Create a temporary table with the same structure
             self.conn.execute(f"""
                 CREATE TEMPORARY TABLE IF NOT EXISTS temp_metrics AS
-                SELECT {', '.join(column_names)} FROM time_series_metrics LIMIT 0
+                SELECT {", ".join(column_names)} FROM time_series_metrics LIMIT 0
             """)
 
             # Register the DataFrame and insert into temp table
@@ -604,14 +614,14 @@ class OptimizedDuckDBStore:
             common_columns = [col for col in column_names if col in df_columns]
 
             self.conn.execute(f"""
-                INSERT INTO temp_metrics ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_df
+                INSERT INTO temp_metrics ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_df
             """)
 
             # Insert or replace into the main table
             self.conn.execute(f"""
-                INSERT OR REPLACE INTO time_series_metrics ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_metrics
+                INSERT OR REPLACE INTO time_series_metrics ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_metrics
             """)
 
             # Drop the temporary table
@@ -646,7 +656,14 @@ class OptimizedDuckDBStore:
                 value = ratio.get("value")
                 filing_id = ratio.get("filing_id")
 
-                if not ticker or not ratio_name or not fiscal_year or not fiscal_quarter or value is None or not filing_id:
+                if (
+                    not ticker
+                    or not ratio_name
+                    or not fiscal_year
+                    or not fiscal_quarter
+                    or value is None
+                    or not filing_id
+                ):
                     continue
 
                 # Skip non-numeric values
@@ -661,7 +678,7 @@ class OptimizedDuckDBStore:
                     "fiscal_year": fiscal_year,
                     "fiscal_quarter": fiscal_quarter,
                     "value": value,
-                    "filing_id": filing_id
+                    "filing_id": filing_id,
                 }
                 data.append(row)
 
@@ -674,16 +691,16 @@ class OptimizedDuckDBStore:
             # Insert or replace ratios
             # Get the column names from the financial_ratios table
             columns_result = self.conn.execute("PRAGMA table_info(financial_ratios)").fetchdf()
-            column_names = columns_result['name'].tolist()
+            column_names = columns_result["name"].tolist()
 
             # Remove the created_at column as it has a default value
-            if 'created_at' in column_names:
-                column_names.remove('created_at')
+            if "created_at" in column_names:
+                column_names.remove("created_at")
 
             # Create a temporary table with the same structure
             self.conn.execute(f"""
                 CREATE TEMPORARY TABLE IF NOT EXISTS temp_ratios AS
-                SELECT {', '.join(column_names)} FROM financial_ratios LIMIT 0
+                SELECT {", ".join(column_names)} FROM financial_ratios LIMIT 0
             """)
 
             # Register the DataFrame and insert into temp table
@@ -694,14 +711,14 @@ class OptimizedDuckDBStore:
             common_columns = [col for col in column_names if col in df_columns]
 
             self.conn.execute(f"""
-                INSERT INTO temp_ratios ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_df
+                INSERT INTO temp_ratios ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_df
             """)
 
             # Insert or replace into the main table
             self.conn.execute(f"""
-                INSERT OR REPLACE INTO financial_ratios ({', '.join(common_columns)})
-                SELECT {', '.join(common_columns)} FROM temp_ratios
+                INSERT OR REPLACE INTO financial_ratios ({", ".join(common_columns)})
+                SELECT {", ".join(common_columns)} FROM temp_ratios
             """)
 
             # Drop the temporary table
@@ -764,7 +781,7 @@ class OptimizedDuckDBStore:
                     "filing_date": data.get("filing_date"),
                     "fiscal_year": fiscal_year,
                     "fiscal_quarter": fiscal_quarter,
-                    "document_url": data.get("filing_url")
+                    "document_url": data.get("filing_url"),
                 }
                 filings.append(filing)
 
@@ -783,7 +800,7 @@ class OptimizedDuckDBStore:
                         "fiscal_year": fiscal_year,
                         "fiscal_quarter": fiscal_quarter,
                         "value": value,
-                        "filing_id": filing_id
+                        "filing_id": filing_id,
                     }
                     all_metrics.append(metric)
 
@@ -796,7 +813,7 @@ class OptimizedDuckDBStore:
                         "fiscal_year": fiscal_year,
                         "fiscal_quarter": fiscal_quarter,
                         "value": value,
-                        "filing_id": filing_id
+                        "filing_id": filing_id,
                     }
                     all_ratios.append(ratio)
 
@@ -819,9 +836,14 @@ class OptimizedDuckDBStore:
             logger.error(f"Error storing financial data batch: {e}")
             return 0
 
-    def get_company_metrics(self, ticker: str, metrics: Optional[List[str]] = None,
-                           start_year: Optional[int] = None, end_year: Optional[int] = None,
-                           quarterly: bool = True) -> pd.DataFrame:
+    def get_company_metrics(
+        self,
+        ticker: str,
+        metrics: Optional[List[str]] = None,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        quarterly: bool = True,
+    ) -> pd.DataFrame:
         """Get time series metrics for a company.
 
         Args:
@@ -875,21 +897,15 @@ class OptimizedDuckDBStore:
 
             # Pivot the result for easier analysis
             if not result.empty:
-                result['period'] = result.apply(
-                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index='period',
-                    columns='metric_name',
-                    values='value'
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
+                pivoted = result.pivot(index="period", columns="metric_name", values="value").reset_index()
 
                 # Add year and quarter columns
-                pivoted['fiscal_year'] = pivoted['period'].apply(lambda x: int(x.split('Q')[0]))
-                pivoted['fiscal_quarter'] = pivoted['period'].apply(lambda x: int(x.split('Q')[1]))
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
 
                 # Sort by year and quarter
-                pivoted = pivoted.sort_values(['fiscal_year', 'fiscal_quarter'])
+                pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
 
                 return pivoted
 
@@ -898,10 +914,14 @@ class OptimizedDuckDBStore:
             logger.error(f"Error getting company metrics: {e}")
             return pd.DataFrame()
 
-    def compare_companies(self, tickers: List[str], metric: str,
-                         start_year: Optional[int] = None,
-                         end_year: Optional[int] = None,
-                         quarterly: bool = False) -> pd.DataFrame:
+    def compare_companies(
+        self,
+        tickers: List[str],
+        metric: str,
+        start_year: Optional[int] = None,
+        end_year: Optional[int] = None,
+        quarterly: bool = False,
+    ) -> pd.DataFrame:
         """Compare a metric across companies.
 
         Args:
@@ -950,21 +970,15 @@ class OptimizedDuckDBStore:
 
             # Pivot the result for easier comparison
             if not result.empty:
-                result['period'] = result.apply(
-                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index='period',
-                    columns='ticker',
-                    values='value'
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
+                pivoted = result.pivot(index="period", columns="ticker", values="value").reset_index()
 
                 # Add year and quarter columns
-                pivoted['fiscal_year'] = pivoted['period'].apply(lambda x: int(x.split('Q')[0]))
-                pivoted['fiscal_quarter'] = pivoted['period'].apply(lambda x: int(x.split('Q')[1]))
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
 
                 # Sort by year and quarter
-                pivoted = pivoted.sort_values(['fiscal_year', 'fiscal_quarter'])
+                pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
 
                 return pivoted
 
@@ -983,19 +997,13 @@ class OptimizedDuckDBStore:
             stats = {}
 
             # Get company count
-            stats["company_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM companies"
-            ).fetchone()[0]
+            stats["company_count"] = self.conn.execute("SELECT COUNT(*) as count FROM companies").fetchone()[0]
 
             # Get filing count
-            stats["filing_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM filings"
-            ).fetchone()[0]
+            stats["filing_count"] = self.conn.execute("SELECT COUNT(*) as count FROM filings").fetchone()[0]
 
             # Get fact count
-            stats["fact_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM financial_facts"
-            ).fetchone()[0]
+            stats["fact_count"] = self.conn.execute("SELECT COUNT(*) as count FROM financial_facts").fetchone()[0]
 
             # Get time series count
             stats["time_series_count"] = self.conn.execute(
@@ -1003,19 +1011,19 @@ class OptimizedDuckDBStore:
             ).fetchone()[0]
 
             # Get ratio count
-            stats["ratio_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM financial_ratios"
-            ).fetchone()[0]
+            stats["ratio_count"] = self.conn.execute("SELECT COUNT(*) as count FROM financial_ratios").fetchone()[0]
 
             # Get companies
-            stats["companies"] = self.conn.execute(
-                "SELECT ticker FROM companies ORDER BY ticker"
-            ).fetchdf()["ticker"].tolist()
+            stats["companies"] = (
+                self.conn.execute("SELECT ticker FROM companies ORDER BY ticker").fetchdf()["ticker"].tolist()
+            )
 
             # Get filing types
-            stats["filing_types"] = self.conn.execute(
-                "SELECT DISTINCT filing_type FROM filings ORDER BY filing_type"
-            ).fetchdf()["filing_type"].tolist()
+            stats["filing_types"] = (
+                self.conn.execute("SELECT DISTINCT filing_type FROM filings ORDER BY filing_type")
+                .fetchdf()["filing_type"]
+                .tolist()
+            )
 
             # Get year range
             years = self.conn.execute(

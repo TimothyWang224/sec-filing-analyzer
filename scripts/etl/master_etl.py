@@ -15,28 +15,26 @@ Usage:
 import argparse
 import json
 import logging
+import math
 import os
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-import math
+from typing import Any, Dict, List, Optional
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
+from sec_filing_analyzer.config import ETLConfig, Neo4jConfig, StorageConfig
 from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
 from sec_filing_analyzer.storage.graph_store import GraphStore
 from sec_filing_analyzer.storage.optimized_vector_store import OptimizedVectorStore
-from sec_filing_analyzer.config import ETLConfig, StorageConfig, Neo4jConfig
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def get_neo4j_config():
     """Get Neo4j configuration from environment variables."""
@@ -44,8 +42,9 @@ def get_neo4j_config():
         "url": os.getenv("NEO4J_URL", "bolt://localhost:7687"),
         "username": os.getenv("NEO4J_USERNAME", "neo4j"),
         "password": os.getenv("NEO4J_PASSWORD", "password"),
-        "database": os.getenv("NEO4J_DATABASE", "neo4j")
+        "database": os.getenv("NEO4J_DATABASE", "neo4j"),
     }
+
 
 def validate_dates(start_date: str, end_date: str) -> bool:
     """Validate date format and range."""
@@ -60,16 +59,17 @@ def validate_dates(start_date: str, end_date: str) -> bool:
         logger.error("Invalid date format. Use YYYY-MM-DD")
         return False
 
+
 def get_tickers_from_file(file_path: str) -> List[str]:
     """Load ticker symbols from a JSON file."""
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             data = json.load(f)
 
         if isinstance(data, list):
             return data
-        elif isinstance(data, dict) and 'tickers' in data:
-            return data['tickers']
+        elif isinstance(data, dict) and "tickers" in data:
+            return data["tickers"]
         else:
             logger.error(f"Invalid format in tickers file: {file_path}")
             sys.exit(1)
@@ -77,45 +77,48 @@ def get_tickers_from_file(file_path: str) -> List[str]:
         logger.error(f"Error loading tickers file: {str(e)}")
         sys.exit(1)
 
+
 def save_progress(completed: List[str], failed: List[str], no_filings: List[str], errors: dict):
     """Save progress to a file."""
     progress = {
-        'timestamp': datetime.now().isoformat(),
-        'completed': completed,
-        'failed': failed,
-        'no_filings': no_filings,
-        'errors': errors
+        "timestamp": datetime.now().isoformat(),
+        "completed": completed,
+        "failed": failed,
+        "no_filings": no_filings,
+        "errors": errors,
     }
 
     # Create directory if it doesn't exist
-    os.makedirs('data/etl_progress', exist_ok=True)
+    os.makedirs("data/etl_progress", exist_ok=True)
 
     # Save progress to file
     filename = f"etl_progress_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-    with open(f"data/etl_progress/{filename}", 'w') as f:
+    with open(f"data/etl_progress/{filename}", "w") as f:
         json.dump(progress, f, indent=2)
 
     logger.info(f"Progress saved to data/etl_progress/{filename}")
 
+
 def load_latest_progress():
     """Load the latest progress file."""
     try:
-        progress_dir = Path('data/etl_progress')
+        progress_dir = Path("data/etl_progress")
         if not progress_dir.exists():
             return None
 
-        progress_files = list(progress_dir.glob('etl_progress_*.json'))
+        progress_files = list(progress_dir.glob("etl_progress_*.json"))
         if not progress_files:
             return None
 
         # Sort by modification time (newest first)
         latest_file = max(progress_files, key=lambda p: p.stat().st_mtime)
 
-        with open(latest_file, 'r') as f:
+        with open(latest_file, "r") as f:
             return json.load(f)
     except Exception as e:
         logger.error(f"Error loading progress file: {str(e)}")
         return None
+
 
 def save_config(config: Dict[str, Any], config_path: Optional[str] = None):
     """Save configuration to a file."""
@@ -125,10 +128,11 @@ def save_config(config: Dict[str, Any], config_path: Optional[str] = None):
     # Create directory if it doesn't exist
     Path(config_path).parent.mkdir(parents=True, exist_ok=True)
 
-    with open(config_path, 'w') as f:
+    with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
 
     logger.info(f"Configuration saved to {config_path}")
+
 
 def load_config(config_path: Optional[str] = None):
     """Load configuration from a file."""
@@ -136,107 +140,107 @@ def load_config(config_path: Optional[str] = None):
         config_path = "data/config/etl_config.json"
 
     try:
-        with open(config_path, 'r') as f:
+        with open(config_path, "r") as f:
             return json.load(f)
     except Exception as e:
         logger.warning(f"Error loading configuration file: {str(e)}")
         return None
 
+
 def parse_args():
     """Parse command line arguments."""
     neo4j_config = get_neo4j_config()
-    parser = argparse.ArgumentParser(description='Master ETL Script for SEC Filing Analysis')
+    parser = argparse.ArgumentParser(description="Master ETL Script for SEC Filing Analysis")
 
     # Input group - Company tickers
     ticker_group = parser.add_mutually_exclusive_group(required=True)
-    ticker_group.add_argument('--tickers', nargs='+',
-                       help='List of company ticker symbols (e.g., AAPL MSFT NVDA)')
-    ticker_group.add_argument('--tickers-file', type=str,
-                       help='Path to a JSON file containing a list of ticker symbols')
+    ticker_group.add_argument("--tickers", nargs="+", help="List of company ticker symbols (e.g., AAPL MSFT NVDA)")
+    ticker_group.add_argument(
+        "--tickers-file", type=str, help="Path to a JSON file containing a list of ticker symbols"
+    )
 
     # Date range arguments
-    parser.add_argument('--start-date', help='Start date (YYYY-MM-DD)', required=True)
-    parser.add_argument('--end-date', help='End date (YYYY-MM-DD)', required=True)
+    parser.add_argument("--start-date", help="Start date (YYYY-MM-DD)", required=True)
+    parser.add_argument("--end-date", help="End date (YYYY-MM-DD)", required=True)
 
     # Filing types argument
-    parser.add_argument('--filing-types', nargs='+',
-                       help='List of filing types to process (e.g., 10-K 10-Q)',
-                       default=['10-K', '10-Q'])
+    parser.add_argument(
+        "--filing-types", nargs="+", help="List of filing types to process (e.g., 10-K 10-Q)", default=["10-K", "10-Q"]
+    )
 
     # Configuration file
-    parser.add_argument('--config-file', type=str,
-                       help='Path to a JSON configuration file')
-    parser.add_argument('--save-config', action='store_true',
-                       help='Save the configuration to a file')
-    parser.add_argument('--config-output', type=str,
-                       help='Path to save the configuration file')
+    parser.add_argument("--config-file", type=str, help="Path to a JSON configuration file")
+    parser.add_argument("--save-config", action="store_true", help="Save the configuration to a file")
+    parser.add_argument("--config-output", type=str, help="Path to save the configuration file")
 
     # Neo4j configuration arguments
-    parser.add_argument('--no-neo4j', action='store_true',
-                       help='Disable Neo4j and use in-memory graph store instead')
-    parser.add_argument('--neo4j-url', help='Neo4j server URL',
-                       default=neo4j_config['url'])
-    parser.add_argument('--neo4j-username', help='Neo4j username',
-                       default=neo4j_config['username'])
-    parser.add_argument('--neo4j-password', help='Neo4j password',
-                       default=neo4j_config['password'])
-    parser.add_argument('--neo4j-database', help='Neo4j database name',
-                       default=neo4j_config['database'])
+    parser.add_argument("--no-neo4j", action="store_true", help="Disable Neo4j and use in-memory graph store instead")
+    parser.add_argument("--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"])
+    parser.add_argument("--neo4j-username", help="Neo4j username", default=neo4j_config["username"])
+    parser.add_argument("--neo4j-password", help="Neo4j password", default=neo4j_config["password"])
+    parser.add_argument("--neo4j-database", help="Neo4j database name", default=neo4j_config["database"])
 
     # DuckDB configuration
-    parser.add_argument('--db-path', type=str, default="data/financial_data.duckdb",
-                       help='Path to the DuckDB database file')
+    parser.add_argument(
+        "--db-path", type=str, default="data/financial_data.duckdb", help="Path to the DuckDB database file"
+    )
 
     # Pipeline configuration
-    parser.add_argument('--no-semantic', action='store_true',
-                       help='Disable semantic processing (chunking, embedding, etc.)')
-    parser.add_argument('--no-quantitative', action='store_true',
-                       help='Disable quantitative processing (XBRL extraction, etc.)')
+    parser.add_argument(
+        "--no-semantic", action="store_true", help="Disable semantic processing (chunking, embedding, etc.)"
+    )
+    parser.add_argument(
+        "--no-quantitative", action="store_true", help="Disable quantitative processing (XBRL extraction, etc.)"
+    )
 
     # Parallel processing options
-    parser.add_argument('--no-parallel', action='store_true',
-                       help='Disable parallel processing')
-    parser.add_argument('--max-workers', type=int, default=4,
-                       help='Maximum number of worker threads for parallel processing')
-    parser.add_argument('--batch-size', type=int, default=100,
-                       help='Batch size for embedding generation')
-    parser.add_argument('--rate-limit', type=float, default=0.1,
-                       help='Minimum time between API requests in seconds')
+    parser.add_argument("--no-parallel", action="store_true", help="Disable parallel processing")
+    parser.add_argument(
+        "--max-workers", type=int, default=4, help="Maximum number of worker threads for parallel processing"
+    )
+    parser.add_argument("--batch-size", type=int, default=100, help="Batch size for embedding generation")
+    parser.add_argument("--rate-limit", type=float, default=0.1, help="Minimum time between API requests in seconds")
 
     # FAISS indexing options
-    parser.add_argument('--index-type', type=str, default='hnsw',
-                       choices=['flat', 'ivf', 'hnsw', 'ivfpq'],
-                       help='FAISS index type to use')
+    parser.add_argument(
+        "--index-type",
+        type=str,
+        default="hnsw",
+        choices=["flat", "ivf", "hnsw", "ivfpq"],
+        help="FAISS index type to use",
+    )
 
     # IVF parameters
-    parser.add_argument('--ivf-nlist', type=int, default=None,
-                       help='IVF: Number of clusters (default: sqrt(num_vectors))')
-    parser.add_argument('--ivf-nprobe', type=int, default=None,
-                       help='IVF: Number of clusters to visit during search')
+    parser.add_argument(
+        "--ivf-nlist", type=int, default=None, help="IVF: Number of clusters (default: sqrt(num_vectors))"
+    )
+    parser.add_argument("--ivf-nprobe", type=int, default=None, help="IVF: Number of clusters to visit during search")
 
     # HNSW parameters
-    parser.add_argument('--hnsw-m', type=int, default=32,
-                       help='HNSW: Number of connections per element')
-    parser.add_argument('--hnsw-ef-construction', type=int, default=400,
-                       help='HNSW: Size of dynamic list during construction')
-    parser.add_argument('--hnsw-ef-search', type=int, default=200,
-                       help='HNSW: Size of dynamic list during search')
+    parser.add_argument("--hnsw-m", type=int, default=32, help="HNSW: Number of connections per element")
+    parser.add_argument(
+        "--hnsw-ef-construction", type=int, default=400, help="HNSW: Size of dynamic list during construction"
+    )
+    parser.add_argument("--hnsw-ef-search", type=int, default=200, help="HNSW: Size of dynamic list during search")
 
     # GPU acceleration
-    parser.add_argument('--use-gpu', action='store_true',
-                       help='Use GPU acceleration for FAISS if available')
+    parser.add_argument("--use-gpu", action="store_true", help="Use GPU acceleration for FAISS if available")
 
     # Additional options
-    parser.add_argument('--retry-failed', action='store_true',
-                       help='Retry failed companies from previous runs')
-    parser.add_argument('--max-retries', type=int, default=3,
-                       help='Maximum number of retries for failed companies')
-    parser.add_argument('--delay-between-companies', type=int, default=1,
-                       help='Delay in seconds between processing companies to avoid rate limiting')
-    parser.add_argument('--force-rebuild-index', action='store_true',
-                       help='Force rebuild of FAISS index even if it exists')
-    parser.add_argument('--force-download', action='store_true',
-                       help='Force download of filings even if they exist in cache')
+    parser.add_argument("--retry-failed", action="store_true", help="Retry failed companies from previous runs")
+    parser.add_argument("--max-retries", type=int, default=3, help="Maximum number of retries for failed companies")
+    parser.add_argument(
+        "--delay-between-companies",
+        type=int,
+        default=1,
+        help="Delay in seconds between processing companies to avoid rate limiting",
+    )
+    parser.add_argument(
+        "--force-rebuild-index", action="store_true", help="Force rebuild of FAISS index even if it exists"
+    )
+    parser.add_argument(
+        "--force-download", action="store_true", help="Force download of filings even if they exist in cache"
+    )
 
     args = parser.parse_args()
 
@@ -250,6 +254,7 @@ def parse_args():
                     setattr(args, key, value)
 
     return args
+
 
 def main():
     """Main function."""
@@ -283,7 +288,7 @@ def main():
             username=args.neo4j_username,
             password=args.neo4j_password,
             url=args.neo4j_url,
-            database=args.neo4j_database
+            database=args.neo4j_database,
         )
 
     # Initialize vector store with optimized FAISS parameters
@@ -295,7 +300,7 @@ def main():
         nprobe=args.ivf_nprobe,
         m=args.hnsw_m,
         ef_construction=args.hnsw_ef_construction,
-        ef_search=args.hnsw_ef_search
+        ef_search=args.hnsw_ef_search,
     )
 
     # Initialize pipeline with parallel processing options
@@ -308,7 +313,7 @@ def main():
         use_optimized_vector_store=True,
         process_semantic=not args.no_semantic,
         process_quantitative=not args.no_quantitative,
-        db_path=args.db_path
+        db_path=args.db_path,
     )
 
     logger.info(f"Parallel processing: {not args.no_parallel}")
@@ -319,13 +324,15 @@ def main():
 
     # Log FAISS configuration
     logger.info(f"FAISS index type: {args.index_type}")
-    if args.index_type == 'ivf':
+    if args.index_type == "ivf":
         nlist = args.ivf_nlist or "auto (sqrt of vectors)"
         nprobe = args.ivf_nprobe or "auto (10% of nlist)"
         logger.info(f"IVF parameters: nlist={nlist}, nprobe={nprobe}")
-    elif args.index_type == 'hnsw':
-        logger.info(f"HNSW parameters: m={args.hnsw_m}, ef_construction={args.hnsw_ef_construction}, ef_search={args.hnsw_ef_search}")
-    elif args.index_type == 'ivfpq':
+    elif args.index_type == "hnsw":
+        logger.info(
+            f"HNSW parameters: m={args.hnsw_m}, ef_construction={args.hnsw_ef_construction}, ef_search={args.hnsw_ef_search}"
+        )
+    elif args.index_type == "ivfpq":
         nlist = args.ivf_nlist or "auto (sqrt of vectors)"
         nprobe = args.ivf_nprobe or "auto (10% of nlist)"
         logger.info(f"IVFPQ parameters: nlist={nlist}, nprobe={nprobe}")
@@ -342,18 +349,16 @@ def main():
                 "hnsw_m": args.hnsw_m,
                 "hnsw_ef_construction": args.hnsw_ef_construction,
                 "hnsw_ef_search": args.hnsw_ef_search,
-                "path": str(StorageConfig().vector_store_path)
+                "path": str(StorageConfig().vector_store_path),
             },
             "graph_store": {
                 "type": "neo4j" if not args.no_neo4j else "in-memory",
                 "url": args.neo4j_url,
                 "username": args.neo4j_username,
                 "password": args.neo4j_password,
-                "database": args.neo4j_database
+                "database": args.neo4j_database,
             },
-            "duckdb": {
-                "path": args.db_path
-            },
+            "duckdb": {"path": args.db_path},
             "etl_pipeline": {
                 "process_semantic": not args.no_semantic,
                 "process_quantitative": not args.no_quantitative,
@@ -362,8 +367,8 @@ def main():
                 "batch_size": args.batch_size,
                 "rate_limit": args.rate_limit,
                 "max_retries": args.max_retries,
-                "delay_between_companies": args.delay_between_companies
-            }
+                "delay_between_companies": args.delay_between_companies,
+            },
         }
         save_config(config, args.config_output)
 
@@ -379,14 +384,14 @@ def main():
         if progress:
             logger.info(f"Loaded previous progress with {len(progress['failed'])} failed companies")
             # Only process previously failed companies
-            tickers = progress['failed']
+            tickers = progress["failed"]
             # Keep track of previously completed companies
-            completed_tickers = progress['completed']
+            completed_tickers = progress["completed"]
             # Keep track of companies with no filings
-            if 'no_filings' in progress:
-                no_filings_tickers = progress['no_filings']
+            if "no_filings" in progress:
+                no_filings_tickers = progress["no_filings"]
             # Keep track of previous errors
-            errors = progress['errors']
+            errors = progress["errors"]
 
     # Process each company
     for ticker in tickers:
@@ -404,7 +409,7 @@ def main():
                     start_date=args.start_date,
                     end_date=args.end_date,
                     force_rebuild_index=args.force_rebuild_index,
-                    force_download=args.force_download
+                    force_download=args.force_download,
                 )
 
                 # Check result status
@@ -458,6 +463,7 @@ def main():
     if failed_tickers:
         logger.info(f"Failed companies: {', '.join(failed_tickers)}")
         logger.info("To retry failed companies, run with --retry-failed flag")
+
 
 if __name__ == "__main__":
     main()

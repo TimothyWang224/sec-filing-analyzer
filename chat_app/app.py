@@ -8,27 +8,21 @@ import streamlit as st
 
 # Set page config - MUST be the first Streamlit command
 st.set_page_config(
-    page_title="SEC Filing Analyzer - Chat",
-    page_icon="💬",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="SEC Filing Analyzer - Chat", page_icon="💬", layout="wide", initial_sidebar_state="expanded"
 )
 
 import asyncio
-import sys
-from pathlib import Path
-import time
-import logging
 import importlib.util
+import logging
+import sys
+import time
+from pathlib import Path
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Import agent components
@@ -46,11 +40,13 @@ try:
         import src.tools
 
     from src.agents import FinancialDiligenceCoordinator
+    from src.capabilities import LoggingCapability, PlanningCapability, TimeAwarenessCapability
     from src.environments import FinancialEnvironment
-    from src.capabilities import TimeAwarenessCapability, LoggingCapability, PlanningCapability
 except ImportError as e:
     st.error(f"Error importing SEC Filing Analyzer components: {e}")
-    st.warning("Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly.")
+    st.warning(
+        "Some functionality may be limited. Please make sure the SEC Filing Analyzer package is installed correctly."
+    )
     imports_successful = False
 
 # Initialize configuration
@@ -76,11 +72,7 @@ if "agent" not in st.session_state:
     st.session_state.agent_initialized = False
 
 if "config" not in st.session_state:
-    st.session_state.config = {
-        "model": "gpt-4o-mini",
-        "temperature": 0.7,
-        "max_tokens": 4000
-    }
+    st.session_state.config = {"model": "gpt-4o-mini", "temperature": 0.7, "max_tokens": 4000}
 
 # Sidebar for configuration
 st.sidebar.header("Configuration")
@@ -91,9 +83,17 @@ if imports_successful:
         available_models = LLMConfigFactory.get_available_models()
     except Exception as e:
         st.sidebar.error(f"Error getting available models: {e}")
-        available_models = {"gpt-4o": "OpenAI GPT-4o", "gpt-4o-mini": "OpenAI GPT-4o Mini", "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo"}
+        available_models = {
+            "gpt-4o": "OpenAI GPT-4o",
+            "gpt-4o-mini": "OpenAI GPT-4o Mini",
+            "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo",
+        }
 else:
-    available_models = {"gpt-4o": "OpenAI GPT-4o", "gpt-4o-mini": "OpenAI GPT-4o Mini", "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo"}
+    available_models = {
+        "gpt-4o": "OpenAI GPT-4o",
+        "gpt-4o-mini": "OpenAI GPT-4o Mini",
+        "gpt-3.5-turbo": "OpenAI GPT-3.5 Turbo",
+    }
 
 model_options = list(available_models.keys())
 model_descriptions = [f"{model} - {desc}" for model, desc in available_models.items()]
@@ -102,7 +102,9 @@ selected_model_index = st.sidebar.selectbox(
     "LLM Model",
     range(len(model_options)),
     format_func=lambda i: model_descriptions[i],
-    index=model_options.index(st.session_state.config["model"]) if st.session_state.config["model"] in model_options else 0
+    index=model_options.index(st.session_state.config["model"])
+    if st.session_state.config["model"] in model_options
+    else 0,
 )
 selected_model = model_options[selected_model_index]
 
@@ -113,7 +115,7 @@ temperature = st.sidebar.slider(
     max_value=1.0,
     value=st.session_state.config["temperature"],
     step=0.1,
-    help="Higher values make output more random, lower values more deterministic"
+    help="Higher values make output more random, lower values more deterministic",
 )
 
 # Max tokens slider
@@ -123,13 +125,14 @@ max_tokens = st.sidebar.slider(
     max_value=8000,
     value=st.session_state.config["max_tokens"],
     step=1000,
-    help="Maximum number of tokens in the response"
+    help="Maximum number of tokens in the response",
 )
 
 # Update configuration
 st.session_state.config["model"] = selected_model
 st.session_state.config["temperature"] = temperature
 st.session_state.config["max_tokens"] = max_tokens
+
 
 # Function to initialize the coordinator agent
 def initialize_coordinator_agent():
@@ -148,14 +151,11 @@ def initialize_coordinator_agent():
             LoggingCapability(
                 include_prompts=True,  # Enable logging of LLM prompts
                 include_responses=True,  # Enable logging of LLM responses
-                max_content_length=10000  # Increase max content length to capture full responses
+                max_content_length=10000,  # Increase max content length to capture full responses
             ),
             PlanningCapability(
-                enable_dynamic_replanning=True,
-                enable_step_reflection=True,
-                max_plan_steps=10,
-                plan_detail_level="high"
-            )
+                enable_dynamic_replanning=True, enable_step_reflection=True, max_plan_steps=10, plan_detail_level="high"
+            ),
         ]
 
         # Create coordinator agent
@@ -170,13 +170,14 @@ def initialize_coordinator_agent():
             max_execution_iterations=10,
             max_refinement_iterations=3,
             max_tool_retries=2,
-            tools_per_iteration=1
+            tools_per_iteration=1,
         )
 
         return agent
     except Exception as e:
         st.error(f"Error initializing agent: {e}")
         return None
+
 
 # Initialize agent button
 if st.sidebar.button("Initialize Agent"):
@@ -240,7 +241,9 @@ if st.session_state.agent_initialized:
                         # Format diligence report
                         report = response["diligence_report"]
                         agent_response = f"## {report.get('title', 'Analysis Report')}\n\n"
-                        agent_response += f"### Executive Summary\n{report.get('executive_summary', 'No summary available.')}\n\n"
+                        agent_response += (
+                            f"### Executive Summary\n{report.get('executive_summary', 'No summary available.')}\n\n"
+                        )
 
                         if "key_findings" in report and report["key_findings"]:
                             agent_response += "### Key Findings\n"

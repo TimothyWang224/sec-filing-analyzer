@@ -7,11 +7,13 @@ with support for read-only and read-write modes.
 
 import logging
 import os
-from typing import Optional
-import duckdb
 from pathlib import Path
+from typing import Optional
+
+import duckdb
 
 logger = logging.getLogger(__name__)
+
 
 class DuckDBManager:
     """
@@ -65,7 +67,9 @@ class DuckDBManager:
 
         # If we have a read-write connection and are requesting read-only, use the read-write connection
         if read_only and read_write_key in self._active_connections:
-            logger.info(f"Using existing read-write connection for {db_path} instead of creating a read-only connection")
+            logger.info(
+                f"Using existing read-write connection for {db_path} instead of creating a read-only connection"
+            )
             return self._active_connections[read_write_key]
 
         # If we have a read-only connection and are requesting read-write, close it first
@@ -236,7 +240,7 @@ class DuckDBManager:
             "tables": [],
             "row_counts": {},
             "version": None,
-            "error": None
+            "error": None,
         }
 
         # If the database doesn't exist, return early
@@ -248,6 +252,7 @@ class DuckDBManager:
         try:
             # Create a new connection with a timeout
             import time
+
             max_attempts = 3
             attempt = 0
             conn = None
@@ -257,7 +262,7 @@ class DuckDBManager:
                     # Try to connect with read-only access first
                     conn = duckdb.connect(db_path, read_only=True)
                 except Exception as e:
-                    logger.warning(f"Attempt {attempt+1}/{max_attempts} to connect to {db_path} failed: {e}")
+                    logger.warning(f"Attempt {attempt + 1}/{max_attempts} to connect to {db_path} failed: {e}")
                     attempt += 1
                     if attempt < max_attempts:
                         # Wait before retrying
@@ -278,7 +283,9 @@ class DuckDBManager:
             result["version"] = conn.execute("SELECT version()").fetchone()[0]
 
             # Get table list
-            tables = conn.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='main' ORDER BY table_name").fetchall()
+            tables = conn.execute(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema='main' ORDER BY table_name"
+            ).fetchall()
             result["tables"] = [t[0] for t in tables]
 
             # Get row counts for each table
@@ -296,6 +303,7 @@ class DuckDBManager:
             result["error"] = str(e)
 
         return result
+
 
 # Create a global instance
 duckdb_manager = DuckDBManager()

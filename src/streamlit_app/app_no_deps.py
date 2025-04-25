@@ -4,18 +4,14 @@ SEC Filing Analyzer - Streamlit Application (No Dependencies)
 Modified version of the main entry point that doesn't require the sec_filing_analyzer package.
 """
 
-import streamlit as st
 import os
 import sys
 from pathlib import Path
 
+import streamlit as st
+
 # Set page config
-st.set_page_config(
-    page_title="SEC Filing Analyzer",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="SEC Filing Analyzer", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
 
 # Title and description
 st.title("SEC Filing Analyzer")
@@ -28,8 +24,7 @@ both ETL pipelines and intelligent agents.
 # Sidebar navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio(
-    "Select a page",
-    ["Dashboard", "ETL Pipeline", "Agent Workflow", "Data Explorer", "Configuration"]
+    "Select a page", ["Dashboard", "ETL Pipeline", "Agent Workflow", "Data Explorer", "Configuration"]
 )
 
 # Page content
@@ -98,12 +93,13 @@ elif page == "ETL Pipeline":
 
             # Sample progress
             import time
+
             progress_bar = st.progress(0)
             status_text = st.empty()
 
             for i in range(100):
                 progress_bar.progress(i + 1)
-                status_text.text(f"Processing: {i+1}%")
+                status_text.text(f"Processing: {i + 1}%")
                 time.sleep(0.01)
 
             status_text.text("Processing complete!")
@@ -153,11 +149,12 @@ elif page == "Data Explorer":
     st.subheader("Sample Financial Data")
 
     import pandas as pd
+
     data = {
         "Date": ["2023-01-01", "2023-02-01", "2023-03-01", "2023-04-01", "2023-05-01"],
         "Revenue": [1000000, 1100000, 1050000, 1200000, 1300000],
         "Expenses": [800000, 850000, 900000, 950000, 1000000],
-        "Profit": [200000, 250000, 150000, 250000, 300000]
+        "Profit": [200000, 250000, 150000, 250000, 300000],
     }
 
     df = pd.DataFrame(data)

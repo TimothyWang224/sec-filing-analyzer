@@ -5,35 +5,30 @@ This script shows how to use the LoggingCapability to enhance
 financial question answering with detailed logging.
 """
 
-import logging
+import argparse
 import asyncio
 import json
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-import argparse
+import logging
 import os
 import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Add the project root to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from src.agents.qa_specialist import QASpecialistAgent
-from src.environments.financial import FinancialEnvironment
 from src.capabilities.logging import LoggingCapability
 from src.capabilities.time_awareness import TimeAwarenessCapability
+from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+
 async def run_logging_qa(
-    question: str,
-    log_dir: str = "data/logs/agents",
-    log_level: str = "INFO",
-    include_prompts: bool = False
+    question: str, log_dir: str = "data/logs/agents", log_level: str = "INFO", include_prompts: bool = False
 ):
     """Run the QA specialist agent with logging capability."""
     try:
@@ -54,16 +49,13 @@ async def run_logging_qa(
             include_actions=True,
             include_results=True,
             include_prompts=include_prompts,
-            include_responses=include_prompts  # Match prompts setting
+            include_responses=include_prompts,  # Match prompts setting
         )
 
         time_awareness = TimeAwarenessCapability()
 
         # Initialize QA specialist agent with capabilities
-        agent = QASpecialistAgent(
-            capabilities=[logging_capability, time_awareness],
-            environment=environment
-        )
+        agent = QASpecialistAgent(capabilities=[logging_capability, time_awareness], environment=environment)
 
         # Run the agent
         logger.info(f"Processing question: {question}")
@@ -109,31 +101,37 @@ async def run_logging_qa(
         logger.error(f"Error running QA with logging: {str(e)}")
         raise
 
+
 def main():
     """Main function to run the example script."""
     parser = argparse.ArgumentParser(description="Logging QA Example")
-    parser.add_argument("--question", type=str,
-                        default="What was Apple's revenue growth in Q2 2023 compared to Q2 2022?",
-                        help="Financial question to ask")
-    parser.add_argument("--log_dir", type=str,
-                        default="data/logs/agents",
-                        help="Directory to store log files")
-    parser.add_argument("--log_level", type=str,
-                        default="INFO",
-                        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-                        help="Logging level")
-    parser.add_argument("--include_prompts", action="store_true",
-                        help="Include LLM prompts in logs (may contain sensitive data)")
+    parser.add_argument(
+        "--question",
+        type=str,
+        default="What was Apple's revenue growth in Q2 2023 compared to Q2 2022?",
+        help="Financial question to ask",
+    )
+    parser.add_argument("--log_dir", type=str, default="data/logs/agents", help="Directory to store log files")
+    parser.add_argument(
+        "--log_level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        help="Logging level",
+    )
+    parser.add_argument(
+        "--include_prompts", action="store_true", help="Include LLM prompts in logs (may contain sensitive data)"
+    )
 
     args = parser.parse_args()
 
     # Run the example
-    asyncio.run(run_logging_qa(
-        question=args.question,
-        log_dir=args.log_dir,
-        log_level=args.log_level,
-        include_prompts=args.include_prompts
-    ))
+    asyncio.run(
+        run_logging_qa(
+            question=args.question, log_dir=args.log_dir, log_level=args.log_level, include_prompts=args.include_prompts
+        )
+    )
+
 
 if __name__ == "__main__":
     main()

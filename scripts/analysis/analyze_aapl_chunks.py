@@ -5,32 +5,31 @@ This script examines the text chunks from the AAPL filing to identify any unusua
 characters, formatting, or other issues that might cause embedding generation to fail.
 """
 
-import os
-import sys
 import json
 import logging
+import os
 import re
-from pathlib import Path
-from typing import List, Dict, Any, Tuple
-import unicodedata
 import statistics
+import sys
+import unicodedata
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
 from dotenv import load_dotenv
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
 from sec_filing_analyzer.config import ETLConfig
+from sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def load_aapl_filing() -> Dict[str, Any]:
     """Load the AAPL filing from the cache.
@@ -52,6 +51,7 @@ def load_aapl_filing() -> Dict[str, Any]:
         logger.error(f"Error loading filing: {e}")
         return {}
 
+
 def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
     """Analyze text chunks for potential issues.
 
@@ -70,7 +70,7 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
         "chunks_with_excessive_whitespace": 0,
         "chunk_length_stats": {},
         "unusual_chars": set(),
-        "problematic_chunks": []
+        "problematic_chunks": [],
     }
 
     chunk_lengths = []
@@ -92,7 +92,7 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
                 category = unicodedata.category(char)
                 name = unicodedata.name(char, "Unknown")
                 unusual_chars.add(f"{char} (U+{ord(char):04X}, {category}, {name})")
-            elif unicodedata.category(char).startswith('C') and char not in '\n\t\r':
+            elif unicodedata.category(char).startswith("C") and char not in "\n\t\r":
                 control_chars.add(f"{char} (U+{ord(char):04X})")
 
         if unusual_chars:
@@ -105,25 +105,23 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
             issues.append(f"Contains {len(control_chars)} control characters: {', '.join(control_chars)}")
 
         # Check for long lines
-        lines = chunk.split('\n')
+        lines = chunk.split("\n")
         long_lines = [line for line in lines if len(line) > 1000]
         if long_lines:
             results["chunks_with_long_lines"] += 1
             issues.append(f"Contains {len(long_lines)} lines longer than 1000 characters")
 
         # Check for excessive whitespace
-        whitespace_ratio = len(re.findall(r'\s', chunk)) / max(1, len(chunk))
+        whitespace_ratio = len(re.findall(r"\s", chunk)) / max(1, len(chunk))
         if whitespace_ratio > 0.5:
             results["chunks_with_excessive_whitespace"] += 1
             issues.append(f"Excessive whitespace ({whitespace_ratio:.2f} ratio)")
 
         # If any issues were found, add to problematic chunks
         if issues:
-            results["problematic_chunks"].append({
-                "index": i,
-                "issues": issues,
-                "preview": chunk[:100] + "..." if len(chunk) > 100 else chunk
-            })
+            results["problematic_chunks"].append(
+                {"index": i, "issues": issues, "preview": chunk[:100] + "..." if len(chunk) > 100 else chunk}
+            )
 
     # Calculate statistics on chunk lengths
     if chunk_lengths:
@@ -132,10 +130,11 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
             "max": max(chunk_lengths),
             "mean": statistics.mean(chunk_lengths),
             "median": statistics.median(chunk_lengths),
-            "std_dev": statistics.stdev(chunk_lengths) if len(chunk_lengths) > 1 else 0
+            "std_dev": statistics.stdev(chunk_lengths) if len(chunk_lengths) > 1 else 0,
         }
 
     return results
+
 
 def test_embedding_generation(chunks: List[str]) -> Tuple[List[bool], List[str]]:
     """Test embedding generation for each chunk.
@@ -151,7 +150,7 @@ def test_embedding_generation(chunks: List[str]) -> Tuple[List[bool], List[str]]
         max_tokens_per_chunk=8000,  # Safe limit below the 8192 max
         rate_limit=0.2,  # Slightly higher rate limit
         batch_size=1,  # Process one chunk at a time
-        max_retries=3  # Number of retries for failed API calls
+        max_retries=3,  # Number of retries for failed API calls
     )
 
     success_flags = []
@@ -164,7 +163,7 @@ def test_embedding_generation(chunks: List[str]) -> Tuple[List[bool], List[str]]
             continue
 
         try:
-            logger.info(f"Testing embedding generation for chunk {i+1}/{len(chunks)}")
+            logger.info(f"Testing embedding generation for chunk {i + 1}/{len(chunks)}")
 
             # Generate embedding for the chunk
             embedding, metadata = embedding_generator._process_batch([chunk])
@@ -181,6 +180,7 @@ def test_embedding_generation(chunks: List[str]) -> Tuple[List[bool], List[str]]
             error_messages.append(str(e))
 
     return success_flags, error_messages
+
 
 def main():
     """Main function to analyze AAPL filing chunks."""
@@ -221,11 +221,11 @@ def main():
             {
                 "index": i,
                 "error": error_messages[i],
-                "preview": chunks[i][:100] + "..." if len(chunks[i]) > 100 else chunks[i]
+                "preview": chunks[i][:100] + "..." if len(chunks[i]) > 100 else chunks[i],
             }
             for i in range(len(chunks))
             if not success_flags[i]
-        ]
+        ],
     }
 
     # Print summary
@@ -262,6 +262,7 @@ def main():
         json.dump(analysis_results, f, indent=2, ensure_ascii=False)
 
     logger.info(f"Detailed analysis results saved to {results_path}")
+
 
 if __name__ == "__main__":
     main()

@@ -6,4 +6,4 @@ This package provides functionality for generating and managing vector embedding
 
 from .embeddings import EmbeddingGenerator
 
-__all__ = ['EmbeddingGenerator'] 
+__all__ = ["EmbeddingGenerator"]

@@ -1,7 +1,7 @@
 import duckdb
 
 # Connect to the database
-conn = duckdb.connect('data/db_backup/financial_data.duckdb', read_only=True)
+conn = duckdb.connect("data/db_backup/financial_data.duckdb", read_only=True)
 
 # Check what companies are available
 companies_query = """

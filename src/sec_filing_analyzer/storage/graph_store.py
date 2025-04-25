@@ -5,17 +5,18 @@ This module provides a unified graph storage implementation that combines
 features from both the original graph store and GraphRAG implementations.
 """
 
-import os
-import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Tuple, Set
 import json
+import logging
+import os
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
+
 import networkx as nx
-from rich.console import Console
 import pandas as pd
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
-from collections import defaultdict
+from rich.console import Console
 
 from .interfaces import GraphStoreInterface
 
@@ -23,6 +24,7 @@ from .interfaces import GraphStoreInterface
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 console = Console()
+
 
 class GraphStore(GraphStoreInterface):
     """Unified graph database interface for SEC filing data."""
@@ -35,7 +37,7 @@ class GraphStore(GraphStoreInterface):
         password: Optional[str] = None,
         url: Optional[str] = None,
         database: Optional[str] = None,
-        max_cluster_size: Optional[int] = None
+        max_cluster_size: Optional[int] = None,
     ):
         """Initialize the graph store."""
         self.store_dir = Path(store_dir)
@@ -55,7 +57,7 @@ class GraphStore(GraphStoreInterface):
         username: Optional[str] = None,
         password: Optional[str] = None,
         url: Optional[str] = None,
-        database: Optional[str] = None
+        database: Optional[str] = None,
     ):
         """Initialize Neo4j connection and constraints."""
         # Get Neo4j credentials from environment variables or parameters
@@ -113,11 +115,7 @@ class GraphStore(GraphStoreInterface):
         self.graph = nx.DiGraph()
         logger.info("Initialized in-memory graph storage")
 
-    def add_node(
-        self,
-        node_id: str,
-        properties: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def add_node(self, node_id: str, properties: Optional[Dict[str, Any]] = None) -> bool:
         """Add a node to the graph store."""
         try:
             if properties is None:
@@ -140,11 +138,7 @@ class GraphStore(GraphStoreInterface):
             return False
 
     def add_relation(
-        self,
-        source_id: str,
-        target_id: str,
-        relation_type: str,
-        properties: Optional[Dict[str, Any]] = None
+        self, source_id: str, target_id: str, relation_type: str, properties: Optional[Dict[str, Any]] = None
     ) -> bool:
         """Add a relation to the graph."""
         try:
@@ -169,10 +163,7 @@ class GraphStore(GraphStoreInterface):
             logger.error(f"Error adding relation to graph store: {str(e)}")
             return False
 
-    def get_node(
-        self,
-        node_id: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
         """Get a node from the graph."""
         try:
             if self.use_neo4j:
@@ -190,11 +181,7 @@ class GraphStore(GraphStoreInterface):
             logger.error(f"Error getting node from graph store: {str(e)}")
             return None
 
-    def get_relations(
-        self,
-        node_id: str,
-        relation_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_relations(self, node_id: str, relation_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get relations for a node."""
         try:
             if self.use_neo4j:
@@ -214,7 +201,7 @@ class GraphStore(GraphStoreInterface):
                             "source": record["source"],
                             "target": record["target"],
                             "type": record["type"],
-                            "properties": record["properties"]
+                            "properties": record["properties"],
                         }
                         for record in result
                     ]
@@ -223,22 +210,21 @@ class GraphStore(GraphStoreInterface):
                 for neighbor in self.graph.neighbors(node_id):
                     edge_data = self.graph.get_edge_data(node_id, neighbor)
                     if not relation_type or edge_data.get("type") == relation_type:
-                        relations.append({
-                            "source": node_id,
-                            "target": neighbor,
-                            "type": edge_data.get("type", ""),
-                            "properties": {k: v for k, v in edge_data.items() if k != "type"}
-                        })
+                        relations.append(
+                            {
+                                "source": node_id,
+                                "target": neighbor,
+                                "type": edge_data.get("type", ""),
+                                "properties": {k: v for k, v in edge_data.items() if k != "type"},
+                            }
+                        )
                 return relations
         except Exception as e:
             logger.error(f"Error getting relations from graph store: {str(e)}")
             return []
 
     def vector_similarity_search(
-        self,
-        query_embedding: List[float],
-        similarity_top_k: int = 2,
-        filter_metadata: Optional[Dict[str, Any]] = None
+        self, query_embedding: List[float], similarity_top_k: int = 2, filter_metadata: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """Perform vector similarity search."""
         try:
@@ -270,15 +256,11 @@ class GraphStore(GraphStoreInterface):
                         query,
                         query_embedding=query_embedding,
                         top_k=similarity_top_k,
-                        **filter_metadata if filter_metadata else {}
+                        **filter_metadata if filter_metadata else {},
                     )
 
                     return [
-                        {
-                            "id": record["n"]["id"],
-                            "score": record["similarity"],
-                            "metadata": dict(record["n"])
-                        }
+                        {"id": record["n"]["id"], "score": record["similarity"], "metadata": dict(record["n"])}
                         for record in result
                     ]
             else:
@@ -294,20 +276,16 @@ class GraphStore(GraphStoreInterface):
 
                         # Convert embeddings to lists if they are numpy arrays
                         node_embedding = node_data["embedding"]
-                        if hasattr(node_embedding, 'tolist'):
+                        if hasattr(node_embedding, "tolist"):
                             node_embedding = node_embedding.tolist()
 
                         query_emb = query_embedding
-                        if hasattr(query_emb, 'tolist'):
+                        if hasattr(query_emb, "tolist"):
                             query_emb = query_emb.tolist()
 
                         # Calculate cosine similarity
                         score = self._cosine_similarity(query_emb, node_embedding)
-                        results.append({
-                            "id": node_id,
-                            "score": score,
-                            "metadata": node_data
-                        })
+                        results.append({"id": node_id, "score": score, "metadata": node_data})
 
                 # Sort by score and limit results
                 results.sort(key=lambda x: x["score"], reverse=True)
@@ -319,15 +297,12 @@ class GraphStore(GraphStoreInterface):
     def _cosine_similarity(self, v1: List[float], v2: List[float]) -> float:
         """Calculate cosine similarity between two vectors."""
         import numpy as np
+
         v1_array = np.array(v1)
         v2_array = np.array(v2)
         return np.dot(v1_array, v2_array) / (np.linalg.norm(v1_array) * np.linalg.norm(v2_array))
 
-    def query(
-        self,
-        query: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+    def query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Execute a query on the graph store.
 
@@ -372,12 +347,7 @@ class GraphStore(GraphStoreInterface):
                 logger.error(f"Error executing in-memory query: {str(e)}")
                 return []
 
-    def _match_node_pattern(
-        self,
-        node: Tuple[str, Dict[str, Any]],
-        pattern: str,
-        conditions: str
-    ) -> bool:
+    def _match_node_pattern(self, node: Tuple[str, Dict[str, Any]], pattern: str, conditions: str) -> bool:
         """Match a node against a pattern and conditions."""
         # This is a simplified implementation
         # You might want to implement a more sophisticated pattern matching
@@ -414,11 +384,7 @@ class GraphStore(GraphStoreInterface):
         return self.community_summary
 
     def get_rel_map(
-        self,
-        graph_nodes: List[str],
-        depth: int = 2,
-        limit: int = 30,
-        ignore_rels: Optional[List[str]] = None
+        self, graph_nodes: List[str], depth: int = 2, limit: int = 30, ignore_rels: Optional[List[str]] = None
     ) -> Dict[str, List[List[str]]]:
         """Get relationship map for given nodes."""
         if ignore_rels is None:
@@ -436,20 +402,14 @@ class GraphStore(GraphStoreInterface):
                     LIMIT $limit
                     """
 
-                    result = session.run(
-                        query,
-                        nodes=graph_nodes,
-                        ignore_rels=ignore_rels,
-                        depth=depth,
-                        limit=limit
-                    )
+                    result = session.run(query, nodes=graph_nodes, ignore_rels=ignore_rels, depth=depth, limit=limit)
 
                     rel_map = defaultdict(list)
                     for record in result:
                         path = record["path"]
                         nodes = [node["id"] for node in path.nodes]
                         for i, node_id in enumerate(nodes[:-1]):
-                            rel_map[node_id].append(nodes[i+1:])
+                            rel_map[node_id].append(nodes[i + 1 :])
 
                     return dict(rel_map)
             except Exception as e:
@@ -466,15 +426,12 @@ class GraphStore(GraphStoreInterface):
                         for target in self.graph.nodes():
                             if target != node_id:
                                 for path in nx.all_simple_paths(
-                                    self.graph,
-                                    source=node_id,
-                                    target=target,
-                                    cutoff=depth
+                                    self.graph, source=node_id, target=target, cutoff=depth
                                 ):
                                     # Filter out ignored relationships
                                     if not any(
-                                        self.graph[path[i]][path[i+1]]["type"] in ignore_rels
-                                        for i in range(len(path)-1)
+                                        self.graph[path[i]][path[i + 1]]["type"] in ignore_rels
+                                        for i in range(len(path) - 1)
                                     ):
                                         paths.append(path)
 
@@ -487,21 +444,17 @@ class GraphStore(GraphStoreInterface):
                 return {}
 
     def add_filing(
-        self,
-        filing_id: str,
-        text: str,
-        metadata: Dict[str, Any],
-        chunks: Optional[List[Dict[str, Any]]] = None
+        self, filing_id: str, text: str, metadata: Dict[str, Any], chunks: Optional[List[Dict[str, Any]]] = None
     ) -> bool:
         """Add a filing to the graph store."""
         try:
             # Extract key metadata for the filing node
-            filing_type = metadata.get('form_type', '')
-            filing_date = metadata.get('filing_date', '')
-            company_name = metadata.get('company_name', '')
-            ticker = metadata.get('ticker', '')
-            fiscal_year = metadata.get('fiscal_year', '')
-            fiscal_period = metadata.get('fiscal_period', '')
+            filing_type = metadata.get("form_type", "")
+            filing_date = metadata.get("filing_date", "")
+            company_name = metadata.get("company_name", "")
+            ticker = metadata.get("ticker", "")
+            fiscal_year = metadata.get("fiscal_year", "")
+            fiscal_period = metadata.get("fiscal_period", "")
 
             # Add filing node with labels
             if self.use_neo4j:
@@ -525,7 +478,7 @@ class GraphStore(GraphStoreInterface):
                         company_name=company_name,
                         ticker=ticker,
                         fiscal_year=fiscal_year,
-                        fiscal_period=fiscal_period
+                        fiscal_period=fiscal_period,
                     )
 
                     # Add company node and relationship to filing
@@ -537,12 +490,7 @@ class GraphStore(GraphStoreInterface):
                         MATCH (f:Filing {id: $filing_id})
                         MERGE (c)-[:FILED]->(f)
                         """
-                        session.run(
-                            query,
-                            ticker=ticker,
-                            company_name=company_name,
-                            filing_id=filing_id
-                        )
+                        session.run(query, ticker=ticker, company_name=company_name, filing_id=filing_id)
             else:
                 # For in-memory storage
                 self.add_node(
@@ -557,25 +505,18 @@ class GraphStore(GraphStoreInterface):
                         "fiscal_year": fiscal_year,
                         "fiscal_period": fiscal_period,
                         "accession_number": filing_id,
-                        **metadata
-                    }
+                        **metadata,
+                    },
                 )
 
                 # Add company node and relationship to filing
                 if ticker:
                     self.add_node(
                         node_id=f"company_{ticker}",
-                        properties={
-                            "type": "company",
-                            "ticker": ticker,
-                            "name": company_name
-                        }
+                        properties={"type": "company", "ticker": ticker, "name": company_name},
                     )
                     self.add_relation(
-                        source_id=f"company_{ticker}",
-                        target_id=filing_id,
-                        relation_type="FILED",
-                        properties={}
+                        source_id=f"company_{ticker}", target_id=filing_id, relation_type="FILED", properties={}
                     )
 
             # Add chunks if available
@@ -583,8 +524,8 @@ class GraphStore(GraphStoreInterface):
                 # First pass: Add all chunk nodes with improved properties
                 for i, chunk in enumerate(chunks):
                     # Determine chunk ID based on whether it's a split chunk
-                    is_split_chunk = chunk.get('is_split_chunk', False)
-                    original_order = chunk.get('original_order')
+                    is_split_chunk = chunk.get("is_split_chunk", False)
+                    original_order = chunk.get("original_order")
 
                     if is_split_chunk and original_order is not None:
                         # This is a split chunk, use a more specific ID
@@ -596,18 +537,18 @@ class GraphStore(GraphStoreInterface):
                     # Convert numpy arrays to lists in chunk metadata
                     clean_chunk = {}
                     for k, v in chunk.items():
-                        if k == 'embedding':
+                        if k == "embedding":
                             # Skip embedding as it's stored separately
                             continue
-                        if hasattr(v, 'tolist'):
+                        if hasattr(v, "tolist"):
                             clean_chunk[k] = v.tolist()
                         else:
                             clean_chunk[k] = v
 
                     # Extract section information
-                    section = chunk.get('section', '')
-                    section_title = chunk.get('section_title', '')
-                    section_number = chunk.get('section_number', '')
+                    section = chunk.get("section", "")
+                    section_title = chunk.get("section_title", "")
+                    section_number = chunk.get("section_number", "")
 
                     # Add chunk node with improved properties
                     if self.use_neo4j:
@@ -631,7 +572,7 @@ class GraphStore(GraphStoreInterface):
                             session.run(
                                 query,
                                 chunk_id=chunk_id,
-                                text=chunk.get('text', ''),
+                                text=chunk.get("text", ""),
                                 order=i,
                                 filing_id=filing_id,
                                 section=section,
@@ -639,9 +580,9 @@ class GraphStore(GraphStoreInterface):
                                 section_number=section_number,
                                 is_split_chunk=is_split_chunk,
                                 original_order=original_order if original_order is not None else i,
-                                split_chunk_index=chunk.get('split_chunk_index', 0),
+                                split_chunk_index=chunk.get("split_chunk_index", 0),
                                 item=chunk.get("item", ""),
-                                is_table=chunk.get("is_table", False)
+                                is_table=chunk.get("is_table", False),
                             )
 
                             # Add relationship to filing
@@ -659,7 +600,7 @@ class GraphStore(GraphStoreInterface):
                                 chunk_id=chunk_id,
                                 order=i,
                                 item=chunk.get("item", ""),
-                                is_table=chunk.get("is_table", False)
+                                is_table=chunk.get("is_table", False),
                             )
                     else:
                         # For in-memory storage
@@ -676,11 +617,11 @@ class GraphStore(GraphStoreInterface):
                                 "section_number": section_number,
                                 "is_split_chunk": is_split_chunk,
                                 "original_order": original_order if original_order is not None else i,
-                                "split_chunk_index": chunk.get('split_chunk_index', 0),
+                                "split_chunk_index": chunk.get("split_chunk_index", 0),
                                 "item": chunk.get("item", ""),
                                 "is_table": chunk.get("is_table", False),
-                                **clean_chunk
-                            }
+                                **clean_chunk,
+                            },
                         )
 
                         # Add relationship from filing to chunk
@@ -691,15 +632,15 @@ class GraphStore(GraphStoreInterface):
                             properties={
                                 "order": i,
                                 "item": chunk.get("item", ""),
-                                "is_table": chunk.get("is_table", False)
-                            }
+                                "is_table": chunk.get("is_table", False),
+                            },
                         )
 
                 # Second pass: Add relationships between chunks and create section nodes
                 for i, chunk in enumerate(chunks):
                     # Determine chunk ID
-                    is_split_chunk = chunk.get('is_split_chunk', False)
-                    original_order = chunk.get('original_order')
+                    is_split_chunk = chunk.get("is_split_chunk", False)
+                    original_order = chunk.get("original_order")
 
                     if is_split_chunk and original_order is not None:
                         chunk_id = f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)}"
@@ -709,8 +650,10 @@ class GraphStore(GraphStoreInterface):
                     # Add relationships between split chunks if applicable
                     if is_split_chunk:
                         # Add relationship to previous chunk if it exists
-                        prev_chunk_id = f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)-1}"
-                        if chunk.get('prev_chunk_order'):
+                        prev_chunk_id = (
+                            f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0) - 1}"
+                        )
+                        if chunk.get("prev_chunk_order"):
                             # Check if previous chunk exists
                             prev_chunk_exists = False
                             if self.use_neo4j:
@@ -734,21 +677,21 @@ class GraphStore(GraphStoreInterface):
                                             query,
                                             chunk_id=chunk_id,
                                             prev_chunk_id=prev_chunk_id,
-                                            original_order=original_order
+                                            original_order=original_order,
                                         )
                                 else:
                                     self.add_relation(
                                         source_id=chunk_id,
                                         target_id=prev_chunk_id,
                                         relation_type="FOLLOWS",
-                                        properties={
-                                            "split_group": original_order
-                                        }
+                                        properties={"split_group": original_order},
                                     )
 
                         # Add relationship to next chunk if it exists
-                        next_chunk_id = f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0)+1}"
-                        if chunk.get('next_chunk_order'):
+                        next_chunk_id = (
+                            f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0) + 1}"
+                        )
+                        if chunk.get("next_chunk_order"):
                             # Check if next chunk exists
                             next_chunk_exists = False
                             if self.use_neo4j:
@@ -772,21 +715,19 @@ class GraphStore(GraphStoreInterface):
                                             query,
                                             chunk_id=chunk_id,
                                             next_chunk_id=next_chunk_id,
-                                            original_order=original_order
+                                            original_order=original_order,
                                         )
                                 else:
                                     self.add_relation(
                                         source_id=chunk_id,
                                         target_id=next_chunk_id,
                                         relation_type="PRECEDES",
-                                        properties={
-                                            "split_group": original_order
-                                        }
+                                        properties={"split_group": original_order},
                                     )
 
                     # Create section nodes and relationships if section information is available
-                    section = chunk.get('section', '')
-                    section_title = chunk.get('section_title', '')
+                    section = chunk.get("section", "")
+                    section_title = chunk.get("section_title", "")
 
                     if section and section_title:
                         section_id = f"{filing_id}_section_{section}"
@@ -805,7 +746,7 @@ class GraphStore(GraphStoreInterface):
                                     section_id=section_id,
                                     section=section,
                                     section_title=section_title,
-                                    filing_id=filing_id
+                                    filing_id=filing_id,
                                 )
 
                                 # Link filing to section
@@ -814,11 +755,7 @@ class GraphStore(GraphStoreInterface):
                                 MATCH (s:Section {id: $section_id})
                                 MERGE (f)-[r:HAS_SECTION]->(s)
                                 """
-                                session.run(
-                                    query,
-                                    filing_id=filing_id,
-                                    section_id=section_id
-                                )
+                                session.run(query, filing_id=filing_id, section_id=section_id)
 
                                 # Link section to chunk
                                 query = """
@@ -826,11 +763,7 @@ class GraphStore(GraphStoreInterface):
                                 MATCH (c:Chunk {id: $chunk_id})
                                 MERGE (s)-[r:CONTAINS_CHUNK]->(c)
                                 """
-                                session.run(
-                                    query,
-                                    section_id=section_id,
-                                    chunk_id=chunk_id
-                                )
+                                session.run(query, section_id=section_id, chunk_id=chunk_id)
                         else:
                             # Add section node
                             self.add_node(
@@ -839,24 +772,18 @@ class GraphStore(GraphStoreInterface):
                                     "type": "section",
                                     "name": section,
                                     "title": section_title,
-                                    "parent_filing": filing_id
-                                }
+                                    "parent_filing": filing_id,
+                                },
                             )
 
                             # Link filing to section
                             self.add_relation(
-                                source_id=filing_id,
-                                target_id=section_id,
-                                relation_type="HAS_SECTION",
-                                properties={}
+                                source_id=filing_id, target_id=section_id, relation_type="HAS_SECTION", properties={}
                             )
 
                             # Link section to chunk
                             self.add_relation(
-                                source_id=section_id,
-                                target_id=chunk_id,
-                                relation_type="CONTAINS_CHUNK",
-                                properties={}
+                                source_id=section_id, target_id=chunk_id, relation_type="CONTAINS_CHUNK", properties={}
                             )
 
             return True
@@ -876,7 +803,7 @@ class GraphStore(GraphStoreInterface):
             "4": "Statement of changes in beneficial ownership",
             "13F": "Quarterly report of investment holdings",
             "13D": "Statement of beneficial ownership",
-            "13G": "Statement of beneficial ownership by passive investors"
+            "13G": "Statement of beneficial ownership by passive investors",
         }
         return form_descriptions.get(form_type, "SEC filing")
 
@@ -890,7 +817,7 @@ class GraphStore(GraphStoreInterface):
         form_structures = {
             "10-K": {"ITEM_1": {"Title": "Business"}},
             "10-Q": {"ITEM_1": {"Title": "Financial Statements"}},
-            "8-K": {"ITEM_1": {"Title": "Registrant's Business and Operations"}}
+            "8-K": {"ITEM_1": {"Title": "Registrant's Business and Operations"}},
         }
 
         # Get structure if available
@@ -906,10 +833,7 @@ class GraphStore(GraphStoreInterface):
                     description = item_info.get("Description", description)
                     break
 
-        return {
-            "category": category,
-            "description": description
-        }
+        return {"category": category, "description": description}
 
     def get_filing_nodes(self, filing_id: str) -> List[Dict[str, Any]]:
         """Get all nodes related to a filing.
@@ -932,11 +856,13 @@ class GraphStore(GraphStoreInterface):
 
                     nodes = []
                     for record in result:
-                        nodes.append({
-                            "filing": dict(record["f"]),
-                            "relationship": dict(record["r"]),
-                            "related": dict(record["related"])
-                        })
+                        nodes.append(
+                            {
+                                "filing": dict(record["f"]),
+                                "relationship": dict(record["r"]),
+                                "related": dict(record["related"]),
+                            }
+                        )
                     return nodes
             except Exception as e:
                 logger.error(f"Error getting filing nodes from Neo4j: {str(e)}")
@@ -948,11 +874,13 @@ class GraphStore(GraphStoreInterface):
                 if filing_id in self.graph:
                     for neighbor in self.graph.neighbors(filing_id):
                         edge_data = self.graph.get_edge_data(filing_id, neighbor)
-                        nodes.append({
-                            "filing": self.graph.nodes[filing_id],
-                            "relationship": edge_data,
-                            "related": self.graph.nodes[neighbor]
-                        })
+                        nodes.append(
+                            {
+                                "filing": self.graph.nodes[filing_id],
+                                "relationship": edge_data,
+                                "related": self.graph.nodes[neighbor],
+                            }
+                        )
                 return nodes
             except Exception as e:
                 logger.error(f"Error getting filing nodes from memory: {str(e)}")
@@ -992,12 +920,14 @@ class GraphStore(GraphStoreInterface):
 
                     relationships = []
                     for record in result:
-                        relationships.append({
-                            "type": record["type"],
-                            "properties": record["properties"],
-                            "from_id": record["from_id"],
-                            "to_id": record["to_id"]
-                        })
+                        relationships.append(
+                            {
+                                "type": record["type"],
+                                "properties": record["properties"],
+                                "from_id": record["from_id"],
+                                "to_id": record["to_id"],
+                            }
+                        )
                     return relationships
             except Exception as e:
                 logger.error(f"Error getting filing relationships from Neo4j: {str(e)}")
@@ -1024,18 +954,22 @@ class GraphStore(GraphStoreInterface):
                     # Get relationships
                     for neighbor in self.graph.neighbors(filing_id):
                         edge_data = self.graph.get_edge_data(filing_id, neighbor)
-                        relationships.append({
-                            "type": edge_data.get("type", ""),
-                            "properties": {k: v for k, v in edge_data.items() if k != "type"},
-                            "from_id": filing_id,
-                            "to_id": neighbor
-                        })
+                        relationships.append(
+                            {
+                                "type": edge_data.get("type", ""),
+                                "properties": {k: v for k, v in edge_data.items() if k != "type"},
+                                "from_id": filing_id,
+                                "to_id": neighbor,
+                            }
+                        )
                 return relationships
             except Exception as e:
                 logger.error(f"Error getting filing relationships from memory: {str(e)}")
                 return []
 
-    def get_filings_by_companies(self, companies: List[str], filing_types: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def get_filings_by_companies(
+        self, companies: List[str], filing_types: Optional[List[str]] = None
+    ) -> List[Dict[str, Any]]:
         """Get all filings for specified companies.
 
         Args:
@@ -1085,12 +1019,14 @@ class GraphStore(GraphStoreInterface):
                         # Check if it matches our filters
                         if ticker in companies:
                             if filing_types is None or filing_type in filing_types:
-                                filings.append({
-                                    "id": node,
-                                    "type": filing_type,
-                                    "date": attrs.get("filing_date"),
-                                    "ticker": ticker
-                                })
+                                filings.append(
+                                    {
+                                        "id": node,
+                                        "type": filing_type,
+                                        "date": attrs.get("filing_date"),
+                                        "ticker": ticker,
+                                    }
+                                )
 
                 # Sort by date (descending)
                 filings.sort(key=lambda x: x.get("date", ""), reverse=True)
@@ -1105,7 +1041,7 @@ class GraphStore(GraphStoreInterface):
         entity_type: str,
         context: str,
         chunk_id: str,
-        properties: Optional[Dict[str, Any]] = None
+        properties: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Add an entity to the graph and create relationships.
@@ -1121,12 +1057,7 @@ class GraphStore(GraphStoreInterface):
             properties = {}
 
         # Create entity node
-        entity_node = {
-            "name": entity_name,
-            "type": entity_type,
-            "context": context,
-            **properties
-        }
+        entity_node = {"name": entity_name, "type": entity_type, "context": context, **properties}
 
         # Add entity node
         self.add_node("Entity", entity_node)
@@ -1138,10 +1069,7 @@ class GraphStore(GraphStoreInterface):
             "CONTAINS_ENTITY",
             "Entity",
             {"name": entity_name},
-            properties={
-                "context": context,
-                "relevance": properties.get("relevance", 1.0)
-            }
+            properties={"context": context, "relevance": properties.get("relevance", 1.0)},
         )
 
         # Add relationship between entity and filing if available
@@ -1153,18 +1081,11 @@ class GraphStore(GraphStoreInterface):
                 "MENTIONED_IN",
                 "Filing",
                 {"accession_number": filing_id},
-                properties={
-                    "context": context,
-                    "chunk_id": chunk_id
-                }
+                properties={"context": context, "chunk_id": chunk_id},
             )
 
     def add_entity_relationship(
-        self,
-        entity1_name: str,
-        entity2_name: str,
-        relationship_type: str,
-        properties: Optional[Dict[str, Any]] = None
+        self, entity1_name: str, entity2_name: str, relationship_type: str, properties: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Add a relationship between two entities.
@@ -1179,20 +1100,11 @@ class GraphStore(GraphStoreInterface):
             properties = {}
 
         self.add_relation(
-            "Entity",
-            {"name": entity1_name},
-            relationship_type,
-            "Entity",
-            {"name": entity2_name},
-            properties=properties
+            "Entity", {"name": entity1_name}, relationship_type, "Entity", {"name": entity2_name}, properties=properties
         )
 
     def update_chunk_similarity(
-        self,
-        chunk1_id: str,
-        chunk2_id: str,
-        similarity_score: float,
-        relationship_type: str = "semantic"
+        self, chunk1_id: str, chunk2_id: str, similarity_score: float, relationship_type: str = "semantic"
     ) -> None:
         """
         Update the similarity score between two chunks.
@@ -1209,17 +1121,11 @@ class GraphStore(GraphStoreInterface):
             "SIMILAR_TO",
             "Chunk",
             {"chunkId": chunk2_id},
-            properties={
-                "similarity_score": similarity_score,
-                "relationship_type": relationship_type
-            }
+            properties={"similarity_score": similarity_score, "relationship_type": relationship_type},
         )
 
     def get_related_chunks(
-        self,
-        chunk_id: str,
-        min_similarity: float = 0.7,
-        max_chunks: int = 10
+        self, chunk_id: str, min_similarity: float = 0.7, max_chunks: int = 10
     ) -> List[Dict[str, Any]]:
         """
         Get chunks related to a given chunk through similarity or topic.
@@ -1248,19 +1154,10 @@ class GraphStore(GraphStoreInterface):
                     LIMIT $max_chunks
                     """
 
-                    result = session.run(
-                        query,
-                        chunk_id=chunk_id,
-                        min_similarity=min_similarity,
-                        max_chunks=max_chunks
-                    )
+                    result = session.run(query, chunk_id=chunk_id, min_similarity=min_similarity, max_chunks=max_chunks)
 
                     return [
-                        {
-                            "chunk": dict(record["related"]),
-                            "score": record["score"],
-                            "type": record["type"]
-                        }
+                        {"chunk": dict(record["related"]), "score": record["score"], "type": record["type"]}
                         for record in result
                     ]
             except Exception as e:
@@ -1274,15 +1171,14 @@ class GraphStore(GraphStoreInterface):
                 # Get similar chunks
                 for neighbor in self.graph.neighbors(chunk_id):
                     edge_data = self.graph.get_edge_data(chunk_id, neighbor)
-                    if (
-                        edge_data.get("type") == "SIMILAR_TO"
-                        and edge_data.get("similarity_score", 0) >= min_similarity
-                    ):
-                        related_chunks.append({
-                            "chunk": self.graph.nodes[neighbor],
-                            "score": edge_data["similarity_score"],
-                            "type": "similarity"
-                        })
+                    if edge_data.get("type") == "SIMILAR_TO" and edge_data.get("similarity_score", 0) >= min_similarity:
+                        related_chunks.append(
+                            {
+                                "chunk": self.graph.nodes[neighbor],
+                                "score": edge_data["similarity_score"],
+                                "type": "similarity",
+                            }
+                        )
 
                 # Sort by score and limit
                 related_chunks.sort(key=lambda x: x["score"], reverse=True)
@@ -1296,7 +1192,7 @@ class GraphStore(GraphStoreInterface):
         filing_id: str,
         related_filing_id: str,
         relationship_type: str = "RELATED_TO",
-        properties: Optional[Dict[str, Any]] = None
+        properties: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Add a relationship between related filings.
@@ -1316,16 +1212,11 @@ class GraphStore(GraphStoreInterface):
             relationship_type,
             "Filing",
             {"accession_number": related_filing_id},
-            properties=properties
+            properties=properties,
         )
 
     def add_xbrl_fact(
-        self,
-        filing_id: str,
-        element_id: str,
-        context_id: str,
-        value: str,
-        properties: Optional[Dict[str, Any]] = None
+        self, filing_id: str, element_id: str, context_id: str, value: str, properties: Optional[Dict[str, Any]] = None
     ) -> None:
         """
         Add an XBRL fact to the graph.
@@ -1342,45 +1233,21 @@ class GraphStore(GraphStoreInterface):
 
         # Create fact node
         fact_id = f"{filing_id}_{element_id}_{context_id}"
-        fact_node = {
-            "factId": fact_id,
-            "elementId": element_id,
-            "contextId": context_id,
-            "value": value,
-            **properties
-        }
+        fact_node = {"factId": fact_id, "elementId": element_id, "contextId": context_id, "value": value, **properties}
 
         # Add fact node
         self.add_node("XbrlFact", fact_node)
 
         # Add relationship to filing
-        self.add_relation(
-            "Filing",
-            {"accession_number": filing_id},
-            "CONTAINS_FACT",
-            "XbrlFact",
-            {"factId": fact_id}
-        )
+        self.add_relation("Filing", {"accession_number": filing_id}, "CONTAINS_FACT", "XbrlFact", {"factId": fact_id})
 
         # Add relationship to element if available
         if "element" in properties:
-            self.add_relation(
-                "XbrlFact",
-                {"factId": fact_id},
-                "USES_ELEMENT",
-                "XbrlElement",
-                {"elementId": element_id}
-            )
+            self.add_relation("XbrlFact", {"factId": fact_id}, "USES_ELEMENT", "XbrlElement", {"elementId": element_id})
 
         # Add relationship to context if available
         if "context" in properties:
-            self.add_relation(
-                "XbrlFact",
-                {"factId": fact_id},
-                "HAS_CONTEXT",
-                "XbrlContext",
-                {"contextId": context_id}
-            )
+            self.add_relation("XbrlFact", {"factId": fact_id}, "HAS_CONTEXT", "XbrlContext", {"contextId": context_id})
 
     def add_xbrl_element(
         self,
@@ -1390,7 +1257,7 @@ class GraphStore(GraphStoreInterface):
         period_type: str,
         balance: Optional[str] = None,
         abstract: bool = False,
-        labels: Optional[Dict[str, str]] = None
+        labels: Optional[Dict[str, str]] = None,
     ) -> None:
         """
         Add an XBRL element to the graph.
@@ -1415,7 +1282,7 @@ class GraphStore(GraphStoreInterface):
             "periodType": period_type,
             "balance": balance,
             "abstract": abstract,
-            "labels": labels
+            "labels": labels,
         }
 
         # Add element node
@@ -1426,7 +1293,7 @@ class GraphStore(GraphStoreInterface):
         context_id: str,
         entity: Dict[str, str],
         period: Dict[str, Any],
-        dimensions: Optional[Dict[str, str]] = None
+        dimensions: Optional[Dict[str, str]] = None,
     ) -> None:
         """
         Add an XBRL context to the graph.
@@ -1441,12 +1308,7 @@ class GraphStore(GraphStoreInterface):
             dimensions = {}
 
         # Create context node
-        context_node = {
-            "contextId": context_id,
-            "entity": entity,
-            "period": period,
-            "dimensions": dimensions
-        }
+        context_node = {"contextId": context_id, "entity": entity, "period": period, "dimensions": dimensions}
 
         # Add context node
         self.add_node("XbrlContext", context_node)
@@ -1454,18 +1316,10 @@ class GraphStore(GraphStoreInterface):
         # Add relationship to entity if available
         if "identifier" in entity:
             self.add_relation(
-                "XbrlContext",
-                {"contextId": context_id},
-                "FOR_ENTITY",
-                "Company",
-                {"cik": entity["identifier"]}
+                "XbrlContext", {"contextId": context_id}, "FOR_ENTITY", "Company", {"cik": entity["identifier"]}
             )
 
-    def get_related_filings(
-        self,
-        filing_id: str,
-        relationship_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_related_filings(self, filing_id: str, relationship_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get filings related to a given filing.
 
@@ -1491,11 +1345,7 @@ class GraphStore(GraphStoreInterface):
                     result = session.run(query, filing_id=filing_id)
 
                     return [
-                        {
-                            "filing": dict(record["related"]),
-                            "type": record["type"],
-                            "properties": record["properties"]
-                        }
+                        {"filing": dict(record["related"]), "type": record["type"], "properties": record["properties"]}
                         for record in result
                     ]
             except Exception as e:
@@ -1514,17 +1364,16 @@ class GraphStore(GraphStoreInterface):
                     if relationship_type and edge_data.get("type") != relationship_type:
                         continue
 
-                    related_filings.append({
-                        "filing": self.graph.nodes[neighbor],
-                        "type": edge_data.get("type", ""),
-                        "properties": {k: v for k, v in edge_data.items() if k != "type"}
-                    })
+                    related_filings.append(
+                        {
+                            "filing": self.graph.nodes[neighbor],
+                            "type": edge_data.get("type", ""),
+                            "properties": {k: v for k, v in edge_data.items() if k != "type"},
+                        }
+                    )
 
                 # Sort by filing date
-                related_filings.sort(
-                    key=lambda x: x["filing"].get("filing_date", ""),
-                    reverse=True
-                )
+                related_filings.sort(key=lambda x: x["filing"].get("filing_date", ""), reverse=True)
 
                 return related_filings
             except Exception as e:

@@ -1,28 +1,24 @@
+import logging
 import os
 import time
-import logging
-from typing import Any, AsyncGenerator, Optional, List, Dict, Union
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 
 import openai
 from dotenv import load_dotenv
 
+from ..utils.timing import TimingContext, timed_function
 from .base import BaseLLM
-from ..utils.timing import timed_function, TimingContext
 
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
+
 class OpenAILLM(BaseLLM):
     """OpenAI LLM implementation using the OpenAI API."""
 
-    def __init__(
-        self,
-        model: str = "gpt-4-turbo-preview",
-        api_key: Optional[str] = None,
-        **kwargs: Any
-    ):
+    def __init__(self, model: str = "gpt-4-turbo-preview", api_key: Optional[str] = None, **kwargs: Any):
         """Initialize the OpenAI LLM.
 
         Args:
@@ -34,12 +30,13 @@ class OpenAILLM(BaseLLM):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
 
         if not self.api_key:
-            raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY environment variable or pass api_key parameter.")
+            raise ValueError(
+                "OpenAI API key not found. Set OPENAI_API_KEY environment variable or pass api_key parameter."
+            )
 
         # Create OpenAI client instance
         self.client = openai.OpenAI(
-            api_key=self.api_key,
-            base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
+            api_key=self.api_key, base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
         )
 
     @timed_function(category="llm")
@@ -51,7 +48,7 @@ class OpenAILLM(BaseLLM):
         max_tokens: Optional[int] = None,
         json_mode: bool = False,
         return_usage: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Union[str, Dict[str, Any]]:
         """Generate a response using OpenAI's API.
 
@@ -75,7 +72,9 @@ class OpenAILLM(BaseLLM):
 
         # Log the request details
         token_estimate = len(prompt.split()) // 4  # Rough estimate
-        logger.debug(f"LLM Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, json_mode={json_mode}")
+        logger.debug(
+            f"LLM Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, json_mode={json_mode}"
+        )
 
         # Prepare API call parameters
         api_params = {
@@ -83,7 +82,7 @@ class OpenAILLM(BaseLLM):
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            **kwargs
+            **kwargs,
         }
 
         # Add response_format for JSON mode if requested
@@ -96,9 +95,9 @@ class OpenAILLM(BaseLLM):
             response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
-        completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else "unknown"
-        prompt_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else "unknown"
-        total_tokens = response.usage.total_tokens if hasattr(response, 'usage') else "unknown"
+        completion_tokens = response.usage.completion_tokens if hasattr(response, "usage") else "unknown"
+        prompt_tokens = response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
+        total_tokens = response.usage.total_tokens if hasattr(response, "usage") else "unknown"
 
         logger.info(f"LLM Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
 
@@ -106,15 +105,12 @@ class OpenAILLM(BaseLLM):
         usage = {
             "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
-            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0
+            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
         }
 
         # Return based on return_usage parameter
         if return_usage:
-            return {
-                "content": response.choices[0].message.content,
-                "usage": usage
-            }
+            return {"content": response.choices[0].message.content, "usage": usage}
         else:
             return response.choices[0].message.content
 
@@ -126,7 +122,7 @@ class OpenAILLM(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         json_mode: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> AsyncGenerator[str, None]:
         """Generate a streaming response using OpenAI's API.
 
@@ -148,7 +144,9 @@ class OpenAILLM(BaseLLM):
 
         # Log the request details
         token_estimate = len(prompt.split()) // 4  # Rough estimate
-        logger.debug(f"LLM Stream Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, json_mode={json_mode}")
+        logger.debug(
+            f"LLM Stream Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, json_mode={json_mode}"
+        )
 
         start_time = time.time()
         chunk_count = 0
@@ -161,7 +159,7 @@ class OpenAILLM(BaseLLM):
             "temperature": temperature,
             "max_tokens": max_tokens,
             "stream": True,
-            **kwargs
+            **kwargs,
         }
 
         # Add response_format for JSON mode if requested
@@ -182,7 +180,9 @@ class OpenAILLM(BaseLLM):
 
         # Log completion info
         duration = time.time() - start_time
-        logger.info(f"LLM Stream completed: chunks={chunk_count}, chars={total_chars}, time={duration:.2f}s, rate={total_chars/duration:.1f} chars/sec")
+        logger.info(
+            f"LLM Stream completed: chunks={chunk_count}, chars={total_chars}, time={duration:.2f}s, rate={total_chars / duration:.1f} chars/sec"
+        )
 
     @timed_function(category="llm_function_call")
     async def generate_with_functions(
@@ -194,7 +194,7 @@ class OpenAILLM(BaseLLM):
         max_tokens: Optional[int] = None,
         function_call: Optional[Union[str, Dict[str, str]]] = None,
         return_usage: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """Generate a response using OpenAI's function calling API.
 
@@ -222,7 +222,9 @@ class OpenAILLM(BaseLLM):
 
         # Log the request details
         token_estimate = len(prompt.split()) // 4  # Rough estimate
-        logger.debug(f"LLM Function Call Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, functions={len(functions)}")
+        logger.debug(
+            f"LLM Function Call Request: model={self.model}, tokens~{token_estimate}, temp={temperature}, functions={len(functions)}"
+        )
 
         # Prepare API call parameters
         api_params = {
@@ -230,11 +232,8 @@ class OpenAILLM(BaseLLM):
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "tools": [{
-                "type": "function",
-                "function": function
-            } for function in functions],
-            **kwargs
+            "tools": [{"type": "function", "function": function} for function in functions],
+            **kwargs,
         }
 
         # Add function_call parameter if provided
@@ -242,27 +241,26 @@ class OpenAILLM(BaseLLM):
             if isinstance(function_call, str):
                 api_params["tool_choice"] = function_call
             elif isinstance(function_call, dict) and "name" in function_call:
-                api_params["tool_choice"] = {
-                    "type": "function",
-                    "function": {"name": function_call["name"]}
-                }
+                api_params["tool_choice"] = {"type": "function", "function": {"name": function_call["name"]}}
 
         # Time the API call specifically
         with TimingContext("openai_api_call", category="api", logger=logger):
             response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
-        completion_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else "unknown"
-        prompt_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else "unknown"
-        total_tokens = response.usage.total_tokens if hasattr(response, 'usage') else "unknown"
+        completion_tokens = response.usage.completion_tokens if hasattr(response, "usage") else "unknown"
+        prompt_tokens = response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
+        total_tokens = response.usage.total_tokens if hasattr(response, "usage") else "unknown"
 
-        logger.info(f"LLM Function Call Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
+        logger.info(
+            f"LLM Function Call Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})"
+        )
 
         # Extract usage information
         usage = {
             "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
-            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0
+            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
         }
 
         # Extract response content and function call information
@@ -272,13 +270,10 @@ class OpenAILLM(BaseLLM):
         }
 
         # Extract function call information if available
-        if hasattr(message, 'tool_calls') and message.tool_calls:
+        if hasattr(message, "tool_calls") and message.tool_calls:
             tool_call = message.tool_calls[0]
             if tool_call.type == "function":
-                result["function_call"] = {
-                    "name": tool_call.function.name,
-                    "arguments": tool_call.function.arguments
-                }
+                result["function_call"] = {"name": tool_call.function.name, "arguments": tool_call.function.arguments}
 
         # Add usage information if requested
         if return_usage:

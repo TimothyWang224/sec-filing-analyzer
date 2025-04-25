@@ -5,15 +5,16 @@ This script launches a web server that provides a browser-based interface to a D
 """
 
 import argparse
+import json
 import os
-import webbrowser
-from http.server import HTTPServer, SimpleHTTPRequestHandler
 import threading
 import time
-import duckdb
-import json
 import urllib.parse
+import webbrowser
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+
+import duckdb
 
 # HTML template for the web interface
 HTML_TEMPLATE = """
@@ -295,74 +296,77 @@ HTML_TEMPLATE = """
 </html>
 """
 
+
 class DuckDBWebHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, db_path=None, **kwargs):
         self.db_path = db_path
         self.conn = duckdb.connect(db_path)
         super().__init__(*args, **kwargs)
-    
+
     def do_GET(self):
-        if self.path == '/':
+        if self.path == "/":
             self.send_response(200)
-            self.send_header('Content-type', 'text/html')
+            self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(HTML_TEMPLATE.encode())
-        elif self.path == '/api/tables':
+        elif self.path == "/api/tables":
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
+            self.send_header("Content-type", "application/json")
             self.end_headers()
-            
+
             try:
                 tables = self.conn.execute("SHOW TABLES").fetchall()
                 tables = [table[0] for table in tables]
-                self.wfile.write(json.dumps({'tables': tables}).encode())
+                self.wfile.write(json.dumps({"tables": tables}).encode())
             except Exception as e:
-                self.wfile.write(json.dumps({'error': str(e)}).encode())
-        elif self.path == '/api/schema':
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+        elif self.path == "/api/schema":
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
+            self.send_header("Content-type", "application/json")
             self.end_headers()
-            
+
             try:
                 tables = self.conn.execute("SHOW TABLES").fetchall()
                 tables = [table[0] for table in tables]
-                
+
                 schema = {}
                 for table in tables:
                     columns = self.conn.execute(f"PRAGMA table_info('{table}')").fetchall()
                     schema[table] = []
-                    
+
                     for col in columns:
-                        schema[table].append({
-                            'name': col[1],
-                            'type': col[2],
-                            'nullable': not col[3],
-                            'default': col[4],
-                            'primary_key': col[5] == 1
-                        })
-                
-                self.wfile.write(json.dumps({'schema': schema}).encode())
+                        schema[table].append(
+                            {
+                                "name": col[1],
+                                "type": col[2],
+                                "nullable": not col[3],
+                                "default": col[4],
+                                "primary_key": col[5] == 1,
+                            }
+                        )
+
+                self.wfile.write(json.dumps({"schema": schema}).encode())
             except Exception as e:
-                self.wfile.write(json.dumps({'error': str(e)}).encode())
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def do_POST(self):
-        if self.path == '/api/query':
-            content_length = int(self.headers['Content-Length'])
+        if self.path == "/api/query":
+            content_length = int(self.headers["Content-Length"])
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode())
-            
+
             self.send_response(200)
-            self.send_header('Content-type', 'application/json')
+            self.send_header("Content-type", "application/json")
             self.end_headers()
-            
+
             try:
-                query = data.get('query', '')
+                query = data.get("query", "")
                 result = self.conn.execute(query).fetchall()
                 columns = [desc[0] for desc in self.conn.description]
-                
+
                 # Convert to list of dictionaries
                 rows = []
                 for row in result:
@@ -374,50 +378,53 @@ class DuckDBWebHandler(SimpleHTTPRequestHandler):
                         else:
                             row_dict[col] = str(row[i])
                     rows.append(row_dict)
-                
-                self.wfile.write(json.dumps({'columns': columns, 'rows': rows}).encode())
+
+                self.wfile.write(json.dumps({"columns": columns, "rows": rows}).encode())
             except Exception as e:
-                self.wfile.write(json.dumps({'error': str(e)}).encode())
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
 
+
 def run_server(port, db_path):
     handler = lambda *args, **kwargs: DuckDBWebHandler(*args, db_path=db_path, **kwargs)
-    server = HTTPServer(('localhost', port), handler)
+    server = HTTPServer(("localhost", port), handler)
     print(f"Starting DuckDB Web Explorer at http://localhost:{port}")
     print(f"Connected to database: {db_path}")
     server.serve_forever()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Launch a web-based DuckDB explorer")
     parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
     parser.add_argument("--port", type=int, default=8000, help="Port to run the web server on")
-    
+
     args = parser.parse_args()
-    
+
     # Ensure the database file exists
     db_path = args.db
     if not os.path.exists(db_path):
         print(f"Database file not found: {db_path}")
         return
-    
+
     # Start the server in a separate thread
     server_thread = threading.Thread(target=run_server, args=(args.port, db_path))
     server_thread.daemon = True
     server_thread.start()
-    
+
     # Open the browser
     url = f"http://localhost:{args.port}"
     print(f"Opening {url} in your browser...")
     webbrowser.open(url)
-    
+
     # Keep the main thread running
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         print("Shutting down...")
+
 
 if __name__ == "__main__":
     main()

@@ -7,7 +7,4 @@ This module provides interfaces and implementations for large language models.
 from .base import LLM
 from .openai import OpenAILLM
 
-__all__ = [
-    'LLM',
-    'OpenAILLM'
-]
+__all__ = ["LLM", "OpenAILLM"]

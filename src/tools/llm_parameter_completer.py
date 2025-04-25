@@ -8,11 +8,12 @@ which can extract relevant information from user input and context.
 import json
 import logging
 import re
-from typing import Dict, Any, List, Optional, Union
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
 
 from sec_filing_analyzer.llm import BaseLLM
-from ..utils.json_utils import safe_parse_json, repair_json
+
+from ..utils.json_utils import repair_json, safe_parse_json
 from .tool_parameter_helper import get_tool_parameter_schema, validate_tool_parameters
 
 # Configure logging
@@ -42,7 +43,7 @@ class LLMParameterCompleter:
         tool_name: str,
         partial_parameters: Dict[str, Any],
         user_input: str,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Complete tool parameters using the LLM.
@@ -94,7 +95,7 @@ Return only the completed parameters as a JSON object.
                 prompt=prompt,
                 system_prompt=system_prompt,
                 temperature=0.2,  # Low temperature for more deterministic extraction
-                json_mode=True  # Force the model to return valid JSON
+                json_mode=True,  # Force the model to return valid JSON
             )
 
             # Parse completed parameters from response
@@ -130,7 +131,7 @@ Return only the completed parameters as a JSON object.
         partial_parameters: Dict[str, Any],
         user_input: str,
         errors: List[str],
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Create a prompt for parameter completion."""
         # Format the schema for the prompt
@@ -205,7 +206,7 @@ Return only the completed parameters as a JSON object.
             completed_parameters = safe_parse_json(response, default_value={}, expected_type="object")
 
             # If parsing failed and we have an LLM instance, try to repair
-            if not completed_parameters and hasattr(self, 'llm'):
+            if not completed_parameters and hasattr(self, "llm"):
                 logger.info("Attempting to repair JSON parameters")
                 completed_parameters = await repair_json(response, self.llm, default_value={}, expected_type="object")
 
@@ -227,7 +228,9 @@ Return only the completed parameters as a JSON object.
             else:
                 target[key] = value
 
-    def _backfill_required_parameters(self, tool_name: str, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _backfill_required_parameters(
+        self, tool_name: str, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """Back-fill required parameters from context."""
         if not context:
             return parameters
@@ -267,10 +270,7 @@ Return only the completed parameters as a JSON object.
         return enhanced_params
 
     async def _enhance_sec_graph_query_parameters(
-        self,
-        parameters: Dict[str, Any],
-        user_input: str,
-        context: Optional[Dict[str, Any]] = None
+        self, parameters: Dict[str, Any], user_input: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Enhance parameters for the sec_graph_query tool."""
         enhanced_params = parameters.copy()
@@ -306,10 +306,7 @@ Return only the completed parameters as a JSON object.
         return enhanced_params
 
     async def _enhance_sec_financial_data_parameters(
-        self,
-        parameters: Dict[str, Any],
-        user_input: str,
-        context: Optional[Dict[str, Any]] = None
+        self, parameters: Dict[str, Any], user_input: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Enhance parameters for the sec_financial_data tool."""
         enhanced_params = parameters.copy()
@@ -340,10 +337,7 @@ Return only the completed parameters as a JSON object.
         return enhanced_params
 
     async def _enhance_sec_semantic_search_parameters(
-        self,
-        parameters: Dict[str, Any],
-        user_input: str,
-        context: Optional[Dict[str, Any]] = None
+        self, parameters: Dict[str, Any], user_input: str, context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Enhance parameters for the sec_semantic_search tool."""
         enhanced_params = parameters.copy()
@@ -374,11 +368,7 @@ Return only the completed parameters as a JSON object.
 
         return enhanced_params
 
-    async def _extract_company_info(
-        self,
-        text: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _extract_company_info(self, text: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Extract company information from text."""
         # Check if we already have company information in the context
         if context and "company_info" in context:
@@ -407,7 +397,7 @@ Return only the extracted information as a JSON object.
             prompt=prompt,
             system_prompt=system_prompt,
             temperature=0.2,
-            json_mode=True  # Force the model to return valid JSON
+            json_mode=True,  # Force the model to return valid JSON
         )
 
         try:
@@ -487,7 +477,7 @@ Return only the extracted information as a JSON object.
             "target": "TGT",
             "costco": "COST",
             "lowes": "LOW",
-            "lowe's": "LOW"
+            "lowe's": "LOW",
         }
 
         # Check if the company name is in the common tickers
@@ -511,11 +501,11 @@ Return only the ticker symbol as a string.
             prompt=prompt,
             system_prompt=system_prompt,
             temperature=0.2,
-            json_mode=False  # Don't use JSON mode for ticker resolution (we want a simple string)
+            json_mode=False,  # Don't use JSON mode for ticker resolution (we want a simple string)
         )
 
         # Extract ticker from response
-        ticker_match = re.search(r'[A-Z]{1,5}', response)
+        ticker_match = re.search(r"[A-Z]{1,5}", response)
         if ticker_match:
             return ticker_match.group(0)
 
@@ -527,23 +517,23 @@ Return only the ticker symbol as a string.
         result = {}
 
         # Try to extract specific dates
-        date_pattern = r'(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4}|\d{1,2}/\d{1,2}/\d{2})'
+        date_pattern = r"(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4}|\d{1,2}/\d{1,2}/\d{2})"
         dates = re.findall(date_pattern, text)
 
         # Normalize dates to YYYY-MM-DD format
         normalized_dates = []
         for date_str in dates:
             try:
-                if '-' in date_str:
+                if "-" in date_str:
                     # Already in YYYY-MM-DD format
                     normalized_dates.append(date_str)
-                elif '/' in date_str:
+                elif "/" in date_str:
                     # Convert MM/DD/YYYY or MM/DD/YY to YYYY-MM-DD
-                    parts = date_str.split('/')
+                    parts = date_str.split("/")
                     if len(parts) == 3:
                         month, day, year = parts
                         if len(year) == 2:
-                            year = '20' + year  # Assume 20xx for 2-digit years
+                            year = "20" + year  # Assume 20xx for 2-digit years
                         normalized_dates.append(f"{year}-{month.zfill(2)}-{day.zfill(2)}")
             except Exception:
                 pass
@@ -556,7 +546,7 @@ Return only the ticker symbol as a string.
 
         # If we don't have specific dates, try to extract year references
         if not result:
-            year_pattern = r'\b(20\d{2})\b'
+            year_pattern = r"\b(20\d{2})\b"
             years = re.findall(year_pattern, text)
 
             if years:
@@ -574,16 +564,16 @@ Return only the ticker symbol as a string.
         # If we still don't have dates, check for relative time references
         if not result:
             # Check for "last X years"
-            last_years_match = re.search(r'last\s+(\d+)\s+years?', text, re.IGNORECASE)
+            last_years_match = re.search(r"last\s+(\d+)\s+years?", text, re.IGNORECASE)
             if last_years_match:
                 years = int(last_years_match.group(1))
                 end_date = datetime.now()
-                start_date = end_date - timedelta(days=years*365)
+                start_date = end_date - timedelta(days=years * 365)
                 result["start_date"] = start_date.strftime("%Y-%m-%d")
                 result["end_date"] = end_date.strftime("%Y-%m-%d")
 
             # Check for "since YYYY"
-            since_year_match = re.search(r'since\s+(20\d{2})', text, re.IGNORECASE)
+            since_year_match = re.search(r"since\s+(20\d{2})", text, re.IGNORECASE)
             if since_year_match:
                 year = since_year_match.group(1)
                 result["start_date"] = f"{year}-01-01"
@@ -593,7 +583,7 @@ Return only the ticker symbol as a string.
         if not result:
             # Default to last 3 years
             end_date = datetime.now()
-            start_date = end_date - timedelta(days=3*365)
+            start_date = end_date - timedelta(days=3 * 365)
             result["start_date"] = start_date.strftime("%Y-%m-%d")
             result["end_date"] = end_date.strftime("%Y-%m-%d")
 
@@ -604,13 +594,13 @@ Return only the ticker symbol as a string.
         filing_types = []
 
         # Check for common filing type references
-        if re.search(r'\b10-K\b|\bannual\b|\bannual\s+report\b', text, re.IGNORECASE):
+        if re.search(r"\b10-K\b|\bannual\b|\bannual\s+report\b", text, re.IGNORECASE):
             filing_types.append("10-K")
 
-        if re.search(r'\b10-Q\b|\bquarterly\b|\bquarterly\s+report\b', text, re.IGNORECASE):
+        if re.search(r"\b10-Q\b|\bquarterly\b|\bquarterly\s+report\b", text, re.IGNORECASE):
             filing_types.append("10-Q")
 
-        if re.search(r'\b8-K\b|\bcurrent\b|\bcurrent\s+report\b', text, re.IGNORECASE):
+        if re.search(r"\b8-K\b|\bcurrent\b|\bcurrent\s+report\b", text, re.IGNORECASE):
             filing_types.append("8-K")
 
         # If no specific filing types are mentioned, default to 10-K and 10-Q
@@ -644,13 +634,13 @@ Return only the ticker symbol as a string.
             "r&d": ["ResearchAndDevelopment", "R&D"],
             "inventory": ["Inventory", "TotalInventory"],
             "accounts receivable": ["AccountsReceivable", "AR"],
-            "accounts payable": ["AccountsPayable", "AP"]
+            "accounts payable": ["AccountsPayable", "AP"],
         }
 
         # Check for common metric references
         metrics = []
         for keyword, metric_names in common_metrics.items():
-            if re.search(r'\b' + re.escape(keyword) + r'\b', text, re.IGNORECASE):
+            if re.search(r"\b" + re.escape(keyword) + r"\b", text, re.IGNORECASE):
                 metrics.append(metric_names[0])  # Add the primary metric name
 
         # If no specific metrics are mentioned, use the LLM to extract metrics
@@ -674,7 +664,7 @@ Return only the extracted metrics as a JSON array.
                 prompt=prompt,
                 system_prompt=system_prompt,
                 temperature=0.2,
-                json_mode=True  # Force the model to return valid JSON
+                json_mode=True,  # Force the model to return valid JSON
             )
 
             try:

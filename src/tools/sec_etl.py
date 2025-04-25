@@ -4,18 +4,20 @@ SEC ETL Tool
 Tool for agents to interact with the SEC filing ETL pipeline.
 """
 
-from typing import List, Dict, Any, Optional
-from pathlib import Path
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from rich.console import Console
 
-from ..sec_filing_analyzer.etl.pipeline import ETLPipeline
 from ..sec_filing_analyzer.etl.config import ETLConfig
+from ..sec_filing_analyzer.etl.pipeline import ETLPipeline
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 console = Console()
+
 
 class SECETLTool:
     """Tool for agents to interact with the SEC filing ETL pipeline."""
@@ -31,14 +33,11 @@ class SECETLTool:
             filings_dir=self.config.filings_dir,
             chunk_size=self.config.chunk_size,
             chunk_overlap=self.config.chunk_overlap,
-            embedding_model=self.config.embedding_model
+            embedding_model=self.config.embedding_model,
         )
 
     def process_company(
-        self,
-        ticker: str,
-        years: Optional[List[int]] = None,
-        filing_types: Optional[List[str]] = None
+        self, ticker: str, years: Optional[List[int]] = None, filing_types: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Process SEC filings for a company.
 
@@ -52,20 +51,14 @@ class SECETLTool:
         """
         try:
             return self.pipeline.process_company(
-                ticker=ticker,
-                years=years,
-                filing_types=filing_types,
-                show_progress=True
+                ticker=ticker, years=years, filing_types=filing_types, show_progress=True
             )
         except Exception as e:
             logger.error(f"Error processing company {ticker}: {str(e)}")
             raise
 
     def process_companies(
-        self,
-        tickers: List[str],
-        years: Optional[List[int]] = None,
-        filing_types: Optional[List[str]] = None
+        self, tickers: List[str], years: Optional[List[int]] = None, filing_types: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Process SEC filings for multiple companies.
 
@@ -79,10 +72,7 @@ class SECETLTool:
         """
         try:
             return self.pipeline.process_companies(
-                tickers=tickers,
-                years=years,
-                filing_types=filing_types,
-                show_progress=True
+                tickers=tickers, years=years, filing_types=filing_types, show_progress=True
             )
         except Exception as e:
             logger.error(f"Error processing companies: {str(e)}")

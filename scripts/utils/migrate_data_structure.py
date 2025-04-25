@@ -7,13 +7,13 @@ This script:
 3. Removes the old directories
 """
 
+import logging
 import os
 import shutil
 from pathlib import Path
-import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Define old and new directory structures
@@ -36,34 +36,41 @@ DIRS_TO_REMOVE = [
     "data/cache/sec_filings",
 ]
 
+
 def create_new_structure():
     """Create the new directory structure."""
     logger.info("Creating new directory structure...")
-    
+
     # Create new directories
     for _, new_dir in OLD_STRUCTURE.items():
         os.makedirs(new_dir, exist_ok=True)
         logger.info(f"Created directory: {new_dir}")
 
+
 def move_files():
     """Move files from old structure to new structure."""
     logger.info("Moving files from old structure to new structure...")
-    
+
     # Move files
     for old_dir, new_dir in OLD_STRUCTURE.items():
         old_path = Path(old_dir)
         new_path = Path(new_dir)
-        
+
         # Skip if old directory doesn't exist
         if not old_path.exists():
             logger.info(f"Skipping non-existent directory: {old_dir}")
             continue
-        
+
         # Move files
         for file_path in old_path.glob("*"):
             if file_path.is_file():
                 # Create target directory for ticker-specific files
-                if "/raw/" in str(file_path) or "/processed/" in str(file_path) or "/html/" in str(file_path) or "/xml/" in str(file_path):
+                if (
+                    "/raw/" in str(file_path)
+                    or "/processed/" in str(file_path)
+                    or "/html/" in str(file_path)
+                    or "/xml/" in str(file_path)
+                ):
                     # Extract ticker from path if it exists
                     parts = file_path.parts
                     if len(parts) > 1 and parts[-2].isupper():  # Assume ticker is uppercase
@@ -75,12 +82,12 @@ def move_files():
                         target_path = new_path / file_path.name
                 else:
                     target_path = new_path / file_path.name
-                
+
                 # Skip if target file already exists
                 if target_path.exists():
                     logger.info(f"Skipping existing file: {target_path}")
                     continue
-                
+
                 # Copy file
                 try:
                     shutil.copy2(file_path, target_path)
@@ -93,7 +100,7 @@ def move_files():
                 if ticker.isupper():  # Assume ticker is uppercase
                     ticker_dir = new_path / ticker
                     os.makedirs(ticker_dir, exist_ok=True)
-                    
+
                     # Copy all files in ticker directory
                     for ticker_file in file_path.glob("*"):
                         if ticker_file.is_file():
@@ -105,10 +112,11 @@ def move_files():
                                 except Exception as e:
                                     logger.error(f"Error copying {ticker_file}: {e}")
 
+
 def remove_old_structure():
     """Remove old directories."""
     logger.info("Removing old directories...")
-    
+
     for dir_path in DIRS_TO_REMOVE:
         path = Path(dir_path)
         if path.exists():
@@ -118,20 +126,22 @@ def remove_old_structure():
             except Exception as e:
                 logger.error(f"Error removing {dir_path}: {e}")
 
+
 def main():
     """Run the migration."""
     logger.info("Starting data structure migration...")
-    
+
     # Create new structure
     create_new_structure()
-    
+
     # Move files
     move_files()
-    
+
     # Remove old structure
     remove_old_structure()
-    
+
     logger.info("Migration completed successfully!")
+
 
 if __name__ == "__main__":
     main()

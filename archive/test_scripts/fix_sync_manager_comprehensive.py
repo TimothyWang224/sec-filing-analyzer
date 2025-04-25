@@ -1,25 +1,26 @@
-import os
 import logging
+import os
 from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def fix_sync_manager_code():
     """Fix the sync manager code to handle both schema versions."""
     # Path to the sync manager file
-    sync_manager_path = Path('src/sec_filing_analyzer/storage/sync_manager.py')
-    
+    sync_manager_path = Path("src/sec_filing_analyzer/storage/sync_manager.py")
+
     if not sync_manager_path.exists():
         logger.error(f"Sync manager file not found at {sync_manager_path}")
         return
-    
+
     try:
         # Read the file
-        with open(sync_manager_path, 'r') as f:
+        with open(sync_manager_path, "r") as f:
             content = f.read()
-        
+
         # Fix the update_filing_paths method
         old_query = """SELECT id, ticker, accession_number FROM filings WHERE local_file_path IS NULL"""
         new_query = """
@@ -39,10 +40,10 @@ def fix_sync_manager_code():
                     (NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'local_file_path'))
                 )
                 """
-        
+
         # Replace the query
         content = content.replace(old_query, new_query)
-        
+
         # Fix the update_processing_status method
         old_query2 = """
                 SELECT filing_id, accession_number
@@ -66,10 +67,10 @@ def fix_sync_manager_code():
                     (NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'fiscal_period'))
                 )
                 """
-        
+
         # Replace the query
         content = content.replace(old_query2, new_query2)
-        
+
         # Fix the company_info query
         old_query3 = """
                     SELECT c.ticker
@@ -91,10 +92,10 @@ def fix_sync_manager_code():
                             ELSE f.id = ?
                         END
                     """
-        
+
         # Replace the query
         content = content.replace(old_query3, new_query3)
-        
+
         # Fix the UPDATE statement for fiscal_period
         old_update = """
                     UPDATE filings
@@ -117,18 +118,19 @@ def fix_sync_manager_code():
                             ELSE id = ?
                         END
                     """
-        
+
         # Replace the update statement
         content = content.replace(old_update, new_update)
-        
+
         # Write the updated file
-        with open(sync_manager_path, 'w') as f:
+        with open(sync_manager_path, "w") as f:
             f.write(content)
-        
+
         logger.info(f"Updated sync manager code at {sync_manager_path}")
-        
+
     except Exception as e:
         logger.error(f"Error updating sync manager code: {e}")
+
 
 if __name__ == "__main__":
     fix_sync_manager_code()

@@ -3,18 +3,20 @@ Tool registry for managing tools with automatic documentation extraction.
 """
 
 import inspect
-import re
 import logging
-from typing import Dict, Any, Optional, get_type_hints, List, Union, Type
+import re
+from typing import Any, Dict, List, Optional, Type, Union, get_type_hints
 
-from .schema_registry import SchemaRegistry
-from .memoization import clear_tool_caches
-from ..contracts import ToolSpec, BaseModel
 from pydantic import Field
+
+from ..contracts import BaseModel, ToolSpec
+from .memoization import clear_tool_caches
+from .schema_registry import SchemaRegistry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class ToolRegistry:
     """Registry for tools with automatic documentation extraction."""
@@ -49,6 +51,7 @@ class ToolRegistry:
             # Used as a decorator with arguments
             def decorator(cls):
                 return cls._register_tool(cls, name, tags)
+
             return decorator
         else:
             # Called directly
@@ -58,11 +61,11 @@ class ToolRegistry:
     def _register_tool(cls, tool_class, name=None, tags=None):
         """Internal method to register a tool."""
         # Extract name from class if not provided
-        tool_name = name or tool_class.__name__.lower().replace('tool', '')
+        tool_name = name or tool_class.__name__.lower().replace("tool", "")
 
         # Check for schema information in the class
-        db_schema = getattr(tool_class, '_db_schema', None)
-        parameter_mappings = getattr(tool_class, '_parameter_mappings', None)
+        db_schema = getattr(tool_class, "_db_schema", None)
+        parameter_mappings = getattr(tool_class, "_parameter_mappings", None)
 
         # Register schema mappings if provided
         if db_schema and parameter_mappings:
@@ -80,9 +83,9 @@ class ToolRegistry:
         parameters = cls._extract_parameters(tool_class)
 
         # Extract or generate compact description
-        compact_description = getattr(tool_class, '_compact_description', None)
+        compact_description = getattr(tool_class, "_compact_description", None)
         if not compact_description:
-            compact_description = description.split('.')[0]  # First sentence
+            compact_description = description.split(".")[0]  # First sentence
 
         # Store in registry
         cls._tools[tool_name] = {
@@ -91,7 +94,7 @@ class ToolRegistry:
             "description": description,
             "compact_description": compact_description,
             "parameters": parameters,
-            "tags": tags or []
+            "tags": tags or [],
         }
 
         # Create and store a ToolSpec
@@ -115,7 +118,7 @@ class ToolRegistry:
             # Create the model
             param_model = create_model(
                 f"{tool_name.capitalize()}{param_name.capitalize()}Params",
-                **{param_name: (field_type, Field(**field_info))}
+                **{param_name: (field_type, Field(**field_info))},
             )
 
             # Add to input models dictionary
@@ -126,10 +129,7 @@ class ToolRegistry:
 
         # Create the ToolSpec
         cls._tool_specs[tool_name] = ToolSpec(
-            name=tool_name,
-            input_schema=input_models,
-            output_key=output_key,
-            description=description
+            name=tool_name, input_schema=input_models, output_key=output_key, description=description
         )
 
         # Add metadata to the class
@@ -155,7 +155,7 @@ class ToolRegistry:
         parameters = {}
 
         # Get the execute method
-        if not hasattr(tool_class, 'execute'):
+        if not hasattr(tool_class, "execute"):
             return parameters
 
         execute_method = tool_class.execute
@@ -171,7 +171,7 @@ class ToolRegistry:
 
         # Extract parameter info from signature
         for param_name, param in signature.parameters.items():
-            if param_name == 'self':
+            if param_name == "self":
                 continue
 
             # Get type annotation
@@ -189,7 +189,7 @@ class ToolRegistry:
             parameters[param_name] = {
                 "type": param_type,
                 "description": f"Parameter {param_name}",  # Default description
-                "required": required
+                "required": required,
             }
 
             if default is not None and default is not inspect.Parameter.empty:
@@ -199,12 +199,12 @@ class ToolRegistry:
         docstring = execute_method.__doc__ or ""
 
         # Try to find Args section in docstring
-        args_match = re.search(r'Args:(.*?)(?:Returns:|Raises:|$)', docstring, re.DOTALL)
+        args_match = re.search(r"Args:(.*?)(?:Returns:|Raises:|$)", docstring, re.DOTALL)
         if args_match:
             args_section = args_match.group(1).strip()
 
             # Extract parameter descriptions
-            param_matches = re.finditer(r'(\w+)(?:\s*\(\w+\))?\s*:\s*(.*?)(?=\n\s*\w+\s*:|$)', args_section, re.DOTALL)
+            param_matches = re.finditer(r"(\w+)(?:\s*\(\w+\))?\s*:\s*(.*?)(?=\n\s*\w+\s*:|$)", args_section, re.DOTALL)
 
             for match in param_matches:
                 param_name = match.group(1).strip()
@@ -221,16 +221,16 @@ class ToolRegistry:
         type_str = str(type_hint)
 
         # Clean up typing module prefixes
-        type_str = type_str.replace('typing.', '')
+        type_str = type_str.replace("typing.", "")
 
         # Handle common typing constructs
-        type_str = type_str.replace('Optional[', '')
-        type_str = type_str.replace(']', '')
+        type_str = type_str.replace("Optional[", "")
+        type_str = type_str.replace("]", "")
 
         # Handle Union types
-        if 'Union[' in type_str:
-            type_str = type_str.replace('Union[', '').replace(']', '')
-            type_str = type_str.split(',')[0].strip()  # Take first type in union
+        if "Union[" in type_str:
+            type_str = type_str.replace("Union[", "").replace("]", "")
+            type_str = type_str.split(",")[0].strip()  # Take first type in union
 
         return type_str
 
@@ -255,6 +255,7 @@ class ToolRegistry:
 
                 # Try to import the tool module
                 import importlib
+
                 try:
                     # First try to import from sec_filing_analyzer.tools
                     importlib.import_module(f"sec_filing_analyzer.tools.{name}")
@@ -329,7 +330,7 @@ class ToolRegistry:
                     # Create the model
                     param_model = create_model(
                         f"{name.capitalize()}{param_name.capitalize()}Params",
-                        **{param_name: (field_type, Field(**field_info))}
+                        **{param_name: (field_type, Field(**field_info))},
                     )
 
                     # Add to input models dictionary
@@ -340,10 +341,7 @@ class ToolRegistry:
 
                 # Create the ToolSpec
                 tool_spec = ToolSpec(
-                    name=name,
-                    input_schema=input_models,
-                    output_key=output_key,
-                    description=tool["description"]
+                    name=name, input_schema=input_models, output_key=output_key, description=tool["description"]
                 )
 
                 # Store the tool spec for future use
@@ -392,7 +390,7 @@ class ToolRegistry:
             return True, []  # No mappings to validate
 
         tool_class = cls._tools[tool_name]["class"]
-        db_schema = getattr(tool_class, '_db_schema', None)
+        db_schema = getattr(tool_class, "_db_schema", None)
 
         if not db_schema:
             return False, [f"Tool '{tool_name}' has mappings but no database schema"]
@@ -452,6 +450,7 @@ class ToolRegistry:
 
             if format == "json":
                 import json
+
                 return json.dumps(cls._tools, indent=2)
             else:
                 return "\n\n".join(docs)
@@ -483,9 +482,10 @@ class ToolRegistry:
                 compact_tools[name] = {
                     "name": name,
                     "description": info.get("compact_description", ""),
-                    "tags": info.get("tags", [])
+                    "tags": info.get("tags", []),
                 }
             import json
+
             return json.dumps(compact_tools, indent=2)
 
         elif format == "markdown":
@@ -562,4 +562,5 @@ class ToolRegistry:
 
         else:  # json
             import json
+
             return json.dumps(tool_doc, indent=2)

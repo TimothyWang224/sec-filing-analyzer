@@ -1,9 +1,10 @@
-from typing import Any, Dict, ClassVar, Optional
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+from typing import Any, ClassVar, Dict, Optional
+
+from .memoization import memoize_tool
 from .registry import ToolRegistry
 from .schema_registry import SchemaRegistry
-from .memoization import memoize_tool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 # Try to import the ConfigProvider
 try:
     from sec_filing_analyzer.config import ConfigProvider
+
     HAS_CONFIG_PROVIDER = True
 except ImportError:
     HAS_CONFIG_PROVIDER = False
@@ -19,6 +21,7 @@ except ImportError:
 
 # Re-export the register_tool decorator from ToolRegistry
 register_tool = ToolRegistry.register
+
 
 class Tool(ABC):
     """
@@ -42,30 +45,34 @@ class Tool(ABC):
     """
 
     # Class variables for tool metadata
-    _tool_name: ClassVar[str] = None
-    _tool_tags: ClassVar[list] = None
-    _compact_description: ClassVar[str] = None  # New class variable for compact description
-    _db_schema: ClassVar[str] = None  # Database schema name for parameter resolution
-    _parameter_mappings: ClassVar[Dict[str, str]] = None  # Parameter to field mappings
+    _tool_name: ClassVar[Optional[str]] = None
+    _tool_tags: ClassVar[Optional[list]] = None
+    _compact_description: ClassVar[Optional[str]] = None  # New class variable for compact description
+    _db_schema: ClassVar[Optional[str]] = None  # Database schema name for parameter resolution
+    _parameter_mappings: ClassVar[Optional[Dict[str, str]]] = None  # Parameter to field mappings
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize a tool."""
         # Get name from class if registered, otherwise use class name
-        self.name = getattr(self.__class__, '_tool_name', self.__class__.__name__.lower().replace('tool', ''))
+        self.name = getattr(self.__class__, "_tool_name", self.__class__.__name__.lower().replace("tool", ""))
 
         # Get description from class docstring
-        self.description = self.__class__.__doc__.strip().split('\n\n')[0].strip() if self.__class__.__doc__ else "No description available"
+        self.description = (
+            self.__class__.__doc__.strip().split("\n\n")[0].strip()
+            if self.__class__.__doc__
+            else "No description available"
+        )
 
         # Get compact description or generate one from the full description
-        self.compact_description = getattr(self.__class__, '_compact_description', self.description.split('.')[0])
+        self.compact_description = getattr(self.__class__, "_compact_description", self.description.split(".")[0])
 
         # Get tags from class if registered
-        self.tags = getattr(self.__class__, '_tool_tags', [])
+        self.tags = getattr(self.__class__, "_tool_tags", [])
 
     @abstractmethod
-    async def execute(self, **kwargs) -> Any:
+    async def _execute_abstract(self, **kwargs: Any) -> Dict[str, Any]:
         """
-        Execute the tool with the given arguments.
+        Abstract execute method to be implemented by subclasses.
 
         Args:
             **kwargs: Keyword arguments based on the tool's parameters
@@ -77,19 +84,15 @@ class Tool(ABC):
 
     def get_metadata(self) -> Dict[str, Any]:
         """Get the tool's metadata."""
-        return {
-            "name": self.name,
-            "description": self.description,
-            "tags": self.tags
-        }
+        return {"name": self.name, "description": self.description, "tags": self.tags}
 
     @classmethod
     def get_documentation(cls, format: str = "text") -> str:
         """Get the tool's documentation."""
-        tool_name = getattr(cls, '_tool_name', cls.__name__.lower().replace('tool', ''))
+        tool_name = getattr(cls, "_tool_name", cls.__name__.lower().replace("tool", ""))
         return ToolRegistry.get_tool_documentation(tool_name, format)
 
-    def validate_args(self, **kwargs) -> bool:
+    def validate_args(self, **kwargs: Any) -> bool:
         """
         Validate the arguments before execution.
 
@@ -100,7 +103,7 @@ class Tool(ABC):
             True if arguments are valid, False otherwise
         """
         # Try to get parameter info from ConfigProvider first
-        parameters = {}
+        parameters: Dict[str, Any] = {}
         if HAS_CONFIG_PROVIDER:
             try:
                 # Get schema from ConfigProvider
@@ -126,7 +129,7 @@ class Tool(ABC):
 
         return True
 
-    def resolve_parameters(self, **kwargs) -> Dict[str, Any]:
+    def resolve_parameters(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Resolve dynamic parameters to their database field names.
 
@@ -137,28 +140,31 @@ class Tool(ABC):
             Dictionary with resolved parameters
         """
         # If no database schema is defined, return the original parameters
-        db_schema = getattr(self.__class__, '_db_schema', None)
+        db_schema = getattr(self.__class__, "_db_schema", None)
         if not db_schema:
             return kwargs
 
         # Try to get parameter mappings from ConfigProvider first
-        param_mappings = {}
+        param_mappings: Dict[str, str] = {}
         if HAS_CONFIG_PROVIDER:
             try:
                 # Get schema registry from ConfigProvider
                 schema_registry = ConfigProvider.get_config(SchemaRegistry)
                 if schema_registry:
                     # Get mappings for this schema
-                    param_mappings = schema_registry.get_field_mappings(db_schema)
-                    if param_mappings:
+                    mappings = schema_registry.get_field_mappings(db_schema)
+                    if mappings:
+                        param_mappings = mappings
                         logger.debug(f"Using parameter mappings from ConfigProvider for {db_schema}")
             except Exception as e:
                 logger.warning(f"Error getting parameter mappings from ConfigProvider: {str(e)}")
 
         # Fall back to class attribute if no mappings were found
         if not param_mappings:
-            param_mappings = getattr(self.__class__, '_parameter_mappings', {})
-            if not param_mappings:
+            class_mappings = getattr(self.__class__, "_parameter_mappings", {})
+            if class_mappings:
+                param_mappings = class_mappings
+            else:
                 return kwargs
 
         # Resolve parameters
@@ -174,7 +180,7 @@ class Tool(ABC):
 
         return resolved_params
 
-    async def _execute(self, **_) -> Dict[str, Any]:
+    async def _execute(self, **_: Any) -> Dict[str, Any]:
         """
         Internal execute method to be implemented by subclasses.
 
@@ -196,7 +202,7 @@ class Tool(ABC):
         parameters: Dict[str, Any],
         error_message: str,
         error_type: str = "error",
-        additional_data: Optional[Dict[str, Any]] = None
+        additional_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Format a standardized error response.
@@ -217,7 +223,7 @@ class Tool(ABC):
             error_type: error_message,
             "results": [],
             "output_key": self.name,
-            "success": False
+            "success": False,
         }
 
         # Add any additional data
@@ -231,7 +237,7 @@ class Tool(ABC):
         query_type: str,
         parameters: Dict[str, Any],
         results: Any,
-        additional_data: Optional[Dict[str, Any]] = None
+        additional_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Format a standardized success response.
@@ -250,7 +256,7 @@ class Tool(ABC):
             "parameters": parameters,
             "results": results,
             "output_key": self.name,
-            "success": True
+            "success": True,
         }
 
         # Add any additional data
@@ -260,7 +266,7 @@ class Tool(ABC):
         return response
 
     @memoize_tool
-    async def execute(self, **kwargs) -> Dict[str, Any]:
+    async def execute(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Execute the tool with the given arguments.
 
@@ -298,6 +304,7 @@ class Tool(ABC):
 
         # Get the tool spec to determine the output key
         from .registry import ToolRegistry
+
         tool_spec = ToolRegistry.get_tool_spec(self.name)
 
         # If we have a tool spec, add the output_key to the result

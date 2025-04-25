@@ -3,13 +3,13 @@ import pandas as pd
 
 # Connect to the database
 try:
-    conn = duckdb.connect('data/db_backup/improved_financial_data.duckdb', read_only=True)
+    conn = duckdb.connect("data/db_backup/improved_financial_data.duckdb", read_only=True)
     print("Successfully connected to improved_financial_data.duckdb")
 except Exception as e:
     print(f"Error connecting to improved_financial_data.duckdb: {e}")
     print("Trying to connect to financial_data.duckdb instead...")
     try:
-        conn = duckdb.connect('data/db_backup/financial_data.duckdb', read_only=True)
+        conn = duckdb.connect("data/db_backup/financial_data.duckdb", read_only=True)
         print("Successfully connected to financial_data.duckdb")
     except Exception as e:
         print(f"Error connecting to financial_data.duckdb: {e}")
@@ -17,20 +17,20 @@ except Exception as e:
 
 # Check tables
 print("\nTables in database:")
-tables = conn.execute('SHOW TABLES').fetchdf()
+tables = conn.execute("SHOW TABLES").fetchdf()
 print(tables)
 
 # First, let's examine the schema of the tables to understand their structure
 print("\nSchema of filings table:")
 try:
-    filings_schema = conn.execute('DESCRIBE filings').fetchdf()
+    filings_schema = conn.execute("DESCRIBE filings").fetchdf()
     print(filings_schema)
 except Exception as e:
     print(f"Error getting filings schema: {e}")
 
 print("\nSchema of time_series_view table:")
 try:
-    time_series_schema = conn.execute('DESCRIBE time_series_view').fetchdf()
+    time_series_schema = conn.execute("DESCRIBE time_series_view").fetchdf()
     print(time_series_schema)
 except Exception as e:
     print(f"Error getting time_series_view schema: {e}")
@@ -38,17 +38,17 @@ except Exception as e:
 # Check companies
 print("\nCompanies in database:")
 try:
-    companies = conn.execute('SELECT * FROM companies').fetchdf()
+    companies = conn.execute("SELECT * FROM companies").fetchdf()
     print(companies)
 except Exception as e:
     print(f"Error querying companies: {e}")
 
 # Check if company_id exists in filings table
-company_id_exists = 'company_id' in filings_schema['column_name'].values if 'filings_schema' in locals() else False
-ticker_exists = 'ticker' in filings_schema['column_name'].values if 'filings_schema' in locals() else False
+company_id_exists = "company_id" in filings_schema["column_name"].values if "filings_schema" in locals() else False
+ticker_exists = "ticker" in filings_schema["column_name"].values if "filings_schema" in locals() else False
 
 # Check filings for each company
-tickers = ['NVDA', 'GOOGL', 'AAPL', 'MSFT']
+tickers = ["NVDA", "GOOGL", "AAPL", "MSFT"]
 for ticker in tickers:
     print(f"\nFilings for {ticker}:")
     try:
@@ -78,14 +78,27 @@ for ticker in tickers:
 
         if len(filings) > 0:
             # Group by fiscal year to see how many filings per year
-            if 'fiscal_year' in filings.columns:
-                filings_by_year = filings.groupby('fiscal_year').size().reset_index(name='count')
+            if "fiscal_year" in filings.columns:
+                filings_by_year = filings.groupby("fiscal_year").size().reset_index(name="count")
                 print(f"Filings by year for {ticker}:")
                 print(filings_by_year)
 
             # Show the most recent filings
             print(f"Most recent filings for {ticker} (up to 5):")
-            columns_to_show = [col for col in ['id', 'filing_id', 'company_id', 'ticker', 'filing_type', 'filing_date', 'fiscal_year', 'fiscal_quarter'] if col in filings.columns]
+            columns_to_show = [
+                col
+                for col in [
+                    "id",
+                    "filing_id",
+                    "company_id",
+                    "ticker",
+                    "filing_type",
+                    "filing_date",
+                    "fiscal_year",
+                    "fiscal_quarter",
+                ]
+                if col in filings.columns
+            ]
             print(filings.head(5)[columns_to_show])
 
             # Count total filings

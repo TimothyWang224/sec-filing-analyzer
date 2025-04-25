@@ -5,22 +5,21 @@ This script initializes a new DuckDB database with the improved schema and tests
 the improved XBRL extractor by processing a single filing.
 """
 
-import os
 import logging
-import duckdb
+import os
 import sys
+
+import duckdb
 from edgar import set_identity
+from rich import box
 from rich.console import Console
 from rich.panel import Panel
-from rich import box
 
 from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    stream=sys.stdout
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
 
@@ -29,6 +28,7 @@ sys.stdout.reconfigure(line_buffering=True)
 
 # Set up console
 console = Console()
+
 
 def initialize_database(db_path):
     """Initialize a new DuckDB database with the improved schema."""
@@ -56,6 +56,7 @@ def initialize_database(db_path):
 
     console.print(f"[green]Initialized database at {db_path}[/green]")
 
+
 def test_extractor(ticker, accession_number, db_path):
     """Test the improved XBRL extractor by processing a single filing."""
     print(f"Testing extractor with {ticker} {accession_number}...")
@@ -75,21 +76,25 @@ def test_extractor(ticker, accession_number, db_path):
 
         # Display the result
         if "error" in result:
-            console.print(Panel(
-                f"[red]Error processing filing {ticker} {accession_number}:[/red]\n{result['error']}",
-                title="Error",
-                box=box.ROUNDED
-            ))
+            console.print(
+                Panel(
+                    f"[red]Error processing filing {ticker} {accession_number}:[/red]\n{result['error']}",
+                    title="Error",
+                    box=box.ROUNDED,
+                )
+            )
         else:
-            console.print(Panel(
-                f"[green]Successfully processed filing {ticker} {accession_number}[/green]\n"
-                f"Filing ID: {result.get('filing_id')}\n"
-                f"Has XBRL: {result.get('has_xbrl')}\n"
-                f"Fiscal Year: {result.get('fiscal_info', {}).get('fiscal_year')}\n"
-                f"Fiscal Period: {result.get('fiscal_info', {}).get('fiscal_period')}",
-                title="Success",
-                box=box.ROUNDED
-            ))
+            console.print(
+                Panel(
+                    f"[green]Successfully processed filing {ticker} {accession_number}[/green]\n"
+                    f"Filing ID: {result.get('filing_id')}\n"
+                    f"Has XBRL: {result.get('has_xbrl')}\n"
+                    f"Fiscal Year: {result.get('fiscal_info', {}).get('fiscal_year')}\n"
+                    f"Fiscal Period: {result.get('fiscal_info', {}).get('fiscal_period')}",
+                    title="Success",
+                    box=box.ROUNDED,
+                )
+            )
 
         # Query the database to verify the data was stored
         console.print("\n[bold]Verifying data in database...[/bold]")
@@ -114,7 +119,7 @@ def test_extractor(ticker, accession_number, db_path):
             console.print(f"CIK: {company.get('cik')}")
 
         # Get filing data
-        filing_id = result.get('filing_id')
+        filing_id = result.get("filing_id")
 
         if filing_id:
             # Get facts for the filing
@@ -132,6 +137,7 @@ def test_extractor(ticker, accession_number, db_path):
         # Close the extractor
         extractor.close()
 
+
 def main():
     print("Starting initialization and test...")
 
@@ -148,6 +154,7 @@ def main():
 
     # Test the extractor
     test_extractor(ticker, accession_number, db_path)
+
 
 if __name__ == "__main__":
     main()

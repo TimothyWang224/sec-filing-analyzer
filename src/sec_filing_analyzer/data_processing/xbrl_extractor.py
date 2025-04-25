@@ -5,22 +5,23 @@ This module provides functionality to extract financial data from XBRL filings
 using the edgartools library (aliased as edgar).
 """
 
-import logging
 import json
+import logging
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional
-
-# For data processing
-import pandas as pd
+from typing import Any, Dict, Optional
 
 # Import edgartools components (aliased as edgar)
 import edgar
+
+# For data processing
+import pandas as pd
 from edgar.xbrl import XBRLData
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class XBRLExtractor:
     """
@@ -51,25 +52,50 @@ class XBRLExtractor:
 
         # Income Statement
         income_statement_tags = [
-            "Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax",
-            "SalesRevenueNet", "CostOfRevenue", "CostOfGoodsAndServicesSold",
-            "GrossProfit", "OperatingExpenses", "ResearchAndDevelopmentExpense",
-            "SellingGeneralAndAdministrativeExpense", "OperatingIncomeLoss",
-            "NonoperatingIncomeExpense", "InterestExpense", "IncomeTaxExpenseBenefit",
-            "NetIncomeLoss", "EarningsPerShareBasic", "EarningsPerShareDiluted"
+            "Revenues",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "SalesRevenueNet",
+            "CostOfRevenue",
+            "CostOfGoodsAndServicesSold",
+            "GrossProfit",
+            "OperatingExpenses",
+            "ResearchAndDevelopmentExpense",
+            "SellingGeneralAndAdministrativeExpense",
+            "OperatingIncomeLoss",
+            "NonoperatingIncomeExpense",
+            "InterestExpense",
+            "IncomeTaxExpenseBenefit",
+            "NetIncomeLoss",
+            "EarningsPerShareBasic",
+            "EarningsPerShareDiluted",
         ]
 
         # Balance Sheet
         balance_sheet_tags = [
-            "Assets", "AssetsCurrent", "CashAndCashEquivalentsAtCarryingValue",
-            "ShortTermInvestments", "AccountsReceivableNetCurrent", "InventoryNet",
-            "AssetsNoncurrent", "PropertyPlantAndEquipmentNet", "Goodwill",
-            "IntangibleAssetsNetExcludingGoodwill", "LongTermInvestments",
-            "Liabilities", "LiabilitiesCurrent", "AccountsPayableCurrent",
-            "AccruedLiabilitiesCurrent", "LongTermDebtCurrent", "LiabilitiesNoncurrent",
-            "LongTermDebtNoncurrent", "StockholdersEquity", "CommonStock",
-            "AdditionalPaidInCapital", "RetainedEarningsAccumulatedDeficit",
-            "AccumulatedOtherComprehensiveIncomeLossNetOfTax", "TreasuryStockValue"
+            "Assets",
+            "AssetsCurrent",
+            "CashAndCashEquivalentsAtCarryingValue",
+            "ShortTermInvestments",
+            "AccountsReceivableNetCurrent",
+            "InventoryNet",
+            "AssetsNoncurrent",
+            "PropertyPlantAndEquipmentNet",
+            "Goodwill",
+            "IntangibleAssetsNetExcludingGoodwill",
+            "LongTermInvestments",
+            "Liabilities",
+            "LiabilitiesCurrent",
+            "AccountsPayableCurrent",
+            "AccruedLiabilitiesCurrent",
+            "LongTermDebtCurrent",
+            "LiabilitiesNoncurrent",
+            "LongTermDebtNoncurrent",
+            "StockholdersEquity",
+            "CommonStock",
+            "AdditionalPaidInCapital",
+            "RetainedEarningsAccumulatedDeficit",
+            "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+            "TreasuryStockValue",
         ]
 
         # Cash Flow
@@ -82,43 +108,28 @@ class XBRLExtractor:
             "ProceedsFromIssuanceOfCommonStock",
             "PaymentsOfDividends",
             "PaymentsForRepurchaseOfCommonStock",
-            "CashAndCashEquivalentsPeriodIncreaseDecrease"
+            "CashAndCashEquivalentsPeriodIncreaseDecrease",
         ]
 
         # Create mappings
         for tag in income_statement_tags:
-            mappings[tag] = {
-                "standard_name": self._normalize_tag(tag),
-                "category": "income_statement"
-            }
+            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "income_statement"}
 
         for tag in balance_sheet_tags:
-            mappings[tag] = {
-                "standard_name": self._normalize_tag(tag),
-                "category": "balance_sheet"
-            }
+            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "balance_sheet"}
 
         for tag in cash_flow_tags:
-            mappings[tag] = {
-                "standard_name": self._normalize_tag(tag),
-                "category": "cash_flow"
-            }
+            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "cash_flow"}
 
         # Add specific mappings for tags that need special handling
         mappings["RevenueFromContractWithCustomerExcludingAssessedTax"] = {
             "standard_name": "revenue",
-            "category": "income_statement"
+            "category": "income_statement",
         }
 
-        mappings["SalesRevenueNet"] = {
-            "standard_name": "revenue",
-            "category": "income_statement"
-        }
+        mappings["SalesRevenueNet"] = {"standard_name": "revenue", "category": "income_statement"}
 
-        mappings["CostOfGoodsAndServicesSold"] = {
-            "standard_name": "cost_of_revenue",
-            "category": "income_statement"
-        }
+        mappings["CostOfGoodsAndServicesSold"] = {"standard_name": "cost_of_revenue", "category": "income_statement"}
 
         return mappings
 
@@ -132,20 +143,16 @@ class XBRLExtractor:
             Normalized metric name
         """
         # Convert camel case to snake case
-        s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', tag)
-        s2 = re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+        s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", tag)
+        s2 = re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
         # Remove common prefixes/suffixes
-        s3 = re.sub(r'(^us_gaap_|_member$)', '', s2)
+        s3 = re.sub(r"(^us_gaap_|_member$)", "", s2)
 
         return s3
 
     def extract_financials(
-        self,
-        ticker: str,
-        filing_id: str,
-        accession_number: str,
-        filing_url: Optional[str] = None
+        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """Extract financial data from XBRL filings.
 
@@ -163,7 +170,7 @@ class XBRLExtractor:
             cache_file = self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
             if cache_file.exists():
                 logger.info(f"Loading XBRL data from cache for {ticker} {accession_number}")
-                with open(cache_file, 'r') as f:
+                with open(cache_file, "r") as f:
                     return json.load(f)
 
             # Get filing URL if not provided
@@ -181,7 +188,7 @@ class XBRLExtractor:
                         if filing.accession_number == accession_number:
                             # Construct the filing URL
                             cik = entity.cik
-                            accession_clean = accession_number.replace('-', '')
+                            accession_clean = accession_number.replace("-", "")
                             filing_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_clean}/{accession_number}-index.htm"
                             break
 
@@ -193,7 +200,7 @@ class XBRLExtractor:
                         "filing_id": filing_id,
                         "ticker": ticker,
                         "accession_number": accession_number,
-                        "error": f"Failed to get filing URL: {str(e)}"
+                        "error": f"Failed to get filing URL: {str(e)}",
                     }
 
             logger.info(f"Extracting XBRL data for {ticker} {accession_number} from {filing_url}")
@@ -207,13 +214,13 @@ class XBRLExtractor:
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "accession_number": accession_number,
-                    "error": f"Failed to load XBRL data: {str(e)}"
+                    "error": f"Failed to load XBRL data: {str(e)}",
                 }
 
             # Extract filing metadata
             filing_date = xbrl_data.period_end
             filing_type = self._extract_filing_type(filing_url)
-            fiscal_year = int(filing_date.split('-')[0]) if filing_date and '-' in filing_date else None
+            fiscal_year = int(filing_date.split("-")[0]) if filing_date and "-" in filing_date else None
             fiscal_quarter = self._determine_fiscal_quarter(filing_date, filing_type)
 
             # Initialize financials dictionary
@@ -227,7 +234,7 @@ class XBRLExtractor:
                 "fiscal_quarter": fiscal_quarter,
                 "filing_type": filing_type,
                 "facts": [],
-                "metrics": {}
+                "metrics": {},
             }
 
             # Extract financial statements
@@ -237,7 +244,7 @@ class XBRLExtractor:
             self._calculate_ratios(financials)
 
             # Cache the results
-            with open(cache_file, 'w') as f:
+            with open(cache_file, "w") as f:
                 json.dump(financials, f, indent=2)
 
             logger.info(f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}")
@@ -245,12 +252,7 @@ class XBRLExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
-            return {
-                "filing_id": filing_id,
-                "ticker": ticker,
-                "accession_number": accession_number,
-                "error": str(e)
-            }
+            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
 
     def _extract_filing_type(self, filing_url: str) -> Optional[str]:
         """Extract filing type from filing URL.
@@ -263,18 +265,18 @@ class XBRLExtractor:
         """
         try:
             # Try to extract from URL
-            if '10-K' in filing_url:
-                return '10-K'
-            elif '10-Q' in filing_url:
-                return '10-Q'
-            elif '8-K' in filing_url:
-                return '8-K'
-            elif '20-F' in filing_url:
-                return '20-F'
-            elif '40-F' in filing_url:
-                return '40-F'
-            elif '6-K' in filing_url:
-                return '6-K'
+            if "10-K" in filing_url:
+                return "10-K"
+            elif "10-Q" in filing_url:
+                return "10-Q"
+            elif "8-K" in filing_url:
+                return "8-K"
+            elif "20-F" in filing_url:
+                return "20-F"
+            elif "40-F" in filing_url:
+                return "40-F"
+            elif "6-K" in filing_url:
+                return "6-K"
 
             # If not found in URL, try to parse the filing content
             # This would require more complex logic and is not implemented here
@@ -299,11 +301,11 @@ class XBRLExtractor:
                 return None
 
             # For 10-K, assume it's Q4
-            if filing_type == '10-K':
+            if filing_type == "10-K":
                 return 4
 
             # For 10-Q, determine from month
-            if filing_type == '10-Q' and len(filing_date) >= 7:
+            if filing_type == "10-Q" and len(filing_date) >= 7:
                 month = int(filing_date[5:7])
                 # Approximate quarter from month
                 return (month - 1) // 3 + 1
@@ -353,11 +355,23 @@ class XBRLExtractor:
         """
         # Common financial statement names
         financial_statements = [
-            'income', 'statement of income', 'statement of operations', 'operations',
-            'balance', 'balance sheet', 'statement of financial position', 'financial position',
-            'cash flow', 'statement of cash flows', 'cash flows',
-            'equity', 'statement of equity', 'stockholders equity', 'shareholders equity',
-            'comprehensive income', 'statement of comprehensive income'
+            "income",
+            "statement of income",
+            "statement of operations",
+            "operations",
+            "balance",
+            "balance sheet",
+            "statement of financial position",
+            "financial position",
+            "cash flow",
+            "statement of cash flows",
+            "cash flows",
+            "equity",
+            "statement of equity",
+            "stockholders equity",
+            "shareholders equity",
+            "comprehensive income",
+            "statement of comprehensive income",
         ]
 
         # Check if any of the financial statement names is in the statement name
@@ -375,16 +389,16 @@ class XBRLExtractor:
         """
         statement_name_lower = statement_name.lower()
 
-        if any(term in statement_name_lower for term in ['income', 'operations', 'earnings']):
-            return 'income_statement'
-        elif any(term in statement_name_lower for term in ['balance', 'financial position']):
-            return 'balance_sheet'
-        elif any(term in statement_name_lower for term in ['cash flow', 'cash flows']):
-            return 'cash_flow'
-        elif any(term in statement_name_lower for term in ['equity', 'stockholders', 'shareholders']):
-            return 'equity'
+        if any(term in statement_name_lower for term in ["income", "operations", "earnings"]):
+            return "income_statement"
+        elif any(term in statement_name_lower for term in ["balance", "financial position"]):
+            return "balance_sheet"
+        elif any(term in statement_name_lower for term in ["cash flow", "cash flows"]):
+            return "cash_flow"
+        elif any(term in statement_name_lower for term in ["equity", "stockholders", "shareholders"]):
+            return "equity"
         else:
-            return 'other'
+            return "other"
 
     def _process_statement(self, statement: Any, category: str, financials: Dict[str, Any]) -> None:
         """Process a financial statement.
@@ -406,16 +420,16 @@ class XBRLExtractor:
             for _, row in df.iterrows():
                 try:
                     # Skip rows without a concept
-                    if 'concept' not in row or not row['concept']:
+                    if "concept" not in row or not row["concept"]:
                         continue
 
                     # Get concept name and value
-                    concept = row['concept']
+                    concept = row["concept"]
                     value = None
 
                     # Try to get the value from different columns
                     for col in df.columns:
-                        if col != 'concept' and not pd.isna(row[col]):
+                        if col != "concept" and not pd.isna(row[col]):
                             try:
                                 value = float(row[col])
                                 break
@@ -432,15 +446,10 @@ class XBRLExtractor:
                     # Get standard mapping if available
                     mapping = self.tag_mappings.get(concept, {})
                     if mapping:
-                        standard_name = mapping.get('standard_name', standard_name)
+                        standard_name = mapping.get("standard_name", standard_name)
 
                     # Create fact entry
-                    fact = {
-                        "xbrl_tag": concept,
-                        "metric_name": standard_name,
-                        "value": value,
-                        "category": category
-                    }
+                    fact = {"xbrl_tag": concept, "metric_name": standard_name, "value": value, "category": category}
 
                     # Add to facts list
                     financials["facts"].append(fact)

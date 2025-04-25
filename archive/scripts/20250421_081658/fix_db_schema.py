@@ -4,41 +4,51 @@ Fix database schema for the SEC Filing Analyzer.
 This script fixes the database schema to match what the sync_manager.py file expects.
 """
 
-import duckdb
 import os
 from pathlib import Path
+
+import duckdb
+
 
 def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb"):
     """Fix the database schema to match what the sync_manager.py file expects."""
     print(f"Fixing database schema for {db_path}...")
-    
+
     # Check if the database file exists
     if not os.path.exists(db_path):
         print(f"Database file not found: {db_path}")
         return False
-    
+
     # Connect to the database
     conn = duckdb.connect(db_path)
-    
+
     try:
         # Check if the companies table exists
-        companies_exists = conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'").fetchone()[0] > 0
-        
+        companies_exists = (
+            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'").fetchone()[0]
+            > 0
+        )
+
         if companies_exists:
             # Check if the company_id column exists in the companies table
-            company_id_exists = conn.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'companies' AND column_name = 'company_id'").fetchone()[0] > 0
-            
+            company_id_exists = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'companies' AND column_name = 'company_id'"
+                ).fetchone()[0]
+                > 0
+            )
+
             if not company_id_exists:
                 print("Adding company_id column to companies table...")
                 # Add company_id column to companies table
                 conn.execute("ALTER TABLE companies ADD COLUMN company_id INTEGER")
-                
+
                 # Set company_id values based on row number
                 conn.execute("""
                 UPDATE companies
                 SET company_id = (SELECT row_number() OVER (ORDER BY ticker) FROM companies c2 WHERE c2.ticker = companies.ticker)
                 """)
-                
+
                 print("Added company_id column to companies table")
         else:
             print("Creating companies table...")
@@ -55,29 +65,42 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
             )
             """)
             print("Created companies table")
-        
+
         # Check if the filings table exists
-        filings_exists = conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'").fetchone()[0] > 0
-        
+        filings_exists = (
+            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'").fetchone()[0]
+            > 0
+        )
+
         if filings_exists:
             # Check if the company_id column exists in the filings table
-            company_id_exists = conn.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'company_id'").fetchone()[0] > 0
-            
+            company_id_exists = (
+                conn.execute(
+                    "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'company_id'"
+                ).fetchone()[0]
+                > 0
+            )
+
             if not company_id_exists:
                 print("Adding company_id column to filings table...")
                 # Add company_id column to filings table
                 conn.execute("ALTER TABLE filings ADD COLUMN company_id INTEGER")
-                
+
                 # Check if ticker column exists in filings table
-                ticker_exists = conn.execute("SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'ticker'").fetchone()[0] > 0
-                
+                ticker_exists = (
+                    conn.execute(
+                        "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'ticker'"
+                    ).fetchone()[0]
+                    > 0
+                )
+
                 if ticker_exists:
                     # Set company_id values based on ticker
                     conn.execute("""
                     UPDATE filings
                     SET company_id = (SELECT company_id FROM companies WHERE companies.ticker = filings.ticker)
                     """)
-                
+
                 print("Added company_id column to filings table")
         else:
             print("Creating filings table...")
@@ -101,17 +124,18 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
             )
             """)
             print("Created filings table")
-        
+
         print("Database schema fixed successfully!")
         return True
-    
+
     except Exception as e:
         print(f"Error fixing database schema: {e}")
         return False
-    
+
     finally:
         # Close the connection
         conn.close()
+
 
 if __name__ == "__main__":
     # Fix the database schema

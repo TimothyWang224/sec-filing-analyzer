@@ -12,11 +12,11 @@ import sys
 from datetime import datetime
 
 # Add the src directory to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from src.agents.financial_analyst import FinancialAnalystAgent
-from src.llm.openai import OpenAILLM
 from src.capabilities.multi_task_planning import MultiTaskPlanningCapability
+from src.llm.openai import OpenAILLM
 
 
 async def main():
@@ -30,7 +30,7 @@ async def main():
         enable_step_reflection=True,
         min_steps_before_reflection=1,
         max_plan_steps=5,
-        plan_detail_level="medium"
+        plan_detail_level="medium",
     )
 
     # Create a financial analyst agent with multi-task planning
@@ -40,7 +40,7 @@ async def main():
         llm_temperature=0.3,
         llm_max_tokens=1000,
         max_iterations=10,  # Increase max iterations to handle multiple tasks
-        max_duration_seconds=300  # Increase max duration to handle multiple tasks
+        max_duration_seconds=300,  # Increase max duration to handle multiple tasks
     )
 
     # Multi-task input with 5 distinct tasks
@@ -68,22 +68,26 @@ async def main():
     print(f"Completed tasks: {result['completed_tasks']} / {result['total_tasks']}")
 
     # Print each task result
-    for i, task in enumerate(result['tasks']):
-        print(f"\nTask {i+1}: {task['input']}")
+    for i, task in enumerate(result["tasks"]):
+        print(f"\nTask {i + 1}: {task['input']}")
         print(f"Status: {task['status']}")
         print("Analysis:")
         print("-" * 40)
-        if isinstance(task['result'], dict) and 'analysis' in task['result']:
-            print(task['result']['analysis'][:500] + "..." if len(task['result']['analysis']) > 500 else task['result']['analysis'])
+        if isinstance(task["result"], dict) and "analysis" in task["result"]:
+            print(
+                task["result"]["analysis"][:500] + "..."
+                if len(task["result"]["analysis"]) > 500
+                else task["result"]["analysis"]
+            )
         else:
-            print(task['result'])
+            print(task["result"])
 
     # Save the full results to a file
-    output_dir = os.path.join(os.path.dirname(__file__), 'outputs')
+    output_dir = os.path.join(os.path.dirname(__file__), "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
     output_file = os.path.join(output_dir, f"multi_task_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(output_file, 'w') as f:
+    with open(output_file, "w") as f:
         json.dump(result, f, indent=2, default=str)
 
     print(f"\nFull results saved to: {output_file}")

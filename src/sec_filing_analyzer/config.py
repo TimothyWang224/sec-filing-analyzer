@@ -4,13 +4,14 @@ Unified Configuration
 Configuration settings for the SEC Filing Analyzer project.
 """
 
-from typing import Dict, Any, List, Optional, Union, Type, TypeVar, Set
-import os
-import json
 import glob
+import json
 import logging
+import os
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from dataclasses import dataclass, asdict, field
+from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
+
 from dotenv import load_dotenv
 
 # Set up logging
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
 
 @dataclass
 class Neo4jConfig:
@@ -27,6 +29,7 @@ class Neo4jConfig:
     password: str = os.getenv("NEO4J_PASSWORD", "password")
     url: str = os.getenv("NEO4J_URL", "bolt://localhost:7687")
     database: str = os.getenv("NEO4J_DATABASE", "neo4j")
+
 
 @dataclass
 class StorageConfig:
@@ -52,6 +55,7 @@ class StorageConfig:
         if self.graph_store_path is None:
             self.graph_store_path = Path("data/graph_store")
             self.graph_store_path.mkdir(parents=True, exist_ok=True)
+
 
 @dataclass
 class AgentConfig:
@@ -94,11 +98,7 @@ class AgentConfig:
             return
 
         # Otherwise, compute from phase iterations with a small buffer
-        phase_sum = (
-            self.max_planning_iterations +
-            self.max_execution_iterations +
-            self.max_refinement_iterations
-        )
+        phase_sum = self.max_planning_iterations + self.max_execution_iterations + self.max_refinement_iterations
 
         # Add a small buffer (10%) to account for potential phase transitions
         # or other edge cases, with a minimum of 1 extra iteration
@@ -127,8 +127,9 @@ class AgentConfig:
             min_confidence_threshold=float(os.getenv("AGENT_MIN_CONFIDENCE_THRESHOLD", "0.8")),
             llm_model=os.getenv("DEFAULT_LLM_MODEL", "gpt-4.1-nano"),
             llm_temperature=float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.7")),
-            llm_max_tokens=int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "4000"))
+            llm_max_tokens=int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "4000")),
         )
+
 
 @dataclass
 class ETLConfig:
@@ -191,8 +192,9 @@ class ETLConfig:
             rate_limit=float(os.getenv("RATE_LIMIT", "0.1")),
             process_semantic=os.getenv("PROCESS_SEMANTIC", "true").lower() == "true",
             process_quantitative=os.getenv("PROCESS_QUANTITATIVE", "true").lower() == "true",
-            delay_between_companies=int(os.getenv("DELAY_BETWEEN_COMPANIES", "1"))
+            delay_between_companies=int(os.getenv("DELAY_BETWEEN_COMPANIES", "1")),
         )
+
 
 @dataclass
 class VectorStoreConfig:
@@ -227,8 +229,9 @@ class VectorStoreConfig:
             hnsw_ef_construction=int(os.getenv("VECTOR_HNSW_EF_CONSTRUCTION", "400")),
             hnsw_ef_search=int(os.getenv("VECTOR_HNSW_EF_SEARCH", "200")),
             ivf_nlist=int(os.getenv("VECTOR_IVF_NLIST", "0")) or None,
-            ivf_nprobe=int(os.getenv("VECTOR_IVF_NPROBE", "0")) or None
+            ivf_nprobe=int(os.getenv("VECTOR_IVF_NPROBE", "0")) or None,
         )
+
 
 @dataclass
 class StreamlitConfig:
@@ -267,11 +270,13 @@ class StreamlitConfig:
             show_error_details=os.getenv("STREAMLIT_SHOW_ERROR_DETAILS", "true").lower() == "true",
             toolbar_mode=os.getenv("STREAMLIT_TOOLBAR_MODE", "auto"),
             caching=os.getenv("STREAMLIT_CACHING", "false").lower() == "true",
-            gather_usage_stats=os.getenv("STREAMLIT_GATHER_USAGE_STATS", "false").lower() == "true"
+            gather_usage_stats=os.getenv("STREAMLIT_GATHER_USAGE_STATS", "false").lower() == "true",
         )
 
+
 # Type variable for configuration classes
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class ConfigProvider:
     """Unified configuration provider for the SEC Filing Analyzer."""
@@ -304,10 +309,7 @@ class ConfigProvider:
             cls._external_config_path = Path(config_path)
         else:
             # Try to find the config file in standard locations
-            config_paths = [
-                Path("data/config/config.json"),
-                Path("data/config/etl_config.json")
-            ]
+            config_paths = [Path("data/config/config.json"), Path("data/config/etl_config.json")]
             for path in config_paths:
                 if path.exists():
                     cls._external_config_path = path
@@ -334,6 +336,7 @@ class ConfigProvider:
         # Load agent-specific configurations from llm_config.py
         try:
             from sec_filing_analyzer.llm.llm_config import AGENT_CONFIGS
+
             cls._agent_specific_configs = AGENT_CONFIGS
         except ImportError:
             logger.warning("Could not import agent-specific configurations from llm_config.py")
@@ -382,15 +385,15 @@ class ConfigProvider:
         # Apply external config if available
         if cls._external_config_path and cls._external_config_path.exists():
             try:
-                with open(cls._external_config_path, 'r') as f:
+                with open(cls._external_config_path, "r") as f:
                     external_config = json.load(f)
 
-                if 'agent' in external_config:
+                if "agent" in external_config:
                     # Update with external values
-                    for key, value in external_config['agent'].items():
+                    for key, value in external_config["agent"].items():
                         # Special handling for token_budgets to ensure it's properly loaded
-                        if key == 'token_budgets' and isinstance(value, dict):
-                            config['token_budgets'] = value
+                        if key == "token_budgets" and isinstance(value, dict):
+                            config["token_budgets"] = value
                         else:
                             config[key] = value
             except Exception as e:
@@ -437,7 +440,7 @@ class ConfigProvider:
         schemas = {}
         for schema_file in cls._schema_dir.glob("*.json"):
             try:
-                with open(schema_file, 'r') as f:
+                with open(schema_file, "r") as f:
                     schema = json.load(f)
                     tool_name = schema_file.stem
                     schemas[tool_name] = schema
@@ -449,6 +452,7 @@ class ConfigProvider:
         if not schemas:
             try:
                 from src.tools.tool_parameter_helper import TOOL_PARAMETER_SCHEMAS
+
                 schemas = TOOL_PARAMETER_SCHEMAS
                 logger.info("Loaded schemas from tool_parameter_helper.py")
 
@@ -456,7 +460,7 @@ class ConfigProvider:
                 for tool_name, schema in schemas.items():
                     schema_file = cls._schema_dir / f"{tool_name}.json"
                     try:
-                        with open(schema_file, 'w') as f:
+                        with open(schema_file, "w") as f:
                             json.dump(schema, f, indent=2)
                         logger.debug(f"Saved schema for tool: {tool_name}")
                     except Exception as e:
@@ -469,23 +473,29 @@ class ConfigProvider:
     @classmethod
     def validate_config(cls, config: Dict[str, Any], config_type: str) -> bool:
         """Validate a configuration dictionary."""
-        if config_type == 'agent':
+        if config_type == "agent":
             required_fields = {
-                'max_iterations', 'max_planning_iterations', 'max_execution_iterations',
-                'max_refinement_iterations', 'llm_model', 'llm_temperature', 'llm_max_tokens'
+                "max_iterations",
+                "max_planning_iterations",
+                "max_execution_iterations",
+                "max_refinement_iterations",
+                "llm_model",
+                "llm_temperature",
+                "llm_max_tokens",
             }
             return all(field in config for field in required_fields)
-        elif config_type == 'etl':
-            required_fields = {'filings_dir', 'filing_types', 'max_retries', 'timeout'}
+        elif config_type == "etl":
+            required_fields = {"filings_dir", "filing_types", "max_retries", "timeout"}
             return all(field in config for field in required_fields)
-        elif config_type == 'vector_store':
-            required_fields = {'type', 'path', 'index_type'}
+        elif config_type == "vector_store":
+            required_fields = {"type", "path", "index_type"}
             return all(field in config for field in required_fields)
-        elif config_type == 'streamlit':
-            required_fields = {'port', 'headless', 'enable_cors'}
+        elif config_type == "streamlit":
+            required_fields = {"port", "headless", "enable_cors"}
             return all(field in config for field in required_fields)
         else:
             return True  # No validation for other types yet
+
 
 # Create global configuration instances
 neo4j_config = Neo4jConfig()
@@ -511,7 +521,7 @@ STORAGE_CONFIG: Dict[str, Any] = {
     "use_neo4j": storage_config.use_neo4j,
     "vector_store_type": storage_config.vector_store_type,
     "vector_store_path": str(storage_config.vector_store_path),
-    "graph_store_path": str(storage_config.graph_store_path)
+    "graph_store_path": str(storage_config.graph_store_path),
 }
 
 # Export agent configuration dictionary for backward compatibility
@@ -522,22 +532,18 @@ AGENT_CONFIG: Dict[str, Any] = {
     "max_execution_iterations": agent_config.max_execution_iterations,
     "max_refinement_iterations": agent_config.max_refinement_iterations,
     "max_iterations_effective": agent_config.max_iterations_effective,  # New computed field
-
     # Tool execution parameters
     "max_tool_retries": agent_config.max_tool_retries,
     "tools_per_iteration": agent_config.tools_per_iteration,
     "circuit_breaker_threshold": agent_config.circuit_breaker_threshold,
     "circuit_breaker_reset_timeout": agent_config.circuit_breaker_reset_timeout,
-
     # Runtime parameters
     "max_duration_seconds": agent_config.max_duration_seconds,
-
     # Termination parameters
     "enable_dynamic_termination": agent_config.enable_dynamic_termination,
     "min_confidence_threshold": agent_config.min_confidence_threshold,
-
     # LLM parameters
     "llm_model": agent_config.llm_model,
     "llm_temperature": agent_config.llm_temperature,
-    "llm_max_tokens": agent_config.llm_max_tokens
+    "llm_max_tokens": agent_config.llm_max_tokens,
 }

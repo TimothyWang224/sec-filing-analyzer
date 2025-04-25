@@ -367,6 +367,137 @@ python scripts/visualization/launch_log_visualizer.py --log-file data/logs/agent
 
 The visualizer supports both agent logs and workflow logs, automatically detecting the log type and displaying the appropriate visualizations. For more details, see the [Visualization README](scripts/visualization/README.md).
 
+## Dev Hygiene & CI
+
+This project uses several tools to maintain code quality and ensure consistent development practices:
+
+### Code Quality Tools
+
+- **Ruff**: Fast Python linter and formatter
+- **Mypy**: Static type checker for Python
+- **Bandit**: Security vulnerability scanner that identifies common security issues in Python code
+- **Pytest**: Testing framework with coverage reporting to ensure code reliability
+- **Pre-commit**: Git hooks to enforce checks before commits, ensuring code quality standards
+
+For details on code quality tool configurations and exclusions, see [Code Quality Exclusions](docs/code_quality_exclusions.md).
+
+### Setup Development Environment
+
+1. Install dev dependencies:
+   ```bash
+   poetry install
+   ```
+
+2. Install pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
+
+3. Run pre-commit on all files:
+   ```bash
+   pre-commit run --all-files
+   ```
+
+### Running Tests
+
+Run the tests with coverage reporting:
+
+```bash
+poetry run pytest tests/ --cov=src --cov-report=xml
+```
+
+### Security Scanning
+
+Run the security scanner:
+
+```bash
+bandit -r src -ll --configfile .bandit.yaml
+```
+
+### Log Collection for AI Analysis
+
+The project automatically collects logs from code quality tools for AI analysis.
+
+#### Automatic Log Collection
+
+Logs are automatically generated whenever pre-commit runs. You don't need to do anything special - just use pre-commit as normal:
+
+```bash
+pre-commit run --all-files
+```
+
+If you want to generate logs without running the actual hooks (for example, to test the logging system), you can use:
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\log_precommit.ps1
+```
+
+**Linux/macOS:**
+```bash
+./scripts/log_precommit.sh
+```
+
+#### Log Locations
+
+Logs are saved to:
+- Latest run: `~/.sec_filing_analyzer_logs/latest.log`
+- Timestamped logs: `~/.sec_filing_analyzer_logs/precommit_YYYYMMDD_HHMMSS.log`
+
+#### Log Features
+
+- **Structured Format**: Each hook's output is clearly marked with a header (e.g., `===== ruff (Failed) =====`)
+- **Timezone-aware Timestamps**: Logs include ISO-formatted timestamps with timezone information
+- **Exit Code Preservation**: The wrapper preserves the exit code of pre-commit, ensuring that failing hooks still block commits
+- **Working Directory Information**: Logs include the current working directory for context
+
+#### Log Management
+
+To prevent log files from accumulating indefinitely, you can use the pruning scripts:
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\prune_logs.ps1
+```
+
+**Linux/macOS:**
+```bash
+./scripts/prune_logs.sh
+```
+
+These scripts keep the 50 most recent log files and delete older ones.
+
+#### CI Logs
+
+GitHub Actions automatically collects logs from:
+- Test runs
+- Security scans
+- Pre-commit checks
+
+Logs are uploaded as artifacts with each CI run and can be downloaded from the GitHub Actions page. The logs are:
+
+- Retained for 7 days to save storage space
+- Summarized in the GitHub Actions run summary for quick review
+- Tagged with the commit SHA for easy identification
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI, which runs on every push and pull request:
+
+- Installs Poetry and dependencies
+- Runs tests with coverage reporting
+- Runs Bandit for security scanning
+- Stores test artifacts (coverage reports)
+
+The CI workflow is defined in `.github/workflows/ci.yml`.
+
+### Configuration Files
+
+- `.pre-commit-config.yaml`: Configures pre-commit hooks
+- `.bandit.yaml`: Configures security scanning rules
+- `.github/workflows/ci.yml`: Defines the CI workflow
+- `pyproject.toml`: Contains Poetry dependencies and tool configurations
+
 ## License
 
 MIT

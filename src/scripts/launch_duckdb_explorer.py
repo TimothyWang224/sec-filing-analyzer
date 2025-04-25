@@ -4,11 +4,12 @@ Launch DuckDB Explorer
 This script launches the Streamlit DuckDB Explorer.
 """
 
+import argparse
 import os
 import subprocess
-import webbrowser
 import time
-import argparse
+import webbrowser
+
 
 def main():
     parser = argparse.ArgumentParser(description="Launch the DuckDB Explorer")
@@ -62,6 +63,7 @@ def main():
         process.terminate()
         process.wait()
         print("Streamlit server stopped.")
+
 
 if __name__ == "__main__":
     main()

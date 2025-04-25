@@ -5,22 +5,23 @@ This module provides an optimized implementation of vector storage operations
 using NumPy binary storage and FAISS for efficient similarity search.
 """
 
-import os
-import logging
 import json
+import logging
+import os
 import time
-import numpy as np
-import faiss
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
+import faiss
+import numpy as np
 from llama_index.core import Document
 from llama_index.core.schema import NodeWithScore, TextNode
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class OptimizedVectorStore:
     """
@@ -35,9 +36,9 @@ class OptimizedVectorStore:
         use_gpu: bool = False,
         nlist: int = 100,  # For IVF indexes
         nprobe: int = 10,  # For IVF indexes
-        m: int = 16,      # For HNSW indexes
+        m: int = 16,  # For HNSW indexes
         ef_construction: int = 200,  # For HNSW indexes
-        ef_search: int = 128         # For HNSW indexes
+        ef_search: int = 128,  # For HNSW indexes
     ):
         """Initialize the vector store.
 
@@ -279,14 +280,14 @@ class OptimizedVectorStore:
         Returns:
             Safe filename
         """
-        return doc_id.replace('/', '_').replace('\\', '_').replace(':', '_')
+        return doc_id.replace("/", "_").replace("\\", "_").replace(":", "_")
 
     def upsert_vectors(
         self,
         vectors: List[List[float]],
         ids: List[str],
         metadata: Optional[List[Dict[str, Any]]] = None,
-        texts: Optional[List[str]] = None
+        texts: Optional[List[str]] = None,
     ) -> None:
         """Add vectors and their associated text to the store.
 
@@ -356,11 +357,7 @@ class OptimizedVectorStore:
             FAISS index
         """
         # Store index parameters for future reference
-        self.index_params = {
-            "type": self.index_type,
-            "dimension": vector_dim,
-            "num_vectors": num_vectors
-        }
+        self.index_params = {"type": self.index_type, "dimension": vector_dim, "num_vectors": num_vectors}
 
         # Create the appropriate index based on type
         if self.index_type == "flat":
@@ -376,23 +373,27 @@ class OptimizedVectorStore:
             index = faiss.IndexIVFFlat(quantizer, vector_dim, nlist)
             index.nprobe = self.nprobe  # Number of clusters to visit during search
             index.train_mode = True  # Enable training mode
-            self.index_params.update({
-                "nlist": nlist,
-                "nprobe": self.nprobe,
-                "description": f"IVF index with {nlist} clusters, visiting {self.nprobe} during search"
-            })
+            self.index_params.update(
+                {
+                    "nlist": nlist,
+                    "nprobe": self.nprobe,
+                    "description": f"IVF index with {nlist} clusters, visiting {self.nprobe} during search",
+                }
+            )
 
         elif self.index_type == "hnsw":
             # HNSW index (hierarchical navigable small world graph)
             index = faiss.IndexHNSWFlat(vector_dim, self.m)
             index.hnsw.efConstruction = self.ef_construction
             index.hnsw.efSearch = self.ef_search
-            self.index_params.update({
-                "m": self.m,
-                "ef_construction": self.ef_construction,
-                "ef_search": self.ef_search,
-                "description": f"HNSW index with m={self.m}, efConstruction={self.ef_construction}, efSearch={self.ef_search}"
-            })
+            self.index_params.update(
+                {
+                    "m": self.m,
+                    "ef_construction": self.ef_construction,
+                    "ef_search": self.ef_search,
+                    "description": f"HNSW index with m={self.m}, efConstruction={self.ef_construction}, efSearch={self.ef_search}",
+                }
+            )
 
         elif self.index_type == "ivfpq":
             # IVF with Product Quantization (for memory efficiency)
@@ -402,13 +403,15 @@ class OptimizedVectorStore:
             quantizer = faiss.IndexFlatL2(vector_dim)
             index = faiss.IndexIVFPQ(quantizer, vector_dim, nlist, m, bits)
             index.nprobe = self.nprobe
-            self.index_params.update({
-                "nlist": nlist,
-                "nprobe": self.nprobe,
-                "m": m,
-                "bits": bits,
-                "description": f"IVFPQ index with {nlist} clusters, {m} subquantizers, {bits} bits"
-            })
+            self.index_params.update(
+                {
+                    "nlist": nlist,
+                    "nprobe": self.nprobe,
+                    "m": m,
+                    "bits": bits,
+                    "description": f"IVFPQ index with {nlist} clusters, {m} subquantizers, {bits} bits",
+                }
+            )
         else:
             # Default to flat index if unknown type
             logger.warning(f"Unknown index type '{self.index_type}', defaulting to flat index")
@@ -499,14 +502,14 @@ class OptimizedVectorStore:
             faiss.write_index(index, str(index_path))
 
             # Save the ID mapping
-            with open(mapping_path, 'w') as f:
+            with open(mapping_path, "w") as f:
                 # Convert int keys to strings for JSON
                 mapping_dict = {str(k): v for k, v in id_map.items()}
                 json.dump(mapping_dict, f)
 
             # Save index parameters
             params_path = self.index_dir / f"{index_path.stem}.params.json"
-            with open(params_path, 'w') as f:
+            with open(params_path, "w") as f:
                 json.dump(self.index_params, f)
 
             index_type = "delta" if is_delta else "main"
@@ -515,6 +518,7 @@ class OptimizedVectorStore:
         except Exception as e:
             logger.error(f"Error saving FAISS index: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return False
 
@@ -542,7 +546,7 @@ class OptimizedVectorStore:
             loaded_index = faiss.read_index(str(index_path))
 
             # Load the ID mapping
-            with open(mapping_path, 'r') as f:
+            with open(mapping_path, "r") as f:
                 # JSON keys are strings, convert back to integers
                 mapping_dict = json.load(f)
                 loaded_id_map = {int(k): v for k, v in mapping_dict.items()}
@@ -560,7 +564,7 @@ class OptimizedVectorStore:
             # Load index parameters if available
             params_path = self.index_dir / f"{index_path.stem}.params.json"
             if params_path.exists():
-                with open(params_path, 'r') as f:
+                with open(params_path, "r") as f:
                     self.index_params = json.load(f)
 
             index_type = "delta" if is_delta else "main"
@@ -569,6 +573,7 @@ class OptimizedVectorStore:
         except Exception as e:
             logger.error(f"Error loading FAISS index: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return False
 
@@ -786,6 +791,7 @@ class OptimizedVectorStore:
         except Exception as e:
             logger.error(f"Error adding documents to index: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return False
 
@@ -807,7 +813,9 @@ class OptimizedVectorStore:
             # Get all affected companies
             all_companies = list(self.loaded_companies.union(self.delta_companies))
 
-            logger.info(f"Merging delta index ({self.delta_index.ntotal} vectors) into main index ({self.faiss_index.ntotal} vectors)")
+            logger.info(
+                f"Merging delta index ({self.delta_index.ntotal} vectors) into main index ({self.faiss_index.ntotal} vectors)"
+            )
 
             # Extract vectors from delta index
             delta_vectors = []
@@ -864,6 +872,7 @@ class OptimizedVectorStore:
         except Exception as e:
             logger.error(f"Error merging delta index: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return False
 
@@ -897,6 +906,7 @@ class OptimizedVectorStore:
         except Exception as e:
             logger.error(f"Error rebuilding index: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
             return False
 
@@ -913,7 +923,7 @@ class OptimizedVectorStore:
         keyword_match_type: str = "any",  # "any", "all", or "exact"
         hybrid_search_weight: float = 0.5,  # 0.0 = pure vector, 1.0 = pure keyword
         sort_by: str = "relevance",  # "relevance", "date", or "company"
-        force_rebuild: bool = False  # Whether to force rebuilding the index
+        force_rebuild: bool = False,  # Whether to force rebuilding the index
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors and return their associated text.
 
@@ -938,6 +948,7 @@ class OptimizedVectorStore:
 
             # Generate embedding for the query text
             from sec_filing_analyzer.embeddings import EmbeddingGenerator
+
             embedding_generator = EmbeddingGenerator()
             query_embedding = embedding_generator.generate_embeddings([query_text])[0]
 
@@ -965,14 +976,18 @@ class OptimizedVectorStore:
 
             # Search main index if available
             if main_index_available:
-                main_distances, main_indices = self.faiss_index.search(query_array, min(search_k, self.faiss_index.ntotal))
+                main_distances, main_indices = self.faiss_index.search(
+                    query_array, min(search_k, self.faiss_index.ntotal)
+                )
                 all_distances.append(main_distances[0])
                 all_indices.append(main_indices[0])
                 all_id_maps.append(self.faiss_id_map)
 
             # Search delta index if available
             if delta_index_available:
-                delta_distances, delta_indices = self.delta_index.search(query_array, min(search_k, self.delta_index.ntotal))
+                delta_distances, delta_indices = self.delta_index.search(
+                    query_array, min(search_k, self.delta_index.ntotal)
+                )
                 all_distances.append(delta_distances[0])
                 all_indices.append(delta_indices[0])
                 all_id_maps.append(self.delta_id_map)
@@ -1026,14 +1041,16 @@ class OptimizedVectorStore:
                         score = vector_score
 
                     # Add to candidates
-                    candidates.append({
-                        "id": doc_id,
-                        "score": score,
-                        "vector_score": vector_score,
-                        "keyword_score": keyword_score,
-                        "metadata": metadata,
-                        "text": text
-                    })
+                    candidates.append(
+                        {
+                            "id": doc_id,
+                            "score": score,
+                            "vector_score": vector_score,
+                            "keyword_score": keyword_score,
+                            "metadata": metadata,
+                            "text": text,
+                        }
+                    )
 
             # Sort results based on sort_by parameter
             if sort_by == "date" and candidates and "filing_date" in candidates[0]["metadata"]:
@@ -1052,6 +1069,7 @@ class OptimizedVectorStore:
         except Exception as e:
             logger.error(f"Error searching vectors: {str(e)}")
             import traceback
+
             logger.error(traceback.format_exc())
             return []
 
@@ -1281,8 +1299,10 @@ class OptimizedVectorStore:
         stats = {
             "total_documents": len(self.metadata_store),
             "total_companies": len(self.list_companies()),
-            "documents_by_company": {company: len(docs) for company, docs in self.company_to_docs.items() if company != "all"},
-            "storage_size_mb": 0
+            "documents_by_company": {
+                company: len(docs) for company, docs in self.company_to_docs.items() if company != "all"
+            },
+            "storage_size_mb": 0,
         }
 
         # Calculate storage size

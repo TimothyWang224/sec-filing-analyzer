@@ -10,9 +10,11 @@ This script:
 import os
 import shutil
 from pathlib import Path
+
 from rich.console import Console
 
 console = Console()
+
 
 def create_directory_structure():
     """Create the directory structure for scripts."""
@@ -25,13 +27,14 @@ def create_directory_structure():
         "scripts/utils",
         "scripts/visualization",
         "scripts/maintenance",
-        "scripts/examples"
+        "scripts/examples",
     ]
-    
+
     # Create the directories
     for directory in directories:
         Path(directory).mkdir(parents=True, exist_ok=True)
         console.print(f"[green]Created directory: {directory}[/green]")
+
 
 def create_readme_files():
     """Create README.md files for each directory."""
@@ -183,15 +186,16 @@ This directory contains example scripts demonstrating usage of the SEC Filing An
 - `test_reorganized_structure.py`: Example of reorganized structure
 - `test_simplified_xbrl.py`: Example of simplified XBRL extraction
 - `hello_world.py`: Simple hello world example
-"""
+""",
     }
-    
+
     # Create the README.md files
     for directory, content in readme_content.items():
         readme_path = Path(directory) / "README.md"
         with open(readme_path, "w") as f:
             f.write(content)
         console.print(f"[blue]Created README.md in {directory}[/blue]")
+
 
 def organize_scripts():
     """Organize scripts into the directory structure."""
@@ -212,7 +216,7 @@ def organize_scripts():
             "list_msft_filings.py",
             "reprocess_aapl_filing.py",
             "reprocess_zero_vector_filings.py",
-            "explore_edgar_xbrl.py"
+            "explore_edgar_xbrl.py",
         ],
         "scripts/db/duckdb": [
             "duckdb_cli.py",
@@ -225,7 +229,7 @@ def organize_scripts():
             "test_duckdb_store.py",
             "example_improved_duckdb.py",
             "compare_duckdb_schemas.py",
-            "check_db_schema.py"
+            "check_db_schema.py",
         ],
         "scripts/analysis": [
             "analyze_aapl_chunks.py",
@@ -239,7 +243,7 @@ def organize_scripts():
             "test_optimized_vector_store.py",
             "test_faiss_persistence.py",
             "test_delta_index.py",
-            "find_zero_vector_filings.py"
+            "find_zero_vector_filings.py",
         ],
         "scripts/utils": [
             "migrate_data_structure.py",
@@ -257,20 +261,16 @@ def organize_scripts():
             "test_edgar_xbrl_to_duckdb.py",
             "test_specific_filing.py",
             "test_xbrl_extraction.py",
-            "test_xbrl_extractor.py"
+            "test_xbrl_extractor.py",
         ],
         "scripts/visualization": [
             "launch_duckdb_explorer.py",
             "launch_duckdb_web.py",
             "simple_duckdb_explorer.py",
             "streamlit_duckdb_explorer.py",
-            "explore_vector_store.py"
+            "explore_vector_store.py",
         ],
-        "scripts/maintenance": [
-            "cleanup_databases.py",
-            "cleanup_root_directory.py",
-            "organize_scripts_revised.py"
-        ],
+        "scripts/maintenance": ["cleanup_databases.py", "cleanup_root_directory.py", "organize_scripts_revised.py"],
         "scripts/examples": [
             "test_with_mock_data.py",
             "test_with_simplified_schema.py",
@@ -282,13 +282,13 @@ def organize_scripts():
             "test_reorganized_structure.py",
             "test_simplified_xbrl.py",
             "hello_world.py",
-            "init_and_test_improved_extractor.py"
-        ]
+            "init_and_test_improved_extractor.py",
+        ],
     }
-    
+
     # Source directories
     source_dirs = ["scripts", "src/scripts"]
-    
+
     # Move scripts to their categories
     for category, script_list in script_categories.items():
         for script in script_list:
@@ -298,14 +298,14 @@ def organize_scripts():
                 if source_path.exists():
                     # Create the destination path
                     dest_path = Path(category) / script
-                    
+
                     # Copy the script to the destination
                     shutil.copy2(source_path, dest_path)
                     console.print(f"[green]Copied {script} to {category}[/green]")
                     break
             else:
                 console.print(f"[yellow]Script not found: {script}[/yellow]")
-    
+
     console.print("\n[bold green]Script organization complete![/bold green]")
     console.print("[bold]Scripts have been organized into the following structure:[/bold]")
     console.print("- scripts/etl/")
@@ -316,20 +316,24 @@ def organize_scripts():
     console.print("- scripts/visualization/")
     console.print("- scripts/maintenance/")
     console.print("- scripts/examples/")
-    console.print("\n[bold]Note:[/bold] The original scripts have been copied, not moved. You may want to clean up the original script directories after verifying the new structure.")
+    console.print(
+        "\n[bold]Note:[/bold] The original scripts have been copied, not moved. You may want to clean up the original script directories after verifying the new structure."
+    )
+
 
 def main():
     """Main function."""
     console.print("[bold]Organizing scripts into a more robust directory structure...[/bold]")
-    
+
     # Create the directory structure
     create_directory_structure()
-    
+
     # Create README.md files
     create_readme_files()
-    
+
     # Organize scripts
     organize_scripts()
+
 
 if __name__ == "__main__":
     main()

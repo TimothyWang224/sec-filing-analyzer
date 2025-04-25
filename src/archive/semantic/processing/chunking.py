@@ -6,19 +6,20 @@ while respecting token limits for embedding models.
 """
 
 import logging
-from typing import Dict, List, Any, Optional, Tuple
-import pandas as pd
-import numpy as np
-from bs4 import BeautifulSoup
-import tiktoken
+from typing import Any, Dict, List, Optional, Tuple
 
-from edgar.files.htmltools import ChunkedDocument, chunks2df, detect_decimal_items, adjust_for_empty_items
+import numpy as np
+import pandas as pd
+import tiktoken
+from bs4 import BeautifulSoup
+from edgar.files.htmltools import ChunkedDocument, adjust_for_empty_items, chunks2df, detect_decimal_items
 from llama_index.core.text_splitter import TokenTextSplitter
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class FilingChunker:
     """
@@ -47,10 +48,7 @@ class DocumentChunker:
         self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI's encoding
 
         # Initialize token splitter
-        self.token_splitter = TokenTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
-        )
+        self.token_splitter = TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     def chunk_document(self, text: str) -> List[Dict[str, Any]]:
         """
@@ -76,8 +74,8 @@ class DocumentChunker:
                 "metadata": {
                     "chunk_index": i,
                     "total_chunks": len(chunk_texts),
-                    "token_count": len(self.tokenizer.encode(chunk_text))
-                }
+                    "token_count": len(self.tokenizer.encode(chunk_text)),
+                },
             }
             chunks.append(chunk)
 
@@ -95,10 +93,7 @@ class DocumentChunker:
         self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI's encoding
 
         # Initialize token splitter for handling large chunks
-        self.token_splitter = TokenTextSplitter(
-            chunk_size=max_chunk_size,
-            chunk_overlap=200
-        )
+        self.token_splitter = TokenTextSplitter(chunk_size=max_chunk_size, chunk_overlap=200)
 
         # Initialize embedding model
         self.embedding_model = OpenAIEmbedding()
@@ -134,11 +129,7 @@ class DocumentChunker:
         sub_chunk_metadata = []
         for i, sub_chunk in enumerate(sub_chunks):
             sub_chunk_meta = chunk_meta.copy()
-            sub_chunk_meta.update({
-                'is_sub_chunk': True,
-                'sub_chunk_index': i,
-                'parent_chunk_text': chunk_text
-            })
+            sub_chunk_meta.update({"is_sub_chunk": True, "sub_chunk_index": i, "parent_chunk_text": chunk_text})
             sub_chunk_metadata.append(sub_chunk_meta)
 
         return sub_chunks, sub_chunk_metadata
@@ -149,7 +140,7 @@ class DocumentChunker:
         """
         try:
             # Parse HTML and clean it up
-            soup = BeautifulSoup(html_content, 'html.parser')
+            soup = BeautifulSoup(html_content, "html.parser")
 
             # Remove script and style elements
             for script in soup(["script", "style"]):
@@ -163,7 +154,7 @@ class DocumentChunker:
             # Break multi-headlines into a line each
             chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
             # Drop blank lines
-            text = ' '.join(chunk for chunk in chunks if chunk)
+            text = " ".join(chunk for chunk in chunks if chunk)
 
             return text
         except Exception as e:
@@ -200,7 +191,7 @@ class DocumentChunker:
             # Process items safely
             logger.info("Processing items from DataFrame")
             items = set()
-            for idx, item in enumerate(df['Item'].dropna()):
+            for idx, item in enumerate(df["Item"].dropna()):
                 try:
                     logger.debug(f"Processing item at index {idx}: {item}")
                     item_str = convert_value(item)
@@ -213,10 +204,10 @@ class DocumentChunker:
             # Calculate statistics
             logger.info("Calculating chunk statistics")
             stats = {
-                'total_chunks': len(chunked_doc),
-                'avg_chunk_size': chunked_doc.average_chunk_size(),
-                'items': sorted(list(items)),  # Convert set to sorted list for consistency
-                'tables': sum(1 for _ in chunked_doc.tables())
+                "total_chunks": len(chunked_doc),
+                "avg_chunk_size": chunked_doc.average_chunk_size(),
+                "items": sorted(list(items)),  # Convert set to sorted list for consistency
+                "tables": sum(1 for _ in chunked_doc.tables()),
             }
 
             # Process chunks and create metadata
@@ -224,46 +215,49 @@ class DocumentChunker:
             chunks = []
             for i, row in df.iterrows():
                 try:
-                    chunk_text = convert_value(row.get('Text', ''))
+                    chunk_text = convert_value(row.get("Text", ""))
                     chunk_meta = {
-                        'text': chunk_text,
-                        'item': convert_value(row.get('Item', '')),
-                        'is_table': bool(row.get('Table', False)),
-                        'chars': int(row.get('Chars', 0)),
-                        'is_signature': bool(row.get('Signature', False)),
-                        'is_toc': bool(row.get('TocLink', False) or row.get('Toc', False)),
-                        'is_empty': bool(row.get('Empty', True)),
-                        'order': i
+                        "text": chunk_text,
+                        "item": convert_value(row.get("Item", "")),
+                        "is_table": bool(row.get("Table", False)),
+                        "chars": int(row.get("Chars", 0)),
+                        "is_signature": bool(row.get("Signature", False)),
+                        "is_toc": bool(row.get("TocLink", False) or row.get("Toc", False)),
+                        "is_empty": bool(row.get("Empty", True)),
+                        "order": i,
                     }
 
                     # Check if chunk exceeds token limit
                     token_count = self._count_tokens(chunk_text)
                     if token_count > self.max_chunk_size:
-                        logger.info(f"Chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks.")
+                        logger.info(
+                            f"Chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks."
+                        )
                         sub_chunks, sub_chunk_metadata = self._split_large_chunk(chunk_text, chunk_meta)
 
                         # Add sub-chunks to the chunks list
                         for j, (sub_chunk_text, sub_chunk_meta) in enumerate(zip(sub_chunks, sub_chunk_metadata)):
                             # Create a unique order for each sub-chunk
-                            sub_chunk_meta['order'] = f"{i}.{j}"
-                            sub_chunk_meta['original_order'] = i  # Keep track of the original chunk order
-                            sub_chunk_meta['token_count'] = self._count_tokens(sub_chunk_text)
+                            sub_chunk_meta["order"] = f"{i}.{j}"
+                            sub_chunk_meta["original_order"] = i  # Keep track of the original chunk order
+                            sub_chunk_meta["token_count"] = self._count_tokens(sub_chunk_text)
                             chunks.append(sub_chunk_meta)
                     else:
                         # Add the original chunk
-                        chunk_meta['token_count'] = token_count
+                        chunk_meta["token_count"] = token_count
                         chunks.append(chunk_meta)
                 except Exception as e:
                     logger.warning(f"Error processing chunk {i}: {e}")
                     continue
 
-            stats['chunks'] = chunks
+            stats["chunks"] = chunks
             return stats
 
         except Exception as e:
             logger.error(f"Error in chunk_html_filing: {str(e)}")
             logger.error(f"Error type: {type(e)}")
             import traceback
+
             logger.error(f"Traceback: {traceback.format_exc()}")
             # Fall back to simple text chunking
             return self._fallback_text_chunking(html_content)
@@ -283,17 +277,19 @@ class DocumentChunker:
                 # Check if chunk exceeds token limit
                 token_count = self._count_tokens(chunk)
                 if token_count > self.max_chunk_size:
-                    logger.info(f"Fallback chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks.")
+                    logger.info(
+                        f"Fallback chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks."
+                    )
                     # Create base metadata
                     base_meta = {
-                        'text': chunk,
-                        'item': '',  # No item information in fallback mode
-                        'is_table': False,
-                        'chars': len(chunk),
-                        'is_signature': False,
-                        'is_toc': False,
-                        'is_empty': len(chunk.strip()) == 0,
-                        'order': i
+                        "text": chunk,
+                        "item": "",  # No item information in fallback mode
+                        "is_table": False,
+                        "chars": len(chunk),
+                        "is_signature": False,
+                        "is_toc": False,
+                        "is_empty": len(chunk.strip()) == 0,
+                        "order": i,
                     }
 
                     # Split the chunk
@@ -302,32 +298,32 @@ class DocumentChunker:
                     # Add sub-chunks to the chunk data
                     for j, (sub_chunk_text, sub_chunk_meta) in enumerate(zip(sub_chunks, sub_chunk_metadata)):
                         # Create a unique order for each sub-chunk
-                        sub_chunk_meta['order'] = f"{i}.{j}"
-                        sub_chunk_meta['original_order'] = i  # Keep track of the original chunk order
-                        sub_chunk_meta['token_count'] = self._count_tokens(sub_chunk_text)
+                        sub_chunk_meta["order"] = f"{i}.{j}"
+                        sub_chunk_meta["original_order"] = i  # Keep track of the original chunk order
+                        sub_chunk_meta["token_count"] = self._count_tokens(sub_chunk_text)
                         chunk_data.append(sub_chunk_meta)
                 else:
                     # Add the original chunk
                     chunk_meta = {
-                        'text': chunk,
-                        'item': '',  # No item information in fallback mode
-                        'is_table': False,
-                        'chars': len(chunk),
-                        'is_signature': False,
-                        'is_toc': False,
-                        'is_empty': len(chunk.strip()) == 0,
-                        'order': i,
-                        'token_count': token_count
+                        "text": chunk,
+                        "item": "",  # No item information in fallback mode
+                        "is_table": False,
+                        "chars": len(chunk),
+                        "is_signature": False,
+                        "is_toc": False,
+                        "is_empty": len(chunk.strip()) == 0,
+                        "order": i,
+                        "token_count": token_count,
                     }
                     chunk_data.append(chunk_meta)
 
             # Return stats in the same format as HTML chunking
             return {
-                'total_chunks': len(chunk_data),
-                'avg_chunk_size': sum(len(c['text']) for c in chunk_data) / len(chunk_data) if chunk_data else 0,
-                'items': [],  # No item information in fallback mode
-                'tables': 0,  # No table detection in fallback mode
-                'chunks': chunk_data
+                "total_chunks": len(chunk_data),
+                "avg_chunk_size": sum(len(c["text"]) for c in chunk_data) / len(chunk_data) if chunk_data else 0,
+                "items": [],  # No item information in fallback mode
+                "tables": 0,  # No table detection in fallback mode
+                "chunks": chunk_data,
             }
 
         except Exception as e:
@@ -401,20 +397,20 @@ class DocumentChunker:
             Dictionary with processed filing data including chunks
         """
         # Initialize result dictionary
-        text = filing_content.get('content', '')
+        text = filing_content.get("content", "")
         result = {
-            "id": filing_data['accession_number'],
+            "id": filing_data["accession_number"],
             "text": text,
             "metadata": filing_data,
             "chunk_texts": [],
             "chunk_metadata": [],
-            "chunks": None
+            "chunks": None,
         }
 
         try:
             # Process HTML content if available
-            if filing_data.get('has_html'):
-                html_content = filing_content.get('html_content')
+            if filing_data.get("has_html"):
+                html_content = filing_content.get("html_content")
                 if html_content:
                     logger.info(f"Processing HTML content for filing {filing_data['accession_number']}")
 
@@ -422,12 +418,12 @@ class DocumentChunker:
                     chunk_stats = self.chunk_html_filing(html_content)
 
                     # Get chunk texts
-                    chunk_texts = [chunk['text'] for chunk in chunk_stats.get('chunks', [])]
+                    chunk_texts = [chunk["text"] for chunk in chunk_stats.get("chunks", [])]
 
                     # Update result
                     result["chunk_metadata"] = chunk_stats
                     result["chunk_texts"] = chunk_texts
-                    result["chunks"] = chunk_stats.get('chunks', [])
+                    result["chunks"] = chunk_stats.get("chunks", [])
                     result["chunk_stats"] = chunk_stats
 
                     # Add relationship information for split chunks
@@ -436,7 +432,7 @@ class DocumentChunker:
             # Fallback to full text if no HTML or if HTML processing failed
             if not result["chunk_texts"]:
                 logger.info(f"Using full text for filing {filing_data['accession_number']}")
-                text = filing_content.get('content', '')
+                text = filing_content.get("content", "")
                 if text:
                     chunk_texts = self.chunk_full_text(text)
 
@@ -446,17 +442,19 @@ class DocumentChunker:
                         # Check if chunk exceeds token limit
                         token_count = self._count_tokens(text)
                         if token_count > self.max_chunk_size:
-                            logger.info(f"Full text chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks.")
+                            logger.info(
+                                f"Full text chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks."
+                            )
                             # Create base metadata
                             base_meta = {
                                 "text": text,
-                                "item": '',  # No item information in fallback mode
+                                "item": "",  # No item information in fallback mode
                                 "is_table": False,
                                 "chars": len(text),
                                 "is_signature": False,
                                 "is_toc": False,
                                 "is_empty": len(text.strip()) == 0,
-                                "order": i
+                                "order": i,
                             }
 
                             # Split the chunk
@@ -465,22 +463,22 @@ class DocumentChunker:
                             # Add sub-chunks to the chunks list
                             for j, (sub_chunk_text, sub_chunk_meta) in enumerate(zip(sub_chunks, sub_chunk_metadata)):
                                 # Create a unique order for each sub-chunk
-                                sub_chunk_meta['order'] = f"{i}.{j}"
-                                sub_chunk_meta['original_order'] = i  # Keep track of the original chunk order
-                                sub_chunk_meta['token_count'] = self._count_tokens(sub_chunk_text)
+                                sub_chunk_meta["order"] = f"{i}.{j}"
+                                sub_chunk_meta["original_order"] = i  # Keep track of the original chunk order
+                                sub_chunk_meta["token_count"] = self._count_tokens(sub_chunk_text)
                                 chunks.append(sub_chunk_meta)
                         else:
                             # Add the original chunk
                             chunk = {
                                 "text": text,
-                                "item": '',  # No item information in fallback mode
+                                "item": "",  # No item information in fallback mode
                                 "is_table": False,
                                 "chars": len(text),
                                 "is_signature": False,
                                 "is_toc": False,
                                 "is_empty": len(text.strip()) == 0,
                                 "order": i,
-                                "token_count": token_count
+                                "token_count": token_count,
                             }
                             chunks.append(chunk)
 
@@ -510,7 +508,7 @@ class DocumentChunker:
         # Group chunks by original order
         original_chunks = {}
         for chunk in chunks:
-            original_order = chunk.get('original_order')
+            original_order = chunk.get("original_order")
             if original_order is not None:
                 if original_order not in original_chunks:
                     original_chunks[original_order] = []
@@ -520,16 +518,16 @@ class DocumentChunker:
         for original_order, split_chunks in original_chunks.items():
             if len(split_chunks) > 1:
                 # Sort split chunks by sub-chunk index
-                split_chunks.sort(key=lambda c: c.get('sub_chunk_index', 0))
+                split_chunks.sort(key=lambda c: c.get("sub_chunk_index", 0))
 
                 # Add relationship information
                 for i, chunk in enumerate(split_chunks):
-                    chunk['split_chunk_count'] = len(split_chunks)
-                    chunk['split_chunk_index'] = i
-                    chunk['is_split_chunk'] = True
+                    chunk["split_chunk_count"] = len(split_chunks)
+                    chunk["split_chunk_index"] = i
+                    chunk["is_split_chunk"] = True
 
                     # Add reference to previous and next chunks in the sequence
                     if i > 0:
-                        chunk['prev_chunk_order'] = split_chunks[i-1]['order']
+                        chunk["prev_chunk_order"] = split_chunks[i - 1]["order"]
                     if i < len(split_chunks) - 1:
-                        chunk['next_chunk_order'] = split_chunks[i+1]['order']
+                        chunk["next_chunk_order"] = split_chunks[i + 1]["order"]

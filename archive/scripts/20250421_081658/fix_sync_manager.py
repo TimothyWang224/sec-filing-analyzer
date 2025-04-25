@@ -1,64 +1,50 @@
 """
-Fix the sync_manager.py file to work with the updated database schema.
+Script to fix the sync_manager.py file to work with the new database schema.
 """
 
 import os
-from pathlib import Path
+from typing import Dict
 
-def fix_sync_manager():
-    """Fix the sync_manager.py file to work with the updated database schema."""
-    # Path to the sync_manager.py file
-    file_path = "src/sec_filing_analyzer/storage/sync_manager.py"
+
+def fix_sync_manager() -> bool:
+    """
+    Fix the sync_manager.py file to work with the new database schema.
+    
+    Returns:
+        True if the file was fixed successfully, False otherwise.
+    """
+    # Get the path to the sync_manager.py file
+    file_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
+                            "src", "sec_filing_analyzer", "utils", "sync_manager.py")
     
     # Check if the file exists
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
         return False
     
-    # Read the file
+    # Read the file content
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
     
-    # Fix 1: Replace CASE expressions with simple column references
+    # Fix 1: Update the imports
     content = content.replace(
-        """                    CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'id')
-                        THEN id
-                        ELSE filing_id
-                    END as id,""",
-        """                    filing_id,"""
+        "from ..storage import DuckDBStore",
+        "from ..storage import OptimizedDuckDBStore"
     )
     
+    # Fix 2: Update the class definition
     content = content.replace(
-        """                    CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id')
-                        THEN filing_id
-                        ELSE id
-                    END as filing_id,""",
-        """                    filing_id,"""
+        "class SyncManager(DuckDBStore):",
+        "class SyncManager(OptimizedDuckDBStore):"
     )
     
-    content = content.replace(
-        """                        CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'company_id')
-                            THEN f.company_id = c.company_id
-                            ELSE f.ticker = c.ticker
-                        END""",
-        """                        f.company_id = c.company_id"""
-    )
-    
-    content = content.replace(
-        """                        CASE WHEN EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'filings' AND column_name = 'filing_id')
-                            THEN f.filing_id = ?
-                            ELSE f.id = ?
-                        END""",
-        """                        f.filing_id = ?"""
-    )
-    
-    # Fix 2: Replace references to id with filing_id
+    # Fix 3: Update the column names in the sync_filings method
     content = content.replace(
         """                                    id, company_id, accession_number, filing_type, filing_date,""",
         """                                    filing_id, company_id, accession_number, filing_type, filing_date,"""
     )
     
-    # Fix 3: Update the update_filing_paths method
+    # Fix 4: Update the update_filing_paths method
     content = content.replace(
         """    def update_filing_paths(self) -> Dict[str, int]:
         """
@@ -119,7 +105,7 @@ def fix_sync_manager():
             ).fetchdf()"""
     )
     
-    # Fix 4: Update the update_processing_status method
+    # Fix 5: Update the update_processing_status method
     content = content.replace(
         """    def update_processing_status(self) -> Dict[str, int]:
         """
@@ -174,7 +160,7 @@ def fix_sync_manager():
             ).fetchdf()"""
     )
     
-    # Fix 5: Update the company_info query
+    # Fix 6: Update the company_info query
     content = content.replace(
         """                # Get company ticker from filing
                 company_info = self.conn.execute(
@@ -206,7 +192,7 @@ def fix_sync_manager():
                 ).fetchone()"""
     )
     
-    # Fix 6: Update the UPDATE statement
+    # Fix 7: Update the UPDATE statement
     content = content.replace(
         """                # Update the filing
                 self.conn.execute(

@@ -8,23 +8,24 @@ This module provides functionality to manage the lifecycle of data across differ
 - Neo4j (graph database)
 """
 
-import os
-import logging
-import duckdb
 import json
+import logging
+import os
 import shutil
-from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple, Set
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Set, Tuple
 
+import duckdb
 import numpy as np
 
+from ..config import ConfigProvider, ETLConfig, StorageConfig
 from .sync_manager import StorageSyncManager
-from ..config import ConfigProvider, StorageConfig, ETLConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class DataLifecycleManager:
     """
@@ -36,7 +37,7 @@ class DataLifecycleManager:
         db_path: Optional[str] = None,
         vector_store_path: Optional[str] = None,
         filings_dir: Optional[str] = None,
-        graph_store_dir: Optional[str] = None
+        graph_store_dir: Optional[str] = None,
     ):
         """
         Initialize the data lifecycle manager.
@@ -63,7 +64,7 @@ class DataLifecycleManager:
             db_path=self.db_path,
             vector_store_path=str(self.vector_store_path),
             filings_dir=str(self.filings_dir),
-            graph_store_dir=str(self.graph_store_dir)
+            graph_store_dir=str(self.graph_store_dir),
         )
 
         # Initialize DuckDB connection
@@ -80,7 +81,7 @@ class DataLifecycleManager:
 
     def close(self):
         """Close the DuckDB connection."""
-        if hasattr(self, 'conn'):
+        if hasattr(self, "conn"):
             self.conn.close()
             logger.info("Closed DuckDB connection")
 
@@ -100,8 +101,7 @@ class DataLifecycleManager:
         try:
             # Get filing from DuckDB
             filing = self.conn.execute(
-                "SELECT * FROM filings WHERE accession_number = ?",
-                [accession_number]
+                "SELECT * FROM filings WHERE accession_number = ?", [accession_number]
             ).fetchone()
 
             if not filing:
@@ -118,7 +118,7 @@ class DataLifecycleManager:
                 "document_url": filing[5],
                 "local_file_path": filing[6],
                 "processing_status": filing[7],
-                "last_updated": str(filing[8])
+                "last_updated": str(filing[8]),
             }
 
             # Get vector store information
@@ -173,7 +173,7 @@ class DataLifecycleManager:
                 "chunk_embeddings_paths": [str(path) for path in chunk_embeddings[:5]],  # First 5 for brevity
                 "metadata_exists": metadata_exists,
                 "metadata_path": str(metadata_path) if metadata_exists else None,
-                "metadata": metadata
+                "metadata": metadata,
             }
 
         except Exception as e:
@@ -238,10 +238,7 @@ class DataLifecycleManager:
                             if file_path.exists():
                                 files.append(str(file_path))
 
-                file_info[subdir] = {
-                    "exists": len(files) > 0,
-                    "files": files
-                }
+                file_info[subdir] = {"exists": len(files) > 0, "files": files}
 
             return file_info
 
@@ -272,7 +269,7 @@ class DataLifecycleManager:
                 "duckdb": {"status": "pending", "details": {}},
                 "vector_store": {"status": "pending", "details": {}},
                 "file_system": {"status": "pending", "details": {}},
-                "dry_run": dry_run
+                "dry_run": dry_run,
             }
 
             # Delete from DuckDB
@@ -280,19 +277,11 @@ class DataLifecycleManager:
             results["duckdb"] = duckdb_result
 
             # Delete from vector store
-            vector_store_result = self._delete_from_vector_store(
-                filing_info["ticker"],
-                accession_number,
-                dry_run
-            )
+            vector_store_result = self._delete_from_vector_store(filing_info["ticker"], accession_number, dry_run)
             results["vector_store"] = vector_store_result
 
             # Delete from file system
-            file_system_result = self._delete_from_file_system(
-                filing_info["ticker"],
-                accession_number,
-                dry_run
-            )
+            file_system_result = self._delete_from_file_system(filing_info["ticker"], accession_number, dry_run)
             results["file_system"] = file_system_result
 
             # Overall status
@@ -323,8 +312,7 @@ class DataLifecycleManager:
         try:
             # Get filing from DuckDB
             filing = self.conn.execute(
-                "SELECT id, ticker FROM filings WHERE accession_number = ?",
-                [accession_number]
+                "SELECT id, ticker FROM filings WHERE accession_number = ?", [accession_number]
             ).fetchone()
 
             if not filing:
@@ -336,24 +324,17 @@ class DataLifecycleManager:
 
             # Check for related data
             financial_facts_count = self.conn.execute(
-                "SELECT COUNT(*) FROM financial_facts WHERE filing_id = ?",
-                [filing_id]
+                "SELECT COUNT(*) FROM financial_facts WHERE filing_id = ?", [filing_id]
             ).fetchone()[0]
 
             # If not a dry run, delete the filing
             if not dry_run:
                 # Delete related data first
                 if financial_facts_count > 0:
-                    self.conn.execute(
-                        "DELETE FROM financial_facts WHERE filing_id = ?",
-                        [filing_id]
-                    )
+                    self.conn.execute("DELETE FROM financial_facts WHERE filing_id = ?", [filing_id])
 
                 # Delete the filing
-                self.conn.execute(
-                    "DELETE FROM filings WHERE accession_number = ?",
-                    [accession_number]
-                )
+                self.conn.execute("DELETE FROM filings WHERE accession_number = ?", [accession_number])
 
                 logger.info(f"Deleted filing {accession_number} from DuckDB")
 
@@ -363,8 +344,8 @@ class DataLifecycleManager:
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "financial_facts_count": financial_facts_count,
-                    "deleted": not dry_run
-                }
+                    "deleted": not dry_run,
+                },
             }
 
         except Exception as e:
@@ -413,11 +394,7 @@ class DataLifecycleManager:
 
             return {
                 "status": "success",
-                "details": {
-                    "files_deleted": len(files_to_delete),
-                    "files": files_to_delete,
-                    "deleted": not dry_run
-                }
+                "details": {"files_deleted": len(files_to_delete), "files": files_to_delete, "deleted": not dry_run},
             }
 
         except Exception as e:
@@ -460,11 +437,7 @@ class DataLifecycleManager:
 
             return {
                 "status": "success",
-                "details": {
-                    "files_deleted": len(files_to_delete),
-                    "files": files_to_delete,
-                    "deleted": not dry_run
-                }
+                "details": {"files_deleted": len(files_to_delete), "files": files_to_delete, "deleted": not dry_run},
             }
 
         except Exception as e:
@@ -484,8 +457,7 @@ class DataLifecycleManager:
         try:
             # Get filings from DuckDB
             filings = self.conn.execute(
-                "SELECT * FROM filings WHERE ticker = ? ORDER BY filing_date DESC",
-                [ticker]
+                "SELECT * FROM filings WHERE ticker = ? ORDER BY filing_date DESC", [ticker]
             ).fetchdf()
 
             if filings.empty:
@@ -521,7 +493,7 @@ class DataLifecycleManager:
                 GROUP BY filing_type
                 ORDER BY count DESC
                 """,
-                [ticker]
+                [ticker],
             ).fetchdf()
 
             if filing_types.empty:
@@ -557,7 +529,7 @@ class DataLifecycleManager:
                 WHERE ticker = ? AND filing_type = ?
                 ORDER BY filing_date DESC
                 """,
-                [ticker, filing_type]
+                [ticker, filing_type],
             ).fetchdf()
 
             if filing_dates.empty:
@@ -595,7 +567,7 @@ if __name__ == "__main__":
         db_path=args.db_path,
         vector_store_path=args.vector_store_path,
         filings_dir=args.filings_dir,
-        graph_store_dir=args.graph_store_dir
+        graph_store_dir=args.graph_store_dir,
     )
 
     try:

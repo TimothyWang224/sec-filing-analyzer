@@ -4,10 +4,10 @@ Test Simplified XBRL Extractor
 This script tests the simplified XBRL extractor.
 """
 
-import sys
-import os
 import json
 import logging
+import os
+import sys
 from pathlib import Path
 
 # Add the src directory to the Python path
@@ -16,11 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import SimplifiedXBRLExtractor
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def test_simplified_xbrl_extractor(ticker: str, accession_number: str):
     """Test the simplified XBRL extractor.
@@ -36,11 +34,7 @@ def test_simplified_xbrl_extractor(ticker: str, accession_number: str):
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
 
     # Extract financials
-    financials = extractor.extract_financials(
-        ticker=ticker,
-        filing_id=filing_id,
-        accession_number=accession_number
-    )
+    financials = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
     # Check for errors
     if "error" in financials:
@@ -82,6 +76,7 @@ def test_simplified_xbrl_extractor(ticker: str, accession_number: str):
         json.dump(financials, f, indent=2)
 
     print(f"\nFull data saved to {output_file}")
+
 
 if __name__ == "__main__":
     import argparse

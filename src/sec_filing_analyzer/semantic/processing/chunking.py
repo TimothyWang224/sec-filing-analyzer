@@ -7,13 +7,14 @@ the enhanced FilingChunker internally.
 """
 
 import logging
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from ...data_processing.chunking import FilingChunker
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class DocumentChunker:
     """
@@ -34,7 +35,9 @@ class DocumentChunker:
         """
         # Use FilingChunker internally
         self.chunker = FilingChunker(max_chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        logger.info("DocumentChunker is now a wrapper around FilingChunker. Consider using FilingChunker directly for new code.")
+        logger.info(
+            "DocumentChunker is now a wrapper around FilingChunker. Consider using FilingChunker directly for new code."
+        )
 
     def chunk_document(self, text: str) -> List[Dict[str, Any]]:
         """

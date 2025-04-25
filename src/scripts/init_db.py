@@ -3,7 +3,9 @@ Initialize a new DuckDB database with the improved schema.
 """
 
 import os
+
 import duckdb
+
 
 def initialize_database(db_path):
     """Initialize a new DuckDB database with the improved schema."""
@@ -31,6 +33,7 @@ def initialize_database(db_path):
 
     print(f"Initialized database at {db_path}")
 
+
 def main():
     print("Starting database initialization...")
 
@@ -43,6 +46,7 @@ def main():
     initialize_database(db_path)
 
     print("Database initialization complete.")
+
 
 if __name__ == "__main__":
     main()

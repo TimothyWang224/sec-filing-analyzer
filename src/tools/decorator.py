@@ -6,12 +6,12 @@ and configuring their schema mappings.
 """
 
 import logging
-from typing import Dict, Any, Optional, Type, Callable, Union, List
 from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
+from .base import Tool
 from .registry import ToolRegistry
 from .schema_registry import SchemaRegistry
-from .base import Tool
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +23,7 @@ def tool(
     tags: Optional[List[str]] = None,
     db_schema: Optional[str] = None,
     parameter_mappings: Optional[Dict[str, str]] = None,
-    compact_description: Optional[str] = None
+    compact_description: Optional[str] = None,
 ):
     """
     Decorator for registering a tool with the ToolRegistry and configuring schema mappings.
@@ -38,6 +38,7 @@ def tool(
     Returns:
         Decorated tool class
     """
+
     def decorator(cls):
         # Set class variables
         if name:
@@ -52,7 +53,7 @@ def tool(
             cls._compact_description = compact_description
 
         # Register the tool with the ToolRegistry
-        tool_name = name or cls.__name__.lower().replace('tool', '')
+        tool_name = name or cls.__name__.lower().replace("tool", "")
         ToolRegistry._register_tool(cls, name=tool_name, tags=tags)
 
         # Register parameter mappings with the SchemaRegistry if a schema is provided
@@ -61,22 +62,24 @@ def tool(
                 SchemaRegistry.register_field_mapping(db_schema, param_name, field_name)
 
         # Ensure the class implements _execute
-        original_execute = getattr(cls, 'execute', None)
-        
+        original_execute = getattr(cls, "execute", None)
+
         # If the class doesn't have an _execute method but has an execute method,
         # create an _execute method that calls the execute method
-        if not hasattr(cls, '_execute') and original_execute:
+        if not hasattr(cls, "_execute") and original_execute:
+
             @wraps(original_execute)
             async def _execute(self, **kwargs):
                 # Call the original execute method
                 return await original_execute(self, **kwargs)
-            
+
             # Add the _execute method to the class
             cls._execute = _execute
-            
+
             # Log a warning about the deprecated pattern
-            logger.warning(f"Tool {cls.__name__} uses deprecated 'execute' method. "
-                          f"Please implement '_execute' instead.")
+            logger.warning(
+                f"Tool {cls.__name__} uses deprecated 'execute' method. Please implement '_execute' instead."
+            )
 
         return cls
 

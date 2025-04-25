@@ -5,22 +5,20 @@ This script tests the functionality of the QA Specialist Agent by asking
 financial questions and evaluating the responses.
 """
 
-import logging
+import argparse
 import asyncio
 import json
+import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import argparse
+from typing import Any, Dict, List, Optional
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 async def test_qa_agent(question: str):
     """Test the QA specialist agent with a financial question."""
@@ -29,7 +27,7 @@ async def test_qa_agent(question: str):
         environment = FinancialEnvironment()
         agent = QASpecialistAgent(
             environment=environment,
-            max_execution_iterations=5  # Increase from default 2 to 5
+            max_execution_iterations=5,  # Increase from default 2 to 5
         )
 
         # Run the agent
@@ -51,7 +49,7 @@ async def test_qa_agent(question: str):
             if semantic_context:
                 print("\n--- Semantic Context ---")
                 for i, context in enumerate(semantic_context[:3]):  # Show top 3 for brevity
-                    print(f"\nContext {i+1}:")
+                    print(f"\nContext {i + 1}:")
                     print(f"Company: {context.get('company', 'N/A')}")
                     print(f"Filing: {context.get('filing_type', 'N/A')} ({context.get('filing_date', 'N/A')})")
                     print(f"Text: {context.get('text', 'N/A')[:200]}...")
@@ -61,7 +59,7 @@ async def test_qa_agent(question: str):
             if financial_data:
                 print("\n--- Financial Data ---")
                 for i, data in enumerate(financial_data):
-                    print(f"\nMetric {i+1}:")
+                    print(f"\nMetric {i + 1}:")
                     print(f"Name: {data.get('metric', 'N/A')}")
                     print(f"Value: {data.get('value', 'N/A')}")
                     print(f"Period: {data.get('period', 'N/A')}")
@@ -71,7 +69,7 @@ async def test_qa_agent(question: str):
             if filing_info:
                 print("\n--- Filing Information ---")
                 for i, filing in enumerate(filing_info):
-                    print(f"\nFiling {i+1}:")
+                    print(f"\nFiling {i + 1}:")
                     print(f"Type: {filing.get('filing_type', 'N/A')}")
                     print(f"Date: {filing.get('filing_date', 'N/A')}")
 
@@ -90,17 +88,19 @@ async def test_qa_agent(question: str):
         logger.error(f"Error testing QA agent: {str(e)}")
         raise
 
+
 def main():
     """Main function to run the test script."""
     parser = argparse.ArgumentParser(description="Test the QA Specialist Agent")
-    parser.add_argument("--question", type=str,
-                        default="What was Apple's revenue growth in 2023?",
-                        help="Financial question to ask")
+    parser.add_argument(
+        "--question", type=str, default="What was Apple's revenue growth in 2023?", help="Financial question to ask"
+    )
 
     args = parser.parse_args()
 
     # Run the test
     asyncio.run(test_qa_agent(args.question))
+
 
 if __name__ == "__main__":
     main()

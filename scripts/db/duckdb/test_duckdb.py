@@ -2,8 +2,10 @@
 Test if we can connect to DuckDB.
 """
 
-import duckdb
 import os
+
+import duckdb
+
 
 def main():
     print("Testing DuckDB connection...")
@@ -31,6 +33,7 @@ def main():
     conn.close()
 
     print("Test complete.")
+
 
 if __name__ == "__main__":
     main()

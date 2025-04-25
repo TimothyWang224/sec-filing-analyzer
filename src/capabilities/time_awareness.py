@@ -6,18 +6,19 @@ temporal aspects of financial data, such as fiscal periods, filing dates,
 and time series analysis.
 """
 
+import calendar
 import logging
 import re
-from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime, timedelta
-import calendar
+from typing import Any, Dict, List, Optional, Tuple
 
-from .base import Capability
 from ..agents.base import Agent
+from .base import Capability
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class TimeAwarenessCapability(Capability):
     """Capability for understanding and reasoning about temporal aspects of financial data."""
@@ -26,7 +27,7 @@ class TimeAwarenessCapability(Capability):
         """Initialize the time awareness capability."""
         super().__init__(
             name="time_awareness",
-            description="Enables agents to understand and reason about temporal aspects of financial data"
+            description="Enables agents to understand and reason about temporal aspects of financial data",
         )
         self.current_time = datetime.now()
         self.fiscal_periods = {}
@@ -57,17 +58,12 @@ class TimeAwarenessCapability(Capability):
             "current_time": self.current_time.isoformat(),
             "current_year": self.current_time.year,
             "current_quarter": self._get_current_quarter(),
-            "fiscal_periods": self.fiscal_periods
+            "fiscal_periods": self.fiscal_periods,
         }
 
         return context
 
-    async def process_prompt(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the prompt to enhance time awareness.
 
@@ -95,12 +91,7 @@ class TimeAwarenessCapability(Capability):
 
         return prompt
 
-    async def process_action(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action to include time awareness.
 
@@ -158,12 +149,7 @@ class TimeAwarenessCapability(Capability):
         return action
 
     async def process_result(
-        self,
-        agent: Agent,
-        context: Dict[str, Any],
-        response: str,
-        action: Dict[str, Any],
-        result: Any
+        self, agent: Agent, context: Dict[str, Any], response: str, action: Dict[str, Any], result: Any
     ) -> Any:
         """
         Process the result to enhance time awareness.
@@ -192,7 +178,7 @@ class TimeAwarenessCapability(Capability):
             # Add time periods to the result
             result["time_analysis"] = {
                 "periods": time_periods,
-                "trends": self._analyze_trends(financial_data, time_periods)
+                "trends": self._analyze_trends(financial_data, time_periods),
             }
 
         return result
@@ -204,7 +190,7 @@ class TimeAwarenessCapability(Capability):
             "Q1": ("01-01", "03-31"),
             "Q2": ("04-01", "06-30"),
             "Q3": ("07-01", "09-30"),
-            "Q4": ("10-01", "12-31")
+            "Q4": ("10-01", "12-31"),
         }
 
         # Some companies have non-standard fiscal years
@@ -216,15 +202,15 @@ class TimeAwarenessCapability(Capability):
                 "Q1": ("10-01", "12-31"),
                 "Q2": ("01-01", "03-31"),
                 "Q3": ("04-01", "06-30"),
-                "Q4": ("07-01", "09-30")
+                "Q4": ("07-01", "09-30"),
             },
             # Microsoft's fiscal year ends in June
             "MSFT": {
                 "Q1": ("07-01", "09-30"),
                 "Q2": ("10-01", "12-31"),
                 "Q3": ("01-01", "03-31"),
-                "Q4": ("04-01", "06-30")
-            }
+                "Q4": ("04-01", "06-30"),
+            },
         }
 
     def _get_current_quarter(self) -> str:
@@ -252,13 +238,13 @@ class TimeAwarenessCapability(Capability):
         references = {}
 
         # Extract years
-        year_pattern = r'\b(20\d{2})\b'
+        year_pattern = r"\b(20\d{2})\b"
         years = re.findall(year_pattern, text)
         if years:
             references["years"] = sorted(list(set(years)))
 
         # Extract quarters
-        quarter_pattern = r'\b(Q[1-4]|first quarter|second quarter|third quarter|fourth quarter)\b'
+        quarter_pattern = r"\b(Q[1-4]|first quarter|second quarter|third quarter|fourth quarter)\b"
         quarters = re.findall(quarter_pattern, text, re.IGNORECASE)
         if quarters:
             # Normalize quarter names
@@ -307,7 +293,7 @@ class TimeAwarenessCapability(Capability):
             references["fiscal_period"] = (fiscal_year, fiscal_quarter)
 
         # Extract relative time references
-        relative_pattern = r'\b(last|previous|current|next|recent)\s+(year|quarter|month|week)\b'
+        relative_pattern = r"\b(last|previous|current|next|recent)\s+(year|quarter|month|week)\b"
         relative_refs = re.findall(relative_pattern, text, re.IGNORECASE)
         if relative_refs:
             references["relative_time"] = relative_refs

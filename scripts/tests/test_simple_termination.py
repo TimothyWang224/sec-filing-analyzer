@@ -3,29 +3,27 @@
 Test script for a simple agent with basic termination logic.
 """
 
+import argparse
+import asyncio
+import logging
 import os
 import sys
-import asyncio
-import argparse
-import logging
-from typing import Dict, Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 # Add the src directory to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
+from sec_filing_analyzer.llm import OpenAILLM, get_agent_config
 from src.agents.qa_specialist import QASpecialistAgent
-from src.environments.financial import FinancialEnvironment
 from src.capabilities.logging import LoggingCapability
 from src.capabilities.time_awareness import TimeAwarenessCapability
+from src.environments.financial import FinancialEnvironment
 from src.sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
-from sec_filing_analyzer.llm import OpenAILLM, get_agent_config
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class SimpleQAAgent(QASpecialistAgent):
     """QA Specialist Agent with simple termination logic."""
@@ -99,6 +97,7 @@ class SimpleQAAgent(QASpecialistAgent):
         # Consider answers similar if they share 95% of words
         return similarity > 0.95
 
+
 async def process_question(question: str, log_level: str = "INFO", include_prompts: bool = False) -> Dict[str, Any]:
     """
     Process a question using the Simple QA Agent.
@@ -127,10 +126,12 @@ async def process_question(question: str, log_level: str = "INFO", include_promp
         llm_config = get_agent_config("qa_specialist")
 
         # Override with specific settings if needed
-        llm_config.update({
-            "temperature": 0.7,  # Slightly higher for more creative responses
-            "max_tokens": 1000,  # Limit response length
-        })
+        llm_config.update(
+            {
+                "temperature": 0.7,  # Slightly higher for more creative responses
+                "max_tokens": 1000,  # Limit response length
+            }
+        )
 
         # Initialize logging capability
         log_dir = str(get_standard_log_dir("tests"))
@@ -147,7 +148,7 @@ async def process_question(question: str, log_level: str = "INFO", include_promp
             include_results=True,
             include_prompts=include_prompts,
             include_responses=include_prompts,
-            max_content_length=1000
+            max_content_length=1000,
         )
 
         # Initialize time awareness capability
@@ -158,15 +159,12 @@ async def process_question(question: str, log_level: str = "INFO", include_promp
             capabilities=[logging_capability, time_awareness],
             environment=environment,
             llm_config=llm_config,
-            max_iterations=3  # Limit to 3 iterations
+            max_iterations=3,  # Limit to 3 iterations
         )
 
         # Create a custom LLM for generating the final answer
         # This is separate from the agent's internal LLM
-        answer_llm = OpenAILLM(
-            model=llm_config["model"],
-            temperature=0.7
-        )
+        answer_llm = OpenAILLM(model=llm_config["model"], temperature=0.7)
 
         # Add the LLM to the agent for use in generating answers
         agent.answer_llm = answer_llm
@@ -227,9 +225,7 @@ async def process_question(question: str, log_level: str = "INFO", include_promp
 
             try:
                 llm_response = await agent.answer_llm.generate(
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    temperature=0.7
+                    prompt=prompt, system_prompt=system_prompt, temperature=0.7
                 )
 
                 logger.info("LLM response received")
@@ -260,16 +256,16 @@ async def process_question(question: str, log_level: str = "INFO", include_promp
 
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}")
-        return {
-            "error": str(e),
-            "answer": "An error occurred while processing your question."
-        }
+        return {"error": str(e), "answer": "An error occurred while processing your question."}
+
 
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(description="Test a simple agent with basic termination")
     parser.add_argument("--question", type=str, required=True, help="Question to ask the agent")
-    parser.add_argument("--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level")
+    parser.add_argument(
+        "--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level"
+    )
     parser.add_argument("--include_prompts", action="store_true", help="Include prompts and responses in logs")
 
     args = parser.parse_args()
@@ -284,6 +280,7 @@ def main():
 
     # Print iteration count
     print(f"\nCompleted in {result.get('iterations_completed', 'unknown')} iterations")
+
 
 if __name__ == "__main__":
     main()

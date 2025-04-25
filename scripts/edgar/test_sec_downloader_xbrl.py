@@ -5,21 +5,21 @@ Test script for the SEC downloader with XBRL extraction.
 import json
 import logging
 from pathlib import Path
+
 from dotenv import load_dotenv
+
+from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 
 # Import SEC downloader
 from sec_filing_analyzer.data_retrieval.sec_downloader import SECFilingsDownloader
-from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 
 # Load environment variables
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 def test_xbrl_extraction():
     """Test XBRL extraction using the SEC downloader."""
@@ -33,7 +33,7 @@ def test_xbrl_extraction():
         sec_downloader = SECFilingsDownloader(
             file_storage=file_storage,
             xbrl_cache_dir="data/xbrl_cache",
-            use_edgar_xbrl=True  # Use edgar extractor
+            use_edgar_xbrl=True,  # Use edgar extractor
         )
 
         # Use a known 10-K filing for Microsoft
@@ -44,9 +44,7 @@ def test_xbrl_extraction():
         # Extract XBRL data
         logger.info(f"Extracting XBRL data for {ticker} {accession_number}...")
         xbrl_data = sec_downloader.extract_xbrl_data(
-            ticker=ticker,
-            filing_id=filing_id,
-            accession_number=accession_number
+            ticker=ticker, filing_id=filing_id, accession_number=accession_number
         )
 
         # Check if extraction was successful
@@ -78,6 +76,7 @@ def test_xbrl_extraction():
     except Exception as e:
         logger.error(f"Error in test: {e}")
         return None
+
 
 if __name__ == "__main__":
     test_xbrl_extraction()

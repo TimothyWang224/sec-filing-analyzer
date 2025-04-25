@@ -2,10 +2,12 @@
 Unit tests for the SECFinancialDataTool.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-from src.tools.sec_financial_data import SECFinancialDataTool, SUPPORTED_QUERIES
-from src.errors import QueryTypeUnsupported, ParameterError, StorageUnavailable, DataNotFound
+
+from src.errors import DataNotFound, ParameterError, QueryTypeUnsupported, StorageUnavailable
+from src.tools.sec_financial_data import SUPPORTED_QUERIES, SECFinancialDataTool
 
 
 class TestSECFinancialDataTool:
@@ -59,12 +61,10 @@ class TestSECFinancialDataTool:
                 "ticker": "AAPL",
                 "metrics": ["Revenue"],
                 "start_date": "2022-01-01",
-                "end_date": "2022-12-31"
+                "end_date": "2022-12-31",
             },
-            "results": [
-                {"ticker": "AAPL", "metric_name": "Revenue", "value": 100000000000}
-            ],
-            "output_key": "sec_financial_data"
+            "results": [{"ticker": "AAPL", "metric_name": "Revenue", "value": 100000000000}],
+            "output_key": "sec_financial_data",
         }
         with patch.object(tool, "_query_financial_facts", return_value=mock_result):
             # Execute the tool
@@ -74,8 +74,8 @@ class TestSECFinancialDataTool:
                     "ticker": "AAPL",
                     "metrics": ["Revenue"],
                     "start_date": "2022-01-01",
-                    "end_date": "2022-12-31"
-                }
+                    "end_date": "2022-12-31",
+                },
             )
 
             # Check that the result is correct
@@ -93,12 +93,7 @@ class TestSECFinancialDataTool:
     async def test_execute_company_info(self, tool, mock_db_store):
         """Test executing the tool with company_info query type."""
         # Execute the tool
-        result = await tool.execute(
-            query_type="company_info",
-            parameters={
-                "ticker": "AAPL"
-            }
-        )
+        result = await tool.execute(query_type="company_info", parameters={"ticker": "AAPL"})
 
         # Check that the result is correct
         assert result["query_type"] == "company_info"
@@ -112,10 +107,7 @@ class TestSECFinancialDataTool:
     async def test_execute_companies(self, tool, mock_db_store):
         """Test executing the tool with companies query type."""
         # Execute the tool
-        result = await tool.execute(
-            query_type="companies",
-            parameters={}
-        )
+        result = await tool.execute(query_type="companies", parameters={})
 
         # Check that the result is correct
         assert result["query_type"] == "company_info"  # It's an alias for company_info
@@ -130,14 +122,9 @@ class TestSECFinancialDataTool:
         # Mock the _query_metrics method to return a known result
         mock_result = {
             "query_type": "metrics",
-            "parameters": {
-                "ticker": "AAPL",
-                "category": "Income Statement"
-            },
-            "results": [
-                {"metric_name": "Revenue", "description": "Total revenue"}
-            ],
-            "output_key": "sec_financial_data"
+            "parameters": {"ticker": "AAPL", "category": "Income Statement"},
+            "results": [{"metric_name": "Revenue", "description": "Total revenue"}],
+            "output_key": "sec_financial_data",
         }
         with patch.object(tool, "_query_metrics", return_value=mock_result):
             # Execute the tool
@@ -145,8 +132,8 @@ class TestSECFinancialDataTool:
                 query_type="metrics",
                 parameters={
                     "ticker": "AAPL",  # Required parameter
-                    "category": "Income Statement"
-                }
+                    "category": "Income Statement",
+                },
             )
 
             # Check that the result is correct
@@ -163,12 +150,7 @@ class TestSECFinancialDataTool:
         # Execute the tool
         result = await tool.execute(
             query_type="time_series",
-            parameters={
-                "ticker": "AAPL",
-                "metric": "Revenue",
-                "start_date": "2022-01-01",
-                "end_date": "2022-12-31"
-            }
+            parameters={"ticker": "AAPL", "metric": "Revenue", "start_date": "2022-01-01", "end_date": "2022-12-31"},
         )
 
         # Check that the result is correct
@@ -186,12 +168,7 @@ class TestSECFinancialDataTool:
         # Execute the tool
         result = await tool.execute(
             query_type="financial_ratios",
-            parameters={
-                "ticker": "AAPL",
-                "ratios": ["PE"],
-                "start_date": "2022-01-01",
-                "end_date": "2022-12-31"
-            }
+            parameters={"ticker": "AAPL", "ratios": ["PE"], "start_date": "2022-01-01", "end_date": "2022-12-31"},
         )
 
         # Check that the result is correct
@@ -208,10 +185,7 @@ class TestSECFinancialDataTool:
         """Test executing the tool with custom_sql query type."""
         # Execute the tool
         result = await tool.execute(
-            query_type="custom_sql",
-            parameters={
-                "sql_query": "SELECT * FROM companies WHERE ticker = 'AAPL'"
-            }
+            query_type="custom_sql", parameters={"sql_query": "SELECT * FROM companies WHERE ticker = 'AAPL'"}
         )
 
         # Check that the result is correct
@@ -227,12 +201,7 @@ class TestSECFinancialDataTool:
         """Test executing the tool with an invalid query type."""
         # Execute the tool with an invalid query type
         with pytest.raises(QueryTypeUnsupported) as excinfo:
-            await tool.execute(
-                query_type="invalid_query",
-                parameters={
-                    "ticker": "AAPL"
-                }
-            )
+            await tool.execute(query_type="invalid_query", parameters={"ticker": "AAPL"})
 
         # Check that the error message is correct
         assert "invalid_query" in str(excinfo.value)
@@ -252,8 +221,8 @@ class TestSECFinancialDataTool:
                 "ticker": "AAPL",
                 "metrics": ["Revenue"],
                 "start_date": "2022-01-01",  # Required parameter
-                "end_date": "2022-12-31"     # Required parameter
-            }
+                "end_date": "2022-12-31",  # Required parameter
+            },
         )
 
         # Check that the result contains an error message
@@ -267,12 +236,7 @@ class TestSECFinancialDataTool:
         # Validate arguments
         result = tool.validate_args(
             query_type="financial_facts",
-            parameters={
-                "ticker": "AAPL",
-                "metrics": ["Revenue"],
-                "start_date": "2022-01-01",
-                "end_date": "2022-12-31"
-            }
+            parameters={"ticker": "AAPL", "metrics": ["Revenue"], "start_date": "2022-01-01", "end_date": "2022-12-31"},
         )
 
         # Check that validation passed
@@ -281,12 +245,7 @@ class TestSECFinancialDataTool:
     def test_validate_args_invalid_query_type(self, tool):
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
-        result = tool.validate_args(
-            query_type="invalid_query",
-            parameters={
-                "ticker": "AAPL"
-            }
-        )
+        result = tool.validate_args(query_type="invalid_query", parameters={"ticker": "AAPL"})
 
         # Check that validation failed
         assert result is False
@@ -296,7 +255,7 @@ class TestSECFinancialDataTool:
         # Validate arguments without a required parameter
         result = tool.validate_args(
             query_type="financial_facts",
-            parameters={}  # Missing ticker
+            parameters={},  # Missing ticker
         )
 
         # Check that validation failed

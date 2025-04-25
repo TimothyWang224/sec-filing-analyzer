@@ -5,17 +5,18 @@ This module provides a more focused XBRL extraction implementation that leverage
 the edgar library's XBRL handling capabilities.
 """
 
-import os
 import json
 import logging
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
 import edgar
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class EdgarXBRLExtractorSimple:
     """
@@ -53,7 +54,7 @@ class EdgarXBRLExtractorSimple:
             cache_file = Path(self.cache_dir) / f"{ticker}_{accession_number}.json"
             if cache_file.exists():
                 logger.info(f"Using cached data for {ticker} {accession_number}")
-                with open(cache_file, 'r') as f:
+                with open(cache_file, "r") as f:
                     return json.load(f)
 
         try:
@@ -65,7 +66,7 @@ class EdgarXBRLExtractorSimple:
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "accession_number": accession_number,
-                    "error": f"Entity not found: {ticker}"
+                    "error": f"Entity not found: {ticker}",
                 }
 
             # Get all filings
@@ -84,7 +85,7 @@ class EdgarXBRLExtractorSimple:
                     "filing_id": filing_id,
                     "ticker": ticker,
                     "accession_number": accession_number,
-                    "error": f"Filing not found: {accession_number}"
+                    "error": f"Filing not found: {accession_number}",
                 }
 
             # Initialize financials dictionary with metadata
@@ -94,11 +95,11 @@ class EdgarXBRLExtractorSimple:
                 "accession_number": accession_number,
                 "filing_url": filing.filing_url,
                 "filing_date": str(filing.filing_date),
-                "filing_type": filing.form
+                "filing_type": filing.form,
             }
 
             # Check if the filing has XBRL data
-            has_xbrl = hasattr(filing, 'is_xbrl') and filing.is_xbrl
+            has_xbrl = hasattr(filing, "is_xbrl") and filing.is_xbrl
 
             if not has_xbrl:
                 logger.warning(f"Filing {accession_number} does not have XBRL data")
@@ -117,7 +118,7 @@ class EdgarXBRLExtractorSimple:
                 logger.info(f"XBRL data attributes: {dir(xbrl_data)}")
 
                 # Extract basic metadata from XBRL
-                if hasattr(xbrl_data, 'company'):
+                if hasattr(xbrl_data, "company"):
                     financials["company"] = xbrl_data.company
 
                 # Extract financial statements
@@ -125,7 +126,7 @@ class EdgarXBRLExtractorSimple:
                 logger.info("Checking for financial statements...")
 
                 # Check if statements_dict is available
-                if hasattr(xbrl_data, 'statements_dict'):
+                if hasattr(xbrl_data, "statements_dict"):
                     logger.info(f"Found statements_dict with {len(xbrl_data.statements_dict)} statements")
 
                     # Log all statement keys
@@ -134,9 +135,9 @@ class EdgarXBRLExtractorSimple:
 
                     # Try to extract statements by type
                     statement_types = {
-                        'balance_sheet': ['balance', 'financial position'],
-                        'income_statement': ['income', 'operations', 'earnings'],
-                        'cash_flow': ['cash flow']
+                        "balance_sheet": ["balance", "financial position"],
+                        "income_statement": ["income", "operations", "earnings"],
+                        "cash_flow": ["cash flow"],
                     }
 
                     for statement_type, keywords in statement_types.items():
@@ -149,7 +150,9 @@ class EdgarXBRLExtractorSimple:
                                     matching_keys.append(key)
 
                             if matching_keys:
-                                logger.info(f"Found {len(matching_keys)} matching keys for {statement_type}: {matching_keys}")
+                                logger.info(
+                                    f"Found {len(matching_keys)} matching keys for {statement_type}: {matching_keys}"
+                                )
 
                                 # Use the first matching key
                                 statement_key = matching_keys[0]
@@ -166,9 +169,9 @@ class EdgarXBRLExtractorSimple:
 
                     # Try direct methods as fallback
                     for method_name, statement_type in [
-                        ('get_balance_sheet', 'balance_sheet'),
-                        ('get_income_statement', 'income_statement'),
-                        ('get_cash_flow_statement', 'cash_flow')
+                        ("get_balance_sheet", "balance_sheet"),
+                        ("get_income_statement", "income_statement"),
+                        ("get_cash_flow_statement", "cash_flow"),
                     ]:
                         try:
                             if hasattr(xbrl_data, method_name):
@@ -190,7 +193,7 @@ class EdgarXBRLExtractorSimple:
                 # Cache the results if cache_dir is provided
                 if self.cache_dir:
                     cache_file = Path(self.cache_dir) / f"{ticker}_{accession_number}.json"
-                    with open(cache_file, 'w') as f:
+                    with open(cache_file, "w") as f:
                         json.dump(financials, f, indent=2, default=str)
 
                 return financials
@@ -201,12 +204,7 @@ class EdgarXBRLExtractorSimple:
 
         except Exception as e:
             logger.error(f"Error extracting financials for {ticker} {accession_number}: {e}")
-            return {
-                "filing_id": filing_id,
-                "ticker": ticker,
-                "accession_number": accession_number,
-                "error": str(e)
-            }
+            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
 
     def _extract_statement_data(self, statement) -> Dict[str, Any]:
         """
@@ -224,41 +222,41 @@ class EdgarXBRLExtractorSimple:
         result = {}
 
         # Extract basic statement metadata
-        for attr in ['name', 'label', 'entity', 'role']:
+        for attr in ["name", "label", "entity", "role"]:
             if hasattr(statement, attr):
                 value = getattr(statement, attr)
                 if value is not None:
                     result[attr] = value
 
         # Extract periods
-        if hasattr(statement, 'periods'):
+        if hasattr(statement, "periods"):
             result["periods"] = statement.periods
 
         # Extract line items
-        if hasattr(statement, 'line_items'):
+        if hasattr(statement, "line_items"):
             line_items = []
             for item in statement.line_items:
                 line_item = {}
 
                 # Extract basic line item metadata
-                for attr in ['concept', 'label', 'level', 'is_abstract']:
+                for attr in ["concept", "label", "level", "is_abstract"]:
                     if hasattr(item, attr):
                         value = getattr(item, attr)
                         if value is not None:
                             line_item[attr] = value
 
                 # Extract values
-                if hasattr(item, 'values') and item.values:
+                if hasattr(item, "values") and item.values:
                     values = {}
                     for period, period_values in item.values.items():
                         if () in period_values:
                             # Get base value
                             base_value = period_values[()]
-                            if 'value' in base_value:
-                                values[period] = base_value['value']
+                            if "value" in base_value:
+                                values[period] = base_value["value"]
 
                     if values:
-                        line_item['values'] = values
+                        line_item["values"] = values
 
                 line_items.append(line_item)
 
@@ -279,18 +277,18 @@ class EdgarXBRLExtractorSimple:
         metrics = {}
 
         # Extract metrics from balance sheet
-        if 'balance_sheet' in statements:
-            balance_sheet = statements['balance_sheet']
-            if 'line_items' in balance_sheet:
-                for item in balance_sheet['line_items']:
-                    concept = item.get('concept', '')
+        if "balance_sheet" in statements:
+            balance_sheet = statements["balance_sheet"]
+            if "line_items" in balance_sheet:
+                for item in balance_sheet["line_items"]:
+                    concept = item.get("concept", "")
 
                     # Skip if no concept or values
-                    if not concept or 'values' not in item:
+                    if not concept or "values" not in item:
                         continue
 
                     # Get the most recent value
-                    values = item['values']
+                    values = item["values"]
                     if values:
                         # Get the most recent period
                         periods = list(values.keys())
@@ -306,32 +304,32 @@ class EdgarXBRLExtractorSimple:
                                 pass
 
                             # Map common balance sheet concepts
-                            if 'Assets' in concept and 'Total' in concept:
-                                metrics['total_assets'] = value
-                            elif 'Liabilities' in concept and 'Total' in concept:
-                                metrics['total_liabilities'] = value
-                            elif ('Equity' in concept or 'Stockholders' in concept) and 'Total' in concept:
-                                metrics['total_equity'] = value
-                            elif 'Cash' in concept and 'Equivalent' in concept:
-                                metrics['cash_and_equivalents'] = value
-                            elif 'Assets' in concept and 'Current' in concept and 'Total' in concept:
-                                metrics['current_assets'] = value
-                            elif 'Liabilities' in concept and 'Current' in concept and 'Total' in concept:
-                                metrics['current_liabilities'] = value
+                            if "Assets" in concept and "Total" in concept:
+                                metrics["total_assets"] = value
+                            elif "Liabilities" in concept and "Total" in concept:
+                                metrics["total_liabilities"] = value
+                            elif ("Equity" in concept or "Stockholders" in concept) and "Total" in concept:
+                                metrics["total_equity"] = value
+                            elif "Cash" in concept and "Equivalent" in concept:
+                                metrics["cash_and_equivalents"] = value
+                            elif "Assets" in concept and "Current" in concept and "Total" in concept:
+                                metrics["current_assets"] = value
+                            elif "Liabilities" in concept and "Current" in concept and "Total" in concept:
+                                metrics["current_liabilities"] = value
 
         # Extract metrics from income statement
-        if 'income_statement' in statements:
-            income_statement = statements['income_statement']
-            if 'line_items' in income_statement:
-                for item in income_statement['line_items']:
-                    concept = item.get('concept', '')
+        if "income_statement" in statements:
+            income_statement = statements["income_statement"]
+            if "line_items" in income_statement:
+                for item in income_statement["line_items"]:
+                    concept = item.get("concept", "")
 
                     # Skip if no concept or values
-                    if not concept or 'values' not in item:
+                    if not concept or "values" not in item:
                         continue
 
                     # Get the most recent value
-                    values = item['values']
+                    values = item["values"]
                     if values:
                         # Get the most recent period
                         periods = list(values.keys())
@@ -347,30 +345,30 @@ class EdgarXBRLExtractorSimple:
                                 pass
 
                             # Map common income statement concepts
-                            if 'Revenue' in concept and 'Total' in concept:
-                                metrics['revenue'] = value
-                            elif 'Income' in concept and 'Net' in concept:
-                                metrics['net_income'] = value
-                            elif 'Income' in concept and 'Operating' in concept:
-                                metrics['operating_income'] = value
-                            elif 'Expense' in concept and 'Total' in concept:
-                                metrics['total_expenses'] = value
-                            elif 'Gross' in concept and 'Profit' in concept:
-                                metrics['gross_profit'] = value
+                            if "Revenue" in concept and "Total" in concept:
+                                metrics["revenue"] = value
+                            elif "Income" in concept and "Net" in concept:
+                                metrics["net_income"] = value
+                            elif "Income" in concept and "Operating" in concept:
+                                metrics["operating_income"] = value
+                            elif "Expense" in concept and "Total" in concept:
+                                metrics["total_expenses"] = value
+                            elif "Gross" in concept and "Profit" in concept:
+                                metrics["gross_profit"] = value
 
         # Extract metrics from cash flow statement
-        if 'cash_flow' in statements:
-            cash_flow = statements['cash_flow']
-            if 'line_items' in cash_flow:
-                for item in cash_flow['line_items']:
-                    concept = item.get('concept', '')
+        if "cash_flow" in statements:
+            cash_flow = statements["cash_flow"]
+            if "line_items" in cash_flow:
+                for item in cash_flow["line_items"]:
+                    concept = item.get("concept", "")
 
                     # Skip if no concept or values
-                    if not concept or 'values' not in item:
+                    if not concept or "values" not in item:
                         continue
 
                     # Get the most recent value
-                    values = item['values']
+                    values = item["values"]
                     if values:
                         # Get the most recent period
                         periods = list(values.keys())
@@ -386,14 +384,14 @@ class EdgarXBRLExtractorSimple:
                                 pass
 
                             # Map common cash flow concepts
-                            if 'Cash' in concept and 'Operating' in concept and 'Net' in concept:
-                                metrics['operating_cash_flow'] = value
-                            elif 'Cash' in concept and 'Investing' in concept and 'Net' in concept:
-                                metrics['investing_cash_flow'] = value
-                            elif 'Cash' in concept and 'Financing' in concept and 'Net' in concept:
-                                metrics['financing_cash_flow'] = value
-                            elif 'Capital' in concept and 'Expenditure' in concept:
-                                metrics['capital_expenditures'] = value
+                            if "Cash" in concept and "Operating" in concept and "Net" in concept:
+                                metrics["operating_cash_flow"] = value
+                            elif "Cash" in concept and "Investing" in concept and "Net" in concept:
+                                metrics["investing_cash_flow"] = value
+                            elif "Cash" in concept and "Financing" in concept and "Net" in concept:
+                                metrics["financing_cash_flow"] = value
+                            elif "Capital" in concept and "Expenditure" in concept:
+                                metrics["capital_expenditures"] = value
 
         # Calculate financial ratios
         self._calculate_ratios(metrics)
@@ -408,43 +406,43 @@ class EdgarXBRLExtractorSimple:
             metrics: Dictionary of financial metrics
         """
         # Current ratio
-        if 'current_assets' in metrics and 'current_liabilities' in metrics:
-            current_assets = float(metrics['current_assets'])
-            current_liabilities = float(metrics['current_liabilities'])
+        if "current_assets" in metrics and "current_liabilities" in metrics:
+            current_assets = float(metrics["current_assets"])
+            current_liabilities = float(metrics["current_liabilities"])
             if current_liabilities > 0:
-                metrics['current_ratio'] = current_assets / current_liabilities
+                metrics["current_ratio"] = current_assets / current_liabilities
 
         # Debt to equity ratio
-        if 'total_liabilities' in metrics and 'total_equity' in metrics:
-            total_liabilities = float(metrics['total_liabilities'])
-            total_equity = float(metrics['total_equity'])
+        if "total_liabilities" in metrics and "total_equity" in metrics:
+            total_liabilities = float(metrics["total_liabilities"])
+            total_equity = float(metrics["total_equity"])
             if total_equity > 0:
-                metrics['debt_to_equity'] = total_liabilities / total_equity
+                metrics["debt_to_equity"] = total_liabilities / total_equity
 
         # Return on assets
-        if 'net_income' in metrics and 'total_assets' in metrics:
-            net_income = float(metrics['net_income'])
-            total_assets = float(metrics['total_assets'])
+        if "net_income" in metrics and "total_assets" in metrics:
+            net_income = float(metrics["net_income"])
+            total_assets = float(metrics["total_assets"])
             if total_assets > 0:
-                metrics['return_on_assets'] = net_income / total_assets
+                metrics["return_on_assets"] = net_income / total_assets
 
         # Return on equity
-        if 'net_income' in metrics and 'total_equity' in metrics:
-            net_income = float(metrics['net_income'])
-            total_equity = float(metrics['total_equity'])
+        if "net_income" in metrics and "total_equity" in metrics:
+            net_income = float(metrics["net_income"])
+            total_equity = float(metrics["total_equity"])
             if total_equity > 0:
-                metrics['return_on_equity'] = net_income / total_equity
+                metrics["return_on_equity"] = net_income / total_equity
 
         # Profit margin
-        if 'net_income' in metrics and 'revenue' in metrics:
-            net_income = float(metrics['net_income'])
-            revenue = float(metrics['revenue'])
+        if "net_income" in metrics and "revenue" in metrics:
+            net_income = float(metrics["net_income"])
+            revenue = float(metrics["revenue"])
             if revenue > 0:
-                metrics['profit_margin'] = net_income / revenue
+                metrics["profit_margin"] = net_income / revenue
 
         # Operating margin
-        if 'operating_income' in metrics and 'revenue' in metrics:
-            operating_income = float(metrics['operating_income'])
-            revenue = float(metrics['revenue'])
+        if "operating_income" in metrics and "revenue" in metrics:
+            operating_income = float(metrics["operating_income"])
+            revenue = float(metrics["revenue"])
             if revenue > 0:
-                metrics['operating_margin'] = operating_income / revenue
+                metrics["operating_margin"] = operating_income / revenue

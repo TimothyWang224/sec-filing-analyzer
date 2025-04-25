@@ -9,14 +9,15 @@ a wrapper around the enhanced FilingChunker class. This file is kept for referen
 """
 
 import logging
-from typing import Dict, List, Any
-import tiktoken
+from typing import Any, Dict, List
 
+import tiktoken
 from llama_index.core.text_splitter import TokenTextSplitter
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 class DocumentChunker:
     """
@@ -36,10 +37,7 @@ class DocumentChunker:
         self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI's encoding
 
         # Initialize token splitter
-        self.token_splitter = TokenTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
-        )
+        self.token_splitter = TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     def chunk_document(self, text: str) -> List[Dict[str, Any]]:
         """
@@ -65,8 +63,8 @@ class DocumentChunker:
                 "metadata": {
                     "chunk_index": i,
                     "total_chunks": len(chunk_texts),
-                    "token_count": len(self.tokenizer.encode(chunk_text))
-                }
+                    "token_count": len(self.tokenizer.encode(chunk_text)),
+                },
             }
             chunks.append(chunk)
 
