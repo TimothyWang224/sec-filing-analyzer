@@ -9,12 +9,15 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-        cache: 'poetry'
+        cache: 'pip'
     - name: Install Poetry
-      uses: abatilo/actions-poetry@v3
-      with:
-        poetry-version: '1.8.2'
-    - run: poetry install --no-root
+      run: |
+        pip install poetry==1.8.2
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - name: Install dependencies
+      run: |
+        poetry config virtualenvs.create false
+        poetry install --no-root
 
     - name: Run tests
       run: |
@@ -22,12 +25,26 @@ jobs:
         # Generate timestamp for log files
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         # Run tests and save output to timestamped log files
-        poetry run pytest tests/test_api.py tests/test_agents.py tests/test_tools.py tests/test_capabilities.py \
+        poetry run pytest tests/ \
           --cov=src --cov-report=xml \
           --junitxml=.logs/pytest/junit_${TIMESTAMP}.xml 2>&1 | tee .logs/pytest/pytest_${TIMESTAMP}.log
         # Create symlinks for latest logs
-        ln -sf pytest_${TIMESTAMP}.log .logs/pytest/latest.log
-        ln -sf junit_${TIMESTAMP}.xml .logs/pytest/latest.xml
+        ln -sf .logs/pytest/pytest_${TIMESTAMP}.log .logs/pytest/latest.log
+        ln -sf .logs/pytest/junit_${TIMESTAMP}.xml .logs/pytest/latest.xml
+        # Create a dummy junit file if tests failed to run
+        if [ ! -f .logs/pytest/junit_${TIMESTAMP}.xml ]; then
+          cat > .logs/pytest/junit_${TIMESTAMP}.xml << EOF
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" errors="1" failures="0" skipped="0" tests="1" time="0.1">
+    <testcase classname="pytest.error" name="error" time="0.1">
+      <error message="Failed to run tests">Tests could not be executed</error>
+    </testcase>
+  </testsuite>
+</testsuites>
+EOF
+          ln -sf .logs/pytest/junit_${TIMESTAMP}.xml .logs/pytest/latest.xml
+        fi
       continue-on-error: true
 
     - name: Security scan with Bandit
@@ -38,8 +55,12 @@ jobs:
         # Run bandit and save output to timestamped log file
         poetry run bandit -r src -ll --configfile .bandit.yaml 2>&1 | tee .logs/bandit/bandit_${TIMESTAMP}.log
         # Create symlink for latest log
-        ln -sf bandit_${TIMESTAMP}.log .logs/bandit/latest.log
+        ln -sf .logs/bandit/bandit_${TIMESTAMP}.log .logs/bandit/latest.log
       continue-on-error: true
+
+    - name: Install pre-commit
+      run: |
+        pip install pre-commit
 
     - name: Run pre-commit
       run: |
@@ -49,9 +70,9 @@ jobs:
         # Run pre-commit and save output to timestamped log file
         pre-commit run --all-files 2>&1 | tee .logs/precommit/precommit_${TIMESTAMP}.log
         # Create symlink for latest log
-        ln -sf precommit_${TIMESTAMP}.log .logs/precommit/latest.log
+        ln -sf .logs/precommit/precommit_${TIMESTAMP}.log .logs/precommit/latest.log
         # Also create a symlink at the root logs directory for backward compatibility
-        ln -sf precommit/latest.log .logs/latest.log
+        ln -sf .logs/precommit/latest.log .logs/latest.log
       continue-on-error: true
 
     - name: Upload coverage report
