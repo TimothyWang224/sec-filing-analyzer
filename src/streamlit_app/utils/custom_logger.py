@@ -6,7 +6,6 @@ This module provides a custom logger that captures output to the terminal compon
 
 import logging
 import sys
-from typing import Optional
 
 # Import the terminal output capture
 from src.streamlit_app.components.terminal_output import TerminalOutputCapture
@@ -51,7 +50,9 @@ def setup_custom_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     streamlit_handler.setLevel(level)
 
     # Create a formatter
-    formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "[%(asctime)s] %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
     # Add formatter to handlers
     console_handler.setFormatter(formatter)

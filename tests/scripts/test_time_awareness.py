@@ -11,9 +11,6 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -23,7 +20,9 @@ from src.capabilities.time_awareness import TimeAwarenessCapability
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +34,9 @@ async def test_time_awareness(question: str):
         time_awareness = TimeAwarenessCapability()
 
         # Initialize agent with time awareness capability
-        agent = QASpecialistAgent(capabilities=[time_awareness], environment=environment)
+        agent = QASpecialistAgent(
+            capabilities=[time_awareness], environment=environment
+        )
 
         # Extract temporal references from the question
         context = {}
@@ -74,7 +75,9 @@ async def test_time_awareness(question: str):
 
         # Process the action
         context["temporal_references"] = temporal_references
-        enhanced_action = await time_awareness.process_action(agent, context, sample_action)
+        enhanced_action = await time_awareness.process_action(
+            agent, context, sample_action
+        )
 
         print("\n=== Enhanced Action ===")
         print(json.dumps(enhanced_action, indent=2))

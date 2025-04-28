@@ -4,10 +4,8 @@ ETL Logs Viewer
 This page displays logs and statistics for ETL runs.
 """
 
-import json
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
@@ -17,7 +15,6 @@ import streamlit as st
 from sec_filing_analyzer.utils.etl_logging import (
     generate_etl_report,
     get_etl_log_dir,
-    get_etl_run_logs,
     get_etl_run_stats,
     get_recent_etl_runs,
 )
@@ -51,7 +48,9 @@ if refresh_button or "etl_runs" not in st.session_state:
         st.session_state.last_refresh = time.time()
 
 # Display last refresh time
-st.caption(f"Last refreshed: {datetime.fromtimestamp(st.session_state.last_refresh).strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption(
+    f"Last refreshed: {datetime.fromtimestamp(st.session_state.last_refresh).strftime('%Y-%m-%d %H:%M:%S')}"
+)
 
 # Create tabs
 tab1, tab2, tab3 = st.tabs(["Recent Runs", "Run Details", "Log Explorer"])
@@ -67,13 +66,19 @@ with tab1:
         # Format timestamps
         if "start_time" in runs_df.columns:
             runs_df["start_time"] = pd.to_datetime(runs_df["start_time"])
-            runs_df["start_time_formatted"] = runs_df["start_time"].dt.strftime("%Y-%m-%d %H:%M:%S")
+            runs_df["start_time_formatted"] = runs_df["start_time"].dt.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
 
         if "end_time" in runs_df.columns:
             runs_df["end_time"] = pd.to_datetime(runs_df["end_time"])
-            runs_df["end_time_formatted"] = runs_df["end_time"].dt.strftime("%Y-%m-%d %H:%M:%S")
+            runs_df["end_time_formatted"] = runs_df["end_time"].dt.strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             # Calculate duration
-            runs_df["duration"] = (runs_df["end_time"] - runs_df["start_time"]).dt.total_seconds()
+            runs_df["duration"] = (
+                runs_df["end_time"] - runs_df["start_time"]
+            ).dt.total_seconds()
             runs_df["duration_formatted"] = runs_df["duration"].apply(
                 lambda x: f"{x:.2f}s" if pd.notnull(x) else "Running..."
             )
@@ -82,7 +87,9 @@ with tab1:
         st.subheader("Recent ETL Runs")
 
         # Create a more user-friendly display table
-        display_df = runs_df[["run_id", "start_time_formatted", "status", "duration_formatted"]].copy()
+        display_df = runs_df[
+            ["run_id", "start_time_formatted", "status", "duration_formatted"]
+        ].copy()
         display_df.columns = ["Run ID", "Start Time", "Status", "Duration"]
 
         # Add description if available
@@ -110,7 +117,8 @@ with tab1:
 
                 # Create a more descriptive x-axis label
                 completed_runs["run_label"] = completed_runs.apply(
-                    lambda row: f"{row['run_id']} ({row['start_time_formatted']})", axis=1
+                    lambda row: f"{row['run_id']} ({row['start_time_formatted']})",
+                    axis=1,
                 )
 
                 # Sort by start time
@@ -136,9 +144,14 @@ with tab2:
         st.info("No ETL runs found. Run the ETL pipeline to generate logs.")
     else:
         # Create a selectbox for run selection
-        run_options = [(run["run_id"], run.get("description", run["run_id"])) for run in st.session_state.etl_runs]
+        run_options = [
+            (run["run_id"], run.get("description", run["run_id"]))
+            for run in st.session_state.etl_runs
+        ]
         selected_run_tuple = st.selectbox(
-            "Select ETL Run", options=run_options, format_func=lambda x: f"{x[1]} ({x[0]})"
+            "Select ETL Run",
+            options=run_options,
+            format_func=lambda x: f"{x[1]} ({x[0]})",
         )
 
         if selected_run_tuple:
@@ -163,10 +176,14 @@ with tab2:
                     st.metric("Duration", f"{duration:.2f}s")
 
                 with col3:
-                    st.metric("Filings Processed", run_stats.get("filings_processed", 0))
+                    st.metric(
+                        "Filings Processed", run_stats.get("filings_processed", 0)
+                    )
 
                 with col4:
-                    st.metric("Companies Processed", run_stats.get("companies_processed", 0))
+                    st.metric(
+                        "Companies Processed", run_stats.get("companies_processed", 0)
+                    )
 
                 # Parameters
                 st.subheader("Parameters")
@@ -191,13 +208,17 @@ with tab2:
                         durations.append(total_duration)
 
                     # Create DataFrame
-                    timing_df = pd.DataFrame({"Phase": phases, "Duration (s)": durations})
+                    timing_df = pd.DataFrame(
+                        {"Phase": phases, "Duration (s)": durations}
+                    )
 
                     # Sort by duration
                     timing_df = timing_df.sort_values("Duration (s)", ascending=False)
 
                     # Create chart
-                    fig = px.bar(timing_df, x="Phase", y="Duration (s)", title="Phase Durations")
+                    fig = px.bar(
+                        timing_df, x="Phase", y="Duration (s)", title="Phase Durations"
+                    )
 
                     st.plotly_chart(fig, use_container_width=True)
                 else:
@@ -218,12 +239,17 @@ with tab2:
 
                     fig.add_trace(
                         go.Scatter(
-                            x=rate_df["timestamp"], y=rate_df["new_rate"], mode="lines+markers", name="Rate Limit (s)"
+                            x=rate_df["timestamp"],
+                            y=rate_df["new_rate"],
+                            mode="lines+markers",
+                            name="Rate Limit (s)",
                         )
                     )
 
                     fig.update_layout(
-                        title="Rate Limit Adjustments Over Time", xaxis_title="Time", yaxis_title="Rate Limit (seconds)"
+                        title="Rate Limit Adjustments Over Time",
+                        xaxis_title="Time",
+                        yaxis_title="Rate Limit (seconds)",
                     )
 
                     st.plotly_chart(fig, use_container_width=True)
@@ -255,13 +281,19 @@ with tab2:
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
-                        st.metric("Total Tokens", embedding_stats.get("total_tokens", 0))
+                        st.metric(
+                            "Total Tokens", embedding_stats.get("total_tokens", 0)
+                        )
 
                     with col2:
-                        st.metric("Total Chunks", embedding_stats.get("total_chunks", 0))
+                        st.metric(
+                            "Total Chunks", embedding_stats.get("total_chunks", 0)
+                        )
 
                     with col3:
-                        st.metric("Fallback Count", embedding_stats.get("fallback_count", 0))
+                        st.metric(
+                            "Fallback Count", embedding_stats.get("fallback_count", 0)
+                        )
                 else:
                     st.info("No embedding statistics recorded for this run.")
 
@@ -328,7 +360,11 @@ with tab3:
                         include_line = False
 
                 # Apply text filter
-                if filter_text and filter_text.strip() and filter_text.lower() not in line.lower():
+                if (
+                    filter_text
+                    and filter_text.strip()
+                    and filter_text.lower() not in line.lower()
+                ):
                     include_line = False
 
                 if include_line:

@@ -10,14 +10,15 @@ This script allows you to:
 import argparse
 import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage import LlamaIndexVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -58,7 +59,9 @@ def list_documents(
     paginated_ids = filtered_ids[offset : offset + limit]
 
     # Print document information
-    print(f"Found {len(filtered_ids)} documents (showing {offset + 1}-{min(offset + limit, len(filtered_ids))})")
+    print(
+        f"Found {len(filtered_ids)} documents (showing {offset + 1}-{min(offset + limit, len(filtered_ids))})"
+    )
     print("-" * 80)
 
     for i, doc_id in enumerate(paginated_ids, start=1):
@@ -116,7 +119,9 @@ def view_document(vector_store: LlamaIndexVectorStore, doc_id: str) -> None:
         print("\nNo text available for this document.")
 
 
-def search_documents(vector_store: LlamaIndexVectorStore, query: str, top_k: int = 5) -> None:
+def search_documents(
+    vector_store: LlamaIndexVectorStore, query: str, top_k: int = 5
+) -> None:
     """
     Search for documents similar to the query.
 
@@ -166,7 +171,9 @@ def search_documents(vector_store: LlamaIndexVectorStore, query: str, top_k: int
         metadata = vector_store.get_document_metadata(doc_id)
         text = vector_store.get_document_text(doc_id)
 
-        formatted_results.append({"id": doc_id, "score": score, "metadata": metadata, "text": text})
+        formatted_results.append(
+            {"id": doc_id, "score": score, "metadata": metadata, "text": text}
+        )
 
     print(f"Search results for: '{query}'")
     print("-" * 80)
@@ -252,9 +259,15 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
     # List documents command
-    list_parser = subparsers.add_parser("list", help="List documents in the vector store")
-    list_parser.add_argument("--limit", type=int, default=10, help="Maximum number of documents to return")
-    list_parser.add_argument("--offset", type=int, default=0, help="Number of documents to skip")
+    list_parser = subparsers.add_parser(
+        "list", help="List documents in the vector store"
+    )
+    list_parser.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of documents to return"
+    )
+    list_parser.add_argument(
+        "--offset", type=int, default=0, help="Number of documents to skip"
+    )
     list_parser.add_argument("--ticker", type=str, help="Filter by ticker symbol")
     list_parser.add_argument("--filing-type", type=str, help="Filter by filing type")
 
@@ -265,14 +278,22 @@ def main():
     # Search documents command
     search_parser = subparsers.add_parser("search", help="Search for documents")
     search_parser.add_argument("query", type=str, help="Search query")
-    search_parser.add_argument("--top-k", type=int, default=5, help="Number of results to return")
+    search_parser.add_argument(
+        "--top-k", type=int, default=5, help="Number of results to return"
+    )
 
     # Export documents command
     export_parser = subparsers.add_parser("export", help="Export documents to a file")
     export_parser.add_argument("output_file", type=str, help="Path to the output file")
-    export_parser.add_argument("--include-embeddings", action="store_true", help="Include embeddings in the export")
     export_parser.add_argument(
-        "--full-embeddings", action="store_true", help="Include full embeddings instead of truncated ones"
+        "--include-embeddings",
+        action="store_true",
+        help="Include embeddings in the export",
+    )
+    export_parser.add_argument(
+        "--full-embeddings",
+        action="store_true",
+        help="Include full embeddings instead of truncated ones",
     )
 
     args = parser.parse_args()

@@ -7,11 +7,10 @@ leveraging edgartools for document processing and maintaining graph-specific fun
 
 import logging
 import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Import from the installed edgar package
-from edgar import Company, Document, XBRLData
+from edgar import Document, XBRLData
 from edgar.company_reports import EightK, TenK, TenQ
 
 # Setup logging
@@ -104,7 +103,9 @@ class SECStructure:
             ],
         }
 
-    def parse_filing_structure(self, filing_content: str, form_type: str = "10-K") -> Dict[str, Any]:
+    def parse_filing_structure(
+        self, filing_content: str, form_type: str = "10-K"
+    ) -> Dict[str, Any]:
         """
         Parse the structure of an SEC filing.
 
@@ -116,7 +117,13 @@ class SECStructure:
             Dict containing the parsed structure
         """
         # Initialize structure
-        structure = {"sections": {}, "hierarchy": {}, "metadata": {}, "xbrl_data": {}, "tables": []}
+        structure = {
+            "sections": {},
+            "hierarchy": {},
+            "metadata": {},
+            "xbrl_data": {},
+            "tables": [],
+        }
 
         try:
             # Create document instance
@@ -126,14 +133,18 @@ class SECStructure:
             structure["metadata"] = self._extract_metadata(doc)
 
             # Get the appropriate sections for the form type
-            sections = self.default_sections.get(form_type, self.default_sections["10-K"])
+            sections = self.default_sections.get(
+                form_type, self.default_sections["10-K"]
+            )
 
             # Process sections by searching for section headers
             for section in sections:
                 try:
                     # Search for section content using regex
                     pattern = rf"{section}\.\s+(.*?)(?=(?:{section}|$))"
-                    matches = re.finditer(pattern, filing_content, re.DOTALL | re.IGNORECASE)
+                    matches = re.finditer(
+                        pattern, filing_content, re.DOTALL | re.IGNORECASE
+                    )
 
                     for match in matches:
                         section_content = match.group(1).strip()
@@ -191,7 +202,10 @@ class SECStructure:
 
             # Remove empty values and format strings
             metadata = {
-                k: v.strip('"<>').split(" id=")[0].replace("Mock name='mock.", "").replace("'", "")
+                k: v.strip('"<>')
+                .split(" id=")[0]
+                .replace("Mock name='mock.", "")
+                .replace("'", "")
                 for k, v in metadata.items()
                 if v and v != "None"
             }
@@ -258,7 +272,9 @@ class SECStructure:
                     headers = rows[0]
                     data_rows = rows[1:] if len(rows) > 1 else []
 
-                    tables.append({"id": f"table_{i}", "headers": headers, "rows": data_rows})
+                    tables.append(
+                        {"id": f"table_{i}", "headers": headers, "rows": data_rows}
+                    )
 
         except Exception as e:
             logger.warning(f"Error extracting tables: {e}")
@@ -312,7 +328,9 @@ class SECStructure:
         except Exception as e:
             logger.warning(f"Error building hierarchy: {e}")
 
-    def extract_sections(self, filing_content: str, form_type: str = "10-K") -> Dict[str, str]:
+    def extract_sections(
+        self, filing_content: str, form_type: str = "10-K"
+    ) -> Dict[str, str]:
         """
         Extract sections from an SEC filing.
 
@@ -333,7 +351,9 @@ class SECStructure:
                 return doc.sections
 
             # Get the appropriate sections for the form type
-            sections = self.default_sections.get(form_type, self.default_sections["10-K"])
+            sections = self.default_sections.get(
+                form_type, self.default_sections["10-K"]
+            )
 
             # Initialize sections dictionary
             extracted_sections = {}
@@ -343,7 +363,9 @@ class SECStructure:
                 try:
                     # Search for section content using regex
                     pattern = rf"{section}\.\s+(.*?)(?=(?:{section}|$))"
-                    matches = re.finditer(pattern, filing_content, re.DOTALL | re.IGNORECASE)
+                    matches = re.finditer(
+                        pattern, filing_content, re.DOTALL | re.IGNORECASE
+                    )
 
                     for match in matches:
                         section_content = match.group(1).strip()

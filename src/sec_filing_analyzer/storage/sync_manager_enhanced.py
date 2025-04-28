@@ -5,16 +5,10 @@ This module provides an enhanced version of the StorageSyncManager with better e
 and the ability to continue synchronization even if some parts fail.
 """
 
-import hashlib
-import json
 import logging
-import os
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict
 
-import duckdb
-import numpy as np
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -130,7 +124,9 @@ class EnhancedStorageSyncManager:
         # Set overall status
         if results["failed_components"]:
             results["overall_status"] = "partial_success"
-            logger.warning(f"Sync completed with some failures: {results['failed_components']}")
+            logger.warning(
+                f"Sync completed with some failures: {results['failed_components']}"
+            )
         else:
             logger.info("Sync completed successfully")
 

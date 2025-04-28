@@ -7,7 +7,6 @@ This script:
 3. Deletes all other DuckDB databases
 """
 
-import os
 import shutil
 from pathlib import Path
 
@@ -33,7 +32,9 @@ def cleanup_databases():
     # Check if the primary database exists
     primary_db = data_dir / "test_improved_edgar.duckdb"
     if not primary_db.exists():
-        console.print("[red]Primary database (test_improved_edgar.duckdb) not found![/red]")
+        console.print(
+            "[red]Primary database (test_improved_edgar.duckdb) not found![/red]"
+        )
         return
 
     # Create a backup directory
@@ -52,7 +53,9 @@ def cleanup_databases():
     if new_primary_db.exists():
         # Backup the existing file first
         shutil.copy2(new_primary_db, backup_dir / new_primary_db.name)
-        console.print(f"[yellow]Backed up existing {new_primary_db.name} to {backup_dir}[/yellow]")
+        console.print(
+            f"[yellow]Backed up existing {new_primary_db.name} to {backup_dir}[/yellow]"
+        )
         # Remove the existing file
         new_primary_db.unlink()
         console.print(f"[yellow]Removed existing {new_primary_db.name}[/yellow]")

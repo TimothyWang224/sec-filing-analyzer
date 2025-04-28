@@ -23,8 +23,16 @@ class AgentState:
         self.current_iteration: int = 0
         self.start_time: float = time.time()
         self.current_phase: Literal["planning", "execution", "refinement"] = "planning"
-        self.phase_iterations: Dict[str, int] = {"planning": 0, "execution": 0, "refinement": 0}
-        self.tokens_used: Dict[str, int] = {"planning": 0, "execution": 0, "refinement": 0}
+        self.phase_iterations: Dict[str, int] = {
+            "planning": 0,
+            "execution": 0,
+            "refinement": 0,
+        }
+        self.tokens_used: Dict[str, int] = {
+            "planning": 0,
+            "execution": 0,
+            "refinement": 0,
+        }
         # Initialize with default token budget
         self.token_budget: Dict[str, int] = self.DEFAULT_TOKEN_BUDGET.copy()
 
@@ -66,7 +74,11 @@ class AgentState:
 
     def get_full_state(self) -> Dict[str, Any]:
         """Get the agent's full state."""
-        return {"memory": self.memory, "context": self.context, "current_iteration": self.current_iteration}
+        return {
+            "memory": self.memory,
+            "context": self.context,
+            "current_iteration": self.current_iteration,
+        }
 
     def increment_iteration(self) -> None:
         """Increment the current iteration counter."""

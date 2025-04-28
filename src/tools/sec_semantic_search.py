@@ -58,8 +58,19 @@ class SemanticSearchParams(BaseModel):
     @field_validator("filing_types")
     @classmethod
     def validate_filing_types(cls, v):
-        valid_filing_types = ["10-K", "10-Q", "8-K", "S-1", "S-4", "20-F", "40-F", "6-K"]
-        if v is not None and not all(filing_type in valid_filing_types for filing_type in v):
+        valid_filing_types = [
+            "10-K",
+            "10-Q",
+            "8-K",
+            "S-1",
+            "S-4",
+            "20-F",
+            "40-F",
+            "6-K",
+        ]
+        if v is not None and not all(
+            filing_type in valid_filing_types for filing_type in v
+        ):
             raise ValueError(f"Filing types must be in {valid_filing_types}")
         return v
 
@@ -90,7 +101,9 @@ class SemanticSearchParams(BaseModel):
 
 
 # Map query types to parameter models
-SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {"semantic_search": SemanticSearchParams}
+SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {
+    "semantic_search": SemanticSearchParams
+}
 
 # The tool registration is handled by the @tool decorator
 
@@ -121,7 +134,9 @@ class SECSemanticSearchTool(Tool):
         self.vector_store_path = vector_store_path or config.vector_store_path
         self.vector_store = OptimizedVectorStore(store_path=self.vector_store_path)
 
-    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute semantic search on SEC filings.
 
@@ -168,7 +183,9 @@ class SECSemanticSearchTool(Tool):
                 params = param_model(**parameters)
             except Exception as e:
                 return self.format_error_response(
-                    query_type=query_type, parameters=parameters, error_message=f"Parameter validation error: {str(e)}"
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}",
                 )
 
             # Extract parameters
@@ -189,7 +206,9 @@ class SECSemanticSearchTool(Tool):
             # Check if vector store is available
             if self.vector_store is None:
                 return self.format_error_response(
-                    query_type=query_type, parameters=parameters, error_message="Vector store is not initialized"
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message="Vector store is not initialized",
                 )
 
             try:
@@ -231,10 +250,16 @@ class SECSemanticSearchTool(Tool):
                     "metadata": {
                         "company": result.get("metadata", {}).get("company", ""),
                         "ticker": result.get("metadata", {}).get("ticker", ""),
-                        "filing_type": result.get("metadata", {}).get("filing_type", ""),
-                        "filing_date": result.get("metadata", {}).get("filing_date", ""),
+                        "filing_type": result.get("metadata", {}).get(
+                            "filing_type", ""
+                        ),
+                        "filing_date": result.get("metadata", {}).get(
+                            "filing_date", ""
+                        ),
                         "section": result.get("metadata", {}).get("section", ""),
-                        "section_type": result.get("metadata", {}).get("section_type", ""),
+                        "section_type": result.get("metadata", {}).get(
+                            "section_type", ""
+                        ),
                     },
                 }
                 formatted_results.append(formatted_result)
@@ -257,10 +282,14 @@ class SECSemanticSearchTool(Tool):
         except Exception as e:
             logger.error(f"Unexpected error executing semantic search: {str(e)}")
             return self.format_error_response(
-                query_type=query_type, parameters=parameters, error_message=f"Unexpected error: {str(e)}"
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}",
             )
 
-    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
+    def validate_args(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
         Validate the tool arguments.
 
@@ -274,7 +303,9 @@ class SECSemanticSearchTool(Tool):
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
-                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
+                logger.error(
+                    f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}"
+                )
                 return False
 
             # Validate parameters using the appropriate model

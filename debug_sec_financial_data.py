@@ -6,7 +6,9 @@ from src.tools.sec_financial_data import SECFinancialDataTool
 from src.tools.tool_parameter_helper import _validate_sec_financial_data_parameters
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 async def debug_sec_financial_data_tool():
@@ -46,7 +48,9 @@ async def debug_sec_financial_data_tool():
     print(f"Is Valid: {is_valid2}")
 
     # Test case 3: Parameters in the format used in the test_tool_contract.py script
-    print("\nTest Case 3: Parameters in the format used in the test_tool_contract.py script")
+    print(
+        "\nTest Case 3: Parameters in the format used in the test_tool_contract.py script"
+    )
     params3 = {"query_type": "metrics", "ticker": "AAPL", "year": 2022}
 
     # Validate parameters

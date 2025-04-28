@@ -5,13 +5,16 @@ Modified version of the main entry point that doesn't require the sec_filing_ana
 """
 
 import os
-import sys
-from pathlib import Path
 
 import streamlit as st
 
 # Set page config
-st.set_page_config(page_title="SEC Filing Analyzer", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="SEC Filing Analyzer",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # Title and description
 st.title("SEC Filing Analyzer")
@@ -24,7 +27,8 @@ both ETL pipelines and intelligent agents.
 # Sidebar navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio(
-    "Select a page", ["Dashboard", "ETL Pipeline", "Agent Workflow", "Data Explorer", "Configuration"]
+    "Select a page",
+    ["Dashboard", "ETL Pipeline", "Agent Workflow", "Data Explorer", "Configuration"],
 )
 
 # Page content
@@ -114,7 +118,10 @@ elif page == "Agent Workflow":
 
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "Hello! I'm the SEC Filing Analyzer agent. How can I help you today?"}
+            {
+                "role": "assistant",
+                "content": "Hello! I'm the SEC Filing Analyzer agent. How can I help you today?",
+            }
         ]
 
     # Display chat messages

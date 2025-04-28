@@ -7,14 +7,15 @@ This script migrates data from the old DuckDB schema to the new improved schema.
 import argparse
 import logging
 import os
-from pathlib import Path
 
 import duckdb
 from rich.console import Console
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -95,7 +96,9 @@ def migrate_companies(old_conn, new_conn):
     # Check if old companies table exists
     tables = old_conn.execute("SHOW TABLES").fetchall()
     if not any(table[0] == "companies" for table in tables):
-        console.print("[yellow]Warning: Companies table not found in old database[/yellow]")
+        console.print(
+            "[yellow]Warning: Companies table not found in old database[/yellow]"
+        )
         return
 
     # Get companies from old database
@@ -140,7 +143,9 @@ def migrate_filings(old_conn, new_conn):
     # Check if old filings table exists
     tables = old_conn.execute("SHOW TABLES").fetchall()
     if not any(table[0] == "filings" for table in tables):
-        console.print("[yellow]Warning: Filings table not found in old database[/yellow]")
+        console.print(
+            "[yellow]Warning: Filings table not found in old database[/yellow]"
+        )
         return
 
     # Get filings from old database
@@ -172,7 +177,9 @@ def migrate_filings(old_conn, new_conn):
     filings["filing_id"] = range(1, len(filings) + 1)
 
     # Map fiscal_quarter to fiscal_period
-    filings["fiscal_period"] = filings["fiscal_quarter"].apply(lambda q: f"Q{q}" if q in [1, 2, 3] else "FY")
+    filings["fiscal_period"] = filings["fiscal_quarter"].apply(
+        lambda q: f"Q{q}" if q in [1, 2, 3] else "FY"
+    )
 
     # Add updated_at column
     filings["updated_at"] = filings["created_at"]
@@ -221,7 +228,9 @@ def migrate_metrics_and_facts(old_conn, new_conn):
     # Check if old financial_facts table exists
     tables = old_conn.execute("SHOW TABLES").fetchall()
     if not any(table[0] == "financial_facts" for table in tables):
-        console.print("[yellow]Warning: Financial facts table not found in old database[/yellow]")
+        console.print(
+            "[yellow]Warning: Financial facts table not found in old database[/yellow]"
+        )
         return
 
     # Get unique metric names from financial_facts
@@ -250,7 +259,9 @@ def migrate_metrics_and_facts(old_conn, new_conn):
         """).fetchdf()
 
     # Combine all metric names
-    all_metrics = pd.concat([metrics_from_facts, metrics_from_time_series, metrics_from_ratios]).drop_duplicates()
+    all_metrics = pd.concat(
+        [metrics_from_facts, metrics_from_time_series, metrics_from_ratios]
+    ).drop_duplicates()
 
     if all_metrics.empty:
         console.print("[yellow]No metrics found in old database[/yellow]")
@@ -266,10 +277,42 @@ def migrate_metrics_and_facts(old_conn, new_conn):
 
     # Determine category based on metric name
     def determine_category(metric_name):
-        income_keywords = ["revenue", "income", "profit", "loss", "earnings", "expense", "margin", "ebitda", "eps"]
-        balance_keywords = ["asset", "liability", "equity", "debt", "cash", "receivable", "payable", "inventory"]
-        cash_flow_keywords = ["cash_flow", "operating_cash", "investing_cash", "financing_cash", "capex"]
-        ratio_keywords = ["ratio", "margin", "return", "turnover", "coverage", "per_share"]
+        income_keywords = [
+            "revenue",
+            "income",
+            "profit",
+            "loss",
+            "earnings",
+            "expense",
+            "margin",
+            "ebitda",
+            "eps",
+        ]
+        balance_keywords = [
+            "asset",
+            "liability",
+            "equity",
+            "debt",
+            "cash",
+            "receivable",
+            "payable",
+            "inventory",
+        ]
+        cash_flow_keywords = [
+            "cash_flow",
+            "operating_cash",
+            "investing_cash",
+            "financing_cash",
+            "capex",
+        ]
+        ratio_keywords = [
+            "ratio",
+            "margin",
+            "return",
+            "turnover",
+            "coverage",
+            "per_share",
+        ]
 
         metric_lower = metric_name.lower()
 
@@ -410,7 +453,9 @@ def migrate_metrics_and_facts(old_conn, new_conn):
 
             total_facts += len(facts)
             offset += batch_size
-            progress.update(task, completed=min(100, offset * 100 // (offset + batch_size)))
+            progress.update(
+                task, completed=min(100, offset * 100 // (offset + batch_size))
+            )
 
     console.print(f"[green]Migrated {total_facts} facts[/green]")
 
@@ -473,20 +518,34 @@ def migrate_metrics_and_facts(old_conn, new_conn):
 
 def main():
     parser = argparse.ArgumentParser(description="Migrate DuckDB schema")
-    parser.add_argument("--old-db", default="data/financial_data.duckdb", help="Path to the old DuckDB database")
-    parser.add_argument("--new-db", default="data/financial_data_new.duckdb", help="Path to the new DuckDB database")
+    parser.add_argument(
+        "--old-db",
+        default="data/financial_data.duckdb",
+        help="Path to the old DuckDB database",
+    )
+    parser.add_argument(
+        "--new-db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the new DuckDB database",
+    )
     parser.add_argument(
         "--schema",
         default="src/sec_filing_analyzer/storage/improved_financial_db_schema.sql",
         help="Path to the new schema SQL file",
     )
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite the new database if it exists")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite the new database if it exists",
+    )
 
     args = parser.parse_args()
 
     # Check if new database exists
     if os.path.exists(args.new_db) and not args.overwrite:
-        console.print(f"[yellow]Warning: New database already exists at {args.new_db}[/yellow]")
+        console.print(
+            f"[yellow]Warning: New database already exists at {args.new_db}[/yellow]"
+        )
         response = input("Do you want to overwrite it? (y/n): ")
         if response.lower() != "y":
             console.print("[bold]Migration aborted.[/bold]")

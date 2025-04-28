@@ -4,12 +4,9 @@ Data Management Page
 This page provides tools for managing data across different storage systems.
 """
 
-import json
 import logging
 import os
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -48,7 +45,12 @@ lifecycle_manager = DataLifecycleManager(
 )
 
 # Set page config
-st.set_page_config(page_title="Data Management", page_icon="🗄️", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Data Management",
+    page_icon="🗄️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # Title and description
 st.title("Data Management")
@@ -78,7 +80,10 @@ with tabs[0]:
 
     if not companies_df.empty:
         # Create a formatted list for the selectbox
-        company_options = [f"{row['ticker']} - {row['company_name']}" for _, row in companies_df.iterrows()]
+        company_options = [
+            f"{row['ticker']} - {row['company_name']}"
+            for _, row in companies_df.iterrows()
+        ]
 
         selected_company = st.selectbox("Select Company", options=company_options)
 
@@ -94,33 +99,47 @@ with tabs[0]:
             st.info(f"No filings found for {selected_ticker}")
         else:
             # Create a selectbox for filing types
-            filing_type_options = [f"{ft['filing_type']} ({ft['count']})" for ft in filing_types_result["filing_types"]]
+            filing_type_options = [
+                f"{ft['filing_type']} ({ft['count']})"
+                for ft in filing_types_result["filing_types"]
+            ]
 
-            selected_filing_type_option = st.selectbox("Select Filing Type", options=filing_type_options)
+            selected_filing_type_option = st.selectbox(
+                "Select Filing Type", options=filing_type_options
+            )
 
             # Extract filing type from selection
             selected_filing_type = selected_filing_type_option.split(" (")[0]
 
             # Get filing dates for the selected company and filing type
-            filing_dates_result = lifecycle_manager.get_filing_dates(selected_ticker, selected_filing_type)
+            filing_dates_result = lifecycle_manager.get_filing_dates(
+                selected_ticker, selected_filing_type
+            )
 
             if "error" in filing_dates_result:
                 st.error(f"Error getting filing dates: {filing_dates_result['error']}")
             elif not filing_dates_result["filing_dates"]:
-                st.info(f"No {selected_filing_type} filings found for {selected_ticker}")
+                st.info(
+                    f"No {selected_filing_type} filings found for {selected_ticker}"
+                )
             else:
                 # Create a selectbox for filing dates
                 filing_date_options = [
-                    f"{fd['filing_date']} - {fd['accession_number']}" for fd in filing_dates_result["filing_dates"]
+                    f"{fd['filing_date']} - {fd['accession_number']}"
+                    for fd in filing_dates_result["filing_dates"]
                 ]
 
-                selected_filing_date_option = st.selectbox("Select Filing", options=filing_date_options)
+                selected_filing_date_option = st.selectbox(
+                    "Select Filing", options=filing_date_options
+                )
 
                 # Extract accession number from selection
                 selected_accession_number = selected_filing_date_option.split(" - ")[1]
 
                 # Get filing info
-                filing_info = lifecycle_manager.get_filing_info(selected_accession_number)
+                filing_info = lifecycle_manager.get_filing_info(
+                    selected_accession_number
+                )
 
                 if "error" in filing_info:
                     st.error(f"Error getting filing info: {filing_info['error']}")
@@ -203,9 +222,14 @@ with tabs[1]:
     # Company selection
     if not companies_df.empty:
         # Create a formatted list for the selectbox
-        company_options = [f"{row['ticker']} - {row['company_name']}" for _, row in companies_df.iterrows()]
+        company_options = [
+            f"{row['ticker']} - {row['company_name']}"
+            for _, row in companies_df.iterrows()
+        ]
 
-        selected_company = st.selectbox("Select Company", options=company_options, key="delete_company")
+        selected_company = st.selectbox(
+            "Select Company", options=company_options, key="delete_company"
+        )
 
         # Extract ticker from selection
         selected_ticker = selected_company.split(" - ")[0]
@@ -219,37 +243,51 @@ with tabs[1]:
             st.info(f"No filings found for {selected_ticker}")
         else:
             # Create a selectbox for filing types
-            filing_type_options = [f"{ft['filing_type']} ({ft['count']})" for ft in filing_types_result["filing_types"]]
+            filing_type_options = [
+                f"{ft['filing_type']} ({ft['count']})"
+                for ft in filing_types_result["filing_types"]
+            ]
 
             selected_filing_type_option = st.selectbox(
-                "Select Filing Type", options=filing_type_options, key="delete_filing_type"
+                "Select Filing Type",
+                options=filing_type_options,
+                key="delete_filing_type",
             )
 
             # Extract filing type from selection
             selected_filing_type = selected_filing_type_option.split(" (")[0]
 
             # Get filing dates for the selected company and filing type
-            filing_dates_result = lifecycle_manager.get_filing_dates(selected_ticker, selected_filing_type)
+            filing_dates_result = lifecycle_manager.get_filing_dates(
+                selected_ticker, selected_filing_type
+            )
 
             if "error" in filing_dates_result:
                 st.error(f"Error getting filing dates: {filing_dates_result['error']}")
             elif not filing_dates_result["filing_dates"]:
-                st.info(f"No {selected_filing_type} filings found for {selected_ticker}")
+                st.info(
+                    f"No {selected_filing_type} filings found for {selected_ticker}"
+                )
             else:
                 # Create a selectbox for filing dates
                 filing_date_options = [
-                    f"{fd['filing_date']} - {fd['accession_number']}" for fd in filing_dates_result["filing_dates"]
+                    f"{fd['filing_date']} - {fd['accession_number']}"
+                    for fd in filing_dates_result["filing_dates"]
                 ]
 
                 selected_filing_date_option = st.selectbox(
-                    "Select Filing", options=filing_date_options, key="delete_filing_date"
+                    "Select Filing",
+                    options=filing_date_options,
+                    key="delete_filing_date",
                 )
 
                 # Extract accession number from selection
                 selected_accession_number = selected_filing_date_option.split(" - ")[1]
 
                 # Get filing info
-                filing_info = lifecycle_manager.get_filing_info(selected_accession_number)
+                filing_info = lifecycle_manager.get_filing_info(
+                    selected_accession_number
+                )
 
                 if "error" in filing_info:
                     st.error(f"Error getting filing info: {filing_info['error']}")
@@ -270,15 +308,23 @@ with tabs[1]:
                         st.metric("Filing Date", filing_info["filing_date"])
 
                     # Dry run option
-                    dry_run = st.checkbox("Dry Run (simulate deletion without actually deleting files)", value=True)
+                    dry_run = st.checkbox(
+                        "Dry Run (simulate deletion without actually deleting files)",
+                        value=True,
+                    )
 
                     # Confirmation
                     confirmation = st.text_input(
-                        f"Type '{selected_ticker}' to confirm deletion", key="delete_confirmation"
+                        f"Type '{selected_ticker}' to confirm deletion",
+                        key="delete_confirmation",
                     )
 
                     # Delete button
-                    if st.button("Delete Filing", type="primary", disabled=(confirmation != selected_ticker)):
+                    if st.button(
+                        "Delete Filing",
+                        type="primary",
+                        disabled=(confirmation != selected_ticker),
+                    ):
                         if confirmation == selected_ticker:
                             # Show spinner while deleting
                             with st.spinner("Deleting filing..."):
@@ -288,11 +334,15 @@ with tabs[1]:
                                 )
 
                                 if "error" in deletion_result:
-                                    st.error(f"Error deleting filing: {deletion_result['error']}")
+                                    st.error(
+                                        f"Error deleting filing: {deletion_result['error']}"
+                                    )
                                 else:
                                     # Display deletion result
                                     if dry_run:
-                                        st.success("Dry run completed successfully. No files were actually deleted.")
+                                        st.success(
+                                            "Dry run completed successfully. No files were actually deleted."
+                                        )
                                     else:
                                         st.success("Filing deleted successfully.")
 
@@ -303,26 +353,38 @@ with tabs[1]:
                                     col1, col2, col3 = st.columns(3)
 
                                     with col1:
-                                        duckdb_status = deletion_result["duckdb"]["status"]
+                                        duckdb_status = deletion_result["duckdb"][
+                                            "status"
+                                        ]
                                         st.metric(
                                             "DuckDB",
-                                            "✅" if duckdb_status == "success" else "❌",
+                                            "✅"
+                                            if duckdb_status == "success"
+                                            else "❌",
                                             help=f"Status: {duckdb_status}",
                                         )
 
                                     with col2:
-                                        vector_store_status = deletion_result["vector_store"]["status"]
+                                        vector_store_status = deletion_result[
+                                            "vector_store"
+                                        ]["status"]
                                         st.metric(
                                             "Vector Store",
-                                            "✅" if vector_store_status == "success" else "❌",
+                                            "✅"
+                                            if vector_store_status == "success"
+                                            else "❌",
                                             help=f"Status: {vector_store_status}",
                                         )
 
                                     with col3:
-                                        file_system_status = deletion_result["file_system"]["status"]
+                                        file_system_status = deletion_result[
+                                            "file_system"
+                                        ]["status"]
                                         st.metric(
                                             "File System",
-                                            "✅" if file_system_status == "success" else "❌",
+                                            "✅"
+                                            if file_system_status == "success"
+                                            else "❌",
                                             help=f"Status: {file_system_status}",
                                         )
 
@@ -336,7 +398,9 @@ with tabs[1]:
                                     with st.expander("File System Results"):
                                         st.json(deletion_result["file_system"])
                         else:
-                            st.error(f"Confirmation text does not match '{selected_ticker}'")
+                            st.error(
+                                f"Confirmation text does not match '{selected_ticker}'"
+                            )
     else:
         st.warning("No companies found in the database.")
 
@@ -356,10 +420,14 @@ with tabs[2]:
         # Get DuckDB stats
         try:
             # Get company count
-            company_count = lifecycle_manager.conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+            company_count = lifecycle_manager.conn.execute(
+                "SELECT COUNT(*) FROM companies"
+            ).fetchone()[0]
 
             # Get filing count
-            filing_count = lifecycle_manager.conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0]
+            filing_count = lifecycle_manager.conn.execute(
+                "SELECT COUNT(*) FROM filings"
+            ).fetchone()[0]
 
             # Get filing count by type
             filing_type_counts = lifecycle_manager.conn.execute("""
@@ -430,7 +498,10 @@ with tabs[2]:
 
                     # Convert to dataframe
                     embedding_counts_df = pd.DataFrame(
-                        {"company": list(embedding_counts.keys()), "count": list(embedding_counts.values())}
+                        {
+                            "company": list(embedding_counts.keys()),
+                            "count": list(embedding_counts.values()),
+                        }
                     ).sort_values(by="count", ascending=False)
 
                     st.dataframe(embedding_counts_df, use_container_width=True)
@@ -463,7 +534,9 @@ with tabs[2]:
                     total_files += file_count
 
                 # Get total size
-                total_size = sum(f.stat().st_size for f in filings_dir.glob("**/*") if f.is_file())
+                total_size = sum(
+                    f.stat().st_size for f in filings_dir.glob("**/*") if f.is_file()
+                )
                 total_size_mb = total_size / (1024 * 1024)
 
                 # Display stats
@@ -475,7 +548,10 @@ with tabs[2]:
 
                 # Convert to dataframe
                 subdir_counts_df = pd.DataFrame(
-                    {"subdirectory": list(subdir_counts.keys()), "count": list(subdir_counts.values())}
+                    {
+                        "subdirectory": list(subdir_counts.keys()),
+                        "count": list(subdir_counts.values()),
+                    }
                 ).sort_values(by="count", ascending=False)
 
                 st.dataframe(subdir_counts_df, use_container_width=True)
@@ -485,7 +561,9 @@ with tabs[2]:
 
 # Footer
 st.markdown("---")
-st.info("This page is under development. More features will be added in future versions.")
+st.info(
+    "This page is under development. More features will be added in future versions."
+)
 
 
 # Close lifecycle manager when the app is closed

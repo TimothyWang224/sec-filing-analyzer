@@ -7,12 +7,9 @@ financial question answering with detailed logging.
 
 import argparse
 import asyncio
-import json
 import logging
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -23,12 +20,17 @@ from src.capabilities.time_awareness import TimeAwarenessCapability
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 async def run_logging_qa(
-    question: str, log_dir: str = "data/logs/agents", log_level: str = "INFO", include_prompts: bool = False
+    question: str,
+    log_dir: str = "data/logs/agents",
+    log_level: str = "INFO",
+    include_prompts: bool = False,
 ):
     """Run the QA specialist agent with logging capability."""
     try:
@@ -55,7 +57,9 @@ async def run_logging_qa(
         time_awareness = TimeAwarenessCapability()
 
         # Initialize QA specialist agent with capabilities
-        agent = QASpecialistAgent(capabilities=[logging_capability, time_awareness], environment=environment)
+        agent = QASpecialistAgent(
+            capabilities=[logging_capability, time_awareness], environment=environment
+        )
 
         # Run the agent
         logger.info(f"Processing question: {question}")
@@ -87,7 +91,9 @@ async def run_logging_qa(
                 print(f"Filing Types: {', '.join(analysis['filing_types'])}")
 
             if "date_range" in analysis and analysis["date_range"]:
-                print(f"Date Range: {analysis['date_range'][0]} to {analysis['date_range'][1]}")
+                print(
+                    f"Date Range: {analysis['date_range'][0]} to {analysis['date_range'][1]}"
+                )
 
             if "temporal_references" in analysis:
                 print("\nTemporal References:")
@@ -111,7 +117,12 @@ def main():
         default="What was Apple's revenue growth in Q2 2023 compared to Q2 2022?",
         help="Financial question to ask",
     )
-    parser.add_argument("--log_dir", type=str, default="data/logs/agents", help="Directory to store log files")
+    parser.add_argument(
+        "--log_dir",
+        type=str,
+        default="data/logs/agents",
+        help="Directory to store log files",
+    )
     parser.add_argument(
         "--log_level",
         type=str,
@@ -120,7 +131,9 @@ def main():
         help="Logging level",
     )
     parser.add_argument(
-        "--include_prompts", action="store_true", help="Include LLM prompts in logs (may contain sensitive data)"
+        "--include_prompts",
+        action="store_true",
+        help="Include LLM prompts in logs (may contain sensitive data)",
     )
 
     args = parser.parse_args()
@@ -128,7 +141,10 @@ def main():
     # Run the example
     asyncio.run(
         run_logging_qa(
-            question=args.question, log_dir=args.log_dir, log_level=args.log_level, include_prompts=args.include_prompts
+            question=args.question,
+            log_dir=args.log_dir,
+            log_level=args.log_level,
+            include_prompts=args.include_prompts,
         )
     )
 

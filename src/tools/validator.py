@@ -5,7 +5,7 @@ This module provides utilities for validating tool calls before execution,
 ensuring that parameters are valid and that the tool can handle the request.
 """
 
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Type
 
 from pydantic import ValidationError
 

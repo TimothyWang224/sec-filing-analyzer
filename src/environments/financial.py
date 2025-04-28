@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from .base import Environment
 
@@ -6,8 +6,12 @@ from .base import Environment
 class FinancialEnvironment(Environment):
     """Environment specialized for financial analysis tasks."""
 
-    def __init__(self):
-        """Initialize the financial environment."""
+    def __init__(self, use_duckdb: bool = False):
+        """Initialize the financial environment.
+
+        Args:
+            use_duckdb: Whether to use DuckDB for metadata storage
+        """
 
         # Define a filter to only include SEC tools
         def sec_tool_filter(name, info):
@@ -16,10 +20,42 @@ class FinancialEnvironment(Environment):
         # Initialize with the SEC tool filter
         super().__init__(tool_filter=sec_tool_filter)
 
+        # Configure vector store to use DuckDB if requested
+        self.use_duckdb = use_duckdb
+
+        # If using DuckDB, update the SECSemanticSearchTool to use it
+        if self.use_duckdb and "sec_semantic_search" in self.tools:
+            try:
+                # Get the tool
+                tool = self.tools["sec_semantic_search"]
+
+                # Update the vector store to use DuckDB
+                if hasattr(tool, "vector_store"):
+                    # Create a new vector store with DuckDB enabled
+                    from sec_filing_analyzer.semantic.storage.optimized_vector_store import (
+                        OptimizedVectorStore,
+                    )
+
+                    # Get the current store path
+                    store_path = tool.vector_store.store_path
+
+                    # Create a new vector store with DuckDB enabled
+                    tool.vector_store = OptimizedVectorStore(
+                        store_path=store_path, use_duckdb=True
+                    )
+
+                    print(
+                        "Updated SECSemanticSearchTool to use DuckDB for metadata storage"
+                    )
+            except Exception as e:
+                print(f"Error updating SECSemanticSearchTool to use DuckDB: {e}")
+
         # Print available tools
         print(f"Available tools: {list(self.tools.keys()) if self.tools else 'None'}")
 
-    async def execute_action(self, action: Dict[str, Any] = None, agent: Any = None) -> Dict[str, Any]:
+    async def execute_action(
+        self, action: Dict[str, Any] = None, agent: Any = None
+    ) -> Dict[str, Any]:
         """
         Execute an action in the financial environment.
 
@@ -37,7 +73,9 @@ class FinancialEnvironment(Environment):
 
         # Debug: Print tool lookup
         print(f"Looking for tool: {tool_name}")
-        print(f"Available tools in context: {[k for k in self.context.keys() if k.startswith('tool_')]}")
+        print(
+            f"Available tools in context: {[k for k in self.context.keys() if k.startswith('tool_')]}"
+        )
 
         tool = self.get_tool(tool_name)
         print(f"Tool found: {tool is not None}")

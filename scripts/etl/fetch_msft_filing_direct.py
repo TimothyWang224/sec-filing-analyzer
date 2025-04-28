@@ -68,14 +68,22 @@ def fetch_msft_filing_direct():
                             filing_response = requests.get(filing_url, headers=headers)
                             if filing_response.status_code == 200:
                                 # Save the filing index page
-                                with open(output_dir / f"MSFT_{accession}_index.html", "w", encoding="utf-8") as f:
+                                with open(
+                                    output_dir / f"MSFT_{accession}_index.html",
+                                    "w",
+                                    encoding="utf-8",
+                                ) as f:
                                     f.write(filing_response.text)
-                                print(f"Saved filing index to {output_dir}/MSFT_{accession}_index.html")
+                                print(
+                                    f"Saved filing index to {output_dir}/MSFT_{accession}_index.html"
+                                )
 
                                 # Try to find the main document link
                                 import re
 
-                                doc_links = re.findall(r'href="([^"]+\.htm)"', filing_response.text)
+                                doc_links = re.findall(
+                                    r'href="([^"]+\.htm)"', filing_response.text
+                                )
                                 if doc_links:
                                     main_doc = doc_links[0]
                                     doc_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_no_dashes}/{main_doc}"
@@ -84,25 +92,37 @@ def fetch_msft_filing_direct():
                                     # Add delay to comply with SEC rate limits
                                     time.sleep(0.1)
 
-                                    doc_response = requests.get(doc_url, headers=headers)
+                                    doc_response = requests.get(
+                                        doc_url, headers=headers
+                                    )
                                     if doc_response.status_code == 200:
                                         # Save the main document
                                         with open(
-                                            output_dir / f"MSFT_{accession}_main.html", "w", encoding="utf-8"
+                                            output_dir / f"MSFT_{accession}_main.html",
+                                            "w",
+                                            encoding="utf-8",
                                         ) as f:
                                             f.write(doc_response.text)
-                                        print(f"Saved main document to {output_dir}/MSFT_{accession}_main.html")
+                                        print(
+                                            f"Saved main document to {output_dir}/MSFT_{accession}_main.html"
+                                        )
                                     else:
-                                        print(f"Failed to get main document: {doc_response.status_code}")
+                                        print(
+                                            f"Failed to get main document: {doc_response.status_code}"
+                                        )
                                 else:
                                     print("Could not find main document link")
                             else:
-                                print(f"Failed to get filing index: {filing_response.status_code}")
+                                print(
+                                    f"Failed to get filing index: {filing_response.status_code}"
+                                )
 
                             break
 
             if not found:
-                print(f"Filing with accession number {accession} not found in submissions")
+                print(
+                    f"Filing with accession number {accession} not found in submissions"
+                )
 
                 # Print the first few filings from 2022 to help identify the issue
                 print("\nFirst few filings from 2022:")

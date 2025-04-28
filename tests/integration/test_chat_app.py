@@ -6,13 +6,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 try:
     # Import agent components
     from src.agents import FinancialDiligenceCoordinator
-    from src.capabilities import LoggingCapability, PlanningCapability, TimeAwarenessCapability
+    from src.capabilities import (
+        LoggingCapability,
+        PlanningCapability,
+        TimeAwarenessCapability,
+    )
     from src.environments import FinancialEnvironment
 
     # Create environment
@@ -21,9 +27,14 @@ try:
     # Create capabilities
     capabilities = [
         TimeAwarenessCapability(),
-        LoggingCapability(include_prompts=True, include_responses=True, max_content_length=10000),
+        LoggingCapability(
+            include_prompts=True, include_responses=True, max_content_length=10000
+        ),
         PlanningCapability(
-            enable_dynamic_replanning=True, enable_step_reflection=True, max_plan_steps=10, plan_detail_level="high"
+            enable_dynamic_replanning=True,
+            enable_step_reflection=True,
+            max_plan_steps=10,
+            plan_detail_level="high",
         ),
     ]
 

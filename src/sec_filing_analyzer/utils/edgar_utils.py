@@ -97,7 +97,9 @@ def get_filings(
 
         # If no filings found, log a warning
         if not all_filings:
-            logger.warning(f"No filings found for {ticker} with form {form_type} in date range")
+            logger.warning(
+                f"No filings found for {ticker} with form {form_type} in date range"
+            )
             return []
 
         # Apply limit if specified
@@ -131,10 +133,14 @@ def get_filing_by_accession(ticker: str, accession_number: str) -> Optional[Fili
                 return filing
 
         # If no matching filing found, log a warning
-        logger.warning(f"No filing found for {ticker} with accession number {accession_number}")
+        logger.warning(
+            f"No filing found for {ticker} with accession number {accession_number}"
+        )
         return None
     except Exception as e:
-        logger.error(f"Error getting filing by accession number for ticker {ticker}: {e}")
+        logger.error(
+            f"Error getting filing by accession number for ticker {ticker}: {e}"
+        )
         return None
 
 
@@ -154,26 +160,34 @@ def get_filing_content(filing: Filing) -> Dict[str, Any]:
         # Get text content
         content["text"] = filing.text()
     except Exception as e:
-        logger.warning(f"Error getting text content for filing {filing.accession_number}: {e}")
+        logger.warning(
+            f"Error getting text content for filing {filing.accession_number}: {e}"
+        )
 
     try:
         # Get HTML content
         content["html"] = filing.html()
     except Exception as e:
-        logger.warning(f"Error getting HTML content for filing {filing.accession_number}: {e}")
+        logger.warning(
+            f"Error getting HTML content for filing {filing.accession_number}: {e}"
+        )
 
     try:
         # Get XML content
         content["xml"] = filing.xml()
     except Exception as e:
-        logger.warning(f"Error getting XML content for filing {filing.accession_number}: {e}")
+        logger.warning(
+            f"Error getting XML content for filing {filing.accession_number}: {e}"
+        )
 
     try:
         # Get XBRL data if available
         if hasattr(filing, "is_xbrl") and filing.is_xbrl:
             content["xbrl"] = filing.xbrl
     except Exception as e:
-        logger.warning(f"Error getting XBRL data for filing {filing.accession_number}: {e}")
+        logger.warning(
+            f"Error getting XBRL data for filing {filing.accession_number}: {e}"
+        )
 
     return content
 
@@ -208,7 +222,9 @@ def get_filing_metadata(filing: Filing, ticker: str) -> Dict[str, Any]:
         }
         return metadata
     except Exception as e:
-        logger.error(f"Error getting metadata for filing {filing.accession_number}: {e}")
+        logger.error(
+            f"Error getting metadata for filing {filing.accession_number}: {e}"
+        )
         # Return basic metadata if full metadata cannot be retrieved
         return {
             "accession_number": filing.accession_number,

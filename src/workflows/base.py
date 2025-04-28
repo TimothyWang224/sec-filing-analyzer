@@ -6,10 +6,9 @@ This module provides the base class for workflows that orchestrate multiple agen
 
 import json
 import logging
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Optional
 
 from ..agents.base import Agent
 from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
@@ -18,7 +17,12 @@ from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
 class WorkflowLogger:
     """Logger for entire workflows involving multiple agents."""
 
-    def __init__(self, workflow_id: str, log_level: str = "INFO", include_agent_details: bool = True):
+    def __init__(
+        self,
+        workflow_id: str,
+        log_level: str = "INFO",
+        include_agent_details: bool = True,
+    ):
         """
         Initialize the workflow logger.
 
@@ -63,7 +67,9 @@ class WorkflowLogger:
             self.logger.removeHandler(handler)
 
         # Create formatter
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
 
         # Add console handler
         console_handler = logging.StreamHandler()
@@ -82,7 +88,13 @@ class WorkflowLogger:
         self.json_log_file = log_dir / f"workflow_{self.workflow_id}.json"
         with open(self.json_log_file, "w") as f:
             json.dump(
-                {"workflow_id": self.workflow_id, "start_time": datetime.now().isoformat(), "logs": []}, f, indent=2
+                {
+                    "workflow_id": self.workflow_id,
+                    "start_time": datetime.now().isoformat(),
+                    "logs": [],
+                },
+                f,
+                indent=2,
             )
 
     def register_agent(self, agent_name: str, agent: Agent):
@@ -145,7 +157,13 @@ class WorkflowLogger:
         try:
             with open(self.json_log_file, "r+") as f:
                 data = json.load(f)
-                data["logs"].append({"timestamp": datetime.now().isoformat(), "level": level, "message": message})
+                data["logs"].append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "level": level,
+                        "message": message,
+                    }
+                )
                 f.seek(0)
                 f.truncate()
                 json.dump(data, f, indent=2)
@@ -156,7 +174,13 @@ class WorkflowLogger:
                     {
                         "workflow_id": self.workflow_id,
                         "start_time": datetime.now().isoformat(),
-                        "logs": [{"timestamp": datetime.now().isoformat(), "level": level, "message": message}],
+                        "logs": [
+                            {
+                                "timestamp": datetime.now().isoformat(),
+                                "level": level,
+                                "message": message,
+                            }
+                        ],
                     },
                     f,
                     indent=2,
@@ -166,7 +190,9 @@ class WorkflowLogger:
         """Log the start of a workflow."""
         self.info(f"Workflow started: {description or 'No description'}")
 
-    def log_workflow_end(self, status: str = "completed", details: Optional[str] = None):
+    def log_workflow_end(
+        self, status: str = "completed", details: Optional[str] = None
+    ):
         """Log the end of a workflow."""
         self.info(f"Workflow {status}: {details or 'No details'}")
 
@@ -188,7 +214,12 @@ class WorkflowLogger:
 class Workflow:
     """Base class for workflows that orchestrate multiple agents."""
 
-    def __init__(self, workflow_id: Optional[str] = None, log_level: str = "INFO", description: Optional[str] = None):
+    def __init__(
+        self,
+        workflow_id: Optional[str] = None,
+        log_level: str = "INFO",
+        description: Optional[str] = None,
+    ):
         """
         Initialize a workflow.
 
@@ -198,7 +229,10 @@ class Workflow:
             description: Description of the workflow
         """
         # Generate workflow ID if not provided
-        self.workflow_id = workflow_id or f"{self.__class__.__name__}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        self.workflow_id = (
+            workflow_id
+            or f"{self.__class__.__name__}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        )
         self.description = description or self.__class__.__name__
 
         # Initialize logger

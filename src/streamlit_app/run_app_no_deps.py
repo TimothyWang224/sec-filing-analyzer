@@ -64,7 +64,9 @@ def main():
     os.environ["STREAMLIT_THEME_BASE"] = theme_base
     os.environ["STREAMLIT_SERVER_PORT"] = str(port)
     os.environ["STREAMLIT_SERVER_ENABLE_CORS"] = str(enable_cors).lower()
-    os.environ["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = str(enable_xsrf_protection).lower()
+    os.environ["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = str(
+        enable_xsrf_protection
+    ).lower()
 
     # Get the path to the app_no_deps.py file
     app_path = Path(__file__).resolve().parent / "app_no_deps.py"

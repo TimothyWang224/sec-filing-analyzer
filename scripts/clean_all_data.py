@@ -21,7 +21,9 @@ from src.sec_filing_analyzer.config import ConfigProvider, ETLConfig, StorageCon
 from src.sec_filing_analyzer.storage.lifecycle_manager import DataLifecycleManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +47,9 @@ def clean_all_data(dry_run=False):
         # Log configuration values
         logger.info(f"ETL Config - db_path: {etl_config.db_path}")
         logger.info(f"ETL Config - filings_dir: {etl_config.filings_dir}")
-        logger.info(f"Storage Config - vector_store_path: {storage_config.vector_store_path}")
+        logger.info(
+            f"Storage Config - vector_store_path: {storage_config.vector_store_path}"
+        )
 
         # Create lifecycle manager
         logger.info("Creating lifecycle manager...")
@@ -58,7 +62,9 @@ def clean_all_data(dry_run=False):
         # Get all filings from DuckDB
         logger.info("Getting all filings from DuckDB...")
         try:
-            filings = lifecycle_manager.conn.execute("SELECT accession_number FROM filings").fetchdf()
+            filings = lifecycle_manager.conn.execute(
+                "SELECT accession_number FROM filings"
+            ).fetchdf()
 
             filing_count = len(filings)
             logger.info(f"Found {filing_count} filings in DuckDB")
@@ -66,7 +72,9 @@ def clean_all_data(dry_run=False):
             if filing_count > 0:
                 # Ask for confirmation
                 if not dry_run:
-                    logger.info(f"About to delete {filing_count} filings from all storage systems.")
+                    logger.info(
+                        f"About to delete {filing_count} filings from all storage systems."
+                    )
                     confirm = input(
                         f"Are you sure you want to delete {filing_count} filings? This cannot be undone! (yes/no): "
                     )
@@ -77,7 +85,9 @@ def clean_all_data(dry_run=False):
                         return False
 
                 # Delete each filing
-                logger.info(f"{'Simulating deletion' if dry_run else 'Deleting'} of {filing_count} filings...")
+                logger.info(
+                    f"{'Simulating deletion' if dry_run else 'Deleting'} of {filing_count} filings..."
+                )
 
                 for i, row in enumerate(filings.itertuples()):
                     accession_number = row.accession_number
@@ -86,7 +96,9 @@ def clean_all_data(dry_run=False):
                     )
 
                     # Delete filing
-                    result = lifecycle_manager.delete_filing(accession_number, dry_run=dry_run)
+                    result = lifecycle_manager.delete_filing(
+                        accession_number, dry_run=dry_run
+                    )
 
                     if result["status"] == "success":
                         logger.info(
@@ -202,15 +214,27 @@ def clean_all_data(dry_run=False):
 
                 # Create indexes
                 conn.execute("CREATE INDEX idx_filings_ticker ON filings(ticker)")
-                conn.execute("CREATE INDEX idx_filings_filing_type ON filings(filing_type)")
-                conn.execute("CREATE INDEX idx_filings_filing_date ON filings(filing_date)")
-                conn.execute("CREATE INDEX idx_filings_accession_number ON filings(accession_number)")
-                conn.execute("CREATE INDEX idx_filings_processing_status ON filings(processing_status)")
+                conn.execute(
+                    "CREATE INDEX idx_filings_filing_type ON filings(filing_type)"
+                )
+                conn.execute(
+                    "CREATE INDEX idx_filings_filing_date ON filings(filing_date)"
+                )
+                conn.execute(
+                    "CREATE INDEX idx_filings_accession_number ON filings(accession_number)"
+                )
+                conn.execute(
+                    "CREATE INDEX idx_filings_processing_status ON filings(processing_status)"
+                )
 
-                conn.execute("CREATE INDEX idx_facts_filing_id ON financial_facts(filing_id)")
+                conn.execute(
+                    "CREATE INDEX idx_facts_filing_id ON financial_facts(filing_id)"
+                )
                 conn.execute("CREATE INDEX idx_facts_ticker ON financial_facts(ticker)")
                 conn.execute("CREATE INDEX idx_facts_metric ON financial_facts(metric)")
-                conn.execute("CREATE INDEX idx_facts_dates ON financial_facts(start_date, end_date)")
+                conn.execute(
+                    "CREATE INDEX idx_facts_dates ON financial_facts(start_date, end_date)"
+                )
 
                 conn.close()
 
@@ -235,10 +259,18 @@ def clean_all_data(dry_run=False):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Clean all data from all storage systems")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate deletion without actually deleting files")
+    parser = argparse.ArgumentParser(
+        description="Clean all data from all storage systems"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate deletion without actually deleting files",
+    )
 
     args = parser.parse_args()
 
     success = clean_all_data(dry_run=args.dry_run)
-    print(f"Data cleaning {'simulation' if args.dry_run else 'operation'} {'succeeded' if success else 'failed'}")
+    print(
+        f"Data cleaning {'simulation' if args.dry_run else 'operation'} {'succeeded' if success else 'failed'}"
+    )

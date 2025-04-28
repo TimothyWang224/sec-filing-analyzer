@@ -33,5 +33,7 @@ def fix_etl_service():
         logger.info(f"Set edgar identity to: {edgar_identity}")
         return True
     else:
-        logger.error("EDGAR_IDENTITY environment variable not set. Please set it in your .env file.")
+        logger.error(
+            "EDGAR_IDENTITY environment variable not set. Please set it in your .env file."
+        )
         return False

@@ -7,7 +7,6 @@ in their embeddings, which indicates a failure in the embedding generation proce
 
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -23,7 +22,9 @@ from sec_filing_analyzer.config import ETLConfig
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 

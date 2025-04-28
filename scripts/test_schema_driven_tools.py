@@ -6,7 +6,6 @@ This script demonstrates the schema-driven approach to tool implementation.
 
 import asyncio
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -14,7 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.tools import SchemaRegistry, SECFinancialDataTool, ToolRegistry
-from src.tools.schema_init import get_loaded_schemas, get_schema_fields, initialize_schemas
+from src.tools.schema_init import (
+    get_loaded_schemas,
+    get_schema_fields,
+    initialize_schemas,
+)
 
 
 async def test_schema_registry():
@@ -70,7 +73,9 @@ async def test_tool_registry():
 
     # Validate schema mappings
     is_valid, errors = ToolRegistry.validate_schema_mappings("sec_financial_data")
-    print(f"Schema mappings validation for sec_financial_data: {'valid' if is_valid else 'invalid'}")
+    print(
+        f"Schema mappings validation for sec_financial_data: {'valid' if is_valid else 'invalid'}"
+    )
     if errors:
         print(f"Validation errors: {errors}")
 

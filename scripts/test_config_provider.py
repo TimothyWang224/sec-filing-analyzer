@@ -9,8 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
-    from src.sec_filing_analyzer.config import AgentConfig, ConfigProvider
-    from src.sec_filing_analyzer.llm.llm_config import LLMConfigFactory, get_agent_types
+    from src.sec_filing_analyzer.config import ConfigProvider
+    from src.sec_filing_analyzer.llm.llm_config import LLMConfigFactory
 
     # Initialize the ConfigProvider
     ConfigProvider.initialize()
@@ -31,9 +31,15 @@ try:
         print(f"  Temperature: {config.get('temperature', 'Not specified')}")
         print(f"  Max Tokens: {config.get('max_tokens', 'Not specified')}")
         print(f"  Max Iterations: {config.get('max_iterations', 'Not specified')}")
-        print(f"  Max Planning Iterations: {config.get('max_planning_iterations', 'Not specified')}")
-        print(f"  Max Execution Iterations: {config.get('max_execution_iterations', 'Not specified')}")
-        print(f"  Max Refinement Iterations: {config.get('max_refinement_iterations', 'Not specified')}")
+        print(
+            f"  Max Planning Iterations: {config.get('max_planning_iterations', 'Not specified')}"
+        )
+        print(
+            f"  Max Execution Iterations: {config.get('max_execution_iterations', 'Not specified')}"
+        )
+        print(
+            f"  Max Refinement Iterations: {config.get('max_refinement_iterations', 'Not specified')}"
+        )
         print()
 
     # Test getting agent config via LLMConfigFactory
@@ -49,10 +55,14 @@ try:
     print("Testing task complexity configurations:")
     for complexity in ["low", "medium", "high"]:
         print(f"  Configuration for coordinator with {complexity} complexity:")
-        config = LLMConfigFactory.get_recommended_config("coordinator", task_complexity=complexity)
+        config = LLMConfigFactory.get_recommended_config(
+            "coordinator", task_complexity=complexity
+        )
         print(f"    Model: {config.get('model', 'Not specified')}")
         print(f"    Max Tokens: {config.get('max_tokens', 'Not specified')}")
-        print(f"    Max Planning Iterations: {config.get('max_planning_iterations', 'Not specified')}")
+        print(
+            f"    Max Planning Iterations: {config.get('max_planning_iterations', 'Not specified')}"
+        )
         print()
 
     print("All tests completed successfully!")

@@ -9,8 +9,6 @@ import argparse
 import asyncio
 import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.capabilities.logging import LoggingCapability
@@ -18,7 +16,9 @@ from src.capabilities.planning import PlanningCapability
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -62,7 +62,9 @@ async def run_single_tool_call_test(question: str, max_iterations: int = 5):
         # Print memory to show tool results
         print("\n=== Agent Memory ===")
         memory = result.get("memory", [])
-        tool_results = [item for item in memory if item.get("type") in ["tool_result", "tool_error"]]
+        tool_results = [
+            item for item in memory if item.get("type") in ["tool_result", "tool_error"]
+        ]
 
         for i, result in enumerate(tool_results):
             print(f"\n--- Tool Call {i + 1} ---")
@@ -82,13 +84,26 @@ async def run_single_tool_call_test(question: str, max_iterations: int = 5):
 
 def main():
     """Main function to run the test script."""
-    parser = argparse.ArgumentParser(description="Test the single tool call per iteration approach")
-    parser.add_argument("--question", type=str, default="What was Apple's revenue in 2023?", help="Question to process")
-    parser.add_argument("--max-iterations", type=int, default=5, help="Maximum number of iterations")
+    parser = argparse.ArgumentParser(
+        description="Test the single tool call per iteration approach"
+    )
+    parser.add_argument(
+        "--question",
+        type=str,
+        default="What was Apple's revenue in 2023?",
+        help="Question to process",
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=5, help="Maximum number of iterations"
+    )
 
     args = parser.parse_args()
 
-    asyncio.run(run_single_tool_call_test(question=args.question, max_iterations=args.max_iterations))
+    asyncio.run(
+        run_single_tool_call_test(
+            question=args.question, max_iterations=args.max_iterations
+        )
+    )
 
 
 if __name__ == "__main__":

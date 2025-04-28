@@ -1,6 +1,5 @@
 import logging
 import os
-from pathlib import Path
 
 import duckdb
 
@@ -99,7 +98,10 @@ def fix_database_schema():
                 logger.info("Copied filing_id to id column")
 
             # If updated_at is missing but created_at exists, copy created_at to updated_at
-            if "updated_at" in [col[0] for col in missing_columns] and "created_at" in columns:
+            if (
+                "updated_at" in [col[0] for col in missing_columns]
+                and "created_at" in columns
+            ):
                 logger.info("Copying created_at to updated_at column")
                 conn.execute("""
                     UPDATE filings

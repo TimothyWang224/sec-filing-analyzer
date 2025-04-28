@@ -18,7 +18,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 # Set page config
-st.set_page_config(page_title="SEC Filing Analyzer Log Visualizer", page_icon="📊", layout="wide")
+st.set_page_config(
+    page_title="SEC Filing Analyzer Log Visualizer", page_icon="📊", layout="wide"
+)
 
 # Title
 st.title("SEC Filing Analyzer Log Visualizer")
@@ -91,7 +93,10 @@ if not log_file_options:
     st.stop()
 
 selected_log_file = st.sidebar.selectbox(
-    "Select Log File", options=log_file_options, format_func=lambda x: log_file_display[x], index=0
+    "Select Log File",
+    options=log_file_options,
+    format_func=lambda x: log_file_display[x],
+    index=0,
 )
 
 # Display log file info
@@ -116,7 +121,13 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
         Tuple of (log entries, workflow metadata)
     """
     log_entries = []
-    workflow_metadata = {"workflow_id": "", "start_time": None, "end_time": None, "status": "unknown", "agents": set()}
+    workflow_metadata = {
+        "workflow_id": "",
+        "start_time": None,
+        "end_time": None,
+        "status": "unknown",
+        "agents": set(),
+    }
 
     # Regular expression patterns
     timestamp_pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
@@ -127,7 +138,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
     step_pattern = r"Step: ([^-]+) - (.*)"
     plan_step_pattern = r"Current step \((\d+)/(\d+)\): (.*)"
     llm_prompt_pattern = r"LLM Prompt: (.+)"
-    llm_response_pattern = r"LLM Response: tokens=(\d+) \(prompt=(\d+), completion=(\d+)\)"
+    llm_response_pattern = (
+        r"LLM Response: tokens=(\d+) \(prompt=(\d+), completion=(\d+)\)"
+    )
     llm_content_pattern = r"LLM Content: (.+)"
 
     # Try to find corresponding JSON log file
@@ -138,7 +151,8 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                 json_data = json.load(f)
                 workflow_metadata.update(
                     {
-                        "workflow_id": json_data.get("workflow_id", "") or json_data.get("session_id", ""),
+                        "workflow_id": json_data.get("workflow_id", "")
+                        or json_data.get("session_id", ""),
                         "start_time": json_data.get("start_time"),
                         "end_time": json_data.get("end_time"),
                         "status": json_data.get("status", "unknown"),
@@ -156,7 +170,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                                 if memory_item.get("type") == "plan":
                                     plan_content = memory_item.get("content", {})
                                     timestamp = datetime.fromisoformat(
-                                        log_entry.get("timestamp").replace("Z", "+00:00")
+                                        log_entry.get("timestamp").replace(
+                                            "Z", "+00:00"
+                                        )
                                     )
 
                                     for step in plan_content.get("steps", []):
@@ -164,13 +180,23 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                                         step_key = f"Plan Step {step_id}"
 
                                         # Create or update the step entry
-                                        if step_key not in plan_steps or step.get("status") != "pending":
+                                        if (
+                                            step_key not in plan_steps
+                                            or step.get("status") != "pending"
+                                        ):
                                             # Check for completed_at timestamp
                                             completed_at = None
-                                            if step.get("status") == "completed" and "completed_at" in step:
+                                            if (
+                                                step.get("status") == "completed"
+                                                and "completed_at" in step
+                                            ):
                                                 try:
-                                                    completed_at = datetime.fromisoformat(
-                                                        step.get("completed_at").replace("Z", "+00:00")
+                                                    completed_at = (
+                                                        datetime.fromisoformat(
+                                                            step.get(
+                                                                "completed_at"
+                                                            ).replace("Z", "+00:00")
+                                                        )
                                                     )
                                                 except (ValueError, AttributeError):
                                                     pass
@@ -179,7 +205,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                                             # If this step already exists, use its timestamp
                                             step_timestamp = timestamp
                                             if step_key in plan_steps:
-                                                step_timestamp = plan_steps[step_key]["timestamp"]
+                                                step_timestamp = plan_steps[step_key][
+                                                    "timestamp"
+                                                ]
 
                                             plan_steps[step_key] = {
                                                 "timestamp": step_timestamp,
@@ -192,7 +220,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
                                                 "completed_at": completed_at,
                                                 "message": f"Plan Step {step_id}: {step.get('description')}",
                                                 "level": "INFO",
-                                                "logger": workflow_metadata["workflow_id"],
+                                                "logger": workflow_metadata[
+                                                    "workflow_id"
+                                                ],
                                             }
 
                     # Add the unique plan steps to log entries
@@ -315,7 +345,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
             if "LLM Response: tokens=" in message:
                 llm_response_match = re.search(llm_response_pattern, message)
                 if llm_response_match and current_llm_prompt is not None:
-                    total_tokens, prompt_tokens, completion_tokens = map(int, llm_response_match.groups())
+                    total_tokens, prompt_tokens, completion_tokens = map(
+                        int, llm_response_match.groups()
+                    )
                     current_llm_tokens = {
                         "total": total_tokens,
                         "prompt": prompt_tokens,
@@ -407,7 +439,9 @@ if step_entries:
     # Calculate duration for each step (for visualization purposes only)
     # Note: This is an estimate for the Gantt chart. Accurate durations for completed steps
     # are calculated separately in the Timing Analysis section
-    step_df["duration"] = (step_df["end_time"] - step_df["timestamp"]).dt.total_seconds()
+    step_df["duration"] = (
+        step_df["end_time"] - step_df["timestamp"]
+    ).dt.total_seconds()
 
     # Create a Gantt chart
     fig = px.timeline(
@@ -448,7 +482,9 @@ if step_entries:
     if "agent" in step_df.columns:
         display_columns.append("agent")
 
-    step_table = step_df[display_columns].rename(columns={"timestamp": "Start Time", "duration": "Duration (seconds)"})
+    step_table = step_df[display_columns].rename(
+        columns={"timestamp": "Start Time", "duration": "Duration (seconds)"}
+    )
     st.dataframe(step_table, use_container_width=True)
 
     # Add a bar chart showing duration of each step
@@ -492,7 +528,9 @@ if step_entries:
                     "type": "timing",
                     "category": "plan_step",
                     "operation": row["step"],
-                    "duration": (row["completed_at"] - row["timestamp"]).total_seconds(),
+                    "duration": (
+                        row["completed_at"] - row["timestamp"]
+                    ).total_seconds(),
                     "message": f"Plan step execution: {row['details']}",
                     "level": "INFO",
                     "logger": row.get("logger", "workflow"),
@@ -550,7 +588,11 @@ if timing_entries:
             display_columns.append("agent")
 
         step_timing_table = plan_step_timing[display_columns].rename(
-            columns={"operation": "Step", "duration": "Duration (seconds)", "timestamp": "Start Time"}
+            columns={
+                "operation": "Step",
+                "duration": "Duration (seconds)",
+                "timestamp": "Start Time",
+            }
         )
         st.dataframe(step_timing_table, use_container_width=True)
 
@@ -573,13 +615,21 @@ if timing_entries:
     # Add connecting lines between operations in the same category
     categories = timing_df["category"].unique()
     for category in categories:
-        category_df = timing_df[timing_df["category"] == category].sort_values("timestamp")
+        category_df = timing_df[timing_df["category"] == category].sort_values(
+            "timestamp"
+        )
         if len(category_df) > 1:
             for i in range(len(category_df) - 1):
                 fig.add_trace(
                     go.Scatter(
-                        x=[category_df.iloc[i]["end_time"], category_df.iloc[i + 1]["timestamp"]],
-                        y=[category_df.iloc[i]["operation"], category_df.iloc[i + 1]["operation"]],
+                        x=[
+                            category_df.iloc[i]["end_time"],
+                            category_df.iloc[i + 1]["timestamp"],
+                        ],
+                        y=[
+                            category_df.iloc[i]["operation"],
+                            category_df.iloc[i + 1]["operation"],
+                        ],
                         mode="lines",
                         line=dict(width=1, color="gray", dash="dot"),
                         showlegend=False,
@@ -593,7 +643,15 @@ if timing_entries:
     # Display timing summary in a table
     st.subheader("Timing Summary")
     timing_summary = timing_summary.sort_values("sum", ascending=False)
-    timing_summary.columns = ["Category", "Operation", "Count", "Total (s)", "Mean (s)", "Min (s)", "Max (s)"]
+    timing_summary.columns = [
+        "Category",
+        "Operation",
+        "Count",
+        "Total (s)",
+        "Mean (s)",
+        "Min (s)",
+        "Max (s)",
+    ]
     st.dataframe(timing_summary, use_container_width=True)
 else:
     st.info("No timing information found in the log file.")
@@ -613,7 +671,11 @@ if tool_entries:
 
     # Create a bar chart of tool usage
     fig = px.bar(
-        tool_counts, x="Tool", y="Count", title="Tool Usage", labels={"Count": "Number of Calls", "Tool": "Tool Name"}
+        tool_counts,
+        x="Tool",
+        y="Count",
+        title="Tool Usage",
+        labels={"Count": "Number of Calls", "Tool": "Tool Name"},
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -658,7 +720,11 @@ if llm_entries:
             x="id",
             y=["prompt_tokens", "completion_tokens"],
             title="Token Usage by LLM Interaction",
-            labels={"value": "Token Count", "variable": "Token Type", "id": "Interaction ID"},
+            labels={
+                "value": "Token Count",
+                "variable": "Token Type",
+                "id": "Interaction ID",
+            },
             barmode="stack",
         )
         st.plotly_chart(fig, use_container_width=True)

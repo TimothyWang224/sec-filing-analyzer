@@ -5,12 +5,10 @@ This script processes NVDA's 2023 filings using the SEC Filing ETL Pipeline.
 """
 
 import logging
-import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
-from sec_filing_analyzer.config import ETLConfig, StorageConfig
+from sec_filing_analyzer.config import ETLConfig
 from sec_filing_analyzer.data_retrieval import FilingProcessor
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
@@ -44,7 +42,9 @@ def test_nvda_2023_filings():
 
         # Initialize filing processor
         filing_processor = FilingProcessor(
-            graph_store=graph_store, vector_store=vector_store, file_storage=file_storage
+            graph_store=graph_store,
+            vector_store=vector_store,
+            file_storage=file_storage,
         )
 
         # Initialize pipeline
@@ -61,7 +61,10 @@ def test_nvda_2023_filings():
 
         # Process NVDA's 2023 filings
         pipeline.process_company(
-            ticker="NVDA", filing_types=["10-K", "10-Q", "8-K"], start_date="2023-01-01", end_date="2023-12-31"
+            ticker="NVDA",
+            filing_types=["10-K", "10-Q", "8-K"],
+            start_date="2023-01-01",
+            end_date="2023-12-31",
         )
 
         logger.info("ETL process completed successfully")

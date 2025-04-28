@@ -7,7 +7,6 @@ This module provides functionality for parsing multiple tasks from user input.
 import json
 import re
 import uuid
-from typing import Any, Dict, List, Optional
 
 from ..llm.base import LLM
 from .task_queue import Task, TaskQueue
@@ -70,7 +69,9 @@ class TaskParser:
         If the request is simple and contains only one task, return it as a single item in the array.
         Make sure each task is specific, actionable, and focused on a single objective."""
 
-        response = await self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.2)
+        response = await self.llm.generate(
+            prompt=prompt, system_prompt=system_prompt, temperature=0.2
+        )
 
         # Parse the response to extract tasks
         try:
@@ -100,7 +101,11 @@ class TaskParser:
 
             task_ids.append(task_id)
 
-            task = Task(task_id=task_id, input_text=task_data["task"], priority=task_data.get("priority", 3))
+            task = Task(
+                task_id=task_id,
+                input_text=task_data["task"],
+                priority=task_data.get("priority", 3),
+            )
 
             # Store the original index for dependency resolution
             task.metadata["original_index"] = i

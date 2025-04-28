@@ -3,9 +3,7 @@ Test script for the ETL service.
 """
 
 import logging
-import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add the project root to the Python path
@@ -15,7 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.streamlit_app.services import get_etl_service
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("test_etl_service")
 
 
@@ -33,7 +33,10 @@ def test_etl_service():
     end_date = "2022-12-31"
 
     estimated_filings = etl_service.estimate_filings_count(
-        tickers=tickers, filing_types=filing_types, start_date=start_date, end_date=end_date
+        tickers=tickers,
+        filing_types=filing_types,
+        start_date=start_date,
+        end_date=end_date,
     )
 
     logger.info(f"Estimated filings: {estimated_filings}")

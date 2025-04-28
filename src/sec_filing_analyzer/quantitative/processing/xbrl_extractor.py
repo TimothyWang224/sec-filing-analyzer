@@ -113,13 +113,22 @@ class XBRLExtractor:
 
         # Create mappings
         for tag in income_statement_tags:
-            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "income_statement"}
+            mappings[tag] = {
+                "standard_name": self._normalize_tag(tag),
+                "category": "income_statement",
+            }
 
         for tag in balance_sheet_tags:
-            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "balance_sheet"}
+            mappings[tag] = {
+                "standard_name": self._normalize_tag(tag),
+                "category": "balance_sheet",
+            }
 
         for tag in cash_flow_tags:
-            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "cash_flow"}
+            mappings[tag] = {
+                "standard_name": self._normalize_tag(tag),
+                "category": "cash_flow",
+            }
 
         # Add specific mappings for tags that need special handling
         mappings["RevenueFromContractWithCustomerExcludingAssessedTax"] = {
@@ -127,9 +136,15 @@ class XBRLExtractor:
             "category": "income_statement",
         }
 
-        mappings["SalesRevenueNet"] = {"standard_name": "revenue", "category": "income_statement"}
+        mappings["SalesRevenueNet"] = {
+            "standard_name": "revenue",
+            "category": "income_statement",
+        }
 
-        mappings["CostOfGoodsAndServicesSold"] = {"standard_name": "cost_of_revenue", "category": "income_statement"}
+        mappings["CostOfGoodsAndServicesSold"] = {
+            "standard_name": "cost_of_revenue",
+            "category": "income_statement",
+        }
 
         return mappings
 
@@ -152,7 +167,11 @@ class XBRLExtractor:
         return s3
 
     def extract_financials(
-        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
+        self,
+        ticker: str,
+        filing_id: str,
+        accession_number: str,
+        filing_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Extract financial data from XBRL filings.
 
@@ -167,9 +186,13 @@ class XBRLExtractor:
         """
         try:
             # Check cache first
-            cache_file = self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
+            cache_file = (
+                self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
+            )
             if cache_file.exists():
-                logger.info(f"Loading XBRL data from cache for {ticker} {accession_number}")
+                logger.info(
+                    f"Loading XBRL data from cache for {ticker} {accession_number}"
+                )
                 with open(cache_file, "r") as f:
                     return json.load(f)
 
@@ -193,7 +216,9 @@ class XBRLExtractor:
                             break
 
                     if not filing_url:
-                        raise ValueError(f"Filing with accession number {accession_number} not found")
+                        raise ValueError(
+                            f"Filing with accession number {accession_number} not found"
+                        )
                 except Exception as e:
                     logger.error(f"Error getting filing URL: {e}")
                     return {
@@ -203,7 +228,9 @@ class XBRLExtractor:
                         "error": f"Failed to get filing URL: {str(e)}",
                     }
 
-            logger.info(f"Extracting XBRL data for {ticker} {accession_number} from {filing_url}")
+            logger.info(
+                f"Extracting XBRL data for {ticker} {accession_number} from {filing_url}"
+            )
 
             # Get XBRL data using the edgar package
             try:
@@ -220,7 +247,11 @@ class XBRLExtractor:
             # Extract filing metadata
             filing_date = xbrl_data.period_end
             filing_type = self._extract_filing_type(filing_url)
-            fiscal_year = int(filing_date.split("-")[0]) if filing_date and "-" in filing_date else None
+            fiscal_year = (
+                int(filing_date.split("-")[0])
+                if filing_date and "-" in filing_date
+                else None
+            )
             fiscal_quarter = self._determine_fiscal_quarter(filing_date, filing_type)
 
             # Initialize financials dictionary
@@ -247,12 +278,21 @@ class XBRLExtractor:
             with open(cache_file, "w") as f:
                 json.dump(financials, f, indent=2)
 
-            logger.info(f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}")
+            logger.info(
+                f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}"
+            )
             return financials
 
         except Exception as e:
-            logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            logger.error(
+                f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}"
+            )
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def _extract_filing_type(self, filing_url: str) -> Optional[str]:
         """Extract filing type from filing URL.
@@ -286,7 +326,9 @@ class XBRLExtractor:
             logger.warning(f"Error extracting filing type: {e}")
             return None
 
-    def _determine_fiscal_quarter(self, filing_date: Optional[str], filing_type: Optional[str]) -> Optional[int]:
+    def _determine_fiscal_quarter(
+        self, filing_date: Optional[str], filing_type: Optional[str]
+    ) -> Optional[int]:
         """Determine fiscal quarter from filing date and type.
 
         Args:
@@ -315,7 +357,9 @@ class XBRLExtractor:
             logger.warning(f"Error determining fiscal quarter: {e}")
             return None
 
-    def _extract_financial_statements(self, xbrl_data: XBRLData, financials: Dict[str, Any]) -> None:
+    def _extract_financial_statements(
+        self, xbrl_data: XBRLData, financials: Dict[str, Any]
+    ) -> None:
         """Extract financial statements from XBRL data.
 
         Args:
@@ -389,18 +433,28 @@ class XBRLExtractor:
         """
         statement_name_lower = statement_name.lower()
 
-        if any(term in statement_name_lower for term in ["income", "operations", "earnings"]):
+        if any(
+            term in statement_name_lower
+            for term in ["income", "operations", "earnings"]
+        ):
             return "income_statement"
-        elif any(term in statement_name_lower for term in ["balance", "financial position"]):
+        elif any(
+            term in statement_name_lower for term in ["balance", "financial position"]
+        ):
             return "balance_sheet"
         elif any(term in statement_name_lower for term in ["cash flow", "cash flows"]):
             return "cash_flow"
-        elif any(term in statement_name_lower for term in ["equity", "stockholders", "shareholders"]):
+        elif any(
+            term in statement_name_lower
+            for term in ["equity", "stockholders", "shareholders"]
+        ):
             return "equity"
         else:
             return "other"
 
-    def _process_statement(self, statement: Any, category: str, financials: Dict[str, Any]) -> None:
+    def _process_statement(
+        self, statement: Any, category: str, financials: Dict[str, Any]
+    ) -> None:
         """Process a financial statement.
 
         Args:
@@ -449,7 +503,12 @@ class XBRLExtractor:
                         standard_name = mapping.get("standard_name", standard_name)
 
                     # Create fact entry
-                    fact = {"xbrl_tag": concept, "metric_name": standard_name, "value": value, "category": category}
+                    fact = {
+                        "xbrl_tag": concept,
+                        "metric_name": standard_name,
+                        "value": value,
+                        "category": category,
+                    }
 
                     # Add to facts list
                     financials["facts"].append(fact)

@@ -8,7 +8,10 @@ import streamlit as st
 
 # Set page config - MUST be the first Streamlit command
 st.set_page_config(
-    page_title="SEC Filing Analyzer - Chat", page_icon="💬", layout="wide", initial_sidebar_state="expanded"
+    page_title="SEC Filing Analyzer - Chat",
+    page_icon="💬",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 import asyncio
@@ -22,7 +25,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Import agent components
@@ -36,11 +41,17 @@ try:
         import sec_filing_analyzer.tools
     else:
         # If the tools module doesn't exist, we'll rely on the src.tools module
-        logger.info("sec_filing_analyzer.tools module not found, using src.tools instead")
+        logger.info(
+            "sec_filing_analyzer.tools module not found, using src.tools instead"
+        )
         import src.tools
 
     from src.agents import FinancialDiligenceCoordinator
-    from src.capabilities import LoggingCapability, PlanningCapability, TimeAwarenessCapability
+    from src.capabilities import (
+        LoggingCapability,
+        PlanningCapability,
+        TimeAwarenessCapability,
+    )
     from src.environments import FinancialEnvironment
 except ImportError as e:
     st.error(f"Error importing SEC Filing Analyzer components: {e}")
@@ -72,7 +83,11 @@ if "agent" not in st.session_state:
     st.session_state.agent_initialized = False
 
 if "config" not in st.session_state:
-    st.session_state.config = {"model": "gpt-4o-mini", "temperature": 0.7, "max_tokens": 4000}
+    st.session_state.config = {
+        "model": "gpt-4o-mini",
+        "temperature": 0.7,
+        "max_tokens": 4000,
+    }
 
 # Sidebar for configuration
 st.sidebar.header("Configuration")
@@ -154,7 +169,10 @@ def initialize_coordinator_agent():
                 max_content_length=10000,  # Increase max content length to capture full responses
             ),
             PlanningCapability(
-                enable_dynamic_replanning=True, enable_step_reflection=True, max_plan_steps=10, plan_detail_level="high"
+                enable_dynamic_replanning=True,
+                enable_step_reflection=True,
+                max_plan_steps=10,
+                plan_detail_level="high",
             ),
         ]
 
@@ -195,7 +213,9 @@ if st.sidebar.button("Reset Chat"):
     st.rerun()
 
 # Update agent button
-if st.session_state.agent_initialized and st.sidebar.button("Update Agent Configuration"):
+if st.session_state.agent_initialized and st.sidebar.button(
+    "Update Agent Configuration"
+):
     with st.spinner("Updating agent configuration..."):
         # Create a new agent with updated configuration
         st.session_state.agent = initialize_coordinator_agent()
@@ -229,7 +249,9 @@ if st.session_state.agent_initialized:
             try:
                 # Run the agent with chat mode enabled
                 start_time = time.time()
-                response = asyncio.run(st.session_state.agent.run(user_input, chat_mode=True))
+                response = asyncio.run(
+                    st.session_state.agent.run(user_input, chat_mode=True)
+                )
                 elapsed_time = time.time() - start_time
 
                 # Extract the response content
@@ -240,10 +262,10 @@ if st.session_state.agent_initialized:
                     elif "diligence_report" in response:
                         # Format diligence report
                         report = response["diligence_report"]
-                        agent_response = f"## {report.get('title', 'Analysis Report')}\n\n"
-                        agent_response += (
-                            f"### Executive Summary\n{report.get('executive_summary', 'No summary available.')}\n\n"
+                        agent_response = (
+                            f"## {report.get('title', 'Analysis Report')}\n\n"
                         )
+                        agent_response += f"### Executive Summary\n{report.get('executive_summary', 'No summary available.')}\n\n"
 
                         if "key_findings" in report and report["key_findings"]:
                             agent_response += "### Key Findings\n"
@@ -261,17 +283,25 @@ if st.session_state.agent_initialized:
                     agent_response = str(response)
 
                 # Add processing time information
-                agent_response += f"\n\n*Response generated in {elapsed_time:.2f} seconds*"
+                agent_response += (
+                    f"\n\n*Response generated in {elapsed_time:.2f} seconds*"
+                )
 
                 # Update the message placeholder
                 message_placeholder.markdown(agent_response)
 
                 # Add assistant message to chat
-                st.session_state.messages.append({"role": "assistant", "content": agent_response})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": agent_response}
+                )
 
             except Exception as e:
                 error_message = f"Error: {str(e)}"
                 message_placeholder.markdown(error_message)
-                st.session_state.messages.append({"role": "assistant", "content": error_message})
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": error_message}
+                )
 else:
-    st.info("Please initialize the agent using the button in the sidebar to start chatting.")
+    st.info(
+        "Please initialize the agent using the button in the sidebar to start chatting."
+    )

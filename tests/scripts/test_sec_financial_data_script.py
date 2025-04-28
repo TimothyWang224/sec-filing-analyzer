@@ -7,15 +7,15 @@ various financial data queries on the DuckDB database.
 
 import argparse
 import asyncio
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from src.tools.sec_financial_data import SECFinancialDataTool
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -80,7 +80,9 @@ async def test_company_info(ticker: Optional[str] = None):
         else:
             logger.info("Querying information for all companies")
 
-        results = await tool.execute(query_type="company_info", parameters={"ticker": ticker})
+        results = await tool.execute(
+            query_type="company_info", parameters={"ticker": ticker}
+        )
 
         # Print results
         print("\n=== Company Information ===")
@@ -119,7 +121,9 @@ async def test_metrics(category: Optional[str] = None):
         else:
             logger.info("Querying all available metrics")
 
-        results = await tool.execute(query_type="metrics", parameters={"category": category})
+        results = await tool.execute(
+            query_type="metrics", parameters={"category": category}
+        )
 
         # Print results
         print("\n=== Available Metrics ===")
@@ -203,13 +207,23 @@ def main():
         help="Type of query to execute",
     )
     parser.add_argument("--ticker", type=str, help="Company ticker symbol")
-    parser.add_argument("--metrics", type=str, nargs="*", help="List of metrics to query")
-    parser.add_argument("--metric", type=str, help="Single metric for time series query")
-    parser.add_argument("--start_date", type=str, help="Start date for query (YYYY-MM-DD)")
+    parser.add_argument(
+        "--metrics", type=str, nargs="*", help="List of metrics to query"
+    )
+    parser.add_argument(
+        "--metric", type=str, help="Single metric for time series query"
+    )
+    parser.add_argument(
+        "--start_date", type=str, help="Start date for query (YYYY-MM-DD)"
+    )
     parser.add_argument("--end_date", type=str, help="End date for query (YYYY-MM-DD)")
     parser.add_argument("--filing_type", type=str, help="Filing type to filter by")
     parser.add_argument("--category", type=str, help="Metric category to filter by")
-    parser.add_argument("--period", type=str, help="Period for time series query (e.g., 'annual', 'quarterly')")
+    parser.add_argument(
+        "--period",
+        type=str,
+        help="Period for time series query (e.g., 'annual', 'quarterly')",
+    )
 
     args = parser.parse_args()
 

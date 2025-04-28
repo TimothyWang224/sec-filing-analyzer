@@ -36,7 +36,10 @@ class TestSECSemanticSearchTool:
     @pytest.fixture
     def tool(self, mock_vector_store):
         """Create a SECSemanticSearchTool instance for testing."""
-        with patch("src.tools.sec_semantic_search.OptimizedVectorStore", return_value=mock_vector_store):
+        with patch(
+            "src.tools.sec_semantic_search.OptimizedVectorStore",
+            return_value=mock_vector_store,
+        ):
             tool = SECSemanticSearchTool(vector_store_path="test_vector_store")
             tool.vector_store = mock_vector_store
             return tool
@@ -46,13 +49,19 @@ class TestSECSemanticSearchTool:
         with patch("src.tools.sec_semantic_search.OptimizedVectorStore"):
             tool = SECSemanticSearchTool(vector_store_path="test_vector_store")
             assert tool.name == "sec_semantic_search"
-            assert "tool for performing semantic search on sec filings" in tool.description.lower()
+            assert (
+                "tool for performing semantic search on sec filings"
+                in tool.description.lower()
+            )
 
     def test_init_with_store_error(self):
         """Test initializing the tool with a vector store error."""
         # The tool doesn't handle initialization errors gracefully, so we need to catch the exception
         with pytest.raises(Exception) as excinfo:
-            with patch("src.tools.sec_semantic_search.OptimizedVectorStore", side_effect=Exception("Store error")):
+            with patch(
+                "src.tools.sec_semantic_search.OptimizedVectorStore",
+                side_effect=Exception("Store error"),
+            ):
                 SECSemanticSearchTool(vector_store_path="test_vector_store")
 
         # Check that the error message is correct
@@ -80,7 +89,9 @@ class TestSECSemanticSearchTool:
         assert result["date_range"][0] == "2022-01-01"
         assert "results" in result
         assert len(result["results"]) == 1
-        assert result["results"][0]["text"] == "Apple's revenue increased by 10% in 2022."
+        assert (
+            result["results"][0]["text"] == "Apple's revenue increased by 10% in 2022."
+        )
         assert "output_key" in result
         assert result["output_key"] == "sec_semantic_search"
 
@@ -92,7 +103,8 @@ class TestSECSemanticSearchTool:
         """Test executing the tool with minimal parameters."""
         # Execute the tool
         result = await tool.execute(
-            query_type="semantic_search", parameters={"query": "What was Apple's revenue in 2022?"}
+            query_type="semantic_search",
+            parameters={"query": "What was Apple's revenue in 2022?"},
         )
 
         # Check that the result is correct
@@ -110,7 +122,8 @@ class TestSECSemanticSearchTool:
 
         # Execute the tool
         result = await tool.execute(
-            query_type="semantic_search", parameters={"query": "What was Apple's revenue in 2022?"}
+            query_type="semantic_search",
+            parameters={"query": "What was Apple's revenue in 2022?"},
         )
 
         # Check that the result contains an error message
@@ -127,7 +140,10 @@ class TestSECSemanticSearchTool:
         # Execute the tool
         result = await tool.execute(
             query_type="semantic_search",
-            parameters={"query": "What was Apple's revenue in 2022?", "companies": ["AAPL"]},
+            parameters={
+                "query": "What was Apple's revenue in 2022?",
+                "companies": ["AAPL"],
+            },
         )
 
         # Check that the result contains the expected fields
@@ -143,7 +159,8 @@ class TestSECSemanticSearchTool:
 
         # Execute the tool
         result = await tool.execute(
-            query_type="semantic_search", parameters={"query": "What was Apple's revenue in 2022?"}
+            query_type="semantic_search",
+            parameters={"query": "What was Apple's revenue in 2022?"},
         )
 
         # Check that the result contains an error message
@@ -172,7 +189,8 @@ class TestSECSemanticSearchTool:
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
         result = tool.validate_args(
-            query_type="invalid_query", parameters={"query": "What was Apple's revenue in 2022?"}
+            query_type="invalid_query",
+            parameters={"query": "What was Apple's revenue in 2022?"},
         )
 
         # Check that validation failed
@@ -181,7 +199,9 @@ class TestSECSemanticSearchTool:
     def test_validate_args_missing_query(self, tool):
         """Test validating arguments without a query."""
         # Validate arguments without a query
-        result = tool.validate_args(query_type="semantic_search", parameters={"companies": ["AAPL"]})
+        result = tool.validate_args(
+            query_type="semantic_search", parameters={"companies": ["AAPL"]}
+        )
 
         # Check that validation failed
         assert result is False

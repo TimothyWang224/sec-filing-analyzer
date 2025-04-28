@@ -2,7 +2,6 @@
 Script to check Neo4j database structure and content
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -25,7 +24,9 @@ try:
             print("\nNode counts by label:")
             labels = ["Company", "Filing", "Section", "Fact", "Metric"]
             for label in labels:
-                count = graph_store.run_query(f"MATCH (n:{label}) RETURN count(n) as count")
+                count = graph_store.run_query(
+                    f"MATCH (n:{label}) RETURN count(n) as count"
+                )
                 if count:
                     print(f"{label}: {count[0]['count']}")
                 else:
@@ -35,7 +36,9 @@ try:
             print("\nRelationship counts:")
             relationships = ["FILED", "CONTAINS", "HAS_VALUE", "RELATED_TO"]
             for rel in relationships:
-                count = graph_store.run_query(f"MATCH ()-[r:{rel}]->() RETURN count(r) as count")
+                count = graph_store.run_query(
+                    f"MATCH ()-[r:{rel}]->() RETURN count(r) as count"
+                )
                 if count:
                     print(f"{rel}: {count[0]['count']}")
                 else:
@@ -43,7 +46,9 @@ try:
 
             # Get sample companies
             print("\nSample companies:")
-            companies = graph_store.run_query("MATCH (c:Company) RETURN c.ticker as ticker, c.name as name LIMIT 5")
+            companies = graph_store.run_query(
+                "MATCH (c:Company) RETURN c.ticker as ticker, c.name as name LIMIT 5"
+            )
             for company in companies:
                 print(f"{company['ticker']} - {company['name']}")
 

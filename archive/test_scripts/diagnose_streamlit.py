@@ -7,7 +7,6 @@ This script checks for common issues with Streamlit and provides diagnostic info
 import importlib
 import os
 import platform
-import subprocess
 import sys
 from pathlib import Path
 
@@ -50,7 +49,16 @@ def check_os_info():
 
 def check_dependencies():
     """Check dependencies."""
-    dependencies = ["streamlit", "pandas", "numpy", "plotly", "duckdb", "faiss", "psutil", "neo4j"]
+    dependencies = [
+        "streamlit",
+        "pandas",
+        "numpy",
+        "plotly",
+        "duckdb",
+        "faiss",
+        "psutil",
+        "neo4j",
+    ]
 
     results = {}
     for dep in dependencies:

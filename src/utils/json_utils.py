@@ -9,7 +9,7 @@ Markdown code blocks.
 import json
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Optional
 
 from sec_filing_analyzer.llm import BaseLLM
 
@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 async def repair_json(
-    json_str: str, llm: BaseLLM, default_value: Any = None, expected_type: Optional[str] = None
+    json_str: str,
+    llm: BaseLLM,
+    default_value: Any = None,
+    expected_type: Optional[str] = None,
 ) -> Any:
     """
     Repair malformed JSON using an LLM.
@@ -34,7 +37,9 @@ async def repair_json(
         Repaired JSON object or default value if repair fails
     """
     # Create a repair prompt
-    type_hint = f"The result should be a valid JSON {expected_type}." if expected_type else ""
+    type_hint = (
+        f"The result should be a valid JSON {expected_type}." if expected_type else ""
+    )
 
     prompt = f"""
     The text below is almost-valid JSON but does not parse.
@@ -76,7 +81,10 @@ async def repair_json(
 
 
 def safe_parse_json(
-    text: str, default_value: Any = None, expected_type: Optional[str] = None, repair_func: Optional[Callable] = None
+    text: str,
+    default_value: Any = None,
+    expected_type: Optional[str] = None,
+    repair_func: Optional[Callable] = None,
 ) -> Any:
     """
     Safely parse JSON from text, handling common issues.

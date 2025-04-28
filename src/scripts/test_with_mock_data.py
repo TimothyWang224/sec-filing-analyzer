@@ -4,17 +4,16 @@ Test the improved DuckDB store with mock data.
 
 import logging
 import os
-from datetime import date
 
 import duckdb
-from rich import box
 from rich.console import Console
-from rich.table import Table
 
 from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -317,7 +316,9 @@ def test_improved_duckdb_store(db_path):
         console.print(f"Filings: {stats.get('filings_count', 'N/A')}")
         console.print(f"Metrics: {stats.get('metrics_count', 'N/A')}")
         console.print(f"Facts: {stats.get('facts_count', 'N/A')}")
-        console.print(f"Year Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}")
+        console.print(
+            f"Year Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}"
+        )
 
         # Get all companies
         companies = db.get_all_companies()
@@ -340,7 +341,9 @@ def test_improved_duckdb_store(db_path):
         console.print(facts.head())
 
         # Query time series
-        time_series = db.query_time_series(ticker, ["revenue", "net_income"], include_quarterly=True)
+        time_series = db.query_time_series(
+            ticker, ["revenue", "net_income"], include_quarterly=True
+        )
 
         console.print(f"\n[bold]Time Series for {ticker}:[/bold]")
         console.print(time_series)

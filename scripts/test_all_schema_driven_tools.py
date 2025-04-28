@@ -6,7 +6,6 @@ This script tests all tools that have been updated to use the schema-driven appr
 
 import asyncio
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -14,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.tools import (
-    SchemaRegistry,
     SECDataTool,
     SECFinancialDataTool,
     SECGraphQueryTool,
@@ -68,7 +66,12 @@ async def test_sec_data_tool():
     tool = SECDataTool()
 
     # Test parameter resolution
-    original_params = {"ticker": "AAPL", "filing_type": "10-K", "start_date": "2022-01-01", "end_date": "2023-01-01"}
+    original_params = {
+        "ticker": "AAPL",
+        "filing_type": "10-K",
+        "start_date": "2022-01-01",
+        "end_date": "2023-01-01",
+    }
 
     print(f"Original parameters: {json.dumps(original_params, indent=2)}")
 

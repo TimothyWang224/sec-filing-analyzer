@@ -6,8 +6,7 @@ various recovery strategies to handle tool call failures.
 """
 
 import logging
-import time
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
 from sec_filing_analyzer.llm import BaseLLM
 
@@ -16,7 +15,13 @@ from ...tools.llm_parameter_completer import LLMParameterCompleter
 from ...tools.registry import ToolRegistry
 from .adaptive_retry import AdaptiveRetryStrategy
 from .alternative_tools import AlternativeToolSelector
-from .error_handling import ErrorAnalyzer, ErrorClassifier, ToolCircuitBreaker, ToolError, ToolErrorType
+from .error_handling import (
+    ErrorAnalyzer,
+    ErrorClassifier,
+    ToolCircuitBreaker,
+    ToolError,
+    ToolErrorType,
+)
 from .plan_step_retry import prepare_step_for_retry
 
 # Configure logging
@@ -58,7 +63,8 @@ class ErrorRecoveryManager:
         self.parameter_completer = LLMParameterCompleter(llm)
         self.retry_strategy = AdaptiveRetryStrategy(base_delay=base_delay)
         self.circuit_breaker = ToolCircuitBreaker(
-            failure_threshold=circuit_breaker_threshold, reset_timeout=circuit_breaker_reset_timeout
+            failure_threshold=circuit_breaker_threshold,
+            reset_timeout=circuit_breaker_reset_timeout,
         )
         self.alternative_selector = AlternativeToolSelector(llm)
         self.error_analyzer = ErrorAnalyzer()
@@ -92,7 +98,9 @@ class ErrorRecoveryManager:
 
             # Create a circuit open error
             error = ToolError(
-                ToolErrorType.SYSTEM_ERROR, f"Circuit open for tool {tool_name} due to repeated failures", tool_name
+                ToolErrorType.SYSTEM_ERROR,
+                f"Circuit open for tool {tool_name} due to repeated failures",
+                tool_name,
             )
 
             return {
@@ -133,7 +141,9 @@ class ErrorRecoveryManager:
 
         # Check if we had identical errors during retry attempts
         if result.get("identical_errors", False):
-            logger.warning("Skipping parameter fixing due to identical errors in consecutive attempts")
+            logger.warning(
+                "Skipping parameter fixing due to identical errors in consecutive attempts"
+            )
             # Create enhanced context with schema information
             enhanced_context = context.copy() if context else {}
             enhanced_context["last_error"] = str(error)
@@ -156,7 +166,9 @@ class ErrorRecoveryManager:
             return recovery_result
 
         # If all recovery strategies failed, return error with suggestions
-        suggestions = self.error_analyzer.get_error_suggestions(tool_name, error.error_type)
+        suggestions = self.error_analyzer.get_error_suggestions(
+            tool_name, error.error_type
+        )
         user_message = self.error_analyzer.format_error_for_user(error)
 
         return {
@@ -201,7 +213,10 @@ class ErrorRecoveryManager:
             try:
                 # Complete parameters using the LLM with error context
                 fixed_args = await self.parameter_completer.complete_parameters(
-                    tool_name=tool_name, partial_parameters=tool_args, user_input=user_input, context=error_context
+                    tool_name=tool_name,
+                    partial_parameters=tool_args,
+                    user_input=user_input,
+                    context=error_context,
                 )
 
                 # If parameters were fixed, try again
@@ -240,13 +255,17 @@ class ErrorRecoveryManager:
             tool_purpose = self._get_tool_purpose(tool_name, tool_args)
 
             # Find an alternative tool
-            alternative_tool = await self.alternative_selector.find_alternative_tool(tool_name, tool_purpose)
+            alternative_tool = await self.alternative_selector.find_alternative_tool(
+                tool_name, tool_purpose
+            )
 
             if alternative_tool:
                 logger.info(f"Trying alternative tool: {alternative_tool}")
 
                 # Map parameters to the alternative tool
-                mapped_args = await self.alternative_selector.map_parameters(tool_name, alternative_tool, tool_args)
+                mapped_args = await self.alternative_selector.map_parameters(
+                    tool_name, alternative_tool, tool_args
+                )
 
                 # Execute the alternative tool
                 async def execute_alternative():
@@ -296,7 +315,9 @@ class ErrorRecoveryManager:
 
         # Add key arguments if available
         if tool_args:
-            arg_str = ", ".join([f"{k}={v}" for k, v in tool_args.items() if k != "parameters"])
+            arg_str = ", ".join(
+                [f"{k}={v}" for k, v in tool_args.items() if k != "parameters"]
+            )
             purpose += f" with {arg_str}"
 
         return purpose

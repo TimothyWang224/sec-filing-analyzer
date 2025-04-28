@@ -2,7 +2,6 @@
 Shared test fixtures and data for SEC filing analyzer tests.
 """
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pandas as pd
@@ -27,7 +26,13 @@ SAMPLE_FILING_DATA = {
     "html_content": "<html><body>Sample HTML content</body></html>",
 }
 
-SAMPLE_CHUNKS = pd.DataFrame({"text": ["Chunk 1", "Chunk 2", "Chunk 3"], "start": [0, 100, 200], "end": [99, 199, 299]})
+SAMPLE_CHUNKS = pd.DataFrame(
+    {
+        "text": ["Chunk 1", "Chunk 2", "Chunk 3"],
+        "start": [0, 100, 200],
+        "end": [99, 199, 299],
+    }
+)
 
 SAMPLE_EMBEDDING = [0.1, 0.2, 0.3, 0.4, 0.5]
 
@@ -63,7 +68,9 @@ def mock_edgar():
 @pytest.fixture
 def mock_openai_embedding():
     """Create a mock OpenAI embedding model."""
-    with patch("sec_filing_analyzer.pipeline.etl_pipeline.OpenAIEmbedding") as mock_embedding:
+    with patch(
+        "sec_filing_analyzer.pipeline.etl_pipeline.OpenAIEmbedding"
+    ) as mock_embedding:
         mock_model = Mock()
         mock_model.get_text_embedding.return_value = SAMPLE_EMBEDDING
         mock_embedding.return_value = mock_model
@@ -118,7 +125,9 @@ def mock_file_storage():
 
 
 @pytest.fixture
-def etl_pipeline(mock_graph_store, mock_vector_store, mock_filing_processor, mock_file_storage):
+def etl_pipeline(
+    mock_graph_store, mock_vector_store, mock_filing_processor, mock_file_storage
+):
     """Create an ETL pipeline with mocked dependencies."""
     from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 
@@ -129,7 +138,9 @@ def etl_pipeline(mock_graph_store, mock_vector_store, mock_filing_processor, moc
         file_storage=mock_file_storage,
     )
 
+
 # Additional fixtures for script tests
+
 
 @pytest.fixture
 def question() -> str:

@@ -12,7 +12,9 @@ from src.tools.registry import ToolRegistry
 from src.tools.validator import validate_call
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 async def test_plan_step_tool_contract():
@@ -22,7 +24,11 @@ async def test_plan_step_tool_contract():
     print("=" * 80 + "\n")
 
     # Create a QA Specialist Agent
-    agent = QASpecialistAgent(max_planning_iterations=2, max_execution_iterations=5, max_refinement_iterations=3)
+    agent = QASpecialistAgent(
+        max_planning_iterations=2,
+        max_execution_iterations=5,
+        max_refinement_iterations=3,
+    )
 
     # Add planning capability
     planning_capability = PlanningCapability(
@@ -101,7 +107,9 @@ async def test_plan_step_tool_contract():
         print(f"Executing tool: {step.tool}")
         print(f"Parameters: {json.dumps(step.parameters, indent=2)}")
 
-        result = await environment.execute_action({"tool": step.tool, "args": step.parameters})
+        result = await environment.execute_action(
+            {"tool": step.tool, "args": step.parameters}
+        )
 
         print(f"Result: {json.dumps(result, indent=2)}")
 
@@ -137,7 +145,10 @@ async def test_plan_step_tool_contract():
         {
             "type": "tool_result",
             "tool": "sec_financial_data",
-            "result": {"data": {"Revenue": 123456789}, "output_key": "sec_financial_data"},
+            "result": {
+                "data": {"Revenue": 123456789},
+                "output_key": "sec_financial_data",
+            },
             "expected_key": "revenue_data",
         }
     )
@@ -155,9 +166,11 @@ async def test_plan_step_tool_contract():
     )
 
     # Check if the step should be skipped
-    print(f"Checking if step should be skipped...")
+    print("Checking if step should be skipped...")
     # Initialize the agent's context
-    agent.state.context = {"planning": {"plan": plan.model_dump(), "current_step": step.model_dump()}}
+    agent.state.context = {
+        "planning": {"plan": plan.model_dump(), "current_step": step.model_dump()}
+    }
 
     # Use the _should_skip method from the base Agent class
     should_skip = agent._should_skip(step.model_dump())
@@ -193,7 +206,12 @@ async def test_plan_step_tool_contract():
         validate_call(
             "sec_financial_data",
             "financial_facts",
-            {"ticker": "AAPL", "metrics": ["Revenue"], "start_date": "2022-01-01", "end_date": "2022-12-31"},
+            {
+                "ticker": "AAPL",
+                "metrics": ["Revenue"],
+                "start_date": "2022-01-01",
+                "end_date": "2022-12-31",
+            },
         )
         print("✅ Validation passed")
     except Exception as e:
@@ -205,7 +223,11 @@ async def test_plan_step_tool_contract():
         validate_call(
             "sec_financial_data",
             "financial_facts",
-            {"metrics": ["Revenue"], "start_date": "2022-01-01", "end_date": "2022-12-31"},
+            {
+                "metrics": ["Revenue"],
+                "start_date": "2022-01-01",
+                "end_date": "2022-12-31",
+            },
         )
         print("❌ Validation passed (should have failed)")
     except ParameterError as e:
@@ -233,7 +255,10 @@ async def test_plan_step_tool_contract():
     try:
         print("Testing FinancialFactsParams with valid parameters:")
         params = FinancialFactsParams(
-            ticker="AAPL", metrics=["Revenue"], start_date="2022-01-01", end_date="2022-12-31"
+            ticker="AAPL",
+            metrics=["Revenue"],
+            start_date="2022-01-01",
+            end_date="2022-12-31",
         )
         print(f"✅ Validation passed: {params.model_dump()}")
     except Exception as e:
@@ -241,8 +266,12 @@ async def test_plan_step_tool_contract():
 
     # Test with invalid parameters
     try:
-        print("\nTesting FinancialFactsParams with invalid parameters (missing ticker):")
-        params = FinancialFactsParams(metrics=["Revenue"], start_date="2022-01-01", end_date="2022-12-31")
+        print(
+            "\nTesting FinancialFactsParams with invalid parameters (missing ticker):"
+        )
+        params = FinancialFactsParams(
+            metrics=["Revenue"], start_date="2022-01-01", end_date="2022-12-31"
+        )
         print(f"❌ Validation passed (should have failed): {params.model_dump()}")
     except Exception as e:
         print(f"✅ Validation failed as expected: {str(e)}")
@@ -256,7 +285,12 @@ async def test_plan_step_tool_contract():
         print("Testing ToolInput with valid parameters:")
         tool_input = ToolInput(
             query_type="financial_facts",
-            parameters={"ticker": "AAPL", "metrics": ["Revenue"], "start_date": "2022-01-01", "end_date": "2022-12-31"},
+            parameters={
+                "ticker": "AAPL",
+                "metrics": ["Revenue"],
+                "start_date": "2022-01-01",
+                "end_date": "2022-12-31",
+            },
         )
         print(f"✅ Validation passed: {tool_input.model_dump()}")
     except Exception as e:

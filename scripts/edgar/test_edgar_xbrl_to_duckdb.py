@@ -8,14 +8,17 @@ financial data from SEC filings and store it in a DuckDB database.
 import argparse
 import logging
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
-from sec_filing_analyzer.data_processing.edgar_xbrl_to_duckdb import EdgarXBRLToDuckDBExtractor
+from sec_filing_analyzer.data_processing.edgar_xbrl_to_duckdb import (
+    EdgarXBRLToDuckDBExtractor,
+)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
@@ -50,7 +53,9 @@ def test_single_filing(ticker, accession_number, db_path=None):
                 fiscal_info = result["fiscal_info"]
                 logger.info(f"Fiscal Year: {fiscal_info.get('fiscal_year')}")
                 logger.info(f"Fiscal Quarter: {fiscal_info.get('fiscal_quarter')}")
-                logger.info(f"Period End Date: {fiscal_info.get('fiscal_period_end_date')}")
+                logger.info(
+                    f"Period End Date: {fiscal_info.get('fiscal_period_end_date')}"
+                )
 
         return result
 
@@ -91,9 +96,15 @@ def test_company_filings(ticker, filing_types=None, limit=5, db_path=None):
 
             # Print summary of processed filings
             if "results" in result:
-                successful = sum(1 for r in result["results"] if "status" in r and r["status"] == "success")
+                successful = sum(
+                    1
+                    for r in result["results"]
+                    if "status" in r and r["status"] == "success"
+                )
                 failed = sum(1 for r in result["results"] if "error" in r)
-                logger.info(f"Processed {len(result['results'])} filings: {successful} successful, {failed} failed")
+                logger.info(
+                    f"Processed {len(result['results'])} filings: {successful} successful, {failed} failed"
+                )
 
         return result
 
@@ -102,7 +113,9 @@ def test_company_filings(ticker, filing_types=None, limit=5, db_path=None):
         return {"error": str(e)}
 
 
-def test_multiple_companies(tickers, filing_types=None, limit_per_company=3, db_path=None):
+def test_multiple_companies(
+    tickers, filing_types=None, limit_per_company=3, db_path=None
+):
     """
     Test extracting data from multiple companies.
 
@@ -124,7 +137,9 @@ def test_multiple_companies(tickers, filing_types=None, limit_per_company=3, db_
             filing_types = ["10-K", "10-Q"]
 
         # Process the companies
-        result = extractor.process_multiple_companies(tickers, filing_types, limit_per_company)
+        result = extractor.process_multiple_companies(
+            tickers, filing_types, limit_per_company
+        )
 
         # Print the result
         if "error" in result:
@@ -136,9 +151,13 @@ def test_multiple_companies(tickers, filing_types=None, limit_per_company=3, db_
             if "results" in result:
                 for ticker, company_result in result["results"].items():
                     if "error" in company_result:
-                        logger.error(f"Error processing {ticker}: {company_result['error']}")
+                        logger.error(
+                            f"Error processing {ticker}: {company_result['error']}"
+                        )
                     else:
-                        logger.info(f"Successfully processed {ticker}: {company_result['message']}")
+                        logger.info(
+                            f"Successfully processed {ticker}: {company_result['message']}"
+                        )
 
         return result
 
@@ -162,19 +181,27 @@ def query_database(db_path=None):
         logger.info("Querying the database")
 
         # Get the number of companies
-        companies_count = extractor.db.conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+        companies_count = extractor.db.conn.execute(
+            "SELECT COUNT(*) FROM companies"
+        ).fetchone()[0]
         logger.info(f"Number of companies: {companies_count}")
 
         # Get the number of filings
-        filings_count = extractor.db.conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0]
+        filings_count = extractor.db.conn.execute(
+            "SELECT COUNT(*) FROM filings"
+        ).fetchone()[0]
         logger.info(f"Number of filings: {filings_count}")
 
         # Get the number of financial facts
-        facts_count = extractor.db.conn.execute("SELECT COUNT(*) FROM financial_facts").fetchone()[0]
+        facts_count = extractor.db.conn.execute(
+            "SELECT COUNT(*) FROM financial_facts"
+        ).fetchone()[0]
         logger.info(f"Number of financial facts: {facts_count}")
 
         # Get the number of time series metrics
-        metrics_count = extractor.db.conn.execute("SELECT COUNT(*) FROM time_series_metrics").fetchone()[0]
+        metrics_count = extractor.db.conn.execute(
+            "SELECT COUNT(*) FROM time_series_metrics"
+        ).fetchone()[0]
         logger.info(f"Number of time series metrics: {metrics_count}")
 
         # Get the top 5 companies by number of filings
@@ -210,7 +237,9 @@ def query_database(db_path=None):
 
 def main():
     """Main function to run the test script."""
-    parser = argparse.ArgumentParser(description="Test the Edgar XBRL to DuckDB extractor")
+    parser = argparse.ArgumentParser(
+        description="Test the Edgar XBRL to DuckDB extractor"
+    )
     parser.add_argument(
         "--mode",
         choices=["single", "company", "multiple", "query"],
@@ -218,10 +247,22 @@ def main():
         help="Test mode: single filing, company filings, multiple companies, or query database",
     )
     parser.add_argument("--ticker", help="Company ticker symbol")
-    parser.add_argument("--accession", help="SEC accession number (for single filing mode)")
-    parser.add_argument("--tickers", help="Comma-separated list of ticker symbols (for multiple companies mode)")
-    parser.add_argument("--filing-types", help="Comma-separated list of filing types (e.g., 10-K,10-Q)")
-    parser.add_argument("--limit", type=int, default=5, help="Maximum number of filings to process per company")
+    parser.add_argument(
+        "--accession", help="SEC accession number (for single filing mode)"
+    )
+    parser.add_argument(
+        "--tickers",
+        help="Comma-separated list of ticker symbols (for multiple companies mode)",
+    )
+    parser.add_argument(
+        "--filing-types", help="Comma-separated list of filing types (e.g., 10-K,10-Q)"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Maximum number of filings to process per company",
+    )
     parser.add_argument("--db-path", help="Path to the DuckDB database file")
 
     args = parser.parse_args()
@@ -240,7 +281,9 @@ def main():
     # Run the appropriate test based on the mode
     if args.mode == "single":
         if not args.ticker or not args.accession:
-            logger.error("Ticker and accession number are required for single filing mode")
+            logger.error(
+                "Ticker and accession number are required for single filing mode"
+            )
             return
 
         test_single_filing(args.ticker, args.accession, db_path)
@@ -273,6 +316,8 @@ if __name__ == "__main__":
         edgar.set_identity(edgar_identity)
         logger.info(f"Set edgar identity to: {edgar_identity}")
     else:
-        logger.warning("EDGAR_IDENTITY environment variable not set. Set it in your .env file.")
+        logger.warning(
+            "EDGAR_IDENTITY environment variable not set. Set it in your .env file."
+        )
 
     main()

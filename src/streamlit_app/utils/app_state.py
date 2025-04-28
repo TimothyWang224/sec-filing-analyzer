@@ -5,9 +5,8 @@ Simple utility for managing application state across Streamlit sessions.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Define the path for the state file
 STATE_FILE = Path("data/app_state.json")

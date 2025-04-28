@@ -9,7 +9,9 @@ import logging
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -24,7 +26,10 @@ def main():
 
         # Process company filings
         pipeline.process_company(
-            ticker="NVDA", filing_types=["10-K", "10-Q", "8-K"], start_date="2023-01-01", end_date="2023-12-31"
+            ticker="NVDA",
+            filing_types=["10-K", "10-Q", "8-K"],
+            start_date="2023-01-01",
+            end_date="2023-12-31",
         )
 
         logger.info("ETL process completed successfully")

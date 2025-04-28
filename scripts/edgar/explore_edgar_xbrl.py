@@ -8,10 +8,11 @@ import logging
 import sys
 from pathlib import Path
 
-import pandas as pd
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Add the src directory to the Python path
@@ -109,7 +110,7 @@ def explore_xbrl_capabilities():
                         # Try to convert to pandas
                         if hasattr(statement, "to_pandas"):
                             df = statement.to_pandas()
-                            print(f"\nStatement as DataFrame:")
+                            print("\nStatement as DataFrame:")
                             print(df.head())
 
                 # Check if there are facts
@@ -120,9 +121,15 @@ def explore_xbrl_capabilities():
                     for i, fact in enumerate(list(xbrl_data.facts.values())[:5]):
                         print(f"\nFact {i + 1}:")
                         print(f"  Attributes: {dir(fact)}")
-                        print(f"  Name: {fact.name if hasattr(fact, 'name') else 'N/A'}")
-                        print(f"  Value: {fact.value if hasattr(fact, 'value') else 'N/A'}")
-                        print(f"  Context: {fact.context if hasattr(fact, 'context') else 'N/A'}")
+                        print(
+                            f"  Name: {fact.name if hasattr(fact, 'name') else 'N/A'}"
+                        )
+                        print(
+                            f"  Value: {fact.value if hasattr(fact, 'value') else 'N/A'}"
+                        )
+                        print(
+                            f"  Context: {fact.context if hasattr(fact, 'context') else 'N/A'}"
+                        )
 
                 # Check if there's a method to get all US GAAP facts
                 if hasattr(xbrl_data, "get_us_gaap_facts"):
@@ -143,7 +150,9 @@ def explore_xbrl_capabilities():
                     for i, (name, fact) in enumerate(list(us_gaap_facts.items())[:5]):
                         print(f"\nUS GAAP Fact {i + 1}:")
                         print(f"  Name: {name}")
-                        print(f"  Value: {fact.value if hasattr(fact, 'value') else 'N/A'}")
+                        print(
+                            f"  Value: {fact.value if hasattr(fact, 'value') else 'N/A'}"
+                        )
 
             except Exception as e:
                 print(f"Error getting XBRL data: {e}")

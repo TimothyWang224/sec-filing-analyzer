@@ -62,7 +62,11 @@ class ToolLedger:
         return entry
 
     def get_entries(
-        self, tool_name: Optional[str] = None, status: Optional[str] = None, limit: int = 10, offset: int = 0
+        self,
+        tool_name: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """
         Get entries from the ledger with optional filtering.
@@ -87,7 +91,9 @@ class ToolLedger:
         # Return the specified slice, most recent first
         return list(reversed(filtered[offset : offset + limit]))
 
-    def get_latest_entry(self, tool_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    def get_latest_entry(
+        self, tool_name: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Get the most recent ledger entry.
 

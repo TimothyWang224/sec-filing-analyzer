@@ -18,7 +18,12 @@ load_dotenv()
 class OpenAILLM(BaseLLM):
     """OpenAI LLM implementation using the OpenAI API."""
 
-    def __init__(self, model: str = "gpt-4-turbo-preview", api_key: Optional[str] = None, **kwargs: Any):
+    def __init__(
+        self,
+        model: str = "gpt-4-turbo-preview",
+        api_key: Optional[str] = None,
+        **kwargs: Any,
+    ):
         """Initialize the OpenAI LLM.
 
         Args:
@@ -36,7 +41,8 @@ class OpenAILLM(BaseLLM):
 
         # Create OpenAI client instance
         self.client = openai.OpenAI(
-            api_key=self.api_key, base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
+            api_key=self.api_key,
+            base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
         )
 
     @timed_function(category="llm")
@@ -95,17 +101,29 @@ class OpenAILLM(BaseLLM):
             response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
-        completion_tokens = response.usage.completion_tokens if hasattr(response, "usage") else "unknown"
-        prompt_tokens = response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
-        total_tokens = response.usage.total_tokens if hasattr(response, "usage") else "unknown"
+        completion_tokens = (
+            response.usage.completion_tokens
+            if hasattr(response, "usage")
+            else "unknown"
+        )
+        prompt_tokens = (
+            response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
+        )
+        total_tokens = (
+            response.usage.total_tokens if hasattr(response, "usage") else "unknown"
+        )
 
-        logger.info(f"LLM Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
+        logger.info(
+            f"LLM Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})"
+        )
 
         # Extract usage information
         usage = {
             "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
-            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
+            "completion_tokens": completion_tokens
+            if isinstance(completion_tokens, int)
+            else 0,
         }
 
         # Return based on return_usage parameter
@@ -232,7 +250,9 @@ class OpenAILLM(BaseLLM):
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "tools": [{"type": "function", "function": function} for function in functions],
+            "tools": [
+                {"type": "function", "function": function} for function in functions
+            ],
             **kwargs,
         }
 
@@ -241,16 +261,27 @@ class OpenAILLM(BaseLLM):
             if isinstance(function_call, str):
                 api_params["tool_choice"] = function_call
             elif isinstance(function_call, dict) and "name" in function_call:
-                api_params["tool_choice"] = {"type": "function", "function": {"name": function_call["name"]}}
+                api_params["tool_choice"] = {
+                    "type": "function",
+                    "function": {"name": function_call["name"]},
+                }
 
         # Time the API call specifically
         with TimingContext("openai_api_call", category="api", logger=logger):
             response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
-        completion_tokens = response.usage.completion_tokens if hasattr(response, "usage") else "unknown"
-        prompt_tokens = response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
-        total_tokens = response.usage.total_tokens if hasattr(response, "usage") else "unknown"
+        completion_tokens = (
+            response.usage.completion_tokens
+            if hasattr(response, "usage")
+            else "unknown"
+        )
+        prompt_tokens = (
+            response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
+        )
+        total_tokens = (
+            response.usage.total_tokens if hasattr(response, "usage") else "unknown"
+        )
 
         logger.info(
             f"LLM Function Call Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})"
@@ -260,7 +291,9 @@ class OpenAILLM(BaseLLM):
         usage = {
             "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
-            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
+            "completion_tokens": completion_tokens
+            if isinstance(completion_tokens, int)
+            else 0,
         }
 
         # Extract response content and function call information
@@ -273,7 +306,10 @@ class OpenAILLM(BaseLLM):
         if hasattr(message, "tool_calls") and message.tool_calls:
             tool_call = message.tool_calls[0]
             if tool_call.type == "function":
-                result["function_call"] = {"name": tool_call.function.name, "arguments": tool_call.function.arguments}
+                result["function_call"] = {
+                    "name": tool_call.function.name,
+                    "arguments": tool_call.function.arguments,
+                }
 
         # Add usage information if requested
         if return_usage:

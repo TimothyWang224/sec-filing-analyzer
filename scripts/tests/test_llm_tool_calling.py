@@ -8,7 +8,7 @@ import asyncio
 import logging
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -21,7 +21,9 @@ from src.environments.financial import FinancialEnvironment
 from src.sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -108,26 +110,49 @@ async def process_question(
 
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}")
-        return {"error": str(e), "answer": "An error occurred while processing your question."}
+        return {
+            "error": str(e),
+            "answer": "An error occurred while processing your question.",
+        }
 
 
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(description="Test LLM-driven tool calling")
-    parser.add_argument("--question", type=str, required=True, help="Question to ask the agent")
     parser.add_argument(
-        "--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level"
+        "--question", type=str, required=True, help="Question to ask the agent"
     )
-    parser.add_argument("--include_prompts", action="store_true", help="Include prompts and responses in logs")
-    parser.add_argument("--disable_llm_tool_calling", action="store_true", help="Disable LLM-driven tool calling")
-    parser.add_argument("--max_iterations", type=int, default=3, help="Maximum number of iterations")
+    parser.add_argument(
+        "--log_level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level",
+    )
+    parser.add_argument(
+        "--include_prompts",
+        action="store_true",
+        help="Include prompts and responses in logs",
+    )
+    parser.add_argument(
+        "--disable_llm_tool_calling",
+        action="store_true",
+        help="Disable LLM-driven tool calling",
+    )
+    parser.add_argument(
+        "--max_iterations", type=int, default=3, help="Maximum number of iterations"
+    )
 
     args = parser.parse_args()
 
     # Run the async function
     result = asyncio.run(
         process_question(
-            args.question, args.log_level, args.include_prompts, not args.disable_llm_tool_calling, args.max_iterations
+            args.question,
+            args.log_level,
+            args.include_prompts,
+            not args.disable_llm_tool_calling,
+            args.max_iterations,
         )
     )
 

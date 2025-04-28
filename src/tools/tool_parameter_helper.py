@@ -5,7 +5,7 @@ This module provides helper functions for generating and validating tool paramet
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +24,11 @@ TOOL_PARAMETER_SCHEMAS = {
             "type": "object",
             "required": True,
             "properties": {
-                "ticker": {"type": "string", "required": True, "description": "Company ticker symbol"},
+                "ticker": {
+                    "type": "string",
+                    "required": True,
+                    "description": "Company ticker symbol",
+                },
                 "start_date": {
                     "type": "string",
                     "required": False,
@@ -42,7 +46,14 @@ TOOL_PARAMETER_SCHEMAS = {
         "query_type": {
             "type": "string",
             "required": True,
-            "enum": ["financial_facts", "company_info", "metrics", "time_series", "financial_ratios", "custom_sql"],
+            "enum": [
+                "financial_facts",
+                "company_info",
+                "metrics",
+                "time_series",
+                "financial_ratios",
+                "custom_sql",
+            ],
             "description": "Type of financial data query to execute",
         },
         "parameters": {
@@ -51,10 +62,18 @@ TOOL_PARAMETER_SCHEMAS = {
             "properties": {
                 "ticker": {
                     "type": "string",
-                    "required_for": ["financial_facts", "time_series", "financial_ratios"],
+                    "required_for": [
+                        "financial_facts",
+                        "time_series",
+                        "financial_ratios",
+                    ],
                     "description": "Company ticker symbol",
                 },
-                "metrics": {"type": "array", "required": False, "description": "List of metrics to retrieve"},
+                "metrics": {
+                    "type": "array",
+                    "required": False,
+                    "description": "List of metrics to retrieve",
+                },
                 "start_date": {
                     "type": "string",
                     "required": False,
@@ -82,7 +101,11 @@ TOOL_PARAMETER_SCHEMAS = {
                     "enum": ["annual", "quarterly"],
                     "description": "Time period for data aggregation",
                 },
-                "ratios": {"type": "array", "required": False, "description": "List of financial ratios to calculate"},
+                "ratios": {
+                    "type": "array",
+                    "required": False,
+                    "description": "List of financial ratios to calculate",
+                },
                 "sql_query": {
                     "type": "string",
                     "required_for": ["custom_sql"],
@@ -92,28 +115,65 @@ TOOL_PARAMETER_SCHEMAS = {
         },
     },
     "sec_data": {
-        "ticker": {"type": "string", "required": True, "description": "Company ticker symbol"},
+        "ticker": {
+            "type": "string",
+            "required": True,
+            "description": "Company ticker symbol",
+        },
         "filing_type": {
             "type": "string",
             "required": False,
             "enum": ["10-K", "10-Q", "8-K"],
             "description": "Type of SEC filing",
         },
-        "start_date": {"type": "string", "required": False, "description": "Start date for filing search (YYYY-MM-DD)"},
-        "end_date": {"type": "string", "required": False, "description": "End date for filing search (YYYY-MM-DD)"},
-        "sections": {"type": "array", "required": False, "description": "Specific sections to extract"},
+        "start_date": {
+            "type": "string",
+            "required": False,
+            "description": "Start date for filing search (YYYY-MM-DD)",
+        },
+        "end_date": {
+            "type": "string",
+            "required": False,
+            "description": "End date for filing search (YYYY-MM-DD)",
+        },
+        "sections": {
+            "type": "array",
+            "required": False,
+            "description": "Specific sections to extract",
+        },
     },
     "sec_semantic_search": {
-        "query": {"type": "string", "required": True, "description": "Search query text"},
-        "companies": {"type": "array", "required": False, "description": "List of company tickers to search within"},
-        "top_k": {"type": "integer", "required": False, "default": 5, "description": "Number of results to return"},
-        "filing_types": {"type": "array", "required": False, "description": "List of filing types to filter by"},
+        "query": {
+            "type": "string",
+            "required": True,
+            "description": "Search query text",
+        },
+        "companies": {
+            "type": "array",
+            "required": False,
+            "description": "List of company tickers to search within",
+        },
+        "top_k": {
+            "type": "integer",
+            "required": False,
+            "default": 5,
+            "description": "Number of results to return",
+        },
+        "filing_types": {
+            "type": "array",
+            "required": False,
+            "description": "List of filing types to filter by",
+        },
         "date_range": {
             "type": "array",
             "required": False,
             "description": "Date range for search [start_date, end_date]",
         },
-        "sections": {"type": "array", "required": False, "description": "List of document sections to filter by"},
+        "sections": {
+            "type": "array",
+            "required": False,
+            "description": "List of document sections to filter by",
+        },
     },
     "sec_graph_query": {
         "query_type": {
@@ -135,7 +195,11 @@ TOOL_PARAMETER_SCHEMAS = {
             "properties": {
                 "ticker": {
                     "type": "string",
-                    "required_for": ["company_filings", "filing_sections", "related_companies"],
+                    "required_for": [
+                        "company_filings",
+                        "filing_sections",
+                        "related_companies",
+                    ],
                     "description": "Company ticker symbol",
                 },
                 "filing_type": {
@@ -144,8 +208,16 @@ TOOL_PARAMETER_SCHEMAS = {
                     "enum": ["10-K", "10-Q", "8-K"],
                     "description": "Type of SEC filing",
                 },
-                "start_date": {"type": "string", "required": False, "description": "Start date for query (YYYY-MM-DD)"},
-                "end_date": {"type": "string", "required": False, "description": "End date for query (YYYY-MM-DD)"},
+                "start_date": {
+                    "type": "string",
+                    "required": False,
+                    "description": "Start date for query (YYYY-MM-DD)",
+                },
+                "end_date": {
+                    "type": "string",
+                    "required": False,
+                    "description": "End date for query (YYYY-MM-DD)",
+                },
                 "section_type": {
                     "type": "string",
                     "required_for": ["filing_sections"],
@@ -175,7 +247,9 @@ def get_tool_parameter_schema(tool_name: str) -> Dict[str, Any]:
     return TOOL_PARAMETER_SCHEMAS.get(tool_name, {})
 
 
-def validate_tool_parameters(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+def validate_tool_parameters(
+    tool_name: str, parameters: Dict[str, Any]
+) -> Dict[str, Any]:
     """
     Validate and fix tool parameters.
 
@@ -208,7 +282,9 @@ def validate_tool_parameters(tool_name: str, parameters: Dict[str, Any]) -> Dict
     return {"parameters": fixed_parameters, "errors": errors}
 
 
-def _validate_test_financial_data_parameters(parameters: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_test_financial_data_parameters(
+    parameters: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Validate and fix parameters for the test_financial_data tool.
 
@@ -226,7 +302,9 @@ def _validate_test_financial_data_parameters(parameters: Dict[str, Any]) -> Dict
     valid_query_types = ["revenue", "profit", "metrics"]
 
     if query_type not in valid_query_types:
-        errors.append(f"Invalid query_type: {query_type}. Must be one of {valid_query_types}")
+        errors.append(
+            f"Invalid query_type: {query_type}. Must be one of {valid_query_types}"
+        )
         # Default to revenue
         fixed_parameters["query_type"] = "revenue"
 
@@ -249,7 +327,9 @@ def _validate_test_financial_data_parameters(parameters: Dict[str, Any]) -> Dict
     return {"parameters": fixed_parameters, "errors": errors}
 
 
-def _validate_sec_financial_data_parameters(parameters: Dict[str, Any]) -> Dict[str, Any]:
+def _validate_sec_financial_data_parameters(
+    parameters: Dict[str, Any],
+) -> Dict[str, Any]:
     """
     Validate and fix parameters for the sec_financial_data tool.
 
@@ -264,7 +344,14 @@ def _validate_sec_financial_data_parameters(parameters: Dict[str, Any]) -> Dict[
 
     # Check query_type
     query_type = fixed_parameters.get("query_type")
-    valid_query_types = ["financial_facts", "company_info", "metrics", "time_series", "financial_ratios", "custom_sql"]
+    valid_query_types = [
+        "financial_facts",
+        "company_info",
+        "metrics",
+        "time_series",
+        "financial_ratios",
+        "custom_sql",
+    ]
 
     # Fix common query_type errors
     if query_type == "revenue":
@@ -276,7 +363,9 @@ def _validate_sec_financial_data_parameters(parameters: Dict[str, Any]) -> Dict[
     elif query_type == "financial_metrics":
         fixed_parameters["query_type"] = "metrics"
     elif query_type not in valid_query_types:
-        errors.append(f"Invalid query_type: {query_type}. Must be one of {valid_query_types}")
+        errors.append(
+            f"Invalid query_type: {query_type}. Must be one of {valid_query_types}"
+        )
         fixed_parameters["query_type"] = "financial_facts"  # Default to financial_facts
 
     # Ensure parameters is a dictionary
@@ -334,8 +423,12 @@ def generate_tool_parameter_prompt(tool_name: str) -> str:
         prompt += "  Valid values: revenue, profit, metrics\n\n"
         prompt += "parameters (object): Parameters for the query\n"
         prompt += "  - ticker (required): Company ticker symbol\n"
-        prompt += "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
-        prompt += "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n\n"
+        prompt += (
+            "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
+        )
+        prompt += (
+            "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n\n"
+        )
 
         prompt += "Example:\n"
         prompt += "{\n"
@@ -349,23 +442,25 @@ def generate_tool_parameter_prompt(tool_name: str) -> str:
     # Special handling for sec_financial_data
     elif tool_name == "sec_financial_data":
         prompt += "query_type (required): Type of financial data query to execute\n"
-        prompt += (
-            "  Valid values: financial_facts, company_info, metrics, time_series, financial_ratios, custom_sql\n\n"
-        )
+        prompt += "  Valid values: financial_facts, company_info, metrics, time_series, financial_ratios, custom_sql\n\n"
         prompt += "parameters (object): Parameters for the query\n"
 
         # Add details for each query type
         prompt += "For query_type = 'financial_facts':\n"
         prompt += "  - ticker (required): Company ticker symbol\n"
         prompt += "  - metrics (optional): List of metrics to retrieve\n"
-        prompt += "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
+        prompt += (
+            "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
+        )
         prompt += "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n"
         prompt += "  - filing_type (optional): Type of SEC filing (10-K, 10-Q, 8-K)\n\n"
 
         prompt += "For query_type = 'time_series':\n"
         prompt += "  - ticker (required): Company ticker symbol\n"
         prompt += "  - metric (required): Specific metric for time series data\n"
-        prompt += "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
+        prompt += (
+            "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
+        )
         prompt += "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n"
         prompt += "  - period (optional): Time period for data aggregation (annual, quarterly)\n\n"
 
@@ -383,7 +478,9 @@ def generate_tool_parameter_prompt(tool_name: str) -> str:
         # Generic parameter prompt for other tools
         for param_name, param_schema in schema.items():
             required = "required" if param_schema.get("required", False) else "optional"
-            prompt += f"{param_name} ({required}): {param_schema.get('description', '')}\n"
+            prompt += (
+                f"{param_name} ({required}): {param_schema.get('description', '')}\n"
+            )
 
             if "enum" in param_schema:
                 prompt += f"  Valid values: {', '.join(param_schema['enum'])}\n"

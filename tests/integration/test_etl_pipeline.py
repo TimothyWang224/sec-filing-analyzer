@@ -2,13 +2,10 @@
 Test suite for SEC filing ETL pipeline.
 """
 
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
-from edgar.files.htmltools import ChunkedDocument
 
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
 from sec_filing_analyzer.data_retrieval.filing_processor import FilingProcessor
@@ -29,7 +26,13 @@ SAMPLE_FILING_DATA = {
     "html_content": "<html><body>Sample HTML content</body></html>",
 }
 
-SAMPLE_CHUNKS = pd.DataFrame({"text": ["Chunk 1", "Chunk 2", "Chunk 3"], "start": [0, 100, 200], "end": [99, 199, 299]})
+SAMPLE_CHUNKS = pd.DataFrame(
+    {
+        "text": ["Chunk 1", "Chunk 2", "Chunk 3"],
+        "start": [0, 100, 200],
+        "end": [99, 199, 299],
+    }
+)
 
 
 @pytest.fixture
@@ -69,7 +72,9 @@ def sample_chunks():
 
 
 @pytest.fixture
-def etl_pipeline(mock_graph_store, mock_vector_store, mock_filing_processor, mock_file_storage):
+def etl_pipeline(
+    mock_graph_store, mock_vector_store, mock_filing_processor, mock_file_storage
+):
     """Create an ETL pipeline with mocked dependencies."""
     return SECFilingETLPipeline(
         graph_store=mock_graph_store,
@@ -99,14 +104,19 @@ class TestETLPipeline:
 
         # Setup mock SEC downloader
         etl_pipeline.sec_downloader = Mock(spec=SECFilingsDownloader)
-        etl_pipeline.sec_downloader.download_company_filings.return_value = [sample_filing_data]
+        etl_pipeline.sec_downloader.download_company_filings.return_value = [
+            sample_filing_data
+        ]
 
         # Mock the process_filing_data method
         etl_pipeline.process_filing_data = Mock(return_value=sample_filing_data)
 
         # Process company filings
         result = etl_pipeline.process_company(
-            ticker="AAPL", filing_types=["10-K"], start_date="2023-01-01", end_date="2023-12-31"
+            ticker="AAPL",
+            filing_types=["10-K"],
+            start_date="2023-01-01",
+            end_date="2023-12-31",
         )
 
         # Verify SEC downloader was called
@@ -116,7 +126,7 @@ class TestETLPipeline:
             start_date="2023-01-01",
             end_date="2023-12-31",
             force_download=False,
-            limit=None
+            limit=None,
         )
 
         # Verify process_filing_data was called
@@ -167,7 +177,7 @@ class TestETLPipeline:
             ticker=mock_filing.ticker,
             filing_type=mock_filing.form,
             filing_date=mock_filing.filing_date,
-            accession_number=mock_filing.accession_number
+            accession_number=mock_filing.accession_number,
         )
 
         # Verify filing was processed
@@ -178,7 +188,9 @@ class TestETLPipeline:
         assert isinstance(result, dict)
 
     @patch("sec_filing_analyzer.pipeline.etl_pipeline.OpenAIEmbedding")
-    def test_generate_embeddings(self, mock_openai_embedding, etl_pipeline, sample_filing_data):
+    def test_generate_embeddings(
+        self, mock_openai_embedding, etl_pipeline, sample_filing_data
+    ):
         """Test generating embeddings for filing content."""
         # Create mock filing
         mock_filing = Mock()
@@ -220,7 +232,7 @@ class TestETLPipeline:
             ticker=mock_filing.ticker,
             filing_type=mock_filing.form,
             filing_date=mock_filing.filing_date,
-            accession_number=mock_filing.accession_number
+            accession_number=mock_filing.accession_number,
         )
 
         # Verify embeddings were generated
@@ -250,7 +262,9 @@ class TestETLPipeline:
         # Setup mock SEC downloader with error
         etl_pipeline.sec_downloader = Mock(spec=SECFilingsDownloader)
         etl_pipeline.sec_downloader.get_filings.return_value = [mock_filing]
-        etl_pipeline.sec_downloader.download_filing.side_effect = Exception("Download error")
+        etl_pipeline.sec_downloader.download_filing.side_effect = Exception(
+            "Download error"
+        )
 
         # Mock the extension to avoid database errors
         etl_pipeline.extension = Mock()
@@ -266,14 +280,16 @@ class TestETLPipeline:
             ticker=mock_filing.ticker,
             filing_type=mock_filing.form,
             filing_date=mock_filing.filing_date,
-            accession_number=mock_filing.accession_number
+            accession_number=mock_filing.accession_number,
         )
 
         # Verify error was handled
         assert "error" in result
 
     @pytest.mark.parametrize("filing_type", ["10-K", "10-Q", "8-K"])
-    def test_different_filing_types(self, etl_pipeline, filing_type, sample_filing_data):
+    def test_different_filing_types(
+        self, etl_pipeline, filing_type, sample_filing_data
+    ):
         """Test processing different filing types."""
         # Create mock filing
         mock_filing = Mock()
@@ -311,14 +327,16 @@ class TestETLPipeline:
             ticker=mock_filing.ticker,
             filing_type=filing_type,
             filing_date=mock_filing.filing_date,
-            accession_number=mock_filing.accession_number
+            accession_number=mock_filing.accession_number,
         )
 
         # Verify filing was processed correctly
         etl_pipeline.filing_processor.process_filing.assert_called_once()
         # We can't directly check the processed_data because the implementation has changed
         # Instead, we verify that the correct filing_type was passed to process_filing
-        assert etl_pipeline.sec_downloader.get_filings.call_args[1]["filing_types"] == [filing_type]
+        assert etl_pipeline.sec_downloader.get_filings.call_args[1]["filing_types"] == [
+            filing_type
+        ]
 
         # Verify result
         # The test is expected to return a dict with either a status or an error
@@ -359,7 +377,7 @@ class TestETLPipeline:
         etl_pipeline.filing_chunker.process_filing.return_value = {
             "text": sample_filing_data["text"],
             "chunk_texts": sample_chunks["text"].tolist(),
-            "chunks": sample_chunks.to_dict("records")
+            "chunks": sample_chunks.to_dict("records"),
         }
 
         # Mock the extension to avoid database errors
@@ -376,7 +394,7 @@ class TestETLPipeline:
             ticker=mock_filing.ticker,
             filing_type=mock_filing.form,
             filing_date=mock_filing.filing_date,
-            accession_number=mock_filing.accession_number
+            accession_number=mock_filing.accession_number,
         )
 
         # Verify filing was processed

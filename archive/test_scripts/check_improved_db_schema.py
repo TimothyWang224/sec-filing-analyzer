@@ -11,7 +11,9 @@ import duckdb
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
-def check_database_schema(db_path="data/db_backup/improved_financial_data.duckdb", read_only=True):
+def check_database_schema(
+    db_path="data/db_backup/improved_financial_data.duckdb", read_only=True
+):
     """Check the schema of the database."""
     try:
         # Connect to DuckDB in read-only mode

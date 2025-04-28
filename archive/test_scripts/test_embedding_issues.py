@@ -38,7 +38,9 @@ def test_embedding_direct(text: str) -> Dict[str, Any]:
 
     try:
         # Initialize embedding model
-        embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=os.getenv("OPENAI_API_KEY"))
+        embed_model = OpenAIEmbedding(
+            model="text-embedding-3-small", api_key=os.getenv("OPENAI_API_KEY")
+        )
 
         # Generate embedding
         embedding = embed_model.get_text_embedding(text)
@@ -67,7 +69,9 @@ def test_batch_embedding(texts: List[str], batch_size: int = 10) -> Dict[str, An
 
     try:
         # Initialize embedding model
-        embed_model = OpenAIEmbedding(model="text-embedding-3-small", api_key=os.getenv("OPENAI_API_KEY"))
+        embed_model = OpenAIEmbedding(
+            model="text-embedding-3-small", api_key=os.getenv("OPENAI_API_KEY")
+        )
 
         # Process in batches
         all_embeddings = []
@@ -127,7 +131,11 @@ def test_large_text_handling() -> Dict[str, Any]:
         chunk_results.append(result)
         time.sleep(1)  # Add delay to avoid rate limiting
 
-    return {"original_token_count": token_count, "num_chunks": len(chunks), "chunk_results": chunk_results}
+    return {
+        "original_token_count": token_count,
+        "num_chunks": len(chunks),
+        "chunk_results": chunk_results,
+    }
 
 
 def test_input_format_issues() -> Dict[str, Any]:
@@ -139,10 +147,16 @@ def test_input_format_issues() -> Dict[str, Any]:
         {"name": "special_chars", "input": "Text with special chars: !@#$%^&*()_+"},
         {"name": "unicode", "input": "Unicode text: 你好, こんにちは, 안녕하세요"},
         {"name": "very_long", "input": "Long text. " * 1000},
-        {"name": "with_newlines", "input": "Text with\nnewlines\nand\rcarriage\returns"},
+        {
+            "name": "with_newlines",
+            "input": "Text with\nnewlines\nand\rcarriage\returns",
+        },
         {"name": "with_tabs", "input": "Text with\ttabs\tand spaces"},
         {"name": "with_null_bytes", "input": "Text with\x00null\x00bytes"},
-        {"name": "with_control_chars", "input": "Text with control chars: \x01\x02\x03\x04"},
+        {
+            "name": "with_control_chars",
+            "input": "Text with control chars: \x01\x02\x03\x04",
+        },
         {"name": "json_string", "input": json.dumps({"key": "value"})},
         {"name": "html", "input": "<html><body><h1>HTML Content</h1></body></html>"},
         {"name": "xml", "input": "<xml><tag>XML Content</tag></xml>"},

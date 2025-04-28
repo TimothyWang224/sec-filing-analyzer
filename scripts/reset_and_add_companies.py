@@ -4,8 +4,6 @@ Reset the DuckDB database and add companies.
 
 import logging
 import os
-import shutil
-from pathlib import Path
 
 import duckdb
 
@@ -101,13 +99,17 @@ def add_companies(db_path="data/financial_data.duckdb"):
         # Insert companies
         for ticker, name in companies:
             # Check if company already exists
-            result = conn.execute(f"SELECT ticker FROM companies WHERE ticker = '{ticker}'").fetchone()
+            result = conn.execute(
+                f"SELECT ticker FROM companies WHERE ticker = '{ticker}'"
+            ).fetchone()
             if result:
                 logger.info(f"Company {ticker} already exists in the database")
                 continue
 
             # Add company
-            conn.execute("INSERT INTO companies (ticker, name) VALUES (?, ?)", [ticker, name])
+            conn.execute(
+                "INSERT INTO companies (ticker, name) VALUES (?, ?)", [ticker, name]
+            )
             logger.info(f"Added company {ticker} to the database")
 
         # Close connection

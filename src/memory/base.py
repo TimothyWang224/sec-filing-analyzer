@@ -26,7 +26,12 @@ class Memory:
         self.items: List[MemoryItem] = []
         self.max_items = max_items
 
-    def add(self, content: Dict[str, Any], type: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add(
+        self,
+        content: Dict[str, Any],
+        type: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Add a new item to memory.
 
@@ -35,7 +40,9 @@ class Memory:
             type: Type of memory item (e.g., 'observation', 'action', 'result')
             metadata: Optional metadata about the memory item
         """
-        item = MemoryItem(content=content, timestamp=datetime.now(), type=type, metadata=metadata)
+        item = MemoryItem(
+            content=content, timestamp=datetime.now(), type=type, metadata=metadata
+        )
 
         self.items.append(item)
 
@@ -80,7 +87,10 @@ class Memory:
         """
         return {
             "total_items": len(self.items),
-            "types": {type: len(self.get_by_type(type)) for type in set(item.type for item in self.items)},
+            "types": {
+                type: len(self.get_by_type(type))
+                for type in set(item.type for item in self.items)
+            },
             "oldest_item": self.items[0].timestamp if self.items else None,
             "newest_item": self.items[-1].timestamp if self.items else None,
         }

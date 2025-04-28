@@ -6,8 +6,7 @@ quantitative data from SEC filings.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..data_retrieval.sec_downloader import SECFilingsDownloader
 from ..quantitative.processing.edgar_xbrl_to_duckdb import EdgarXBRLToDuckDBExtractor
@@ -40,7 +39,9 @@ class QuantitativeETLPipeline:
         """
         self.downloader = downloader or SECFilingsDownloader()
         # Pass read_only parameter to the XBRL extractor
-        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(db_path=db_path, read_only=read_only)
+        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(
+            db_path=db_path, read_only=read_only
+        )
 
         logger.info("Initialized quantitative ETL pipeline")
 
@@ -72,12 +73,18 @@ class QuantitativeETLPipeline:
             if not accession_number:
                 # Get the filing object
                 filings = self.downloader.get_filings(
-                    ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
+                    ticker=ticker,
+                    filing_types=[filing_type],
+                    start_date=filing_date,
+                    end_date=filing_date,
+                    limit=1,
                 )
 
                 if not filings:
                     logger.error(f"Failed to find {filing_type} filing for {ticker}")
-                    return {"error": f"Failed to find {filing_type} filing for {ticker}"}
+                    return {
+                        "error": f"Failed to find {filing_type} filing for {ticker}"
+                    }
 
                 # Get the first filing
                 filing = filings[0]
@@ -86,16 +93,24 @@ class QuantitativeETLPipeline:
                 filing_data = self.downloader.download_filing(filing, ticker)
 
                 if not filing_data:
-                    logger.error(f"Failed to download {filing_type} filing for {ticker}")
-                    return {"error": f"Failed to download {filing_type} filing for {ticker}"}
+                    logger.error(
+                        f"Failed to download {filing_type} filing for {ticker}"
+                    )
+                    return {
+                        "error": f"Failed to download {filing_type} filing for {ticker}"
+                    }
 
                 accession_number = filing_data.get("accession_number")
 
             # Step 2: Extract XBRL data and store in DuckDB
-            result = self.xbrl_extractor.process_filing(ticker=ticker, accession_number=accession_number)
+            result = self.xbrl_extractor.process_filing(
+                ticker=ticker, accession_number=accession_number
+            )
 
             if "error" in result:
-                logger.error(f"Failed to extract XBRL data for {filing_type} filing for {ticker}: {result['error']}")
+                logger.error(
+                    f"Failed to extract XBRL data for {filing_type} filing for {ticker}: {result['error']}"
+                )
                 return {"error": result["error"]}
 
             logger.info(f"Successfully processed {filing_type} filing for {ticker}")
@@ -149,7 +164,11 @@ class QuantitativeETLPipeline:
 
             # Step 1: Get the list of filings
             filings = self.downloader.get_filings(
-                ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
+                ticker=ticker,
+                filing_types=filing_types,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
             )
 
             if not filings:
@@ -169,7 +188,12 @@ class QuantitativeETLPipeline:
 
             logger.info(f"Successfully processed {len(results)} filings for {ticker}")
 
-            return {"status": "success", "ticker": ticker, "num_filings": len(results), "results": results}
+            return {
+                "status": "success",
+                "ticker": ticker,
+                "num_filings": len(results),
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing filings for {ticker}: {e}")
@@ -216,7 +240,11 @@ class QuantitativeETLPipeline:
 
             logger.info(f"Successfully processed filings for {len(tickers)} companies")
 
-            return {"status": "success", "num_companies": len(tickers), "results": results}
+            return {
+                "status": "success",
+                "num_companies": len(tickers),
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing multiple companies: {e}")

@@ -7,14 +7,13 @@ and performance issues in the SEC Filing Analyzer.
 """
 
 import argparse
-import json
 import os
 import re
 import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -50,7 +49,9 @@ def parse_timing_logs(log_file: Path) -> List[Dict[str, Any]]:
         for line in f:
             match = timing_regex.match(line)
             if match:
-                timestamp_str, logger_name, level, category, operation, duration_str = match.groups()
+                timestamp_str, logger_name, level, category, operation, duration_str = (
+                    match.groups()
+                )
                 timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
                 duration = float(duration_str)
 
@@ -143,10 +144,16 @@ def print_timing_summary(analysis: Dict[str, Any]):
         table.add_column("% of Category")
 
         # Sort operations by total time (descending)
-        sorted_ops = sorted(data["operations"].items(), key=lambda x: x[1]["total"], reverse=True)
+        sorted_ops = sorted(
+            data["operations"].items(), key=lambda x: x[1]["total"], reverse=True
+        )
 
         for operation, stats in sorted_ops:
-            percent = (stats["total"] / data["total_time"]) * 100 if data["total_time"] > 0 else 0
+            percent = (
+                (stats["total"] / data["total_time"]) * 100
+                if data["total_time"] > 0
+                else 0
+            )
             table.add_row(
                 operation,
                 str(stats["count"]),
@@ -176,10 +183,17 @@ def plot_timing_data(analysis: Dict[str, Any], output_dir: Optional[Path] = None
         output_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Category breakdown pie chart
-    category_times = {category: data["total_time"] for category, data in analysis["stats"].items()}
+    category_times = {
+        category: data["total_time"] for category, data in analysis["stats"].items()
+    }
 
     plt.figure(figsize=(10, 6))
-    plt.pie(category_times.values(), labels=category_times.keys(), autopct="%1.1f%%", startangle=90)
+    plt.pie(
+        category_times.values(),
+        labels=category_times.keys(),
+        autopct="%1.1f%%",
+        startangle=90,
+    )
     plt.axis("equal")
     plt.title("Time Spent by Category")
 
@@ -204,13 +218,19 @@ def plot_timing_data(analysis: Dict[str, Any], output_dir: Optional[Path] = None
             )
 
     # Sort by total time and take top 15
-    top_operations = sorted(all_operations, key=lambda x: x["total_time"], reverse=True)[:15]
+    top_operations = sorted(
+        all_operations, key=lambda x: x["total_time"], reverse=True
+    )[:15]
 
     if top_operations:
         df = pd.DataFrame(top_operations)
 
         plt.figure(figsize=(12, 8))
-        bars = plt.barh(df["operation"], df["total_time"], color=[plt.cm.tab10(i % 10) for i in range(len(df))])
+        bars = plt.barh(
+            df["operation"],
+            df["total_time"],
+            color=[plt.cm.tab10(i % 10) for i in range(len(df))],
+        )
         plt.xlabel("Total Time (seconds)")
         plt.ylabel("Operation")
         plt.title("Top 15 Operations by Total Time")
@@ -219,7 +239,10 @@ def plot_timing_data(analysis: Dict[str, Any], output_dir: Optional[Path] = None
         # Add category labels to bars
         for i, bar in enumerate(bars):
             plt.text(
-                bar.get_width() + 0.1, bar.get_y() + bar.get_height() / 2, f"{df.iloc[i]['category']}", va="center"
+                bar.get_width() + 0.1,
+                bar.get_y() + bar.get_height() / 2,
+                f"{df.iloc[i]['category']}",
+                va="center",
             )
 
         if output_dir:
@@ -237,7 +260,9 @@ def plot_timing_data(analysis: Dict[str, Any], output_dir: Optional[Path] = None
 
         # Group by category and timestamp (1-minute bins)
         df["minute"] = df["timestamp"].dt.floor("1min")
-        timeline = df.groupby(["minute", "category"])["duration"].sum().unstack().fillna(0)
+        timeline = (
+            df.groupby(["minute", "category"])["duration"].sum().unstack().fillna(0)
+        )
 
         if not timeline.empty:
             plt.figure(figsize=(14, 8))
@@ -276,7 +301,11 @@ def find_bottlenecks(analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
             # Consider an operation a bottleneck if:
             # 1. It takes more than 1 second on average, or
             # 2. It accounts for more than 20% of its category's time
-            category_percent = (stats["total"] / data["total_time"]) * 100 if data["total_time"] > 0 else 0
+            category_percent = (
+                (stats["total"] / data["total_time"]) * 100
+                if data["total_time"] > 0
+                else 0
+            )
 
             if stats["avg"] > 1.0 or category_percent > 20:
                 bottlenecks.append(
@@ -287,12 +316,16 @@ def find_bottlenecks(analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
                         "total_time": stats["total"],
                         "count": stats["count"],
                         "category_percent": category_percent,
-                        "severity": "high" if stats["avg"] > 3.0 or category_percent > 50 else "medium",
+                        "severity": "high"
+                        if stats["avg"] > 3.0 or category_percent > 50
+                        else "medium",
                     }
                 )
 
     # Sort bottlenecks by severity and then by average time
-    return sorted(bottlenecks, key=lambda x: (0 if x["severity"] == "high" else 1, -x["avg_time"]))
+    return sorted(
+        bottlenecks, key=lambda x: (0 if x["severity"] == "high" else 1, -x["avg_time"])
+    )
 
 
 def print_bottlenecks(bottlenecks: List[Dict[str, Any]]):
@@ -339,7 +372,9 @@ def print_bottlenecks(bottlenecks: List[Dict[str, Any]]):
                 f"[yellow]{i}. Consider using a faster LLM model for {bottleneck['operation']} operations.[/yellow]"
             )
         elif bottleneck["category"] == "tool":
-            console.print(f"[yellow]{i}. Optimize the implementation of the {bottleneck['operation']} tool.[/yellow]")
+            console.print(
+                f"[yellow]{i}. Optimize the implementation of the {bottleneck['operation']} tool.[/yellow]"
+            )
         elif bottleneck["category"] == "api":
             console.print(
                 f"[yellow]{i}. Consider caching results from {bottleneck['operation']} to reduce API calls.[/yellow]"
@@ -355,8 +390,12 @@ def main():
     parser = argparse.ArgumentParser(description="Analyze timing information in logs")
     parser.add_argument("--log-file", type=str, help="Path to the log file to analyze")
     parser.add_argument("--log-dir", type=str, help="Directory containing log files")
-    parser.add_argument("--output-dir", type=str, help="Directory to save visualizations")
-    parser.add_argument("--latest", action="store_true", help="Analyze the latest log file")
+    parser.add_argument(
+        "--output-dir", type=str, help="Directory to save visualizations"
+    )
+    parser.add_argument(
+        "--latest", action="store_true", help="Analyze the latest log file"
+    )
     parser.add_argument("--no-plots", action="store_true", help="Skip generating plots")
 
     args = parser.parse_args()
@@ -388,7 +427,9 @@ def main():
         console.print(f"[green]Found {len(log_files)} log files in {log_dir}[/green]")
 
     if not log_files:
-        console.print("[red]No log files to analyze. Please specify a log file or directory.[/red]")
+        console.print(
+            "[red]No log files to analyze. Please specify a log file or directory.[/red]"
+        )
         return
 
     # Analyze each log file

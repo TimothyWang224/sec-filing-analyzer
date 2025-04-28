@@ -9,13 +9,17 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Import XBRL extractor
-from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import SimplifiedXBRLExtractor
+from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
+    SimplifiedXBRLExtractor,
+)
 
 # Load environment variables
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 

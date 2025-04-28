@@ -5,7 +5,6 @@ This script fixes the database schema to match what the sync_manager.py file exp
 """
 
 import os
-from pathlib import Path
 
 import duckdb
 
@@ -25,7 +24,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
     try:
         # Check if the companies table exists
         companies_exists = (
-            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'").fetchone()[0]
+            conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'"
+            ).fetchone()[0]
             > 0
         )
 
@@ -68,7 +69,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
 
         # Check if the filings table exists
         filings_exists = (
-            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'").fetchone()[0]
+            conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'"
+            ).fetchone()[0]
             > 0
         )
 

@@ -6,7 +6,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 try:
@@ -57,13 +59,26 @@ try:
     # Create a mock agent
     class MockAgent:
         def __init__(self):
-            self.state = type("obj", (object,), {"current_phase": "planning", "count_tokens": lambda x, y: None})
+            self.state = type(
+                "obj",
+                (object,),
+                {"current_phase": "planning", "count_tokens": lambda x, y: None},
+            )
             self.llm = type(
-                "obj", (object,), {"generate": lambda **kwargs: {"content": "{}", "usage": {"total_tokens": 100}}}
+                "obj",
+                (object,),
+                {
+                    "generate": lambda **kwargs: {
+                        "content": "{}",
+                        "usage": {"total_tokens": 100},
+                    }
+                },
             )
             self.add_to_memory = lambda x: None
             self.get_memory = lambda: []
-            self.environment = type("obj", (object,), {"get_available_tools": lambda: {"test_tool": {}}})
+            self.environment = type(
+                "obj", (object,), {"get_available_tools": lambda: {"test_tool": {}}}
+            )
 
     # Create a planning capability
     planning = PlanningCapability()

@@ -57,7 +57,9 @@ def main():
             if port:
                 print(f"Found available port: {port}")
             else:
-                print("Could not find an available port. Using the configured port anyway.")
+                print(
+                    "Could not find an available port. Using the configured port anyway."
+                )
                 port = initial_port
         else:
             port = initial_port
@@ -66,7 +68,15 @@ def main():
         # Run the Streamlit app
         print(f"Starting SEC Filing Analyzer Chat App on port {port}...")
         subprocess.run(
-            [sys.executable, "-m", "streamlit", "run", "chat_app/app.py", f"--server.port={port}"], check=True
+            [
+                sys.executable,
+                "-m",
+                "streamlit",
+                "run",
+                "chat_app/app.py",
+                f"--server.port={port}",
+            ],
+            check=True,
         )
     except subprocess.CalledProcessError as e:
         print(f"Error running Streamlit app: {e}")

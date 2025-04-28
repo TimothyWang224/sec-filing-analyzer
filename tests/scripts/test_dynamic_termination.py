@@ -22,7 +22,9 @@ from src.environments.financial import FinancialEnvironment
 from src.sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -107,7 +109,9 @@ class DynamicQASpecialistAgent(QASpecialistAgent, DynamicTermination):
 
             # Add assessment to result
             result["confidence"] = assessment.get("confidence", 0)
-            result["should_terminate"] = assessment.get("should_terminate", "NO").upper() == "YES"
+            result["should_terminate"] = (
+                assessment.get("should_terminate", "NO").upper() == "YES"
+            )
             result["assessment"] = assessment
 
         return result
@@ -215,28 +219,67 @@ async def process_question(
 
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}")
-        return {"error": str(e), "answer": "An error occurred while processing your question."}
+        return {
+            "error": str(e),
+            "answer": "An error occurred while processing your question.",
+        }
 
 
 def main():
     """Main entry point for the script."""
-    parser = argparse.ArgumentParser(description="Test an agent with dynamic termination")
-    parser.add_argument("--question", type=str, required=True, help="Question to ask the agent")
-    parser.add_argument(
-        "--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level"
-    )
-    parser.add_argument("--include_prompts", action="store_true", help="Include prompts and responses in logs")
-    parser.add_argument("--max_iterations", type=int, default=10, help="Maximum number of iterations")
-    parser.add_argument(
-        "--min_iterations", type=int, default=1, help="Minimum number of iterations before early termination"
+    parser = argparse.ArgumentParser(
+        description="Test an agent with dynamic termination"
     )
     parser.add_argument(
-        "--confidence_threshold", type=int, default=85, help="Minimum confidence level to terminate (0-100)"
+        "--question", type=str, required=True, help="Question to ask the agent"
     )
-    parser.add_argument("--disable_llm_assessment", action="store_true", help="Disable LLM self-assessment")
-    parser.add_argument("--disable_convergence_check", action="store_true", help="Disable answer convergence check")
-    parser.add_argument("--disable_confidence_check", action="store_true", help="Disable confidence level check")
-    parser.add_argument("--disable_info_gain_check", action="store_true", help="Disable information gain check")
+    parser.add_argument(
+        "--log_level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level",
+    )
+    parser.add_argument(
+        "--include_prompts",
+        action="store_true",
+        help="Include prompts and responses in logs",
+    )
+    parser.add_argument(
+        "--max_iterations", type=int, default=10, help="Maximum number of iterations"
+    )
+    parser.add_argument(
+        "--min_iterations",
+        type=int,
+        default=1,
+        help="Minimum number of iterations before early termination",
+    )
+    parser.add_argument(
+        "--confidence_threshold",
+        type=int,
+        default=85,
+        help="Minimum confidence level to terminate (0-100)",
+    )
+    parser.add_argument(
+        "--disable_llm_assessment",
+        action="store_true",
+        help="Disable LLM self-assessment",
+    )
+    parser.add_argument(
+        "--disable_convergence_check",
+        action="store_true",
+        help="Disable answer convergence check",
+    )
+    parser.add_argument(
+        "--disable_confidence_check",
+        action="store_true",
+        help="Disable confidence level check",
+    )
+    parser.add_argument(
+        "--disable_info_gain_check",
+        action="store_true",
+        help="Disable information gain check",
+    )
 
     args = parser.parse_args()
 

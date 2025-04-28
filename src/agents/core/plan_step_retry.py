@@ -5,9 +5,9 @@ This module provides utilities for retrying plan steps with proper object conver
 """
 
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Union
 
-from ...contracts import Plan, PlanStep
+from ...contracts import PlanStep
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

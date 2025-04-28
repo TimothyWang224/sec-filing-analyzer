@@ -5,14 +5,12 @@ A module for working with the improved DuckDB schema for financial data.
 """
 
 import logging
-import os
 
 # Add the project root to the Python path
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import duckdb
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -21,7 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +30,12 @@ class ImprovedDuckDBStore:
     An interface to store and query financial data using the improved DuckDB schema.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        batch_size: int = 100,
+        read_only: bool = True,
+    ):
         """Initialize the improved DuckDB financial store.
 
         Args:
@@ -45,10 +50,14 @@ class ImprovedDuckDBStore:
         # Use the DuckDB manager to get a connection with the appropriate mode
         if read_only:
             self.conn = duckdb_manager.get_read_only_connection(self.db_path)
-            logger.info(f"Initialized improved DuckDB financial store at {self.db_path} in read-only mode")
+            logger.info(
+                f"Initialized improved DuckDB financial store at {self.db_path} in read-only mode"
+            )
         else:
             self.conn = duckdb_manager.get_read_write_connection(self.db_path)
-            logger.info(f"Initialized improved DuckDB financial store at {self.db_path} in read-write mode")
+            logger.info(
+                f"Initialized improved DuckDB financial store at {self.db_path} in read-write mode"
+            )
 
     def close(self):
         """Close the database connection."""
@@ -72,7 +81,9 @@ class ImprovedDuckDBStore:
             Company ID or None if not found
         """
         try:
-            result = self.conn.execute("SELECT company_id FROM companies WHERE ticker = ?", [ticker]).fetchone()
+            result = self.conn.execute(
+                "SELECT company_id FROM companies WHERE ticker = ?", [ticker]
+            ).fetchone()
             return result[0] if result else None
         except Exception as e:
             logger.error(f"Error getting company ID for {ticker}: {e}")
@@ -137,7 +148,9 @@ class ImprovedDuckDBStore:
             else:
                 # Insert new company
                 # Get the next available company_id
-                max_id = self.conn.execute("SELECT MAX(company_id) FROM companies").fetchone()[0]
+                max_id = self.conn.execute(
+                    "SELECT MAX(company_id) FROM companies"
+                ).fetchone()[0]
                 new_id = 1 if max_id is None else max_id + 1
 
                 self.conn.execute(
@@ -236,7 +249,8 @@ class ImprovedDuckDBStore:
         """
         try:
             result = self.conn.execute(
-                "SELECT filing_id FROM filings WHERE accession_number = ?", [accession_number]
+                "SELECT filing_id FROM filings WHERE accession_number = ?",
+                [accession_number],
             ).fetchone()
             return result[0] if result else None
         except Exception as e:
@@ -277,11 +291,15 @@ class ImprovedDuckDBStore:
             if not company_id and "ticker" in filing_data:
                 company_id = self.get_company_id(filing_data["ticker"])
                 if not company_id:
-                    logger.error(f"Company with ticker {filing_data['ticker']} not found")
+                    logger.error(
+                        f"Company with ticker {filing_data['ticker']} not found"
+                    )
                     return None
 
             if not company_id:
-                logger.error("Either company_id or ticker is required for storing filing data")
+                logger.error(
+                    "Either company_id or ticker is required for storing filing data"
+                )
                 return None
 
             # Check if filing already exists
@@ -319,14 +337,18 @@ class ImprovedDuckDBStore:
             else:
                 # Insert new filing
                 # Get the next available filing_id
-                max_id = self.conn.execute("SELECT MAX(filing_id) FROM filings").fetchone()[0]
+                max_id = self.conn.execute(
+                    "SELECT MAX(filing_id) FROM filings"
+                ).fetchone()[0]
                 new_id = 1 if max_id is None else max_id + 1
 
                 # Convert fiscal_quarter to fiscal_period if needed
                 fiscal_period = filing_data.get("fiscal_period")
                 if not fiscal_period and "fiscal_quarter" in filing_data:
                     fiscal_quarter = filing_data.get("fiscal_quarter")
-                    fiscal_period = f"Q{fiscal_quarter}" if fiscal_quarter in [1, 2, 3] else "FY"
+                    fiscal_period = (
+                        f"Q{fiscal_quarter}" if fiscal_quarter in [1, 2, 3] else "FY"
+                    )
 
                 self.conn.execute(
                     """
@@ -352,7 +374,9 @@ class ImprovedDuckDBStore:
                 logger.info(f"Inserted new filing {accession_number} (ID: {new_id})")
                 return new_id
         except Exception as e:
-            logger.error(f"Error storing filing {filing_data.get('accession_number')}: {e}")
+            logger.error(
+                f"Error storing filing {filing_data.get('accession_number')}: {e}"
+            )
             return None
 
     def get_filing(self, accession_number: str) -> Optional[Dict[str, Any]]:
@@ -465,7 +489,9 @@ class ImprovedDuckDBStore:
             Metric ID or None if not found
         """
         try:
-            result = self.conn.execute("SELECT metric_id FROM metrics WHERE metric_name = ?", [metric_name]).fetchone()
+            result = self.conn.execute(
+                "SELECT metric_id FROM metrics WHERE metric_name = ?", [metric_name]
+            ).fetchone()
             return result[0] if result else None
         except Exception as e:
             logger.error(f"Error getting metric ID for {metric_name}: {e}")
@@ -531,13 +557,17 @@ class ImprovedDuckDBStore:
             else:
                 # Insert new metric
                 # Get the next available metric_id
-                max_id = self.conn.execute("SELECT MAX(metric_id) FROM metrics").fetchone()[0]
+                max_id = self.conn.execute(
+                    "SELECT MAX(metric_id) FROM metrics"
+                ).fetchone()[0]
                 new_id = 1 if max_id is None else max_id + 1
 
                 # Generate display name if not provided
                 display_name = metric_data.get("display_name")
                 if not display_name:
-                    display_name = " ".join(word.capitalize() for word in metric_name.split("_"))
+                    display_name = " ".join(
+                        word.capitalize() for word in metric_name.split("_")
+                    )
 
                 self.conn.execute(
                     """
@@ -660,7 +690,9 @@ class ImprovedDuckDBStore:
                     upper_value = fact_data["value"].upper()
                     if upper_value == "INF":
                         fact_data["value"] = float("inf")
-                        logger.debug(f"Converted 'INF' value to float infinity for fact {fact_data.get('metric_name')}")
+                        logger.debug(
+                            f"Converted 'INF' value to float infinity for fact {fact_data.get('metric_name')}"
+                        )
                     elif upper_value == "-INF":
                         fact_data["value"] = float("-inf")
                         logger.debug(
@@ -668,7 +700,9 @@ class ImprovedDuckDBStore:
                         )
                     elif upper_value in ("NAN", "NA", "N/A"):
                         fact_data["value"] = float("nan")
-                        logger.debug(f"Converted '{upper_value}' value to NaN for fact {fact_data.get('metric_name')}")
+                        logger.debug(
+                            f"Converted '{upper_value}' value to NaN for fact {fact_data.get('metric_name')}"
+                        )
 
             # Convert special values in 'decimals' field
             if "decimals" in fact_data:
@@ -712,13 +746,19 @@ class ImprovedDuckDBStore:
                 metric_id = self.get_metric_id(fact_data["metric_name"])
                 if not metric_id:
                     # Create the metric if it doesn't exist
-                    metric_id = self.store_metric({"metric_name": fact_data["metric_name"]})
+                    metric_id = self.store_metric(
+                        {"metric_name": fact_data["metric_name"]}
+                    )
                     if not metric_id:
-                        logger.error(f"Failed to create metric {fact_data['metric_name']}")
+                        logger.error(
+                            f"Failed to create metric {fact_data['metric_name']}"
+                        )
                         return None
 
             if not metric_id:
-                logger.error("Either metric_id or metric_name is required for storing fact data")
+                logger.error(
+                    "Either metric_id or metric_name is required for storing fact data"
+                )
                 return None
 
             value = fact_data.get("value")
@@ -768,7 +808,9 @@ class ImprovedDuckDBStore:
             else:
                 # Insert new fact
                 # Get the next available fact_id
-                max_id = self.conn.execute("SELECT MAX(fact_id) FROM facts").fetchone()[0]
+                max_id = self.conn.execute("SELECT MAX(fact_id) FROM facts").fetchone()[
+                    0
+                ]
                 new_id = 1 if max_id is None else max_id + 1
 
                 self.conn.execute(
@@ -821,7 +863,9 @@ class ImprovedDuckDBStore:
         logger.info(f"Stored {successful} out of {len(facts)} facts")
         return successful
 
-    def get_filing_facts(self, filing_id: int, metric_names: Optional[List[str]] = None) -> pd.DataFrame:
+    def get_filing_facts(
+        self, filing_id: int, metric_names: Optional[List[str]] = None
+    ) -> pd.DataFrame:
         """Get facts for a filing.
 
         Args:
@@ -921,12 +965,20 @@ class ImprovedDuckDBStore:
 
             # Pivot the result for easier analysis
             if not result.empty:
-                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1)
-                pivoted = result.pivot(index="period", columns="metric_name", values="value").reset_index()
+                result["period"] = result.apply(
+                    lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1
+                )
+                pivoted = result.pivot(
+                    index="period", columns="metric_name", values="value"
+                ).reset_index()
 
                 # Add year and period columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("-")[0]))
-                pivoted["fiscal_period"] = pivoted["period"].apply(lambda x: x.split("-")[1])
+                pivoted["fiscal_year"] = pivoted["period"].apply(
+                    lambda x: int(x.split("-")[0])
+                )
+                pivoted["fiscal_period"] = pivoted["period"].apply(
+                    lambda x: x.split("-")[1]
+                )
 
                 # Sort by year and period
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_period"])
@@ -991,12 +1043,20 @@ class ImprovedDuckDBStore:
 
             # Pivot the result for easier comparison
             if not result.empty:
-                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1)
-                pivoted = result.pivot(index="period", columns="ticker", values="value").reset_index()
+                result["period"] = result.apply(
+                    lambda x: f"{x['fiscal_year']}-{x['fiscal_period']}", axis=1
+                )
+                pivoted = result.pivot(
+                    index="period", columns="ticker", values="value"
+                ).reset_index()
 
                 # Add year and period columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("-")[0]))
-                pivoted["fiscal_period"] = pivoted["period"].apply(lambda x: x.split("-")[1])
+                pivoted["fiscal_year"] = pivoted["period"].apply(
+                    lambda x: int(x.split("-")[0])
+                )
+                pivoted["fiscal_period"] = pivoted["period"].apply(
+                    lambda x: x.split("-")[1]
+                )
 
                 # Sort by year and period
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_period"])
@@ -1008,7 +1068,9 @@ class ImprovedDuckDBStore:
             logger.error(f"Error querying company comparison: {e}")
             return pd.DataFrame()
 
-    def query_latest_metrics(self, ticker: str, category: Optional[str] = None) -> pd.DataFrame:
+    def query_latest_metrics(
+        self, ticker: str, category: Optional[str] = None
+    ) -> pd.DataFrame:
         """Query the latest metrics for a company.
 
         Args:
@@ -1062,7 +1124,9 @@ class ImprovedDuckDBStore:
             logger.error(f"Error querying latest metrics for {ticker}: {e}")
             return pd.DataFrame()
 
-    def run_custom_query(self, query: str, params: Optional[List[Any]] = None) -> pd.DataFrame:
+    def run_custom_query(
+        self, query: str, params: Optional[List[Any]] = None
+    ) -> pd.DataFrame:
         """Run a custom SQL query.
 
         Args:
@@ -1089,15 +1153,21 @@ class ImprovedDuckDBStore:
             stats = {}
 
             # Count companies
-            companies_count = self.conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+            companies_count = self.conn.execute(
+                "SELECT COUNT(*) FROM companies"
+            ).fetchone()[0]
             stats["companies_count"] = companies_count
 
             # Count filings
-            filings_count = self.conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0]
+            filings_count = self.conn.execute(
+                "SELECT COUNT(*) FROM filings"
+            ).fetchone()[0]
             stats["filings_count"] = filings_count
 
             # Count metrics
-            metrics_count = self.conn.execute("SELECT COUNT(*) FROM metrics").fetchone()[0]
+            metrics_count = self.conn.execute(
+                "SELECT COUNT(*) FROM metrics"
+            ).fetchone()[0]
             stats["metrics_count"] = metrics_count
 
             # Count facts
@@ -1105,16 +1175,22 @@ class ImprovedDuckDBStore:
             stats["facts_count"] = facts_count
 
             # Get year range
-            year_range = self.conn.execute("SELECT MIN(fiscal_year), MAX(fiscal_year) FROM filings").fetchone()
+            year_range = self.conn.execute(
+                "SELECT MIN(fiscal_year), MAX(fiscal_year) FROM filings"
+            ).fetchone()
             stats["min_year"] = year_range[0]
             stats["max_year"] = year_range[1]
 
             # Get filing types
-            filing_types = self.conn.execute("SELECT DISTINCT filing_type FROM filings ORDER BY filing_type").fetchall()
+            filing_types = self.conn.execute(
+                "SELECT DISTINCT filing_type FROM filings ORDER BY filing_type"
+            ).fetchall()
             stats["filing_types"] = [ft[0] for ft in filing_types]
 
             # Get metric categories
-            metric_categories = self.conn.execute("SELECT DISTINCT category FROM metrics ORDER BY category").fetchall()
+            metric_categories = self.conn.execute(
+                "SELECT DISTINCT category FROM metrics ORDER BY category"
+            ).fetchall()
             stats["metric_categories"] = [mc[0] for mc in metric_categories]
 
             return stats

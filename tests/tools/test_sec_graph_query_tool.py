@@ -30,7 +30,9 @@ class TestSECGraphQueryTool:
     @pytest.fixture
     def tool(self, mock_graph_store):
         """Create a SECGraphQueryTool instance for testing."""
-        with patch("src.tools.sec_graph_query.GraphStore", return_value=mock_graph_store):
+        with patch(
+            "src.tools.sec_graph_query.GraphStore", return_value=mock_graph_store
+        ):
             tool = SECGraphQueryTool(use_neo4j=False)
             tool.graph_store = mock_graph_store
             return tool
@@ -40,14 +42,18 @@ class TestSECGraphQueryTool:
         with patch("src.tools.sec_graph_query.GraphStore"):
             tool = SECGraphQueryTool(use_neo4j=False)
             assert tool.name == "sec_graph_query"
-            assert "tool for querying the sec filing graph database" in tool.description.lower()
+            assert (
+                "tool for querying the sec filing graph database"
+                in tool.description.lower()
+            )
 
     @pytest.mark.asyncio
     async def test_execute_company_filings(self, tool, mock_graph_store):
         """Test executing the tool with company_filings query type."""
         # Execute the tool
         result = await tool.execute(
-            query_type="company_filings", parameters={"ticker": "AAPL", "filing_types": ["10-K"], "limit": 5}
+            query_type="company_filings",
+            parameters={"ticker": "AAPL", "filing_types": ["10-K"], "limit": 5},
         )
 
         # Check that the result is correct
@@ -68,12 +74,17 @@ class TestSECGraphQueryTool:
     async def test_execute_filing_sections(self, tool, mock_graph_store):
         """Test executing the tool with filing_sections query type."""
         # Set up mock return value for filing sections
-        mock_graph_store.query.return_value = [{"title": "Risk Factors", "section_type": "risk_factors", "order": 1}]
+        mock_graph_store.query.return_value = [
+            {"title": "Risk Factors", "section_type": "risk_factors", "order": 1}
+        ]
 
         # Execute the tool
         result = await tool.execute(
             query_type="filing_sections",
-            parameters={"accession_number": "0000320193-22-000108", "section_types": ["risk_factors"]},
+            parameters={
+                "accession_number": "0000320193-22-000108",
+                "section_types": ["risk_factors"],
+            },
         )
 
         # Check that the result is correct
@@ -90,11 +101,14 @@ class TestSECGraphQueryTool:
     async def test_execute_related_companies(self, tool, mock_graph_store):
         """Test executing the tool with related_companies query type."""
         # Set up mock return value for related companies
-        mock_graph_store.query.return_value = [{"ticker": "MSFT", "name": "Microsoft Corporation", "mention_count": 5}]
+        mock_graph_store.query.return_value = [
+            {"ticker": "MSFT", "name": "Microsoft Corporation", "mention_count": 5}
+        ]
 
         # Execute the tool
         result = await tool.execute(
-            query_type="related_companies", parameters={"ticker": "AAPL", "relationship_type": "MENTIONS", "limit": 10}
+            query_type="related_companies",
+            parameters={"ticker": "AAPL", "relationship_type": "MENTIONS", "limit": 10},
         )
 
         # Check that the result is correct
@@ -127,7 +141,8 @@ class TestSECGraphQueryTool:
 
         # Execute the tool
         result = await tool.execute(
-            query_type="filing_timeline", parameters={"ticker": "AAPL", "filing_type": "10-K", "limit": 10}
+            query_type="filing_timeline",
+            parameters={"ticker": "AAPL", "filing_type": "10-K", "limit": 10},
         )
 
         # Check that the result is correct
@@ -188,7 +203,9 @@ class TestSECGraphQueryTool:
     async def test_execute_invalid_query_type(self, tool):
         """Test executing the tool with an invalid query type."""
         # Execute the tool with an invalid query type
-        result = await tool.execute(query_type="invalid_query", parameters={"ticker": "AAPL"})
+        result = await tool.execute(
+            query_type="invalid_query", parameters={"ticker": "AAPL"}
+        )
 
         # Check that the result contains an error message
         assert result["query_type"] == "invalid_query"
@@ -203,7 +220,9 @@ class TestSECGraphQueryTool:
         tool.graph_store = None
 
         # Execute the tool
-        result = await tool.execute(query_type="company_filings", parameters={"ticker": "AAPL"})
+        result = await tool.execute(
+            query_type="company_filings", parameters={"ticker": "AAPL"}
+        )
 
         # Check that the result contains an error message
         assert result["query_type"] == "company_filings"
@@ -217,7 +236,9 @@ class TestSECGraphQueryTool:
         mock_graph_store.query.return_value = []
 
         # Execute the tool - this should return a result with empty results list
-        result = await tool.execute(query_type="company_filings", parameters={"ticker": "UNKNOWN"})
+        result = await tool.execute(
+            query_type="company_filings", parameters={"ticker": "UNKNOWN"}
+        )
 
         # Check that the result contains an empty results list
         assert result["query_type"] == "company_filings"
@@ -231,7 +252,8 @@ class TestSECGraphQueryTool:
         """Test validating valid arguments."""
         # Validate arguments
         result = tool.validate_args(
-            query_type="company_filings", parameters={"ticker": "AAPL", "filing_types": ["10-K"], "limit": 5}
+            query_type="company_filings",
+            parameters={"ticker": "AAPL", "filing_types": ["10-K"], "limit": 5},
         )
 
         # Check that validation passed
@@ -240,7 +262,9 @@ class TestSECGraphQueryTool:
     def test_validate_args_invalid_query_type(self, tool):
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
-        result = tool.validate_args(query_type="invalid_query", parameters={"ticker": "AAPL"})
+        result = tool.validate_args(
+            query_type="invalid_query", parameters={"ticker": "AAPL"}
+        )
 
         # Check that validation failed
         assert result is False

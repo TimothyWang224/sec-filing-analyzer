@@ -8,7 +8,9 @@ stored in the DuckDB database.
 import logging
 from typing import Any, Dict, List, Optional, Type
 
-from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import OptimizedDuckDBStore
+from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import (
+    OptimizedDuckDBStore,
+)
 
 from ..contracts import BaseModel, FinancialFactsParams, MetricsParams
 from ..errors import ParameterError, QueryTypeUnsupported
@@ -106,17 +108,23 @@ class SECFinancialDataTool(Tool):
 
         # We'll use lazy initialization to avoid hanging during startup
         # The database will be connected only when needed
-        logger.info(f"SEC Financial Data Tool initialized with database path: {self.db_path}")
+        logger.info(
+            f"SEC Financial Data Tool initialized with database path: {self.db_path}"
+        )
 
         # Try to initialize the database connection if a mock is raising an exception
         try:
-            from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import OptimizedDuckDBStore
+            from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import (
+                OptimizedDuckDBStore,
+            )
 
             OptimizedDuckDBStore(db_path=self.db_path, read_only=True)
         except Exception as e:
             # Set the error message but don't raise it
             self.db_error = str(e)
-            logger.warning(f"Failed to initialize DuckDB store during initialization: {self.db_error}")
+            logger.warning(
+                f"Failed to initialize DuckDB store during initialization: {self.db_error}"
+            )
             logger.warning(f"Database path attempted: {self.db_path}")
 
     def _ensure_db_connection(self) -> bool:
@@ -144,7 +152,9 @@ class SECFinancialDataTool(Tool):
             logger.warning(f"Database path attempted: {self.db_path}")
             return False
 
-    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute a financial data query.
 
@@ -170,7 +180,9 @@ class SECFinancialDataTool(Tool):
         # Validate query type
         if query_type not in SUPPORTED_QUERIES:
             supported_types = list(SUPPORTED_QUERIES.keys())
-            raise QueryTypeUnsupported(query_type, "sec_financial_data", supported_types)
+            raise QueryTypeUnsupported(
+                query_type, "sec_financial_data", supported_types
+            )
 
         # Validate parameters using the appropriate model
         param_model = SUPPORTED_QUERIES[query_type]
@@ -220,7 +232,10 @@ class SECFinancialDataTool(Tool):
         except Exception as e:
             logger.error(f"Error executing financial data query: {str(e)}")
             return self.format_error_response(
-                query_type=query_type, parameters=parameters, error_message=str(e), error_type="error"
+                query_type=query_type,
+                parameters=parameters,
+                error_message=str(e),
+                error_type="error",
             )
 
     def _query_financial_facts(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -233,7 +248,9 @@ class SECFinancialDataTool(Tool):
 
         if not ticker:
             return self.format_error_response(
-                query_type="financial_facts", parameters=parameters, error_message="Missing required parameter: ticker"
+                query_type="financial_facts",
+                parameters=parameters,
+                error_message="Missing required parameter: ticker",
             )
 
         # Ensure database connection is established
@@ -247,7 +264,11 @@ class SECFinancialDataTool(Tool):
         # Query the database for financial facts
         try:
             results = self.db_store.query_financial_facts(
-                ticker=ticker, metrics=metrics, start_date=start_date, end_date=end_date, filing_type=filing_type
+                ticker=ticker,
+                metrics=metrics,
+                start_date=start_date,
+                end_date=end_date,
+                filing_type=filing_type,
             )
 
             if not results:
@@ -259,7 +280,9 @@ class SECFinancialDataTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(query_type="financial_facts", parameters=parameters, results=results)
+            return self.format_success_response(
+                query_type="financial_facts", parameters=parameters, results=results
+            )
         except Exception as e:
             logger.error(f"Error querying financial facts: {str(e)}")
             return self.format_error_response(
@@ -290,7 +313,9 @@ class SECFinancialDataTool(Tool):
                 results = self.db_store.get_company_info(ticker=ticker)
 
             if not results:
-                logger.warning(f"No company info found for {ticker if ticker else 'any company'}")
+                logger.warning(
+                    f"No company info found for {ticker if ticker else 'any company'}"
+                )
                 return self.format_error_response(
                     query_type="company_info",
                     parameters=parameters,
@@ -298,11 +323,15 @@ class SECFinancialDataTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(query_type="company_info", parameters=parameters, results=results)
+            return self.format_success_response(
+                query_type="company_info", parameters=parameters, results=results
+            )
         except Exception as e:
             logger.error(f"Error querying company info: {str(e)}")
             return self.format_error_response(
-                query_type="company_info", parameters=parameters, error_message=f"Error querying company info: {str(e)}"
+                query_type="company_info",
+                parameters=parameters,
+                error_message=f"Error querying company info: {str(e)}",
             )
 
     def _query_metrics(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -322,7 +351,9 @@ class SECFinancialDataTool(Tool):
             results = self.db_store.get_available_metrics(category=category)
 
             if not results:
-                logger.warning(f"No metrics found for category: {category if category else 'any category'}")
+                logger.warning(
+                    f"No metrics found for category: {category if category else 'any category'}"
+                )
                 return self.format_error_response(
                     query_type="metrics",
                     parameters=parameters,
@@ -330,11 +361,15 @@ class SECFinancialDataTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(query_type="metrics", parameters=parameters, results=results)
+            return self.format_success_response(
+                query_type="metrics", parameters=parameters, results=results
+            )
         except Exception as e:
             logger.error(f"Error querying metrics: {str(e)}")
             return self.format_error_response(
-                query_type="metrics", parameters=parameters, error_message=f"Error querying metrics: {str(e)}"
+                query_type="metrics",
+                parameters=parameters,
+                error_message=f"Error querying metrics: {str(e)}",
             )
 
     def _query_time_series(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
@@ -363,11 +398,17 @@ class SECFinancialDataTool(Tool):
         try:
             # If database is available, use it
             results = self.db_store.query_time_series(
-                ticker=ticker, metric=metric, start_date=start_date, end_date=end_date, period=period
+                ticker=ticker,
+                metric=metric,
+                start_date=start_date,
+                end_date=end_date,
+                period=period,
             )
 
             if not results:
-                logger.warning(f"No time series data found for {ticker} and metric {metric}")
+                logger.warning(
+                    f"No time series data found for {ticker} and metric {metric}"
+                )
                 return self.format_error_response(
                     query_type="time_series",
                     parameters=parameters,
@@ -375,7 +416,9 @@ class SECFinancialDataTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(query_type="time_series", parameters=parameters, results=results)
+            return self.format_success_response(
+                query_type="time_series", parameters=parameters, results=results
+            )
         except Exception as e:
             logger.error(f"Error querying time series data: {str(e)}")
             return self.format_error_response(
@@ -393,7 +436,9 @@ class SECFinancialDataTool(Tool):
 
         if not ticker:
             return self.format_error_response(
-                query_type="financial_ratios", parameters=parameters, error_message="Missing required parameter: ticker"
+                query_type="financial_ratios",
+                parameters=parameters,
+                error_message="Missing required parameter: ticker",
             )
 
         # Ensure database connection is established
@@ -419,7 +464,9 @@ class SECFinancialDataTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(query_type="financial_ratios", parameters=parameters, results=results)
+            return self.format_success_response(
+                query_type="financial_ratios", parameters=parameters, results=results
+            )
         except Exception as e:
             logger.error(f"Error querying financial ratios: {str(e)}")
             return self.format_error_response(
@@ -434,7 +481,9 @@ class SECFinancialDataTool(Tool):
 
         if not sql_query:
             return self.format_error_response(
-                query_type="custom_sql", parameters=parameters, error_message="Missing required parameter: sql_query"
+                query_type="custom_sql",
+                parameters=parameters,
+                error_message="Missing required parameter: sql_query",
             )
 
         # Ensure database connection is established
@@ -450,7 +499,9 @@ class SECFinancialDataTool(Tool):
             results = self.db_store.execute_custom_query(sql_query)
 
             return self.format_success_response(
-                query_type="custom_sql", parameters={"sql_query": sql_query}, results=results
+                query_type="custom_sql",
+                parameters={"sql_query": sql_query},
+                results=results,
             )
         except Exception as e:
             logger.error(f"Error executing custom SQL: {str(e)}")
@@ -460,7 +511,9 @@ class SECFinancialDataTool(Tool):
                 error_message=f"Error executing custom SQL: {str(e)}",
             )
 
-    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
+    def validate_args(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
         Validate the tool arguments.
 
@@ -474,7 +527,9 @@ class SECFinancialDataTool(Tool):
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
-                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
+                logger.error(
+                    f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}"
+                )
                 return False
 
             # Validate parameters using the appropriate model

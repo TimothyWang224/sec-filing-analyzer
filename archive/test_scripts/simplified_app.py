@@ -6,14 +6,16 @@ that doesn't depend on the SEC Filing Analyzer package.
 """
 
 import os
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 # Set page config
 st.set_page_config(
-    page_title="SEC Filing Analyzer (Simplified)", page_icon="📊", layout="wide", initial_sidebar_state="expanded"
+    page_title="SEC Filing Analyzer (Simplified)",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Title and description
@@ -25,7 +27,9 @@ If you can see this page, Streamlit is working correctly!
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Select a page", ["Dashboard", "ETL Pipeline", "Agent Workflow", "Data Explorer"])
+page = st.sidebar.radio(
+    "Select a page", ["Dashboard", "ETL Pipeline", "Agent Workflow", "Data Explorer"]
+)
 
 # Page content
 if page == "Dashboard":
@@ -167,7 +171,9 @@ elif page == "Data Explorer":
     # Sample query
     st.subheader("Sample Query")
 
-    query = st.text_area("SQL Query", "SELECT * FROM financial_data WHERE Date > '2023-02-01'")
+    query = st.text_area(
+        "SQL Query", "SELECT * FROM financial_data WHERE Date > '2023-02-01'"
+    )
 
     if st.button("Run Query"):
         st.info("This would execute the query in the full app.")

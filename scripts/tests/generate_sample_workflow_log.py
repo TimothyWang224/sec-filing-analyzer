@@ -14,7 +14,9 @@ from datetime import datetime
 from pathlib import Path
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -37,12 +39,22 @@ class SampleWorkflowLogger:
 
         # Add file handler
         file_handler = logging.FileHandler(self.log_file)
-        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
         self.logger.addHandler(file_handler)
 
         # Initialize JSON log
         with open(self.json_log_file, "w") as f:
-            json.dump({"workflow_id": workflow_id, "start_time": datetime.now().isoformat(), "logs": []}, f, indent=2)
+            json.dump(
+                {
+                    "workflow_id": workflow_id,
+                    "start_time": datetime.now().isoformat(),
+                    "logs": [],
+                },
+                f,
+                indent=2,
+            )
 
     def log_workflow_start(self, description: str):
         """Log workflow start."""
@@ -71,7 +83,9 @@ class SampleWorkflowLogger:
         """Log timing information."""
         self.logger.info(f"TIMING: {category}:{operation} completed in {duration}s")
 
-    def log_llm_interaction(self, prompt: str, response: str, prompt_tokens: int, completion_tokens: int):
+    def log_llm_interaction(
+        self, prompt: str, response: str, prompt_tokens: int, completion_tokens: int
+    ):
         """Log an LLM interaction."""
         self.logger.info(f"LLM Prompt: {prompt}")
         self.logger.info(
@@ -92,7 +106,11 @@ class SampleWorkflowLogger:
         # Add file handler if not already added
         if not agent_logger.handlers:
             file_handler = logging.FileHandler(self.log_file)
-            file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+            file_handler.setFormatter(
+                logging.Formatter(
+                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                )
+            )
             agent_logger.addHandler(file_handler)
 
         agent_logger.info(f"{action}: {details or ''}")
@@ -126,9 +144,18 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
     # Define tools
     tools = [
         ("sec_data", {"ticker": "AAPL", "filing_type": "10-K"}),
-        ("sec_semantic_search", {"query": "Apple financial performance", "companies": ["AAPL"]}),
-        ("sec_financial_data", {"query_type": "financial_facts", "parameters": {"ticker": "AAPL"}}),
-        ("sec_graph_query", {"query_type": "company_filings", "parameters": {"ticker": "AAPL"}}),
+        (
+            "sec_semantic_search",
+            {"query": "Apple financial performance", "companies": ["AAPL"]},
+        ),
+        (
+            "sec_financial_data",
+            {"query_type": "financial_facts", "parameters": {"ticker": "AAPL"}},
+        ),
+        (
+            "sec_graph_query",
+            {"query_type": "company_filings", "parameters": {"ticker": "AAPL"}},
+        ),
     ]
 
     # Define agents
@@ -146,7 +173,9 @@ def generate_sample_workflow_log(log_dir: Path = None, workflow_id: str = None):
         # Log some agent actions
         for _ in range(random.randint(1, 3)):
             agent_name = random.choice(agents)
-            logger.log_agent_action(agent_name, "Processing", f"Processing data for {step_name}")
+            logger.log_agent_action(
+                agent_name, "Processing", f"Processing data for {step_name}"
+            )
 
         # Log some tool calls
         for _ in range(random.randint(1, 2)):

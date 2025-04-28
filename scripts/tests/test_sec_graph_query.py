@@ -7,20 +7,21 @@ various graph queries on the SEC filing database.
 
 import argparse
 import asyncio
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from sec_filing_analyzer.config import StorageConfig
 from src.tools.sec_graph_query import SECGraphQueryTool
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
-async def test_company_filings(ticker: str, filing_types: Optional[List[str]] = None, limit: int = 10):
+async def test_company_filings(
+    ticker: str, filing_types: Optional[List[str]] = None, limit: int = 10
+):
     """Test querying company filings."""
     try:
         # Initialize the tool
@@ -29,7 +30,8 @@ async def test_company_filings(ticker: str, filing_types: Optional[List[str]] = 
         # Execute the query
         logger.info(f"Querying filings for company: {ticker}")
         results = await tool.execute(
-            query_type="company_filings", parameters={"ticker": ticker, "filing_types": filing_types, "limit": limit}
+            query_type="company_filings",
+            parameters={"ticker": ticker, "filing_types": filing_types, "limit": limit},
         )
 
         # Print results
@@ -54,7 +56,9 @@ async def test_company_filings(ticker: str, filing_types: Optional[List[str]] = 
         raise
 
 
-async def test_filing_sections(accession_number: str, section_types: Optional[List[str]] = None, limit: int = 50):
+async def test_filing_sections(
+    accession_number: str, section_types: Optional[List[str]] = None, limit: int = 50
+):
     """Test querying filing sections."""
     try:
         # Initialize the tool
@@ -64,7 +68,11 @@ async def test_filing_sections(accession_number: str, section_types: Optional[Li
         logger.info(f"Querying sections for filing: {accession_number}")
         results = await tool.execute(
             query_type="filing_sections",
-            parameters={"accession_number": accession_number, "section_types": section_types, "limit": limit},
+            parameters={
+                "accession_number": accession_number,
+                "section_types": section_types,
+                "limit": limit,
+            },
         )
 
         # Print results
@@ -95,7 +103,10 @@ async def test_related_companies(ticker: str, limit: int = 10):
 
         # Execute the query
         logger.info(f"Querying companies related to: {ticker}")
-        results = await tool.execute(query_type="related_companies", parameters={"ticker": ticker, "limit": limit})
+        results = await tool.execute(
+            query_type="related_companies",
+            parameters={"ticker": ticker, "limit": limit},
+        )
 
         # Print results
         print("\n=== Related Companies ===")
@@ -132,7 +143,9 @@ async def test_section_types():
         print("\nSection Types:")
 
         for i, result in enumerate(results["results"]):
-            print(f"{result.get('section_type', 'N/A')}: {result.get('count', 'N/A')} occurrences")
+            print(
+                f"{result.get('section_type', 'N/A')}: {result.get('count', 'N/A')} occurrences"
+            )
 
         return results
 
@@ -148,16 +161,36 @@ def main():
         "--query_type",
         type=str,
         required=True,
-        choices=["company_filings", "filing_sections", "related_companies", "section_types"],
+        choices=[
+            "company_filings",
+            "filing_sections",
+            "related_companies",
+            "section_types",
+        ],
         help="Type of query to execute",
     )
     parser.add_argument(
-        "--ticker", type=str, help="Company ticker symbol (required for company_filings and related_companies)"
+        "--ticker",
+        type=str,
+        help="Company ticker symbol (required for company_filings and related_companies)",
     )
-    parser.add_argument("--accession_number", type=str, help="Filing accession number (required for filing_sections)")
-    parser.add_argument("--filing_types", type=str, nargs="*", help="List of filing types to filter by")
-    parser.add_argument("--section_types", type=str, nargs="*", help="List of section types to filter by")
-    parser.add_argument("--limit", type=int, default=10, help="Maximum number of results to return")
+    parser.add_argument(
+        "--accession_number",
+        type=str,
+        help="Filing accession number (required for filing_sections)",
+    )
+    parser.add_argument(
+        "--filing_types", type=str, nargs="*", help="List of filing types to filter by"
+    )
+    parser.add_argument(
+        "--section_types",
+        type=str,
+        nargs="*",
+        help="List of section types to filter by",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of results to return"
+    )
 
     args = parser.parse_args()
 
@@ -165,13 +198,19 @@ def main():
     if args.query_type == "company_filings":
         if not args.ticker:
             parser.error("--ticker is required for company_filings query")
-        asyncio.run(test_company_filings(ticker=args.ticker, filing_types=args.filing_types, limit=args.limit))
+        asyncio.run(
+            test_company_filings(
+                ticker=args.ticker, filing_types=args.filing_types, limit=args.limit
+            )
+        )
     elif args.query_type == "filing_sections":
         if not args.accession_number:
             parser.error("--accession_number is required for filing_sections query")
         asyncio.run(
             test_filing_sections(
-                accession_number=args.accession_number, section_types=args.section_types, limit=args.limit
+                accession_number=args.accession_number,
+                section_types=args.section_types,
+                limit=args.limit,
             )
         )
     elif args.query_type == "related_companies":

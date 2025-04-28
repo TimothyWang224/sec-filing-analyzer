@@ -34,7 +34,11 @@ class FinancialMemory(Memory):
         """
         self.add(
             MemoryItem(
-                content={"type": "financial_metric", "name": metric_name, "value": value},
+                content={
+                    "type": "financial_metric",
+                    "name": metric_name,
+                    "value": value,
+                },
                 timestamp=timestamp or datetime.now(),
                 type="financial_metric",
                 metadata=metadata,

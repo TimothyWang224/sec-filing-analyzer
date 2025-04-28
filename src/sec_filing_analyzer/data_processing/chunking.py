@@ -6,13 +6,13 @@ while respecting token limits for embedding models.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import tiktoken
 from bs4 import BeautifulSoup
-from edgar.files.htmltools import ChunkedDocument, adjust_for_empty_items, chunks2df, detect_decimal_items
+from edgar.files.htmltools import ChunkedDocument
 from llama_index.core.text_splitter import TokenTextSplitter
 from llama_index.embeddings.openai import OpenAIEmbedding
 
@@ -49,7 +49,9 @@ class FilingChunker:
         self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI's encoding
 
         # Initialize token splitter for handling large chunks
-        self.token_splitter = TokenTextSplitter(chunk_size=max_chunk_size, chunk_overlap=chunk_overlap)
+        self.token_splitter = TokenTextSplitter(
+            chunk_size=max_chunk_size, chunk_overlap=chunk_overlap
+        )
 
         # Initialize embedding model
         self.embedding_model = OpenAIEmbedding()
@@ -65,7 +67,9 @@ class FilingChunker:
         """
         return len(self.tokenizer.encode(text))
 
-    def _split_large_chunk(self, chunk_text: str, chunk_meta: Dict[str, Any]) -> Tuple[List[str], List[Dict[str, Any]]]:
+    def _split_large_chunk(
+        self, chunk_text: str, chunk_meta: Dict[str, Any]
+    ) -> Tuple[List[str], List[Dict[str, Any]]]:
         """
         Split a chunk that's too large for the embedding model.
 
@@ -85,7 +89,13 @@ class FilingChunker:
         sub_chunk_metadata = []
         for i, sub_chunk in enumerate(sub_chunks):
             sub_chunk_meta = chunk_meta.copy()
-            sub_chunk_meta.update({"is_sub_chunk": True, "sub_chunk_index": i, "parent_chunk_text": chunk_text})
+            sub_chunk_meta.update(
+                {
+                    "is_sub_chunk": True,
+                    "sub_chunk_index": i,
+                    "parent_chunk_text": chunk_text,
+                }
+            )
             sub_chunk_metadata.append(sub_chunk_meta)
 
         return sub_chunks, sub_chunk_metadata
@@ -154,7 +164,9 @@ class FilingChunker:
                     if item_str:  # Only add non-empty items
                         items.add(item_str)
                 except Exception as e:
-                    logger.warning(f"Could not convert item at index {idx} to string: {e}")
+                    logger.warning(
+                        f"Could not convert item at index {idx} to string: {e}"
+                    )
                     continue
 
             # Calculate statistics
@@ -162,7 +174,9 @@ class FilingChunker:
             stats = {
                 "total_chunks": len(chunked_doc),
                 "avg_chunk_size": chunked_doc.average_chunk_size(),
-                "items": sorted(list(items)),  # Convert set to sorted list for consistency
+                "items": sorted(
+                    list(items)
+                ),  # Convert set to sorted list for consistency
                 "tables": sum(1 for _ in chunked_doc.tables()),
             }
 
@@ -178,7 +192,9 @@ class FilingChunker:
                         "is_table": bool(row.get("Table", False)),
                         "chars": int(row.get("Chars", 0)),
                         "is_signature": bool(row.get("Signature", False)),
-                        "is_toc": bool(row.get("TocLink", False) or row.get("Toc", False)),
+                        "is_toc": bool(
+                            row.get("TocLink", False) or row.get("Toc", False)
+                        ),
                         "is_empty": bool(row.get("Empty", True)),
                         "order": i,
                     }
@@ -189,14 +205,22 @@ class FilingChunker:
                         logger.info(
                             f"Chunk {i} exceeds token limit ({token_count} > {self.max_chunk_size}). Splitting into sub-chunks."
                         )
-                        sub_chunks, sub_chunk_metadata = self._split_large_chunk(chunk_text, chunk_meta)
+                        sub_chunks, sub_chunk_metadata = self._split_large_chunk(
+                            chunk_text, chunk_meta
+                        )
 
                         # Add sub-chunks to the chunks list
-                        for j, (sub_chunk_text, sub_chunk_meta) in enumerate(zip(sub_chunks, sub_chunk_metadata)):
+                        for j, (sub_chunk_text, sub_chunk_meta) in enumerate(
+                            zip(sub_chunks, sub_chunk_metadata)
+                        ):
                             # Create a unique order for each sub-chunk
                             sub_chunk_meta["order"] = f"{i}.{j}"
-                            sub_chunk_meta["original_order"] = i  # Keep track of the original chunk order
-                            sub_chunk_meta["token_count"] = self._count_tokens(sub_chunk_text)
+                            sub_chunk_meta["original_order"] = (
+                                i  # Keep track of the original chunk order
+                            )
+                            sub_chunk_meta["token_count"] = self._count_tokens(
+                                sub_chunk_text
+                            )
                             chunks.append(sub_chunk_meta)
                     else:
                         # Add the original chunk
@@ -249,14 +273,22 @@ class FilingChunker:
                     }
 
                     # Split the chunk
-                    sub_chunks, sub_chunk_metadata = self._split_large_chunk(chunk, base_meta)
+                    sub_chunks, sub_chunk_metadata = self._split_large_chunk(
+                        chunk, base_meta
+                    )
 
                     # Add sub-chunks to the chunk data
-                    for j, (sub_chunk_text, sub_chunk_meta) in enumerate(zip(sub_chunks, sub_chunk_metadata)):
+                    for j, (sub_chunk_text, sub_chunk_meta) in enumerate(
+                        zip(sub_chunks, sub_chunk_metadata)
+                    ):
                         # Create a unique order for each sub-chunk
                         sub_chunk_meta["order"] = f"{i}.{j}"
-                        sub_chunk_meta["original_order"] = i  # Keep track of the original chunk order
-                        sub_chunk_meta["token_count"] = self._count_tokens(sub_chunk_text)
+                        sub_chunk_meta["original_order"] = (
+                            i  # Keep track of the original chunk order
+                        )
+                        sub_chunk_meta["token_count"] = self._count_tokens(
+                            sub_chunk_text
+                        )
                         chunk_data.append(sub_chunk_meta)
                 else:
                     # Add the original chunk
@@ -276,7 +308,10 @@ class FilingChunker:
             # Return stats in the same format as HTML chunking
             return {
                 "total_chunks": len(chunk_data),
-                "avg_chunk_size": sum(len(c["text"]) for c in chunk_data) / len(chunk_data) if chunk_data else 0,
+                "avg_chunk_size": sum(len(c["text"]) for c in chunk_data)
+                / len(chunk_data)
+                if chunk_data
+                else 0,
                 "items": [],  # No item information in fallback mode
                 "tables": 0,  # No table detection in fallback mode
                 "chunks": chunk_data,
@@ -341,7 +376,9 @@ class FilingChunker:
             logger.error(f"Error chunking text: {str(e)}")
             return [text]  # Return original text as single chunk on error
 
-    def process_filing(self, filing_data: Dict[str, Any], filing_content: Dict[str, Any]) -> Dict[str, Any]:
+    def process_filing(
+        self, filing_data: Dict[str, Any], filing_content: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Process a filing and return chunked data.
 
@@ -368,13 +405,17 @@ class FilingChunker:
             if filing_data.get("has_html"):
                 html_content = filing_content.get("html_content")
                 if html_content:
-                    logger.info(f"Processing HTML content for filing {filing_data['accession_number']}")
+                    logger.info(
+                        f"Processing HTML content for filing {filing_data['accession_number']}"
+                    )
 
                     # Chunk HTML content
                     chunk_stats = self.chunk_html_filing(html_content)
 
                     # Get chunk texts
-                    chunk_texts = [chunk["text"] for chunk in chunk_stats.get("chunks", [])]
+                    chunk_texts = [
+                        chunk["text"] for chunk in chunk_stats.get("chunks", [])
+                    ]
 
                     # Update result
                     result["chunk_metadata"] = chunk_stats
@@ -387,7 +428,9 @@ class FilingChunker:
 
             # Fallback to full text if no HTML or if HTML processing failed
             if not result["chunk_texts"]:
-                logger.info(f"Using full text for filing {filing_data['accession_number']}")
+                logger.info(
+                    f"Using full text for filing {filing_data['accession_number']}"
+                )
                 text = filing_content.get("content", "")
                 if text:
                     chunk_texts = self.chunk_full_text(text)
@@ -414,14 +457,22 @@ class FilingChunker:
                             }
 
                             # Split the chunk
-                            sub_chunks, sub_chunk_metadata = self._split_large_chunk(text, base_meta)
+                            sub_chunks, sub_chunk_metadata = self._split_large_chunk(
+                                text, base_meta
+                            )
 
                             # Add sub-chunks to the chunks list
-                            for j, (sub_chunk_text, sub_chunk_meta) in enumerate(zip(sub_chunks, sub_chunk_metadata)):
+                            for j, (sub_chunk_text, sub_chunk_meta) in enumerate(
+                                zip(sub_chunks, sub_chunk_metadata)
+                            ):
                                 # Create a unique order for each sub-chunk
                                 sub_chunk_meta["order"] = f"{i}.{j}"
-                                sub_chunk_meta["original_order"] = i  # Keep track of the original chunk order
-                                sub_chunk_meta["token_count"] = self._count_tokens(sub_chunk_text)
+                                sub_chunk_meta["original_order"] = (
+                                    i  # Keep track of the original chunk order
+                                )
+                                sub_chunk_meta["token_count"] = self._count_tokens(
+                                    sub_chunk_text
+                                )
                                 chunks.append(sub_chunk_meta)
                         else:
                             # Add the original chunk
@@ -445,10 +496,14 @@ class FilingChunker:
                     result["chunk_texts"] = [chunk["text"] for chunk in chunks]
                     result["chunks"] = chunks
                 else:
-                    logger.warning(f"No content available for filing {filing_data['accession_number']}")
+                    logger.warning(
+                        f"No content available for filing {filing_data['accession_number']}"
+                    )
 
         except Exception as e:
-            logger.error(f"Error processing filing {filing_data['accession_number']}: {str(e)}")
+            logger.error(
+                f"Error processing filing {filing_data['accession_number']}: {str(e)}"
+            )
             # Ensure we have at least some basic metadata even if processing fails
             result["error"] = str(e)
 

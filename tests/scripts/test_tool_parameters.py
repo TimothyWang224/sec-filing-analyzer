@@ -11,7 +11,7 @@ import logging
 import os
 import sys
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -27,7 +27,10 @@ from src.tools.registry import ToolRegistry
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("scripts/tests/outputs/tool_parameters_test.log")],
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("scripts/tests/outputs/tool_parameters_test.log"),
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -40,7 +43,9 @@ class TestFinancialDataTool(Tool):
     description = "Retrieve financial data for testing purposes"
     tags = ["test", "financial"]
 
-    async def execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def execute(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute the test financial data tool.
 
@@ -51,30 +56,45 @@ class TestFinancialDataTool(Tool):
         Returns:
             Dictionary containing the query results
         """
-        logger.info(f"TestFinancialDataTool.execute called with query_type={query_type}, parameters={parameters}")
+        logger.info(
+            f"TestFinancialDataTool.execute called with query_type={query_type}, parameters={parameters}"
+        )
 
         # Validate parameters
         if not self.validate_args(query_type, parameters):
-            return {"error": "Invalid parameters", "query_type": query_type, "parameters": parameters}
+            return {
+                "error": "Invalid parameters",
+                "query_type": query_type,
+                "parameters": parameters,
+            }
 
         # Process based on query_type
         if query_type == "revenue":
             return {
                 "query_type": query_type,
                 "parameters": parameters,
-                "result": {"ticker": parameters.get("ticker"), "revenue": {"2022": 100000000, "2023": 120000000}},
+                "result": {
+                    "ticker": parameters.get("ticker"),
+                    "revenue": {"2022": 100000000, "2023": 120000000},
+                },
             }
         elif query_type == "profit":
             return {
                 "query_type": query_type,
                 "parameters": parameters,
-                "result": {"ticker": parameters.get("ticker"), "profit": {"2022": 20000000, "2023": 25000000}},
+                "result": {
+                    "ticker": parameters.get("ticker"),
+                    "profit": {"2022": 20000000, "2023": 25000000},
+                },
             }
         elif query_type == "metrics":
             return {
                 "query_type": query_type,
                 "parameters": parameters,
-                "result": {"ticker": parameters.get("ticker"), "metrics": {"pe_ratio": 15.2, "debt_to_equity": 0.8}},
+                "result": {
+                    "ticker": parameters.get("ticker"),
+                    "metrics": {"pe_ratio": 15.2, "debt_to_equity": 0.8},
+                },
             }
         else:
             return {
@@ -83,7 +103,9 @@ class TestFinancialDataTool(Tool):
                 "parameters": parameters,
             }
 
-    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
+    def validate_args(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
         Validate the tool arguments.
 
@@ -94,12 +116,16 @@ class TestFinancialDataTool(Tool):
         Returns:
             True if arguments are valid, False otherwise
         """
-        logger.info(f"TestFinancialDataTool.validate_args called with query_type={query_type}, parameters={parameters}")
+        logger.info(
+            f"TestFinancialDataTool.validate_args called with query_type={query_type}, parameters={parameters}"
+        )
 
         # Validate query_type
         valid_query_types = ["revenue", "profit", "metrics"]
         if query_type not in valid_query_types:
-            logger.error(f"Invalid query_type: {query_type}. Must be one of {valid_query_types}")
+            logger.error(
+                f"Invalid query_type: {query_type}. Must be one of {valid_query_types}"
+            )
             return False
 
         # Validate parameters
@@ -138,7 +164,9 @@ class LoggingEnvironment(Environment):
 
         try:
             result = await super().execute_action(action)
-            logger.info(f"Tool execution result: {json.dumps(result, indent=2) if result is not None else 'None'}")
+            logger.info(
+                f"Tool execution result: {json.dumps(result, indent=2) if result is not None else 'None'}"
+            )
             return result
         except Exception as e:
             logger.error(f"Error executing tool: {str(e)}")
@@ -149,7 +177,9 @@ class LoggingEnvironment(Environment):
 class LoggingPlanningCapability(PlanningCapability):
     """Planning capability that logs parameter handling."""
 
-    async def process_action(self, agent: Any, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_action(
+        self, agent: Any, context: Dict[str, Any], action: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         Process an action with detailed logging.
 
@@ -161,7 +191,9 @@ class LoggingPlanningCapability(PlanningCapability):
         Returns:
             Processed action
         """
-        logger.info(f"LoggingPlanningCapability.process_action called with action={json.dumps(action, indent=2)}")
+        logger.info(
+            f"LoggingPlanningCapability.process_action called with action={json.dumps(action, indent=2)}"
+        )
 
         # Call the parent method
         processed_action = await super().process_action(agent, context, action)
@@ -171,7 +203,9 @@ class LoggingPlanningCapability(PlanningCapability):
 
 
 # Register the test tool
-ToolRegistry._register_tool(TestFinancialDataTool, name="test_financial_data", tags=["test", "financial"])
+ToolRegistry._register_tool(
+    TestFinancialDataTool, name="test_financial_data", tags=["test", "financial"]
+)
 
 
 async def main():
@@ -181,7 +215,10 @@ async def main():
 
     # Create a logging planning capability
     planning_capability = LoggingPlanningCapability(
-        enable_dynamic_replanning=False, enable_step_reflection=False, max_plan_steps=3, plan_detail_level="high"
+        enable_dynamic_replanning=False,
+        enable_step_reflection=False,
+        max_plan_steps=3,
+        plan_detail_level="high",
     )
 
     # Create a logging environment

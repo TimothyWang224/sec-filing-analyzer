@@ -2,9 +2,7 @@
 Test suite for SEC filing data retrieval components.
 """
 
-from datetime import datetime
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pandas as pd
 import pytest
@@ -27,7 +25,13 @@ SAMPLE_FILING_DATA = {
     "html_content": "<html><body>Sample HTML content</body></html>",
 }
 
-SAMPLE_CHUNKS = pd.DataFrame({"text": ["Chunk 1", "Chunk 2", "Chunk 3"], "start": [0, 100, 200], "end": [99, 199, 299]})
+SAMPLE_CHUNKS = pd.DataFrame(
+    {
+        "text": ["Chunk 1", "Chunk 2", "Chunk 3"],
+        "start": [0, 100, 200],
+        "end": [99, 199, 299],
+    }
+)
 
 
 @pytest.fixture
@@ -35,10 +39,12 @@ def sample_filing_data():
     """Return sample filing data."""
     return SAMPLE_FILING_DATA.copy()
 
+
 @pytest.fixture
 def sample_chunks():
     """Return sample chunks data."""
     return SAMPLE_CHUNKS.copy()
+
 
 @pytest.fixture
 def mock_sec_downloader():
@@ -72,7 +78,11 @@ def mock_vector_store():
 @pytest.fixture
 def filing_processor(mock_graph_store, mock_vector_store, mock_file_storage):
     """Create a filing processor with mocked dependencies."""
-    return FilingProcessor(graph_store=mock_graph_store, vector_store=mock_vector_store, file_storage=mock_file_storage)
+    return FilingProcessor(
+        graph_store=mock_graph_store,
+        vector_store=mock_vector_store,
+        file_storage=mock_file_storage,
+    )
 
 
 class TestSECFilingsDownloader:
@@ -94,7 +104,9 @@ class TestSECFilingsDownloader:
         downloader = SECFilingsDownloader(file_storage=mock_storage)
 
         # Patch the edgar_utils.get_filing_metadata function
-        with patch("sec_filing_analyzer.utils.edgar_utils.get_filing_metadata") as mock_get_metadata:
+        with patch(
+            "sec_filing_analyzer.utils.edgar_utils.get_filing_metadata"
+        ) as mock_get_metadata:
             # Return the sample filing data as metadata
             metadata = {
                 "accession_number": sample_filing_data["accession_number"],
@@ -102,23 +114,28 @@ class TestSECFilingsDownloader:
                 "id": sample_filing_data["accession_number"],
                 "filing_type": sample_filing_data["form"],
                 "company": sample_filing_data["company"],
-                "ticker": "AAPL"
+                "ticker": "AAPL",
             }
             mock_get_metadata.return_value = metadata
 
             # Patch the edgar_utils.get_filing_content function
-            with patch("sec_filing_analyzer.utils.edgar_utils.get_filing_content") as mock_get_content:
+            with patch(
+                "sec_filing_analyzer.utils.edgar_utils.get_filing_content"
+            ) as mock_get_content:
                 mock_get_content.return_value = {
                     "text": sample_filing_data["text"],
                     "html": None,
-                    "xml": None
+                    "xml": None,
                 }
 
                 # Call the method with the mock filing
                 filing_metadata = downloader.download_filing(mock_filing, "AAPL")
 
                 assert filing_metadata is not None
-                assert filing_metadata["accession_number"] == sample_filing_data["accession_number"]
+                assert (
+                    filing_metadata["accession_number"]
+                    == sample_filing_data["accession_number"]
+                )
                 assert filing_metadata["form"] == sample_filing_data["form"]
 
                 # Verify that save_raw_filing was called
@@ -138,7 +155,9 @@ class TestSECFilingsDownloader:
         downloader = SECFilingsDownloader(file_storage=mock_storage)
 
         # Patch the edgar_utils.get_filing_metadata function
-        with patch("sec_filing_analyzer.utils.edgar_utils.get_filing_metadata") as mock_get_metadata:
+        with patch(
+            "sec_filing_analyzer.utils.edgar_utils.get_filing_metadata"
+        ) as mock_get_metadata:
             # Return the sample filing data as metadata
             metadata = {
                 "accession_number": sample_filing_data["accession_number"],
@@ -146,16 +165,18 @@ class TestSECFilingsDownloader:
                 "id": sample_filing_data["accession_number"],
                 "filing_type": sample_filing_data["form"],
                 "company": sample_filing_data["company"],
-                "ticker": "AAPL"
+                "ticker": "AAPL",
             }
             mock_get_metadata.return_value = metadata
 
             # Patch the edgar_utils.get_filing_content function
-            with patch("sec_filing_analyzer.utils.edgar_utils.get_filing_content") as mock_get_content:
+            with patch(
+                "sec_filing_analyzer.utils.edgar_utils.get_filing_content"
+            ) as mock_get_content:
                 mock_get_content.return_value = {
                     "text": sample_filing_data["text"],
                     "html": sample_filing_data["html_content"],
-                    "xml": None
+                    "xml": None,
                 }
 
                 # Call the method with the mock filing
@@ -179,7 +200,9 @@ class TestSECFilingsDownloader:
         downloader = SECFilingsDownloader()
 
         # Patch the edgar_utils.get_filings function
-        with patch("sec_filing_analyzer.utils.edgar_utils.get_filings") as mock_get_filings:
+        with patch(
+            "sec_filing_analyzer.utils.edgar_utils.get_filings"
+        ) as mock_get_filings:
             # Create a mock Filing object
             mock_filing = Mock()
             mock_filing.accession_number = "test-accession"
@@ -193,7 +216,7 @@ class TestSECFilingsDownloader:
             with patch.object(downloader, "download_filing") as mock_download:
                 mock_download.return_value = {
                     "accession_number": "test-accession",
-                    "form": filing_type
+                    "form": filing_type,
                 }
 
                 # Call the method
@@ -202,7 +225,7 @@ class TestSECFilingsDownloader:
                     filing_types=[filing_type],
                     start_date=start_date,
                     end_date=end_date,
-                    limit=1
+                    limit=1,
                 )
 
                 assert len(filings) > 0
@@ -222,7 +245,7 @@ class TestFilingProcessor:
             "ticker": "AAPL",
             "filing_type": "10-K",
             "filing_date": "2023-01-01",
-            "company": "Apple Inc."
+            "company": "Apple Inc.",
         }
 
         # Mock the vector store and graph store
@@ -253,7 +276,9 @@ class TestFilingProcessor:
         # Verify file_storage interactions
         mock_cache_filing.assert_called_once()
 
-    def test_process_filing_with_chunks(self, filing_processor, sample_filing_data, sample_chunks):
+    def test_process_filing_with_chunks(
+        self, filing_processor, sample_filing_data, sample_chunks
+    ):
         """Test processing a filing with chunks."""
         # Add required fields to sample_filing_data
         filing_data = sample_filing_data.copy()
@@ -263,10 +288,12 @@ class TestFilingProcessor:
             "ticker": "AAPL",
             "filing_type": "10-K",
             "filing_date": "2023-01-01",
-            "company": "Apple Inc."
+            "company": "Apple Inc.",
         }
         filing_data["chunks"] = sample_chunks.to_dict("records")
-        filing_data["chunk_embeddings"] = [[0.1] * 10 for _ in range(len(sample_chunks))]  # Mock chunk embeddings
+        filing_data["chunk_embeddings"] = [
+            [0.1] * 10 for _ in range(len(sample_chunks))
+        ]  # Mock chunk embeddings
         filing_data["chunk_texts"] = [chunk["text"] for chunk in filing_data["chunks"]]
 
         # Mock the vector store and graph store
@@ -354,14 +381,18 @@ class TestFileStorage:
 
         # Save the HTML filing
         file_storage.save_html_filing(
-            filing_id=filing_id, html_content=filing_data["html_content"], metadata=filing_data
+            filing_id=filing_id,
+            html_content=filing_data["html_content"],
+            metadata=filing_data,
         )
 
         # Verify file was created - note the path structure includes ticker and year
         html_file = temp_storage_dir / "html" / "AAPL" / "2023" / f"{filing_id}.html"
         assert html_file.exists()
 
-    def test_save_processed_filing(self, temp_storage_dir, sample_filing_data, sample_chunks):
+    def test_save_processed_filing(
+        self, temp_storage_dir, sample_filing_data, sample_chunks
+    ):
         """Test saving processed filing data."""
         # Create a real FileStorage instance with the temp directory
         file_storage = FileStorage(base_dir=temp_storage_dir)
@@ -386,7 +417,13 @@ class TestFileStorage:
         )
 
         # Verify file was created - note the path structure includes ticker and year
-        processed_file = temp_storage_dir / "processed" / "AAPL" / "2023" / f"{filing_id}_processed.json"
+        processed_file = (
+            temp_storage_dir
+            / "processed"
+            / "AAPL"
+            / "2023"
+            / f"{filing_id}_processed.json"
+        )
         assert processed_file.exists()
 
     def test_list_filings(self, temp_storage_dir):

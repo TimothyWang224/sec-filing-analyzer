@@ -11,7 +11,9 @@ from src.agents.qa_specialist import QASpecialistAgent
 from src.environments import Environment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 async def test_token_budgeting():
@@ -58,9 +60,15 @@ async def test_token_budgeting():
     print(f"\n\n{'=' * 80}")
     print("TOKEN USAGE:")
     print(f"{'=' * 80}")
-    print(f"Planning:   {agent.state.tokens_used['planning']} / {agent.state.token_budget['planning']} tokens")
-    print(f"Execution:  {agent.state.tokens_used['execution']} / {agent.state.token_budget['execution']} tokens")
-    print(f"Refinement: {agent.state.tokens_used['refinement']} / {agent.state.token_budget['refinement']} tokens")
+    print(
+        f"Planning:   {agent.state.tokens_used['planning']} / {agent.state.token_budget['planning']} tokens"
+    )
+    print(
+        f"Execution:  {agent.state.tokens_used['execution']} / {agent.state.token_budget['execution']} tokens"
+    )
+    print(
+        f"Refinement: {agent.state.tokens_used['refinement']} / {agent.state.token_budget['refinement']} tokens"
+    )
 
     # Calculate total tokens used
     total_used = sum(agent.state.tokens_used.values())
@@ -71,9 +79,15 @@ async def test_token_budgeting():
     print(f"\n\n{'=' * 80}")
     print("PHASE ITERATIONS:")
     print(f"{'=' * 80}")
-    print(f"Planning:   {agent.state.phase_iterations['planning']} / {agent.max_planning_iterations}")
-    print(f"Execution:  {agent.state.phase_iterations['execution']} / {agent.max_execution_iterations}")
-    print(f"Refinement: {agent.state.phase_iterations['refinement']} / {agent.max_refinement_iterations}")
+    print(
+        f"Planning:   {agent.state.phase_iterations['planning']} / {agent.max_planning_iterations}"
+    )
+    print(
+        f"Execution:  {agent.state.phase_iterations['execution']} / {agent.max_execution_iterations}"
+    )
+    print(
+        f"Refinement: {agent.state.phase_iterations['refinement']} / {agent.max_refinement_iterations}"
+    )
 
     return result
 

@@ -11,8 +11,6 @@ import json
 import logging
 import os
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -22,12 +20,17 @@ from src.capabilities.logging import LoggingCapability
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 async def test_logging_capability(
-    question: str, log_dir: str = "data/logs/test", log_level: str = "DEBUG", include_prompts: bool = False
+    question: str,
+    log_dir: str = "data/logs/test",
+    log_level: str = "DEBUG",
+    include_prompts: bool = False,
 ):
     """Test the logging capability with a QA specialist agent."""
     try:
@@ -36,7 +39,9 @@ async def test_logging_capability(
 
         # Initialize environment
         environment = FinancialEnvironment()
-        print(f"Environment created with tools: {[k for k in environment.context.keys() if k.startswith('tool_')]}")
+        print(
+            f"Environment created with tools: {[k for k in environment.context.keys() if k.startswith('tool_')]}"
+        )
 
         # Initialize logging capability
         logging_capability = LoggingCapability(
@@ -54,10 +59,14 @@ async def test_logging_capability(
         )
 
         # Initialize QA specialist agent with logging capability
-        agent = QASpecialistAgent(capabilities=[logging_capability], environment=environment)
+        agent = QASpecialistAgent(
+            capabilities=[logging_capability], environment=environment
+        )
 
         # Debug: Check if agent has the environment
-        print(f"Agent environment has tools: {[k for k in agent.environment.context.keys() if k.startswith('tool_')]}")
+        print(
+            f"Agent environment has tools: {[k for k in agent.environment.context.keys() if k.startswith('tool_')]}"
+        )
 
         # Run the agent
         logger.info(f"Processing question with logging: {question}")
@@ -95,7 +104,7 @@ async def test_logging_capability(
                 # Print summary from JSON log file
                 with open(json_log_file, "r") as f:
                     log_data = json.load(f)
-                    print(f"\nJSON log summary:")
+                    print("\nJSON log summary:")
                     print(f"  Session ID: {log_data.get('session_id')}")
                     print(f"  Agent Type: {log_data.get('agent_type')}")
                     print(f"  Start Time: {log_data.get('start_time')}")
@@ -112,9 +121,17 @@ def main():
     """Main function to run the test script."""
     parser = argparse.ArgumentParser(description="Test the Logging Capability")
     parser.add_argument(
-        "--question", type=str, default="What was Apple's revenue in 2023?", help="Financial question to ask"
+        "--question",
+        type=str,
+        default="What was Apple's revenue in 2023?",
+        help="Financial question to ask",
     )
-    parser.add_argument("--log_dir", type=str, default="data/logs/test", help="Directory to store log files")
+    parser.add_argument(
+        "--log_dir",
+        type=str,
+        default="data/logs/test",
+        help="Directory to store log files",
+    )
     parser.add_argument(
         "--log_level",
         type=str,
@@ -123,7 +140,9 @@ def main():
         help="Logging level",
     )
     parser.add_argument(
-        "--include_prompts", action="store_true", help="Include LLM prompts in logs (may contain sensitive data)"
+        "--include_prompts",
+        action="store_true",
+        help="Include LLM prompts in logs (may contain sensitive data)",
     )
 
     args = parser.parse_args()
@@ -131,7 +150,10 @@ def main():
     # Run the test
     asyncio.run(
         test_logging_capability(
-            question=args.question, log_dir=args.log_dir, log_level=args.log_level, include_prompts=args.include_prompts
+            question=args.question,
+            log_dir=args.log_dir,
+            log_level=args.log_level,
+            include_prompts=args.include_prompts,
         )
     )
 

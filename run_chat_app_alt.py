@@ -22,7 +22,16 @@ def main():
         # Run the Streamlit app directly (bypassing the pages directory)
         print("Starting SEC Filing Analyzer Chat App...")
         subprocess.run(
-            [sys.executable, "-m", "streamlit", "run", "chat_app/app.py", "--server.headless", "true"], check=True
+            [
+                sys.executable,
+                "-m",
+                "streamlit",
+                "run",
+                "chat_app/app.py",
+                "--server.headless",
+                "true",
+            ],
+            check=True,
         )
     except subprocess.CalledProcessError as e:
         print(f"Error running Streamlit app: {e}")

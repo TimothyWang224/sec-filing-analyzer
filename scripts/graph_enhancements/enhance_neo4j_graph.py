@@ -10,25 +10,39 @@ This script enhances the Neo4j graph structure to better support LLM agent queri
 import logging
 import os
 import re
-from typing import Dict, List, Set, Tuple
 
 from neo4j import GraphDatabase
 
 from sec_filing_analyzer.config import neo4j_config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 class Neo4jEnhancer:
     """Class to enhance Neo4j graph for LLM agent queries."""
 
-    def __init__(self, url: str = None, username: str = None, password: str = None, database: str = None):
+    def __init__(
+        self,
+        url: str = None,
+        username: str = None,
+        password: str = None,
+        database: str = None,
+    ):
         """Initialize the Neo4j enhancer."""
         # Get Neo4j credentials from parameters or environment variables
-        self.uri = url or os.getenv("NEO4J_URI") or os.getenv("NEO4J_URL") or neo4j_config.url
-        self.user = username or os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or neo4j_config.username
+        self.uri = (
+            url or os.getenv("NEO4J_URI") or os.getenv("NEO4J_URL") or neo4j_config.url
+        )
+        self.user = (
+            username
+            or os.getenv("NEO4J_USER")
+            or os.getenv("NEO4J_USERNAME")
+            or neo4j_config.username
+        )
         self.pwd = password or os.getenv("NEO4J_PASSWORD") or neo4j_config.password
         self.db = database or os.getenv("NEO4J_DATABASE") or neo4j_config.database
 
@@ -183,7 +197,9 @@ class Neo4jEnhancer:
                 filings = [(record["id"], record["filing_date"]) for record in result]
 
                 if len(filings) < 2:
-                    logger.info(f"Company {ticker} has fewer than 2 filings, skipping temporal connections")
+                    logger.info(
+                        f"Company {ticker} has fewer than 2 filings, skipping temporal connections"
+                    )
                     continue
 
                 # Create NEXT_FILING and PREVIOUS_FILING relationships
@@ -235,16 +251,52 @@ class Neo4jEnhancer:
         """
         # Define companies to look for
         companies = [
-            {"name": "Apple", "ticker": "AAPL", "aliases": ["Apple Inc.", "Apple Computer"]},
-            {"name": "Microsoft", "ticker": "MSFT", "aliases": ["Microsoft Corporation", "MSFT"]},
-            {"name": "NVIDIA", "ticker": "NVDA", "aliases": ["NVIDIA Corporation", "NVDA"]},
-            {"name": "Google", "ticker": "GOOGL", "aliases": ["Alphabet", "Alphabet Inc.", "Google LLC"]},
-            {"name": "Amazon", "ticker": "AMZN", "aliases": ["Amazon.com", "Amazon.com Inc."]},
-            {"name": "Meta", "ticker": "META", "aliases": ["Facebook", "Meta Platforms", "Facebook, Inc."]},
-            {"name": "Tesla", "ticker": "TSLA", "aliases": ["Tesla, Inc.", "Tesla Motors"]},
+            {
+                "name": "Apple",
+                "ticker": "AAPL",
+                "aliases": ["Apple Inc.", "Apple Computer"],
+            },
+            {
+                "name": "Microsoft",
+                "ticker": "MSFT",
+                "aliases": ["Microsoft Corporation", "MSFT"],
+            },
+            {
+                "name": "NVIDIA",
+                "ticker": "NVDA",
+                "aliases": ["NVIDIA Corporation", "NVDA"],
+            },
+            {
+                "name": "Google",
+                "ticker": "GOOGL",
+                "aliases": ["Alphabet", "Alphabet Inc.", "Google LLC"],
+            },
+            {
+                "name": "Amazon",
+                "ticker": "AMZN",
+                "aliases": ["Amazon.com", "Amazon.com Inc."],
+            },
+            {
+                "name": "Meta",
+                "ticker": "META",
+                "aliases": ["Facebook", "Meta Platforms", "Facebook, Inc."],
+            },
+            {
+                "name": "Tesla",
+                "ticker": "TSLA",
+                "aliases": ["Tesla, Inc.", "Tesla Motors"],
+            },
             {"name": "Intel", "ticker": "INTC", "aliases": ["Intel Corporation"]},
-            {"name": "AMD", "ticker": "AMD", "aliases": ["Advanced Micro Devices", "Advanced Micro Devices, Inc."]},
-            {"name": "Qualcomm", "ticker": "QCOM", "aliases": ["Qualcomm Incorporated", "QUALCOMM"]},
+            {
+                "name": "AMD",
+                "ticker": "AMD",
+                "aliases": ["Advanced Micro Devices", "Advanced Micro Devices, Inc."],
+            },
+            {
+                "name": "Qualcomm",
+                "ticker": "QCOM",
+                "aliases": ["Qualcomm Incorporated", "QUALCOMM"],
+            },
         ]
 
         with self.driver.session(database=self.db) as session:
@@ -261,7 +313,9 @@ class Neo4jEnhancer:
                 )
 
                 if result.single():
-                    logger.info(f"Created or updated Entity node for {company['name']} ({company['ticker']})")
+                    logger.info(
+                        f"Created or updated Entity node for {company['name']} ({company['ticker']})"
+                    )
 
             # For each company, find mentions in chunks
             for company in companies:
@@ -315,7 +369,9 @@ class Neo4jEnhancer:
 
                 record = count_result.single()
                 if record:
-                    logger.info(f"Total mentions of {company['name']} ({company['ticker']}): {record['count']}")
+                    logger.info(
+                        f"Total mentions of {company['name']} ({company['ticker']}): {record['count']}"
+                    )
 
             # Count total Entity nodes and MENTIONS relationships
             count_result = session.run("""

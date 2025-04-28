@@ -15,7 +15,6 @@ Usage:
 import argparse
 import json
 import logging
-import math
 import os
 import sys
 import time
@@ -26,13 +25,17 @@ from typing import Any, Dict, List, Optional
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.config import ETLConfig, Neo4jConfig, StorageConfig
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
+from sec_filing_analyzer.config import StorageConfig
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
 from sec_filing_analyzer.storage.graph_store import GraphStore
 from sec_filing_analyzer.storage.optimized_vector_store import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -78,7 +81,9 @@ def get_tickers_from_file(file_path: str) -> List[str]:
         sys.exit(1)
 
 
-def save_progress(completed: List[str], failed: List[str], no_filings: List[str], errors: dict):
+def save_progress(
+    completed: List[str], failed: List[str], no_filings: List[str], errors: dict
+):
     """Save progress to a file."""
     progress = {
         "timestamp": datetime.now().isoformat(),
@@ -150,13 +155,21 @@ def load_config(config_path: Optional[str] = None):
 def parse_args():
     """Parse command line arguments."""
     neo4j_config = get_neo4j_config()
-    parser = argparse.ArgumentParser(description="Master ETL Script for SEC Filing Analysis")
+    parser = argparse.ArgumentParser(
+        description="Master ETL Script for SEC Filing Analysis"
+    )
 
     # Input group - Company tickers
     ticker_group = parser.add_mutually_exclusive_group(required=True)
-    ticker_group.add_argument("--tickers", nargs="+", help="List of company ticker symbols (e.g., AAPL MSFT NVDA)")
     ticker_group.add_argument(
-        "--tickers-file", type=str, help="Path to a JSON file containing a list of ticker symbols"
+        "--tickers",
+        nargs="+",
+        help="List of company ticker symbols (e.g., AAPL MSFT NVDA)",
+    )
+    ticker_group.add_argument(
+        "--tickers-file",
+        type=str,
+        help="Path to a JSON file containing a list of ticker symbols",
     )
 
     # Date range arguments
@@ -165,41 +178,84 @@ def parse_args():
 
     # Filing types argument
     parser.add_argument(
-        "--filing-types", nargs="+", help="List of filing types to process (e.g., 10-K 10-Q)", default=["10-K", "10-Q"]
+        "--filing-types",
+        nargs="+",
+        help="List of filing types to process (e.g., 10-K 10-Q)",
+        default=["10-K", "10-Q"],
     )
 
     # Configuration file
-    parser.add_argument("--config-file", type=str, help="Path to a JSON configuration file")
-    parser.add_argument("--save-config", action="store_true", help="Save the configuration to a file")
-    parser.add_argument("--config-output", type=str, help="Path to save the configuration file")
+    parser.add_argument(
+        "--config-file", type=str, help="Path to a JSON configuration file"
+    )
+    parser.add_argument(
+        "--save-config", action="store_true", help="Save the configuration to a file"
+    )
+    parser.add_argument(
+        "--config-output", type=str, help="Path to save the configuration file"
+    )
 
     # Neo4j configuration arguments
-    parser.add_argument("--no-neo4j", action="store_true", help="Disable Neo4j and use in-memory graph store instead")
-    parser.add_argument("--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"])
-    parser.add_argument("--neo4j-username", help="Neo4j username", default=neo4j_config["username"])
-    parser.add_argument("--neo4j-password", help="Neo4j password", default=neo4j_config["password"])
-    parser.add_argument("--neo4j-database", help="Neo4j database name", default=neo4j_config["database"])
+    parser.add_argument(
+        "--no-neo4j",
+        action="store_true",
+        help="Disable Neo4j and use in-memory graph store instead",
+    )
+    parser.add_argument(
+        "--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"]
+    )
+    parser.add_argument(
+        "--neo4j-username", help="Neo4j username", default=neo4j_config["username"]
+    )
+    parser.add_argument(
+        "--neo4j-password", help="Neo4j password", default=neo4j_config["password"]
+    )
+    parser.add_argument(
+        "--neo4j-database", help="Neo4j database name", default=neo4j_config["database"]
+    )
 
     # DuckDB configuration
     parser.add_argument(
-        "--db-path", type=str, default="data/financial_data.duckdb", help="Path to the DuckDB database file"
+        "--db-path",
+        type=str,
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
     )
 
     # Pipeline configuration
     parser.add_argument(
-        "--no-semantic", action="store_true", help="Disable semantic processing (chunking, embedding, etc.)"
+        "--no-semantic",
+        action="store_true",
+        help="Disable semantic processing (chunking, embedding, etc.)",
     )
     parser.add_argument(
-        "--no-quantitative", action="store_true", help="Disable quantitative processing (XBRL extraction, etc.)"
+        "--no-quantitative",
+        action="store_true",
+        help="Disable quantitative processing (XBRL extraction, etc.)",
     )
 
     # Parallel processing options
-    parser.add_argument("--no-parallel", action="store_true", help="Disable parallel processing")
     parser.add_argument(
-        "--max-workers", type=int, default=4, help="Maximum number of worker threads for parallel processing"
+        "--no-parallel", action="store_true", help="Disable parallel processing"
     )
-    parser.add_argument("--batch-size", type=int, default=100, help="Batch size for embedding generation")
-    parser.add_argument("--rate-limit", type=float, default=0.1, help="Minimum time between API requests in seconds")
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=4,
+        help="Maximum number of worker threads for parallel processing",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Batch size for embedding generation",
+    )
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=0.1,
+        help="Minimum time between API requests in seconds",
+    )
 
     # FAISS indexing options
     parser.add_argument(
@@ -212,23 +268,54 @@ def parse_args():
 
     # IVF parameters
     parser.add_argument(
-        "--ivf-nlist", type=int, default=None, help="IVF: Number of clusters (default: sqrt(num_vectors))"
+        "--ivf-nlist",
+        type=int,
+        default=None,
+        help="IVF: Number of clusters (default: sqrt(num_vectors))",
     )
-    parser.add_argument("--ivf-nprobe", type=int, default=None, help="IVF: Number of clusters to visit during search")
+    parser.add_argument(
+        "--ivf-nprobe",
+        type=int,
+        default=None,
+        help="IVF: Number of clusters to visit during search",
+    )
 
     # HNSW parameters
-    parser.add_argument("--hnsw-m", type=int, default=32, help="HNSW: Number of connections per element")
     parser.add_argument(
-        "--hnsw-ef-construction", type=int, default=400, help="HNSW: Size of dynamic list during construction"
+        "--hnsw-m", type=int, default=32, help="HNSW: Number of connections per element"
     )
-    parser.add_argument("--hnsw-ef-search", type=int, default=200, help="HNSW: Size of dynamic list during search")
+    parser.add_argument(
+        "--hnsw-ef-construction",
+        type=int,
+        default=400,
+        help="HNSW: Size of dynamic list during construction",
+    )
+    parser.add_argument(
+        "--hnsw-ef-search",
+        type=int,
+        default=200,
+        help="HNSW: Size of dynamic list during search",
+    )
 
     # GPU acceleration
-    parser.add_argument("--use-gpu", action="store_true", help="Use GPU acceleration for FAISS if available")
+    parser.add_argument(
+        "--use-gpu",
+        action="store_true",
+        help="Use GPU acceleration for FAISS if available",
+    )
 
     # Additional options
-    parser.add_argument("--retry-failed", action="store_true", help="Retry failed companies from previous runs")
-    parser.add_argument("--max-retries", type=int, default=3, help="Maximum number of retries for failed companies")
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry failed companies from previous runs",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for failed companies",
+    )
     parser.add_argument(
         "--delay-between-companies",
         type=int,
@@ -236,10 +323,14 @@ def parse_args():
         help="Delay in seconds between processing companies to avoid rate limiting",
     )
     parser.add_argument(
-        "--force-rebuild-index", action="store_true", help="Force rebuild of FAISS index even if it exists"
+        "--force-rebuild-index",
+        action="store_true",
+        help="Force rebuild of FAISS index even if it exists",
     )
     parser.add_argument(
-        "--force-download", action="store_true", help="Force download of filings even if they exist in cache"
+        "--force-download",
+        action="store_true",
+        help="Force download of filings even if they exist in cache",
     )
 
     args = parser.parse_args()
@@ -382,7 +473,9 @@ def main():
     if args.retry_failed:
         progress = load_latest_progress()
         if progress:
-            logger.info(f"Loaded previous progress with {len(progress['failed'])} failed companies")
+            logger.info(
+                f"Loaded previous progress with {len(progress['failed'])} failed companies"
+            )
             # Only process previously failed companies
             tickers = progress["failed"]
             # Keep track of previously completed companies
@@ -400,7 +493,9 @@ def main():
 
         while retries <= args.max_retries and not success:
             try:
-                logger.info(f"Processing company {ticker} (attempt {retries + 1}/{args.max_retries + 1})")
+                logger.info(
+                    f"Processing company {ticker} (attempt {retries + 1}/{args.max_retries + 1})"
+                )
 
                 # Process company using the parallel pipeline
                 result = pipeline.process_company(
@@ -414,11 +509,17 @@ def main():
 
                 # Check result status
                 if result["status"] == "no_filings":
-                    logger.warning(f"No filings found for {ticker} in the specified date range and filing types")
+                    logger.warning(
+                        f"No filings found for {ticker} in the specified date range and filing types"
+                    )
                     no_filings_tickers.append(ticker)
-                    success = True  # Mark as success since there's no error, just no filings
+                    success = (
+                        True  # Mark as success since there's no error, just no filings
+                    )
                 elif result["status"] == "completed":
-                    logger.info(f"Successfully processed {result['filings_processed']} filings for {ticker}")
+                    logger.info(
+                        f"Successfully processed {result['filings_processed']} filings for {ticker}"
+                    )
                     completed_tickers.append(ticker)
                     success = True
                 else:
@@ -439,12 +540,16 @@ def main():
                     time.sleep(5)  # Wait before retrying
 
         if not success:
-            logger.error(f"Failed to process company {ticker} after {args.max_retries + 1} attempts")
+            logger.error(
+                f"Failed to process company {ticker} after {args.max_retries + 1} attempts"
+            )
             failed_tickers.append(ticker)
 
         # Add delay between companies to avoid rate limiting
         if args.delay_between_companies > 0 and ticker != tickers[-1]:
-            logger.info(f"Waiting {args.delay_between_companies} seconds before processing next company...")
+            logger.info(
+                f"Waiting {args.delay_between_companies} seconds before processing next company..."
+            )
             time.sleep(args.delay_between_companies)
 
     # Save progress
@@ -458,7 +563,9 @@ def main():
 
     if no_filings_tickers:
         logger.info(f"Companies with no filings: {', '.join(no_filings_tickers)}")
-        logger.info("Consider using a different date range or filing types for these companies")
+        logger.info(
+            "Consider using a different date range or filing types for these companies"
+        )
 
     if failed_tickers:
         logger.info(f"Failed companies: {', '.join(failed_tickers)}")

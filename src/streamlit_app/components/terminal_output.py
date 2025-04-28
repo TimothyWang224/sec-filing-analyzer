@@ -6,8 +6,7 @@ This component displays terminal output in the Streamlit UI.
 
 import queue
 import threading
-import time
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 import streamlit as st
 
@@ -79,7 +78,9 @@ def display_terminal_output(title: str = "Terminal Output", height: int = 300):
             st.session_state.terminal_output.extend(new_output)
 
             # Update the terminal output display
-            terminal_container.code("\n".join(st.session_state.terminal_output), language="bash")
+            terminal_container.code(
+                "\n".join(st.session_state.terminal_output), language="bash"
+            )
 
     # Create a button to clear the terminal output
     if st.button("Clear Terminal Output"):
@@ -87,7 +88,9 @@ def display_terminal_output(title: str = "Terminal Output", height: int = 300):
         terminal_container.code("", language="bash")
 
     # Initial display
-    terminal_container.code("\n".join(st.session_state.terminal_output), language="bash")
+    terminal_container.code(
+        "\n".join(st.session_state.terminal_output), language="bash"
+    )
 
     # Start a background thread to update the terminal output
     update_thread = threading.Thread(target=lambda: update_terminal_output())

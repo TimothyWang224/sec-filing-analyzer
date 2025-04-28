@@ -7,7 +7,7 @@ vector store and graph store for more comprehensive search results.
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..storage import GraphStore, OptimizedVectorStore
 
@@ -21,7 +21,11 @@ class CoordinatedSearch:
     Coordinated search class that combines vector and graph search capabilities.
     """
 
-    def __init__(self, vector_store: Optional[OptimizedVectorStore] = None, graph_store: Optional[GraphStore] = None):
+    def __init__(
+        self,
+        vector_store: Optional[OptimizedVectorStore] = None,
+        graph_store: Optional[GraphStore] = None,
+    ):
         """Initialize the coordinated search.
 
         Args:
@@ -96,7 +100,9 @@ class CoordinatedSearch:
                 filing_id = result["id"]
 
                 # Get related documents from graph with same company filter
-                related_docs = self.graph_store.get_filing_relationships(filing_id=filing_id, companies=companies)
+                related_docs = self.graph_store.get_filing_relationships(
+                    filing_id=filing_id, companies=companies
+                )
 
                 # Add to enhanced results
                 enhanced_results.append({**result, "related_documents": related_docs})
@@ -141,9 +147,13 @@ class CoordinatedSearch:
         Returns:
             List of filing dictionaries
         """
-        return self.graph_store.get_filings_by_companies(companies=companies, filing_types=filing_types)
+        return self.graph_store.get_filings_by_companies(
+            companies=companies, filing_types=filing_types
+        )
 
-    def search_within_filing(self, filing_id: str, query_text: str, top_k: int = 5) -> Dict[str, Any]:
+    def search_within_filing(
+        self, filing_id: str, query_text: str, top_k: int = 5
+    ) -> Dict[str, Any]:
         """Search within a specific filing.
 
         Args:
@@ -159,7 +169,9 @@ class CoordinatedSearch:
         try:
             # Try to get company information for the filing
             if self.graph_store.use_neo4j:
-                with self.graph_store.driver.session(database=self.graph_store.database) as session:
+                with self.graph_store.driver.session(
+                    database=self.graph_store.database
+                ) as session:
                     query = """
                     MATCH (c:Company)-[:FILED]->(f:Filing {accession_number: $filing_id})
                     RETURN c.ticker as ticker, f.filing_type as filing_type
@@ -172,7 +184,10 @@ class CoordinatedSearch:
                 # For in-memory graph
                 for node, attrs in self.graph_store.graph.nodes(data=True):
                     if attrs.get("type") == "filing" and node == filing_id:
-                        filing_metadata = {"ticker": attrs.get("ticker"), "filing_type": attrs.get("filing_type")}
+                        filing_metadata = {
+                            "ticker": attrs.get("ticker"),
+                            "filing_type": attrs.get("filing_type"),
+                        }
                         break
         except Exception as e:
             logger.warning(f"Error getting filing metadata: {e}")
@@ -184,7 +199,10 @@ class CoordinatedSearch:
 
         # Search for chunks within this filing
         chunk_results = self.vector_store.search_vectors(
-            query_text=query_text, companies=companies, top_k=top_k, metadata_filter={"original_doc_id": filing_id}
+            query_text=query_text,
+            companies=companies,
+            top_k=top_k,
+            metadata_filter={"original_doc_id": filing_id},
         )
 
         return {

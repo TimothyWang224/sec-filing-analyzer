@@ -5,8 +5,6 @@ This script processes a single NVDA filing to help debug the pipeline.
 """
 
 import logging
-import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -20,7 +18,9 @@ from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set specific loggers to DEBUG level
@@ -44,7 +44,9 @@ def test_nvda_single_filing():
 
         # Initialize filing processor
         filing_processor = FilingProcessor(
-            graph_store=graph_store, vector_store=vector_store, file_storage=file_storage
+            graph_store=graph_store,
+            vector_store=vector_store,
+            file_storage=file_storage,
         )
 
         # Download a single NVDA filing
@@ -97,7 +99,9 @@ def test_nvda_single_filing():
             logger.error("Failed to load filing data")
             return
 
-        logger.info(f"Successfully loaded filing data with {len(filing_data['content'])} characters")
+        logger.info(
+            f"Successfully loaded filing data with {len(filing_data['content'])} characters"
+        )
 
         # Initialize pipeline
         pipeline = SECFilingETLPipeline(

@@ -9,9 +9,6 @@ This module tests the complete data processing pipeline including:
 """
 
 import logging
-import os
-from pathlib import Path
-from typing import Any, Dict
 
 import pytest
 
@@ -71,7 +68,9 @@ def test_pipeline_processing(test_text, pipeline_components):
 
         # Generate embeddings for chunks
         chunk_embeddings = embedding_generator.generate_embeddings(chunks)
-        assert len(chunk_embeddings) == len(chunks), "Should generate embedding for each chunk"
+        assert len(chunk_embeddings) == len(chunks), (
+            "Should generate embedding for each chunk"
+        )
         logger.info(f"Generated embeddings for {len(chunk_embeddings)} chunks")
 
         # Generate embedding for full document
@@ -96,7 +95,9 @@ def test_pipeline_processing(test_text, pipeline_components):
         logger.info("Successfully processed filing")
 
         # Verify vector store
-        search_results = vector_store.search_vectors(query_vector=doc_embedding, top_k=5)
+        search_results = vector_store.search_vectors(
+            query_vector=doc_embedding, top_k=5
+        )
         assert len(search_results) > 0, "Should find similar documents"
         logger.info(f"Found {len(search_results)} similar documents in vector store")
 

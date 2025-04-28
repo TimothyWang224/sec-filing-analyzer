@@ -10,7 +10,12 @@ import pytest
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from src.agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
+from src.agents import (
+    FinancialAnalystAgent,
+    FinancialDiligenceCoordinator,
+    QASpecialistAgent,
+    RiskAnalystAgent,
+)
 from src.capabilities.logging import LoggingCapability
 from src.capabilities.time_awareness import TimeAwarenessCapability
 from src.environments.financial import FinancialEnvironment
@@ -26,7 +31,9 @@ async def test_qa_specialist():
 
     # Create agent with capabilities
     agent = QASpecialistAgent(
-        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()],
+        environment=environment,
+        max_iterations=1,
     )
 
     # Run the agent
@@ -50,7 +57,9 @@ async def test_financial_analyst():
 
     # Create agent with capabilities
     agent = FinancialAnalystAgent(
-        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()],
+        environment=environment,
+        max_iterations=1,
     )
 
     # Run the agent
@@ -58,7 +67,9 @@ async def test_financial_analyst():
 
     # Print the result
     print("\nFinancial Analyst Result:")
-    print(f"Analysis: {result.get('analysis', {}).get('analysis', 'No analysis')[:200]}...")
+    print(
+        f"Analysis: {result.get('analysis', {}).get('analysis', 'No analysis')[:200]}..."
+    )
     print(f"Metrics: {result.get('analysis', {}).get('metrics', {})}")
 
     return result
@@ -74,7 +85,9 @@ async def test_risk_analyst():
 
     # Create agent with capabilities
     agent = RiskAnalystAgent(
-        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()],
+        environment=environment,
+        max_iterations=1,
     )
 
     # Run the agent
@@ -82,7 +95,9 @@ async def test_risk_analyst():
 
     # Print the result
     print("\nRisk Analyst Result:")
-    print(f"Analysis: {result.get('risk_analysis', {}).get('analysis', 'No analysis')[:200]}...")
+    print(
+        f"Analysis: {result.get('risk_analysis', {}).get('analysis', 'No analysis')[:200]}..."
+    )
     print(f"Risk Factors: {result.get('risk_analysis', {}).get('risk_factors', {})}")
 
     return result
@@ -98,15 +113,21 @@ async def test_coordinator():
 
     # Create agent with capabilities
     agent = FinancialDiligenceCoordinator(
-        capabilities=[LoggingCapability(), TimeAwarenessCapability()], environment=environment, max_iterations=1
+        capabilities=[LoggingCapability(), TimeAwarenessCapability()],
+        environment=environment,
+        max_iterations=1,
     )
 
     # Run the agent
-    result = await agent.run("Provide a comprehensive analysis of Apple's financial health and risks")
+    result = await agent.run(
+        "Provide a comprehensive analysis of Apple's financial health and risks"
+    )
 
     # Print the result
     print("\nCoordinator Result:")
-    print(f"Executive Summary: {result.get('diligence_report', {}).get('executive_summary', 'No summary')[:200]}...")
+    print(
+        f"Executive Summary: {result.get('diligence_report', {}).get('executive_summary', 'No summary')[:200]}..."
+    )
     print(f"Key Findings: {result.get('diligence_report', {}).get('key_findings', [])}")
 
     return result

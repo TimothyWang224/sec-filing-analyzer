@@ -4,7 +4,6 @@ Add NVDA company to the database.
 
 import logging
 import os
-from pathlib import Path
 
 import duckdb
 
@@ -26,17 +25,24 @@ def add_nvda_company(db_path="data/financial_data.duckdb"):
         conn = duckdb.connect(db_path)
 
         # Check if NVDA already exists
-        result = conn.execute("SELECT ticker FROM companies WHERE ticker = 'NVDA'").fetchone()
+        result = conn.execute(
+            "SELECT ticker FROM companies WHERE ticker = 'NVDA'"
+        ).fetchone()
         if result:
             logger.info("NVDA already exists in the database")
             return True
 
         # Add NVDA company
         logger.info("Adding NVDA to the database")
-        conn.execute("INSERT INTO companies (ticker, name) VALUES (?, ?)", ["NVDA", "NVIDIA Corporation"])
+        conn.execute(
+            "INSERT INTO companies (ticker, name) VALUES (?, ?)",
+            ["NVDA", "NVIDIA Corporation"],
+        )
 
         # Verify company was added
-        result = conn.execute("SELECT ticker FROM companies WHERE ticker = 'NVDA'").fetchone()
+        result = conn.execute(
+            "SELECT ticker FROM companies WHERE ticker = 'NVDA'"
+        ).fetchone()
         if result:
             logger.info("NVDA successfully added to the database")
             return True

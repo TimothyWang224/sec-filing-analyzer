@@ -6,8 +6,7 @@ semantic data from SEC filings.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..data_processing.chunking import FilingChunker
 from ..data_retrieval.sec_downloader import SECFilingsDownloader
@@ -46,7 +45,9 @@ class SemanticETLPipeline:
             chunk_overlap: Overlap between chunks
         """
         self.downloader = downloader or SECFilingsDownloader()
-        self.chunker = chunker or FilingChunker(max_chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self.chunker = chunker or FilingChunker(
+            max_chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         self.embedding_generator = embedding_generator or RobustEmbeddingGenerator()
         self.vector_store = vector_store or VectorStore()
 
@@ -79,7 +80,11 @@ class SemanticETLPipeline:
             # Step 1: Download the filing
             # Get the filing object
             filings = self.downloader.get_filings(
-                ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
+                ticker=ticker,
+                filing_types=[filing_type],
+                start_date=filing_date,
+                end_date=filing_date,
+                limit=1,
             )
 
             if not filings:
@@ -94,7 +99,9 @@ class SemanticETLPipeline:
 
             if not filing_data:
                 logger.error(f"Failed to download {filing_type} filing for {ticker}")
-                return {"error": f"Failed to download {filing_type} filing for {ticker}"}
+                return {
+                    "error": f"Failed to download {filing_type} filing for {ticker}"
+                }
 
             filing_id = filing_data.get("id")
             filing_text = filing_data.get("text", "")
@@ -121,7 +128,9 @@ class SemanticETLPipeline:
                     continue
 
             # Generate embeddings with the robust generator
-            embeddings, embedding_metadata = self.embedding_generator.generate_embeddings(chunk_texts)
+            embeddings, embedding_metadata = (
+                self.embedding_generator.generate_embeddings(chunk_texts)
+            )
 
             # Log any fallbacks
             if embedding_metadata.get("any_fallbacks", False):
@@ -130,8 +139,12 @@ class SemanticETLPipeline:
                 )
 
             if not embeddings:
-                logger.error(f"Failed to generate embeddings for {filing_type} filing for {ticker}")
-                return {"error": f"Failed to generate embeddings for {filing_type} filing for {ticker}"}
+                logger.error(
+                    f"Failed to generate embeddings for {filing_type} filing for {ticker}"
+                )
+                return {
+                    "error": f"Failed to generate embeddings for {filing_type} filing for {ticker}"
+                }
 
             # Step 4: Store in vector store
             metadata_list = []
@@ -149,7 +162,9 @@ class SemanticETLPipeline:
                     section = chunk.metadata.get("section", "")
                     page = chunk.metadata.get("page", 0)
                 else:
-                    logger.warning(f"Skipping chunk with unexpected format: {type(chunk)}")
+                    logger.warning(
+                        f"Skipping chunk with unexpected format: {type(chunk)}"
+                    )
                     continue
 
                 metadata = {
@@ -212,7 +227,11 @@ class SemanticETLPipeline:
 
             # Step 1: Get the list of filings
             filings = self.downloader.get_filings(
-                ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
+                ticker=ticker,
+                filing_types=filing_types,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
             )
 
             if not filings:
@@ -232,7 +251,12 @@ class SemanticETLPipeline:
 
             logger.info(f"Successfully processed {len(results)} filings for {ticker}")
 
-            return {"status": "success", "ticker": ticker, "num_filings": len(results), "results": results}
+            return {
+                "status": "success",
+                "ticker": ticker,
+                "num_filings": len(results),
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing filings for {ticker}: {e}")
@@ -279,7 +303,11 @@ class SemanticETLPipeline:
 
             logger.info(f"Successfully processed filings for {len(tickers)} companies")
 
-            return {"status": "success", "num_companies": len(tickers), "results": results}
+            return {
+                "status": "success",
+                "num_companies": len(tickers),
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing multiple companies: {e}")

@@ -25,7 +25,9 @@ def set_edgar_identity():
         edgar_identity = f"{name} {email}"
 
         # Suggest adding to .env file
-        print("\nConsider adding the following line to a .env file in the project root:")
+        print(
+            "\nConsider adding the following line to a .env file in the project root:"
+        )
         print(f'EDGAR_IDENTITY="{edgar_identity}"')
 
     # Set the identity in the edgar package
@@ -63,7 +65,9 @@ def list_msft_filings():
                 filing_date_str = str(filing_date)
 
             if "2022" in filing_date_str:
-                print(f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing_date_str}")
+                print(
+                    f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing_date_str}"
+                )
                 count_2022 += 1
 
         print(f"\nTotal 2022 filings: {count_2022}")
@@ -95,7 +99,9 @@ def list_msft_filings():
                     filing_date_str = str(filing_date)
 
                 if "2022" in filing_date_str:
-                    print(f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing_date_str}")
+                    print(
+                        f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing_date_str}"
+                    )
                     break
 
     except Exception as e:

@@ -54,7 +54,9 @@ async def main():
     5. Identify potential red flags in Netflix's financial statements
     """
 
-    print(f"Starting financial analysis with multi-task planning at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(
+        f"Starting financial analysis with multi-task planning at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
     print(f"Input: {user_input}")
     print("-" * 80)
 
@@ -86,7 +88,10 @@ async def main():
     output_dir = os.path.join(os.path.dirname(__file__), "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
-    output_file = os.path.join(output_dir, f"multi_task_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    output_file = os.path.join(
+        output_dir,
+        f"multi_task_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+    )
     with open(output_file, "w") as f:
         json.dump(result, f, indent=2, default=str)
 

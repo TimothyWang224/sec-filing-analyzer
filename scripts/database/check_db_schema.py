@@ -23,7 +23,9 @@ def check_db_schema(db_path):
         conn = duckdb.connect(db_path)
 
         # Get all tables
-        tables = conn.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'").fetchall()
+        tables = conn.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+        ).fetchall()
 
         console.print(f"[bold green]Database: {db_path}[/bold green]")
         console.print(f"[bold]Tables: {len(tables)}[/bold]")
@@ -50,16 +52,24 @@ def check_db_schema(db_path):
         if any(t[0] == "companies" for t in tables):
             # Check if companies table has numeric ID
             company_schema = conn.execute("PRAGMA table_info('companies')").fetchall()
-            company_id_column = next((col for col in company_schema if col[1] == "company_id"), None)
+            company_id_column = next(
+                (col for col in company_schema if col[1] == "company_id"), None
+            )
 
             if company_id_column:
-                console.print(f"[green]✓ Companies table has numeric ID column (type: {company_id_column[2]})[/green]")
+                console.print(
+                    f"[green]✓ Companies table has numeric ID column (type: {company_id_column[2]})[/green]"
+                )
             else:
-                console.print("[red]✗ Companies table does not have numeric ID column[/red]")
+                console.print(
+                    "[red]✗ Companies table does not have numeric ID column[/red]"
+                )
 
         # Check for metrics table (a key improvement)
         if any(t[0] == "metrics" for t in tables):
-            console.print("[green]✓ Database has metrics table (improved schema)[/green]")
+            console.print(
+                "[green]✓ Database has metrics table (improved schema)[/green]"
+            )
         else:
             console.print("[red]✗ Database does not have metrics table[/red]")
 
@@ -71,13 +81,19 @@ def check_db_schema(db_path):
 
             # Check for normalized_value column (an improvement)
             if "normalized_value" in facts_columns:
-                console.print("[green]✓ Facts table has normalized_value column (improved schema)[/green]")
+                console.print(
+                    "[green]✓ Facts table has normalized_value column (improved schema)[/green]"
+                )
             else:
-                console.print("[red]✗ Facts table does not have normalized_value column[/red]")
+                console.print(
+                    "[red]✗ Facts table does not have normalized_value column[/red]"
+                )
 
         # Check for XBRL tag mappings table (another improvement)
         if any(t[0] == "xbrl_tag_mappings" for t in tables):
-            console.print("[green]✓ Database has xbrl_tag_mappings table (improved schema)[/green]")
+            console.print(
+                "[green]✓ Database has xbrl_tag_mappings table (improved schema)[/green]"
+            )
         else:
             console.print("[red]✗ Database does not have xbrl_tag_mappings table[/red]")
 

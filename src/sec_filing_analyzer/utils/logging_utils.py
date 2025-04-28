@@ -6,14 +6,11 @@ This module provides enhanced logging functionality for the SEC Filing Analyzer.
 
 import json
 import logging
-import os
-import re
 import threading
 import traceback
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, Optional, Set
 
 # Global variable to store the current session ID
 _current_session_id = None
@@ -104,7 +101,9 @@ class SessionLogger:
         file_handler.setLevel(logging.INFO)
 
         # Create formatter
-        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
         file_handler.setFormatter(formatter)
 
         # Add handler to logger
@@ -114,7 +113,9 @@ class SessionLogger:
         # Log session start
         self.logger.info(f"Session {session_id} started")
 
-    def register_agent(self, agent_name: str, agent_logger: Optional[logging.Logger] = None) -> None:
+    def register_agent(
+        self, agent_name: str, agent_logger: Optional[logging.Logger] = None
+    ) -> None:
         """Register an agent with this session.
 
         Args:
@@ -135,7 +136,9 @@ class SessionLogger:
 
                 def emit(self, record):
                     # Forward the log record to the session logger
-                    self.session_logger.log(record.levelno, record.getMessage(), self.agent_name)
+                    self.session_logger.log(
+                        record.levelno, record.getMessage(), self.agent_name
+                    )
 
             # Add the handler to the agent logger
             handler = SessionLogHandler(self, agent_name)
@@ -221,12 +224,16 @@ def setup_logging(log_dir: Optional[Path] = None) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Create a file handler for embedding errors
-    embedding_log_file = log_dir / f"embedding_errors_{datetime.now().strftime('%Y%m%d')}.log"
+    embedding_log_file = (
+        log_dir / f"embedding_errors_{datetime.now().strftime('%Y%m%d')}.log"
+    )
     file_handler = logging.FileHandler(embedding_log_file)
     file_handler.setLevel(logging.ERROR)
 
     # Create a formatter
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     file_handler.setFormatter(formatter)
 
     # Add the handler to the logger
@@ -293,7 +300,9 @@ def configure_noisy_loggers() -> None:
         logger.setLevel(logging.WARNING)
 
     # Log that we've configured the loggers
-    logging.getLogger(__name__).info("Configured logging levels for noisy third-party libraries")
+    logging.getLogger(__name__).info(
+        "Configured logging levels for noisy third-party libraries"
+    )
 
 
 def log_embedding_error(
@@ -318,7 +327,9 @@ def log_embedding_error(
     stack_trace = traceback.format_exc()
 
     # Create a detailed error message
-    error_message = f"Embedding error for {company} {filing_type} (ID: {filing_id}): {str(error)}"
+    error_message = (
+        f"Embedding error for {company} {filing_type} (ID: {filing_id}): {str(error)}"
+    )
     if batch_index is not None:
         error_message += f" - Batch: {batch_index}"
     if chunk_count is not None:
@@ -398,13 +409,17 @@ def generate_embedding_error_report() -> str:
 
     # Error type summary
     report += "Error Types:\n"
-    for error_type, count in sorted(error_types.items(), key=lambda x: x[1], reverse=True):
+    for error_type, count in sorted(
+        error_types.items(), key=lambda x: x[1], reverse=True
+    ):
         report += f"  - {error_type}: {count} occurrences\n"
     report += "\n"
 
     # Company-specific errors
     report += "Errors by Company:\n"
-    for company, errors in sorted(errors_by_company.items(), key=lambda x: len(x[1]), reverse=True):
+    for company, errors in sorted(
+        errors_by_company.items(), key=lambda x: len(x[1]), reverse=True
+    ):
         report += f"{company}: {len(errors)} errors\n"
         # Show the first 5 errors for each company
         for error in errors[:5]:

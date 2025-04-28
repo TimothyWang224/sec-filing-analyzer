@@ -10,7 +10,6 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Dict
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -27,7 +26,9 @@ class SimpleParameterCompleter:
         """Initialize the parameter completer."""
         self.llm = llm
 
-    async def complete_parameters(self, tool_name, partial_parameters, user_input, context=None):
+    async def complete_parameters(
+        self, tool_name, partial_parameters, user_input, context=None
+    ):
         """Complete tool parameters using the LLM."""
         # Create a prompt for parameter completion
         prompt = f"""
@@ -53,7 +54,9 @@ class SimpleParameterCompleter:
         Return only the completed parameters as a JSON object.
         """
 
-        response = await self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.2)
+        response = await self.llm.generate(
+            prompt=prompt, system_prompt=system_prompt, temperature=0.2
+        )
 
         # Parse the response
         try:
@@ -89,7 +92,11 @@ class SimpleParameterCompleter:
     def _deep_update(self, target, source):
         """Deep update a nested dictionary."""
         for key, value in source.items():
-            if key in target and isinstance(target[key], dict) and isinstance(value, dict):
+            if (
+                key in target
+                and isinstance(target[key], dict)
+                and isinstance(value, dict)
+            ):
                 self._deep_update(target[key], value)
             else:
                 target[key] = value
@@ -126,23 +133,34 @@ async def test_parameter_completion():
         {
             "name": "Date range extraction",
             "tool_name": "sec_financial_data",
-            "partial_parameters": {"query_type": "financial_facts", "parameters": {"ticker": "MSFT"}},
+            "partial_parameters": {
+                "query_type": "financial_facts",
+                "parameters": {"ticker": "MSFT"},
+            },
             "user_input": "Show me Microsoft's financial performance from 2020 to 2023",
             "context": {},
         },
         {
             "name": "Metric extraction",
             "tool_name": "sec_financial_data",
-            "partial_parameters": {"query_type": "financial_facts", "parameters": {"ticker": "GOOGL"}},
+            "partial_parameters": {
+                "query_type": "financial_facts",
+                "parameters": {"ticker": "GOOGL"},
+            },
             "user_input": "What were Alphabet's revenue, net income, and operating expenses in 2022?",
             "context": {},
         },
         {
             "name": "Error correction",
             "tool_name": "sec_financial_data",
-            "partial_parameters": {"query_type": "financial_facts", "parameters": {"ticker": "INVALID"}},
+            "partial_parameters": {
+                "query_type": "financial_facts",
+                "parameters": {"ticker": "INVALID"},
+            },
             "user_input": "What was Tesla's revenue in 2023?",
-            "context": {"last_error": "Invalid ticker symbol: INVALID. Company not found."},
+            "context": {
+                "last_error": "Invalid ticker symbol: INVALID. Company not found."
+            },
         },
         {
             "name": "Semantic search parameters",
@@ -158,10 +176,14 @@ async def test_parameter_completion():
         logger.info(f"Test case {i + 1}: {test_case['name']}")
         logger.info(f"Tool: {test_case['tool_name']}")
         logger.info(f"User input: {test_case['user_input']}")
-        logger.info(f"Partial parameters: {json.dumps(test_case['partial_parameters'], indent=2)}")
+        logger.info(
+            f"Partial parameters: {json.dumps(test_case['partial_parameters'], indent=2)}"
+        )
 
         # Validate the partial parameters
-        validation_result = validate_parameters(test_case["tool_name"], test_case["partial_parameters"])
+        validation_result = validate_parameters(
+            test_case["tool_name"], test_case["partial_parameters"]
+        )
         logger.info(f"Validation errors: {validation_result['errors']}")
 
         # Complete the parameters
@@ -172,7 +194,9 @@ async def test_parameter_completion():
             context=test_case["context"],
         )
 
-        logger.info(f"Completed parameters: {json.dumps(completed_parameters, indent=2)}")
+        logger.info(
+            f"Completed parameters: {json.dumps(completed_parameters, indent=2)}"
+        )
         logger.info("-" * 80)
 
 

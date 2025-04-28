@@ -67,7 +67,10 @@ except ImportError as e:
 
 # Set page config
 st.set_page_config(
-    page_title="Data Explorer - SEC Filing Analyzer", page_icon="🔍", layout="wide", initial_sidebar_state="expanded"
+    page_title="Data Explorer - SEC Filing Analyzer",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Initialize configuration
@@ -104,7 +107,9 @@ Note: For exploring quantitative data in DuckDB, please use the DuckDB UI button
 # Sidebar for navigation
 st.sidebar.header("Explorer Navigation")
 logger.info("Setting up sidebar navigation")
-explorer_type = st.sidebar.radio("Select Explorer", ["Semantic Search", "Graph Explorer"])
+explorer_type = st.sidebar.radio(
+    "Select Explorer", ["Semantic Search", "Graph Explorer"]
+)
 logger.info(f"Selected explorer type: {explorer_type}")
 
 # Main content
@@ -116,7 +121,9 @@ if explorer_type == "Semantic Search":
     if not config_imports_successful:
         logger.warning("Semantic Search requires the SEC Filing Analyzer package")
         st.error("Semantic Search requires the SEC Filing Analyzer package.")
-        st.info("Please make sure the package is installed correctly using 'poetry install'.")
+        st.info(
+            "Please make sure the package is installed correctly using 'poetry install'."
+        )
     else:
         # Vector store path
         logger.info(f"Using vector store path: {storage_config.vector_store_path}")
@@ -124,12 +131,16 @@ if explorer_type == "Semantic Search":
 
         if not os.path.exists(vector_store_path):
             logger.warning(f"Vector store not found at {vector_store_path}")
-            st.warning(f"Vector store not found at {vector_store_path}. Please run the ETL pipeline first.")
+            st.warning(
+                f"Vector store not found at {vector_store_path}. Please run the ETL pipeline first."
+            )
         else:
             logger.info(f"Vector store found at {vector_store_path}")
             # Initialize vector store
             try:
-                logger.info("Using demo mode instead of actual vector store initialization")
+                logger.info(
+                    "Using demo mode instead of actual vector store initialization"
+                )
                 # Use a placeholder instead of actual initialization to avoid errors
                 # vector_store = LlamaIndexVectorStore(store_path=vector_store_path)
                 st.success("Vector store found. Using demo mode for now.")
@@ -139,7 +150,9 @@ if explorer_type == "Semantic Search":
 
                 # Company filter
                 companies = ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
-                selected_company = st.selectbox("Filter by Company", ["All"] + companies)
+                selected_company = st.selectbox(
+                    "Filter by Company", ["All"] + companies
+                )
 
                 # Search query
                 query = st.text_input("Search Query", "")
@@ -176,13 +189,21 @@ if explorer_type == "Semantic Search":
 
                             # Display results
                             for i, result in enumerate(results):
-                                st.subheader(f"Result {i + 1} (Score: {result['score']:.2f})")
-                                st.write(f"**Company:** {result['metadata']['company']}")
+                                st.subheader(
+                                    f"Result {i + 1} (Score: {result['score']:.2f})"
+                                )
+                                st.write(
+                                    f"**Company:** {result['metadata']['company']}"
+                                )
                                 st.write(
                                     f"**Filing:** {result['metadata']['filing_type']} ({result['metadata']['filing_date']})"
                                 )
-                                st.write(f"**Section:** {result['metadata']['section']}")
-                                st.text_area(f"Text {i + 1}", result["text"], height=150)
+                                st.write(
+                                    f"**Section:** {result['metadata']['section']}"
+                                )
+                                st.text_area(
+                                    f"Text {i + 1}", result["text"], height=150
+                                )
                         except Exception as e:
                             st.error(f"Error performing search: {str(e)}")
 
@@ -224,7 +245,9 @@ if explorer_type == "Semantic Search":
 
                 # Show some sample data
                 st.subheader("Sample Data")
-                st.write("This is sample data that would normally come from the vector store.")
+                st.write(
+                    "This is sample data that would normally come from the vector store."
+                )
 
 elif explorer_type == "Graph Explorer":
     st.header("Graph Explorer")
@@ -253,13 +276,16 @@ elif explorer_type == "Graph Explorer":
         neo4j_password = st.text_input("Password", "", type="password")
 
     if st.button("Connect to Neo4j"):
-        st.info("Neo4j connection functionality will be implemented in a future version.")
+        st.info(
+            "Neo4j connection functionality will be implemented in a future version."
+        )
 
     # Graph visualization placeholder
     st.subheader("Graph Visualization")
 
     st.image(
-        "https://neo4j.com/wp-content/uploads/graph-example.png", caption="Sample Graph Visualization (Placeholder)"
+        "https://neo4j.com/wp-content/uploads/graph-example.png",
+        caption="Sample Graph Visualization (Placeholder)",
     )
 
     # Cypher query

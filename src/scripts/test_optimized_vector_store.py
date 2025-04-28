@@ -7,20 +7,22 @@ It shows how to search for documents by company and measure performance.
 
 import logging
 import time
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
-import numpy as np
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
-def test_search_performance(vector_store: OptimizedVectorStore, query: str, companies: List[str] = None) -> None:
+def test_search_performance(
+    vector_store: OptimizedVectorStore, query: str, companies: List[str] = None
+) -> None:
     """Test search performance for a query.
 
     Args:
@@ -72,7 +74,9 @@ def main():
 
     # 2. Search within a specific company
     if companies:
-        test_search_performance(vector_store, "revenue growth and profitability", [companies[0]])
+        test_search_performance(
+            vector_store, "revenue growth and profitability", [companies[0]]
+        )
 
     # 3. Search with a more specific query
     test_search_performance(vector_store, "impact of inflation on operating expenses")

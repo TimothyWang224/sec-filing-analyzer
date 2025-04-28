@@ -3,11 +3,13 @@ import json
 import logging
 
 from src.agents.qa_specialist import QASpecialistAgent
-from src.contracts import Plan, PlanStep, ToolSpec, extract_value
+from src.contracts import Plan, PlanStep, extract_value
 from src.tools.registry import ToolRegistry
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 async def test_tool_contract():
@@ -46,7 +48,10 @@ async def test_tool_contract():
         step_id=1,
         description="Test step",
         tool="sec_financial_data",
-        parameters={"query_type": "metrics", "parameters": {"ticker": "AAPL", "year": 2022}},
+        parameters={
+            "query_type": "metrics",
+            "parameters": {"ticker": "AAPL", "year": 2022},
+        },
         expected_key="financial_data",
         output_path=["results"],
         done_check="financial_data is not None",
@@ -65,7 +70,13 @@ async def test_tool_contract():
     print(f"Status: {plan_step.status}")
 
     # Create a Plan
-    plan = Plan(goal="Test plan", steps=[plan_step], status="pending", owner="agent", can_modify=True)
+    plan = Plan(
+        goal="Test plan",
+        steps=[plan_step],
+        status="pending",
+        owner="agent",
+        can_modify=True,
+    )
 
     print("\nPlan:")
     print(f"Goal: {plan.goal}")
@@ -75,7 +86,11 @@ async def test_tool_contract():
     print(f"Number of Steps: {len(plan.steps)}")
 
     # Create a QA Specialist Agent
-    agent = QASpecialistAgent(max_planning_iterations=2, max_execution_iterations=5, max_refinement_iterations=3)
+    agent = QASpecialistAgent(
+        max_planning_iterations=2,
+        max_execution_iterations=5,
+        max_refinement_iterations=3,
+    )
 
     # Run the agent with a simple query
     query = "What was Apple's revenue in 2022?"

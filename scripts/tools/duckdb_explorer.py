@@ -7,7 +7,6 @@ A standalone application for exploring DuckDB databases.
 import logging
 import os
 import sys
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -26,7 +25,12 @@ logger.info(f"Python version: {sys.version}")
 logger.info(f"Current directory: {os.getcwd()}")
 
 # Set page config
-st.set_page_config(page_title="DuckDB Explorer", page_icon="🔍", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="DuckDB Explorer",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # Title and description
 st.title("DuckDB Explorer")
@@ -80,7 +84,9 @@ if os.path.exists(db_path):
                     # Get row count
                     try:
                         logger.info(f"Executing COUNT query on {selected_table}")
-                        row_count = conn.execute(f"SELECT COUNT(*) FROM {selected_table}").fetchone()[0]
+                        row_count = conn.execute(
+                            f"SELECT COUNT(*) FROM {selected_table}"
+                        ).fetchone()[0]
                         logger.info(f"Table {selected_table} has {row_count} rows")
                         st.sidebar.write(f"Table {selected_table} has {row_count} rows")
 
@@ -95,18 +101,32 @@ if os.path.exists(db_path):
                             st.subheader("Sample Data")
 
                             # Pagination
-                            rows_per_page = st.slider("Rows per page", min_value=5, max_value=100, value=10, step=5)
-                            max_pages = max(1, (row_count + rows_per_page - 1) // rows_per_page)
-                            page = st.number_input("Page", min_value=1, max_value=max_pages, value=1)
+                            rows_per_page = st.slider(
+                                "Rows per page",
+                                min_value=5,
+                                max_value=100,
+                                value=10,
+                                step=5,
+                            )
+                            max_pages = max(
+                                1, (row_count + rows_per_page - 1) // rows_per_page
+                            )
+                            page = st.number_input(
+                                "Page", min_value=1, max_value=max_pages, value=1
+                            )
 
                             offset = (page - 1) * rows_per_page
 
                             # Get sample data
                             try:
-                                logger.info(f"Fetching sample data from {selected_table}")
+                                logger.info(
+                                    f"Fetching sample data from {selected_table}"
+                                )
 
                                 # Get schema to get column names
-                                schema = conn.execute(f"DESCRIBE {selected_table}").fetchall()
+                                schema = conn.execute(
+                                    f"DESCRIBE {selected_table}"
+                                ).fetchall()
                                 columns = [col[0] for col in schema]
                                 logger.info(f"Table columns: {columns}")
 
@@ -114,7 +134,9 @@ if os.path.exists(db_path):
                                 sample_data_tuples = conn.execute(
                                     f"SELECT * FROM {selected_table} LIMIT {rows_per_page} OFFSET {offset}"
                                 ).fetchall()
-                                logger.info(f"Successfully fetched sample data: {len(sample_data_tuples)} rows")
+                                logger.info(
+                                    f"Successfully fetched sample data: {len(sample_data_tuples)} rows"
+                                )
 
                                 # Convert to list of dictionaries for JSON display
                                 sample_list = []
@@ -122,7 +144,9 @@ if os.path.exists(db_path):
                                     row_dict = {}
                                     for i, col in enumerate(columns):
                                         # Convert values to strings to avoid JSON serialization issues
-                                        row_dict[col] = str(row[i]) if row[i] is not None else None
+                                        row_dict[col] = (
+                                            str(row[i]) if row[i] is not None else None
+                                        )
                                     sample_list.append(row_dict)
 
                                 # Display as JSON
@@ -151,7 +175,9 @@ if os.path.exists(db_path):
 
                             try:
                                 # Get schema
-                                schema = conn.execute(f"DESCRIBE {selected_table}").fetchall()
+                                schema = conn.execute(
+                                    f"DESCRIBE {selected_table}"
+                                ).fetchall()
 
                                 # Convert schema to list of dictionaries for JSON display
                                 schema_list = []
@@ -162,8 +188,12 @@ if os.path.exists(db_path):
                                             "Type": col[1],
                                             "Null": col[2],
                                             "Key": col[3],
-                                            "Default": str(col[4]) if col[4] is not None else None,
-                                            "Extra": str(col[5]) if col[5] is not None else None,
+                                            "Default": str(col[4])
+                                            if col[4] is not None
+                                            else None,
+                                            "Extra": str(col[5])
+                                            if col[5] is not None
+                                            else None,
                                         }
                                     )
 
@@ -177,7 +207,11 @@ if os.path.exists(db_path):
                                 fk_columns = []
                                 for item in schema_list:
                                     col = item["Column"]
-                                    if col.endswith("_id") or col in ["ticker", "filing_id", "fact_id"]:
+                                    if col.endswith("_id") or col in [
+                                        "ticker",
+                                        "filing_id",
+                                        "fact_id",
+                                    ]:
                                         fk_columns.append(col)
 
                                 if fk_columns:
@@ -187,8 +221,15 @@ if os.path.exists(db_path):
                                         fk_list.append(
                                             {
                                                 "Column": col,
-                                                "Potential Referenced Table": col.replace("_id", "")
-                                                if not col in ["ticker", "filing_id", "fact_id"]
+                                                "Potential Referenced Table": col.replace(
+                                                    "_id", ""
+                                                )
+                                                if col
+                                                not in [
+                                                    "ticker",
+                                                    "filing_id",
+                                                    "fact_id",
+                                                ]
                                                 else "companies"
                                                 if col == "ticker"
                                                 else "filings"
@@ -217,8 +258,12 @@ if os.path.exists(db_path):
                             }
 
                             if selected_table == "companies":
-                                sample_queries["Top Companies"] = "SELECT * FROM companies ORDER BY ticker LIMIT 10"
-                                sample_queries["Company Count"] = "SELECT COUNT(*) FROM companies"
+                                sample_queries["Top Companies"] = (
+                                    "SELECT * FROM companies ORDER BY ticker LIMIT 10"
+                                )
+                                sample_queries["Company Count"] = (
+                                    "SELECT COUNT(*) FROM companies"
+                                )
 
                             if selected_table == "filings":
                                 sample_queries["Recent Filings"] = (
@@ -250,21 +295,32 @@ if os.path.exists(db_path):
                                     "SELECT * FROM time_series_metrics WHERE metric_name = 'Revenue' ORDER BY end_date DESC LIMIT 10"
                                 )
 
-                            selected_sample = st.selectbox("Sample Queries", list(sample_queries.keys()))
+                            selected_sample = st.selectbox(
+                                "Sample Queries", list(sample_queries.keys())
+                            )
 
-                            query = st.text_area("SQL Query", value=sample_queries[selected_sample], height=200)
+                            query = st.text_area(
+                                "SQL Query",
+                                value=sample_queries[selected_sample],
+                                height=200,
+                            )
 
                             if st.button("Run Query"):
                                 try:
                                     logger.info(f"Executing query: {query}")
 
                                     # Get column names from the query
-                                    column_names = [desc[0] for desc in conn.execute(query).description]
+                                    column_names = [
+                                        desc[0]
+                                        for desc in conn.execute(query).description
+                                    ]
                                     logger.info(f"Query columns: {column_names}")
 
                                     # Fetch data as a list of tuples
                                     raw_result = conn.execute(query).fetchall()
-                                    logger.info(f"Successfully fetched query result: {len(raw_result)} rows")
+                                    logger.info(
+                                        f"Successfully fetched query result: {len(raw_result)} rows"
+                                    )
 
                                     # Convert to list of dictionaries for JSON display
                                     result_list = []
@@ -272,7 +328,11 @@ if os.path.exists(db_path):
                                         row_dict = {}
                                         for i, col in enumerate(column_names):
                                             # Convert values to strings to avoid JSON serialization issues
-                                            row_dict[col] = str(row[i]) if row[i] is not None else None
+                                            row_dict[col] = (
+                                                str(row[i])
+                                                if row[i] is not None
+                                                else None
+                                            )
                                         result_list.append(row_dict)
 
                                     # Display as JSON
@@ -284,16 +344,22 @@ if os.path.exists(db_path):
                                         try:
                                             # Create a DataFrame for CSV export
                                             export_df = pd.DataFrame(result_list)
-                                            csv = export_df.to_csv(index=False).encode("utf-8")
+                                            csv = export_df.to_csv(index=False).encode(
+                                                "utf-8"
+                                            )
                                             st.download_button(
                                                 label="Download as CSV",
                                                 data=csv,
-                                                file_name=f"query_result.csv",
+                                                file_name="query_result.csv",
                                                 mime="text/csv",
                                             )
                                         except Exception as csv_error:
-                                            logger.error(f"Could not create CSV download: {csv_error}")
-                                            st.warning(f"Could not create CSV download: {csv_error}")
+                                            logger.error(
+                                                f"Could not create CSV download: {csv_error}"
+                                            )
+                                            st.warning(
+                                                f"Could not create CSV download: {csv_error}"
+                                            )
                                 except Exception as e:
                                     logger.error(f"Error executing query: {e}")
                                     st.error(f"Error executing query: {e}")

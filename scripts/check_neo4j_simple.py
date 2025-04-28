@@ -3,7 +3,6 @@ Simple script to check Neo4j database
 """
 
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -47,9 +46,13 @@ try:
 
                 # Get sample companies
                 logger.info("Sample companies:")
-                result = session.run("MATCH (c:Company) RETURN c.ticker as ticker, c.name as name LIMIT 5")
+                result = session.run(
+                    "MATCH (c:Company) RETURN c.ticker as ticker, c.name as name LIMIT 5"
+                )
                 for record in result:
-                    logger.info(f"  {record['ticker']} - {record.get('name', 'No name')}")
+                    logger.info(
+                        f"  {record['ticker']} - {record.get('name', 'No name')}"
+                    )
 
                 # Get sample filings
                 logger.info("Sample filings:")
@@ -60,7 +63,9 @@ try:
                     LIMIT 5
                 """)
                 for record in result:
-                    logger.info(f"  {record['ticker']} - {record['type']} - {record.get('date', 'No date')}")
+                    logger.info(
+                        f"  {record['ticker']} - {record['type']} - {record.get('date', 'No date')}"
+                    )
 
                 # Check for file paths
                 logger.info("Checking for file paths:")

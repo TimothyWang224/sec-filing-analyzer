@@ -1,4 +1,9 @@
-from .agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
+from .agents import (
+    FinancialAnalystAgent,
+    FinancialDiligenceCoordinator,
+    QASpecialistAgent,
+    RiskAnalystAgent,
+)
 from .api import SECFilingAnalyzer
 from .capabilities import SECAnalysisCapability
 from .environments import FinancialEnvironment

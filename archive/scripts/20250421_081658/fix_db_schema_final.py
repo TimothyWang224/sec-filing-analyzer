@@ -5,7 +5,6 @@ This script fixes the database schema to match what the sync_manager.py file exp
 """
 
 import os
-from pathlib import Path
 
 import duckdb
 
@@ -25,7 +24,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
     try:
         # Check if the filings table exists
         filings_exists = (
-            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'").fetchone()[0]
+            conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'filings'"
+            ).fetchone()[0]
             > 0
         )
 
@@ -45,7 +46,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
             )
 
             if id_exists and filing_id_exists:
-                print("Both id and filing_id columns exist in filings table. Updating filing_id values...")
+                print(
+                    "Both id and filing_id columns exist in filings table. Updating filing_id values..."
+                )
 
                 # Drop the filings_new table if it exists
                 conn.execute("""
@@ -122,7 +125,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
 
         # Check if the companies table exists
         companies_exists = (
-            conn.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'").fetchone()[0]
+            conn.execute(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'companies'"
+            ).fetchone()[0]
             > 0
         )
 
@@ -138,7 +143,9 @@ def fix_database_schema(db_path="data/db_backup/improved_financial_data.duckdb")
             if not updated_at_exists:
                 print("Adding updated_at column to companies table...")
                 # Add updated_at column to companies table
-                conn.execute("ALTER TABLE companies ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+                conn.execute(
+                    "ALTER TABLE companies ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+                )
 
                 print("Added updated_at column to companies table")
 

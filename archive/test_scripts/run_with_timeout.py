@@ -4,7 +4,6 @@ Run Streamlit with Timeout
 This script runs Streamlit with a timeout to prevent it from hanging.
 """
 
-import os
 import subprocess
 import sys
 import time
@@ -16,7 +15,9 @@ def run_with_timeout(command, timeout_seconds=10):
     print(f"Timeout: {timeout_seconds} seconds")
 
     # Start the process
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+    process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
+    )
 
     # Wait for the process to complete or timeout
     start_time = time.time()

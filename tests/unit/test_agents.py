@@ -8,8 +8,9 @@ from src.agents import (
     RiskAnalystAgent,
     QASpecialistAgent,
     FinancialDiligenceCoordinator,
-    AgentRegistry
+    AgentRegistry,
 )
+
 
 def test_agent_registry():
     """Test that the agent registry contains the expected agents."""

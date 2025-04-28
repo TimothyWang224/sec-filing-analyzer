@@ -2,7 +2,7 @@
 Tests for the SECStructure class in the graphrag module.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -48,7 +48,10 @@ SAMPLE_XBRL_DATA = {
 SAMPLE_TABLE_DATA = [
     {
         "headers": ["Item", "2023", "2022", "2021"],
-        "rows": [["Revenue", "$394,328", "$365,817", "$365,697"], ["Net Income", "$96,995", "$99,803", "$94,680"]],
+        "rows": [
+            ["Revenue", "$394,328", "$365,817", "$365,697"],
+            ["Net Income", "$96,995", "$99,803", "$94,680"],
+        ],
     }
 ]
 
@@ -120,14 +123,22 @@ class TestSECStructure:
         assert "10-Q" in sec_structure.default_sections
 
     @patch("sec_filing_analyzer.graphrag.sec_structure.Document")
-    def test_parse_filing_structure_success(self, mock_document_class, sec_structure, mock_document, mock_xbrl_data):
+    def test_parse_filing_structure_success(
+        self, mock_document_class, sec_structure, mock_document, mock_xbrl_data
+    ):
         """Test successful parsing of filing structure."""
         # Setup mocks
         mock_document_class.parse.return_value = mock_document
         with (
-            patch.object(sec_structure, "_extract_metadata", return_value=SAMPLE_METADATA),
-            patch.object(sec_structure, "_extract_xbrl_data", return_value=SAMPLE_XBRL_DATA),
-            patch.object(sec_structure, "_extract_tables", return_value=SAMPLE_TABLE_DATA),
+            patch.object(
+                sec_structure, "_extract_metadata", return_value=SAMPLE_METADATA
+            ),
+            patch.object(
+                sec_structure, "_extract_xbrl_data", return_value=SAMPLE_XBRL_DATA
+            ),
+            patch.object(
+                sec_structure, "_extract_tables", return_value=SAMPLE_TABLE_DATA
+            ),
             patch.object(sec_structure, "_build_hierarchy"),
         ):
             # Call the method
@@ -210,7 +221,11 @@ class TestSECStructure:
     def test_build_hierarchy(self, sec_structure):
         """Test building of hierarchical structure."""
         # Sample structure
-        structure = {"metadata": SAMPLE_METADATA, "xbrl_data": SAMPLE_XBRL_DATA, "tables": SAMPLE_TABLE_DATA}
+        structure = {
+            "metadata": SAMPLE_METADATA,
+            "xbrl_data": SAMPLE_XBRL_DATA,
+            "tables": SAMPLE_TABLE_DATA,
+        }
 
         # Call the method
         sec_structure._build_hierarchy(structure)
@@ -219,7 +234,9 @@ class TestSECStructure:
         assert sec_structure.hierarchical_structure == structure
 
     @patch("sec_filing_analyzer.graphrag.sec_structure.Document")
-    def test_extract_sections_success(self, mock_document_class, sec_structure, mock_tenk):
+    def test_extract_sections_success(
+        self, mock_document_class, sec_structure, mock_tenk
+    ):
         """Test successful extraction of sections."""
         # Setup mocks
         mock_document_class.parse.return_value = mock_tenk

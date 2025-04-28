@@ -1,6 +1,11 @@
 from typing import Any, Dict, Optional
 
-from agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
+from agents import (
+    FinancialAnalystAgent,
+    FinancialDiligenceCoordinator,
+    QASpecialistAgent,
+    RiskAnalystAgent,
+)
 from capabilities import SECAnalysisCapability
 from environments import FinancialEnvironment
 from memory import FinancialMemory
@@ -15,10 +20,14 @@ class SECFilingAnalyzer:
         self.memory = FinancialMemory()
 
         # Initialize agents with capabilities
-        self.financial_analyst = FinancialAnalystAgent(capabilities=[SECAnalysisCapability()])
+        self.financial_analyst = FinancialAnalystAgent(
+            capabilities=[SECAnalysisCapability()]
+        )
         self.risk_analyst = RiskAnalystAgent(capabilities=[SECAnalysisCapability()])
         self.qa_specialist = QASpecialistAgent(capabilities=[SECAnalysisCapability()])
-        self.coordinator = FinancialDiligenceCoordinator(capabilities=[SECAnalysisCapability()])
+        self.coordinator = FinancialDiligenceCoordinator(
+            capabilities=[SECAnalysisCapability()]
+        )
 
     async def analyze_financials(
         self,
@@ -62,7 +71,9 @@ class SECFilingAnalyzer:
         """
         return await self.risk_analyst.run(ticker, memory=self.memory)
 
-    async def answer_question(self, question: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def answer_question(
+        self, question: str, context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Answer a financial question.
 

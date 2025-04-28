@@ -5,22 +5,23 @@ This script demonstrates the coordinated search functionality that combines
 the optimized vector store and graph store.
 """
 
-import json
 import logging
-import time
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.search import CoordinatedSearch
 from sec_filing_analyzer.storage import GraphStore, OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
-def test_company_search(search: CoordinatedSearch, companies: List[str], query: str) -> None:
+def test_company_search(
+    search: CoordinatedSearch, companies: List[str], query: str
+) -> None:
     """Test search for specific companies.
 
     Args:
@@ -31,12 +32,20 @@ def test_company_search(search: CoordinatedSearch, companies: List[str], query: 
     logger.info(f"Testing search for companies {companies} with query: '{query}'")
 
     # Perform search
-    results = search.search(query_text=query, companies=companies, top_k=5, include_related=True)
+    results = search.search(
+        query_text=query, companies=companies, top_k=5, include_related=True
+    )
 
     # Print results
-    logger.info(f"Found {len(results['results'])} results in {results['performance']['total_time']:.4f} seconds")
-    logger.info(f"Vector search time: {results['performance']['vector_search_time']:.4f} seconds")
-    logger.info(f"Graph search time: {results['performance']['graph_search_time']:.4f} seconds")
+    logger.info(
+        f"Found {len(results['results'])} results in {results['performance']['total_time']:.4f} seconds"
+    )
+    logger.info(
+        f"Vector search time: {results['performance']['vector_search_time']:.4f} seconds"
+    )
+    logger.info(
+        f"Graph search time: {results['performance']['graph_search_time']:.4f} seconds"
+    )
 
     for i, result in enumerate(results["results"]):
         logger.info(f"Result {i + 1}:")
@@ -49,7 +58,9 @@ def test_company_search(search: CoordinatedSearch, companies: List[str], query: 
         # Print related documents
         if "related_documents" in result and result["related_documents"]:
             logger.info(f"  Related documents: {len(result['related_documents'])}")
-            for j, related in enumerate(result["related_documents"][:3]):  # Show first 3
+            for j, related in enumerate(
+                result["related_documents"][:3]
+            ):  # Show first 3
                 logger.info(
                     f"    Related {j + 1}: {related.get('type', 'Unknown')} - {related.get('to_id', 'Unknown')}"
                 )
@@ -68,7 +79,9 @@ def test_filing_search(search: CoordinatedSearch, filing_id: str, query: str) ->
     logger.info(f"Testing search within filing {filing_id} with query: '{query}'")
 
     # Perform search
-    results = search.search_within_filing(filing_id=filing_id, query_text=query, top_k=5)
+    results = search.search_within_filing(
+        filing_id=filing_id, query_text=query, top_k=5
+    )
 
     # Print results
     logger.info(f"Filing metadata: {results['filing_metadata']}")
@@ -94,7 +107,9 @@ def get_available_companies(search: CoordinatedSearch) -> List[str]:
     # Query Neo4j for companies
     if search.graph_store.use_neo4j:
         try:
-            with search.graph_store.driver.session(database=search.graph_store.database) as session:
+            with search.graph_store.driver.session(
+                database=search.graph_store.database
+            ) as session:
                 query = """
                 MATCH (c:Company)
                 RETURN c.ticker as ticker

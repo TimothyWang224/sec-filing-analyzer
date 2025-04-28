@@ -5,12 +5,14 @@ from datetime import datetime
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.capabilities.planning import PlanningCapability
-from src.contracts import Plan, PlanStep, extract_value
+from src.contracts import Plan, PlanStep
 from src.environments.base import Environment
 from src.tools.registry import ToolRegistry
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 async def test_plan_step_tool_contract():
@@ -20,7 +22,11 @@ async def test_plan_step_tool_contract():
     print("=" * 80 + "\n")
 
     # Create a QA Specialist Agent
-    agent = QASpecialistAgent(max_planning_iterations=2, max_execution_iterations=5, max_refinement_iterations=3)
+    agent = QASpecialistAgent(
+        max_planning_iterations=2,
+        max_execution_iterations=5,
+        max_refinement_iterations=3,
+    )
 
     # Add planning capability
     planning_capability = PlanningCapability(
@@ -135,7 +141,10 @@ async def test_plan_step_tool_contract():
         {
             "type": "tool_result",
             "tool": "sec_financial_data",
-            "result": {"data": {"Revenue": 123456789}, "output_key": "sec_financial_data"},
+            "result": {
+                "data": {"Revenue": 123456789},
+                "output_key": "sec_financial_data",
+            },
             "expected_key": "revenue_data",
         }
     )
@@ -153,9 +162,11 @@ async def test_plan_step_tool_contract():
     )
 
     # Check if the step should be skipped
-    print(f"Checking if step should be skipped...")
+    print("Checking if step should be skipped...")
     # Initialize the agent's context
-    agent.state.context = {"planning": {"plan": plan.model_dump(), "current_step": step.model_dump()}}
+    agent.state.context = {
+        "planning": {"plan": plan.model_dump(), "current_step": step.model_dump()}
+    }
 
     # Use the _should_skip method from the base Agent class
     should_skip = agent._should_skip(step.model_dump())

@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +31,13 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
         Tuple of (log entries, workflow metadata)
     """
     log_entries = []
-    workflow_metadata = {"workflow_id": "", "start_time": None, "end_time": None, "status": "unknown", "agents": set()}
+    workflow_metadata = {
+        "workflow_id": "",
+        "start_time": None,
+        "end_time": None,
+        "status": "unknown",
+        "agents": set(),
+    }
 
     # Regular expression patterns
     timestamp_pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3})"
@@ -157,7 +165,9 @@ def parse_log_file(log_file_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, 
     return log_entries, workflow_metadata
 
 
-def convert_log_to_structured(log_file_path: str, output_file: Optional[str] = None) -> str:
+def convert_log_to_structured(
+    log_file_path: str, output_file: Optional[str] = None
+) -> str:
     """
     Convert a workflow log file to a structured JSON format.
 

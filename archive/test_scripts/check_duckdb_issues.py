@@ -7,7 +7,6 @@ This script checks for potential issues with the DuckDB database.
 import os
 import sys
 import traceback
-from pathlib import Path
 
 
 def check_duckdb_database(db_path):
@@ -113,13 +112,17 @@ def check_duckdb_database(db_path):
             for col_name, col_type in columns:
                 if "TEXT" in col_type.upper() or "VARCHAR" in col_type.upper():
                     try:
-                        max_length = conn.execute(f"SELECT MAX(LENGTH({col_name})) FROM {table}").fetchone()[0]
+                        max_length = conn.execute(
+                            f"SELECT MAX(LENGTH({col_name})) FROM {table}"
+                        ).fetchone()[0]
                         if max_length and max_length > 10000:
                             print(
                                 f"Warning: Column {col_name} in table {table} has very large text values (max length: {max_length})"
                             )
                     except Exception as e:
-                        print(f"Error checking length of column {col_name} in table {table}: {e}")
+                        print(
+                            f"Error checking length of column {col_name} in table {table}: {e}"
+                        )
         except Exception as e:
             print(f"Error checking data types for table {table}: {e}")
             print(traceback.format_exc())

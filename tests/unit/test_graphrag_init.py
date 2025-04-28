@@ -2,8 +2,6 @@
 Tests for the graphrag module initialization.
 """
 
-import pytest
-
 from sec_filing_analyzer.graphrag import SECEntities, SECStructure
 
 

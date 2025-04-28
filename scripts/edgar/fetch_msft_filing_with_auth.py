@@ -27,7 +27,9 @@ def set_edgar_identity():
         edgar_identity = f"{name} {email}"
 
         # Suggest adding to .env file
-        print("\nConsider adding the following line to a .env file in the project root:")
+        print(
+            "\nConsider adding the following line to a .env file in the project root:"
+        )
         print(f'EDGAR_IDENTITY="{edgar_identity}"')
 
     # Set the identity in the edgar package
@@ -40,7 +42,9 @@ async def fetch_specific_filing():
     Fetch a specific Microsoft filing using the edgar package.
     Accession number: 0000789019-22-000001
     """
-    print("Fetching Microsoft (MSFT) filing with accession number 0000789019-22-000001...")
+    print(
+        "Fetching Microsoft (MSFT) filing with accession number 0000789019-22-000001..."
+    )
 
     # Create output directory
     output_dir = Path("data/msft_filings")
@@ -65,7 +69,9 @@ async def fetch_specific_filing():
                 break
 
         if found_filing:
-            print(f"Found filing: {found_filing.form} filed on {found_filing.filing_date}")
+            print(
+                f"Found filing: {found_filing.form} filed on {found_filing.filing_date}"
+            )
             print(f"Filing URL: {found_filing.filing_url}")
 
             # Get the filing details
@@ -108,7 +114,9 @@ async def fetch_specific_filing():
             for filing in filings:
                 filing_date = str(filing.filing_date)
                 if "2022" in filing_date:
-                    print(f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing_date}")
+                    print(
+                        f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing_date}"
+                    )
                     count += 1
                     if count >= 5:  # Just show a few
                         break
@@ -132,7 +140,9 @@ def main():
         print(f"Microsoft CIK: {msft.cik}")
 
         # Print edgar package version
-        print(f"Edgar package version: {edgar.__version__ if hasattr(edgar, '__version__') else 'unknown'}")
+        print(
+            f"Edgar package version: {edgar.__version__ if hasattr(edgar, '__version__') else 'unknown'}"
+        )
 
         # Run the async function
         print("Running async function to fetch filing...")

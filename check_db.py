@@ -17,7 +17,11 @@ print(conn.execute("SELECT * FROM time_series_metrics LIMIT 5").fetchdf())
 
 # Check for Revenue metric
 print("\nRevenue Metrics:")
-print(conn.execute("SELECT * FROM time_series_metrics WHERE metric_name LIKE '%Revenue%' LIMIT 5").fetchdf())
+print(
+    conn.execute(
+        "SELECT * FROM time_series_metrics WHERE metric_name LIKE '%Revenue%' LIMIT 5"
+    ).fetchdf()
+)
 
 # Check for MSFT Revenue
 print("\nMSFT Revenue Metrics:")

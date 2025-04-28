@@ -11,7 +11,7 @@ import logging
 import time
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +38,10 @@ def calculate_directory_digest(directory: Path, pattern: str = "*.json") -> str:
 
 
 def load_cached_mapping(
-    cache_file: Path, metadata_dir: Path, rebuild_func: Callable, force_rebuild: bool = False
+    cache_file: Path,
+    metadata_dir: Path,
+    rebuild_func: Callable,
+    force_rebuild: bool = False,
 ) -> Any:
     """Load a cached mapping, rebuilding if necessary.
 
@@ -122,7 +125,9 @@ def load_cached_mapping(
             # Check if cache is still valid
             current_digest = calculate_directory_digest(metadata_dir)
             if cached_digest == current_digest:
-                logger.info(f"Cache hit! Loaded mapping from {cache_file} in {time.time() - start_time:.2f} seconds")
+                logger.info(
+                    f"Cache hit! Loaded mapping from {cache_file} in {time.time() - start_time:.2f} seconds"
+                )
                 return mapping
             else:
                 logger.info("Cache digest mismatch, rebuilding...")

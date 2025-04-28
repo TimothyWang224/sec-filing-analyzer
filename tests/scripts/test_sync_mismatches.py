@@ -3,7 +3,6 @@ Test script for the new mismatch detection and fixing functionality.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 

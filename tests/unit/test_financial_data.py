@@ -1,7 +1,11 @@
-from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import OptimizedDuckDBStore
+from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import (
+    OptimizedDuckDBStore,
+)
 
 # Initialize the store
-db_store = OptimizedDuckDBStore(db_path="data/db_backup/financial_data.duckdb", read_only=True)
+db_store = OptimizedDuckDBStore(
+    db_path="data/db_backup/financial_data.duckdb", read_only=True
+)
 
 # Test query_financial_facts
 print("Testing query_financial_facts for MSFT Revenue in 2022:")

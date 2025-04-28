@@ -39,7 +39,10 @@ def find_redundant_files(root_dir="."):
             # Check if the file matches any redundant pattern
             if any(pattern in path.name for pattern in REDUNDANT_PATTERNS):
                 # Check if it's not in the keep list
-                if not any(str(path.relative_to(root_path)) == keep_file for keep_file in KEEP_FILES):
+                if not any(
+                    str(path.relative_to(root_path)) == keep_file
+                    for keep_file in KEEP_FILES
+                ):
                     redundant_files.append(path)
 
     return redundant_files
@@ -81,7 +84,9 @@ def remove_redundant_files(redundant_files):
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser(description="Cleanup redundant files in the project.")
+    parser = argparse.ArgumentParser(
+        description="Cleanup redundant files in the project."
+    )
     parser.add_argument("--remove", action="store_true", help="Remove redundant files")
     args = parser.parse_args()
 

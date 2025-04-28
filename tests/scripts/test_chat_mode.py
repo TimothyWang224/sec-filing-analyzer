@@ -6,7 +6,6 @@ which is used in the dedicated chat app.
 """
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 
@@ -14,7 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from src.agents import FinancialDiligenceCoordinator
-from src.capabilities import LoggingCapability, PlanningCapability, TimeAwarenessCapability
+from src.capabilities import (
+    LoggingCapability,
+    PlanningCapability,
+    TimeAwarenessCapability,
+)
 from src.environments import FinancialEnvironment
 
 
@@ -30,7 +33,10 @@ async def test_chat_mode():
         TimeAwarenessCapability(),
         LoggingCapability(),
         PlanningCapability(
-            enable_dynamic_replanning=True, enable_step_reflection=True, max_plan_steps=5, plan_detail_level="medium"
+            enable_dynamic_replanning=True,
+            enable_step_reflection=True,
+            max_plan_steps=5,
+            plan_detail_level="medium",
         ),
     ]
 
@@ -62,7 +68,11 @@ async def test_chat_mode():
         # Print the formatted response
         if "response" in result:
             print("\nFormatted Response:")
-            print(result["response"][:300] + "..." if len(result["response"]) > 300 else result["response"])
+            print(
+                result["response"][:300] + "..."
+                if len(result["response"]) > 300
+                else result["response"]
+            )
         else:
             print("\nNo formatted response found.")
             print("Raw result keys:", result.keys())

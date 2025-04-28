@@ -5,8 +5,6 @@ This script tests the Planning capability with the FinancialDiligenceCoordinator
 """
 
 import asyncio
-import json
-import os
 import sys
 from pathlib import Path
 
@@ -48,7 +46,9 @@ async def test_planning_with_coordinator():
 
     # Print the result
     print("\nCoordinator Result:")
-    print(f"Report: {result.get('diligence_report', {}).get('executive_summary', 'No summary')[:200]}...")
+    print(
+        f"Report: {result.get('diligence_report', {}).get('executive_summary', 'No summary')[:200]}..."
+    )
 
     # Print the plan that was generated
     memory = result.get("memory", [])
@@ -93,11 +93,15 @@ async def test_planning_with_financial_analyst():
     )
 
     # Run the agent with a query that requires planning
-    result = await agent.run("Analyze Apple's revenue growth trends and profit margins for the last 2 years")
+    result = await agent.run(
+        "Analyze Apple's revenue growth trends and profit margins for the last 2 years"
+    )
 
     # Print the result
     print("\nFinancial Analyst Result:")
-    print(f"Analysis: {result.get('analysis', {}).get('analysis', 'No analysis')[:200]}...")
+    print(
+        f"Analysis: {result.get('analysis', {}).get('analysis', 'No analysis')[:200]}..."
+    )
 
     # Print the plan that was generated
     memory = result.get("memory", [])

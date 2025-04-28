@@ -21,7 +21,9 @@ class FinancialDataProcessor:
     Processes financial data from SEC filings and integrates with the ETL pipeline.
     """
 
-    def __init__(self, xbrl_cache_dir: Optional[str] = None, db_path: Optional[str] = None):
+    def __init__(
+        self, xbrl_cache_dir: Optional[str] = None, db_path: Optional[str] = None
+    ):
         """Initialize the financial data processor.
 
         Args:
@@ -60,16 +62,23 @@ class FinancialDataProcessor:
 
             # Extract XBRL data
             xbrl_data = self.xbrl_extractor.extract_financials(
-                ticker=ticker, filing_id=filing_id, accession_number=accession_number, filing_url=filing_url
+                ticker=ticker,
+                filing_id=filing_id,
+                accession_number=accession_number,
+                filing_url=filing_url,
             )
 
             # Store XBRL data
             success = self.financial_store.store_xbrl_data(xbrl_data)
 
             if success:
-                logger.info(f"Successfully processed financial data for filing {filing_id}")
+                logger.info(
+                    f"Successfully processed financial data for filing {filing_id}"
+                )
             else:
-                logger.warning(f"Failed to process financial data for filing {filing_id}")
+                logger.warning(
+                    f"Failed to process financial data for filing {filing_id}"
+                )
 
             return success
         except Exception as e:
@@ -79,7 +88,9 @@ class FinancialDataProcessor:
 
 # Integration function for the ETL pipeline
 def process_filing_financials(
-    filing_id: str, filing_metadata: Dict[str, Any], processor: Optional[FinancialDataProcessor] = None
+    filing_id: str,
+    filing_metadata: Dict[str, Any],
+    processor: Optional[FinancialDataProcessor] = None,
 ) -> bool:
     """Process financial data for a filing.
 

@@ -16,15 +16,14 @@ from typing import Any, Dict
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.llm import OpenAILLM
-from src.agents.base import Agent, Goal
 from src.agents.core.adaptive_retry import AdaptiveRetryStrategy
-from src.agents.core.alternative_tools import AlternativeToolSelector
-from src.agents.core.error_handling import ErrorClassifier, ToolError, ToolErrorType
+from src.agents.core.error_handling import ErrorClassifier
 from src.agents.core.error_recovery import ErrorRecoveryManager
-from src.tools.registry import ToolRegistry
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -122,7 +121,9 @@ async def test_adaptive_retry():
     def classify_error(exception):
         return ErrorClassifier.classify_error(exception, "success_tool")
 
-    result = await retry_strategy.retry_with_strategy(execute_success, max_retries=3, error_classifier=classify_error)
+    result = await retry_strategy.retry_with_strategy(
+        execute_success, max_retries=3, error_classifier=classify_error
+    )
 
     logger.info(f"Success tool result: {result}")
     logger.info(f"Success tool call count: {success_tool.call_count}")
@@ -154,7 +155,9 @@ async def test_adaptive_retry():
     def classify_fail_error(exception):
         return ErrorClassifier.classify_error(exception, "fail_tool")
 
-    result = await retry_strategy.retry_with_strategy(execute_fail, max_retries=3, error_classifier=classify_fail_error)
+    result = await retry_strategy.retry_with_strategy(
+        execute_fail, max_retries=3, error_classifier=classify_fail_error
+    )
 
     logger.info(f"Fail tool result: {result}")
     logger.info(f"Fail tool call count: {fail_tool.call_count}")
@@ -170,7 +173,11 @@ async def test_error_recovery_manager():
 
     # Create an error recovery manager
     recovery_manager = ErrorRecoveryManager(
-        llm=llm, max_retries=2, base_delay=0.1, circuit_breaker_threshold=3, circuit_breaker_reset_timeout=5
+        llm=llm,
+        max_retries=2,
+        base_delay=0.1,
+        circuit_breaker_threshold=3,
+        circuit_breaker_reset_timeout=5,
     )
 
     # Create test tools
@@ -227,7 +234,9 @@ async def test_error_recovery_manager():
         context={"test": "context"},
     )
 
-    logger.info(f"Parameter error tool result: {json.dumps(result, indent=2, default=str)}")
+    logger.info(
+        f"Parameter error tool result: {json.dumps(result, indent=2, default=str)}"
+    )
     logger.info(f"Parameter error tool call count: {param_error_tool.call_count}")
     logger.info("")
 
@@ -240,7 +249,9 @@ async def test_error_recovery_manager():
         context={"test": "context"},
     )
 
-    logger.info(f"Network error tool result: {json.dumps(result, indent=2, default=str)}")
+    logger.info(
+        f"Network error tool result: {json.dumps(result, indent=2, default=str)}"
+    )
     logger.info(f"Network error tool call count: {network_error_tool.call_count}")
     logger.info("")
 

@@ -16,7 +16,9 @@ from rich.table import Table
 from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -36,7 +38,9 @@ def show_database_stats(db: ImprovedDuckDBStore):
     console.print(f"Filings: {stats.get('filings_count', 'N/A')}")
     console.print(f"Metrics: {stats.get('metrics_count', 'N/A')}")
     console.print(f"Facts: {stats.get('facts_count', 'N/A')}")
-    console.print(f"Year Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}")
+    console.print(
+        f"Year Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}"
+    )
 
     if "filing_types" in stats and stats["filing_types"]:
         console.print(f"Filing Types: {', '.join(stats['filing_types'])}")
@@ -60,7 +64,9 @@ def show_companies(db: ImprovedDuckDBStore):
     table.add_column("Industry", style="magenta")
 
     for _, row in companies.iterrows():
-        table.add_row(row["ticker"], row["name"] or "", row["cik"] or "", row["industry"] or "")
+        table.add_row(
+            row["ticker"], row["name"] or "", row["cik"] or "", row["industry"] or ""
+        )
 
     console.print(table)
 
@@ -112,14 +118,21 @@ def show_metrics(db: ImprovedDuckDBStore, category: str = None):
 
     for _, row in metrics.iterrows():
         table.add_row(
-            row["metric_name"], row["display_name"] or "", row["category"] or "", row["unit_of_measure"] or ""
+            row["metric_name"],
+            row["display_name"] or "",
+            row["category"] or "",
+            row["unit_of_measure"] or "",
         )
 
     console.print(table)
 
 
 def show_time_series(
-    db: ImprovedDuckDBStore, ticker: str, metrics: list = None, start_year: int = None, end_year: int = None
+    db: ImprovedDuckDBStore,
+    ticker: str,
+    metrics: list = None,
+    start_year: int = None,
+    end_year: int = None,
 ):
     """Show time series data for a company."""
     data = db.query_time_series(ticker, metrics, start_year, end_year)
@@ -136,7 +149,11 @@ def show_time_series(
     table.add_column("Period", style="cyan")
 
     # Add columns for each metric
-    metric_columns = [col for col in data.columns if col not in ["period", "fiscal_year", "fiscal_period"]]
+    metric_columns = [
+        col
+        for col in data.columns
+        if col not in ["period", "fiscal_year", "fiscal_period"]
+    ]
     for metric in metric_columns:
         table.add_column(metric, style="green")
 
@@ -152,7 +169,11 @@ def show_time_series(
 
 
 def show_company_comparison(
-    db: ImprovedDuckDBStore, tickers: list, metric: str, start_year: int = None, end_year: int = None
+    db: ImprovedDuckDBStore,
+    tickers: list,
+    metric: str,
+    start_year: int = None,
+    end_year: int = None,
 ):
     """Show company comparison data."""
     data = db.query_company_comparison(tickers, metric, start_year, end_year)
@@ -177,7 +198,9 @@ def show_company_comparison(
         for ticker in tickers:
             if ticker in data.columns:
                 value = row[ticker] if pd.notna(row[ticker]) else ""
-                values.append(f"{value:.2f}" if isinstance(value, float) else str(value))
+                values.append(
+                    f"{value:.2f}" if isinstance(value, float) else str(value)
+                )
         table.add_row(*values)
 
     console.print(table)
@@ -205,7 +228,9 @@ def show_latest_metrics(db: ImprovedDuckDBStore, ticker: str, category: str = No
         table.add_row(
             row["category"] or "",
             row["display_name"] or "",
-            f"{row['value']:.2f}" if pd.notna(row["value"]) and isinstance(row["value"], float) else str(row["value"]),
+            f"{row['value']:.2f}"
+            if pd.notna(row["value"]) and isinstance(row["value"], float)
+            else str(row["value"]),
             row["unit_of_measure"] or "",
         )
 
@@ -228,22 +253,47 @@ def run_custom_query(db: ImprovedDuckDBStore, query: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Example script for using the improved DuckDB schema")
-    parser.add_argument("--db", default="data/financial_data_new.duckdb", help="Path to the DuckDB database file")
+    parser = argparse.ArgumentParser(
+        description="Example script for using the improved DuckDB schema"
+    )
+    parser.add_argument(
+        "--db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the DuckDB database file",
+    )
     parser.add_argument("--stats", action="store_true", help="Show database statistics")
     parser.add_argument("--companies", action="store_true", help="Show all companies")
     parser.add_argument("--filings", help="Show filings for a company (specify ticker)")
-    parser.add_argument("--metrics", nargs="?", const="all", help="Show metrics (optionally specify category)")
-    parser.add_argument("--time-series", help="Show time series data for a company (specify ticker)")
     parser.add_argument(
-        "--metric", action="append", help="Metric name for time series or comparison (can be used multiple times)"
+        "--metrics",
+        nargs="?",
+        const="all",
+        help="Show metrics (optionally specify category)",
     )
-    parser.add_argument("--compare", nargs="+", help="Compare companies (specify tickers)")
+    parser.add_argument(
+        "--time-series", help="Show time series data for a company (specify ticker)"
+    )
+    parser.add_argument(
+        "--metric",
+        action="append",
+        help="Metric name for time series or comparison (can be used multiple times)",
+    )
+    parser.add_argument(
+        "--compare", nargs="+", help="Compare companies (specify tickers)"
+    )
     parser.add_argument("--compare-metric", help="Metric to use for company comparison")
-    parser.add_argument("--latest", help="Show latest metrics for a company (specify ticker)")
-    parser.add_argument("--category", help="Category filter for metrics or latest metrics")
-    parser.add_argument("--start-year", type=int, help="Start year for time series or comparison")
-    parser.add_argument("--end-year", type=int, help="End year for time series or comparison")
+    parser.add_argument(
+        "--latest", help="Show latest metrics for a company (specify ticker)"
+    )
+    parser.add_argument(
+        "--category", help="Category filter for metrics or latest metrics"
+    )
+    parser.add_argument(
+        "--start-year", type=int, help="Start year for time series or comparison"
+    )
+    parser.add_argument(
+        "--end-year", type=int, help="End year for time series or comparison"
+    )
     parser.add_argument("--query", help="Run a custom SQL query")
 
     args = parser.parse_args()
@@ -271,9 +321,13 @@ def main():
             category = None if args.metrics == "all" else args.metrics
             show_metrics(db, category)
         elif args.time_series:
-            show_time_series(db, args.time_series, args.metric, args.start_year, args.end_year)
+            show_time_series(
+                db, args.time_series, args.metric, args.start_year, args.end_year
+            )
         elif args.compare and args.compare_metric:
-            show_company_comparison(db, args.compare, args.compare_metric, args.start_year, args.end_year)
+            show_company_comparison(
+                db, args.compare, args.compare_metric, args.start_year, args.end_year
+            )
         elif args.latest:
             show_latest_metrics(db, args.latest, args.category)
         elif args.query:
@@ -305,8 +359,14 @@ def main():
                 show_metrics(db, category if category else None)
             elif choice == "5":
                 ticker = input("Enter company ticker: ")
-                metrics_input = input("Enter metrics (comma-separated, leave empty for all): ")
-                metrics = [m.strip() for m in metrics_input.split(",")] if metrics_input else None
+                metrics_input = input(
+                    "Enter metrics (comma-separated, leave empty for all): "
+                )
+                metrics = (
+                    [m.strip() for m in metrics_input.split(",")]
+                    if metrics_input
+                    else None
+                )
                 start_year = input("Enter start year (leave empty for all): ")
                 end_year = input("Enter end year (leave empty for all): ")
                 show_time_series(

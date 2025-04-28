@@ -74,7 +74,9 @@ def launch_duckdb_ui(db_path, port=4213, listen="127.0.0.1"):
         # Start the UI server
         logger.info(f"Starting UI server on port {port}")
         try:
-            conn.execute(f"CALL start_ui(port={port}, listen='{listen}', open_browser=false)")
+            conn.execute(
+                f"CALL start_ui(port={port}, listen='{listen}', open_browser=false)"
+            )
             logger.info("UI server started successfully")
 
             # Wait a moment for the UI to start
@@ -116,9 +118,13 @@ def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(description="Launch DuckDB UI")
     parser.add_argument(
-        "--db", default="data/db_backup/improved_financial_data.duckdb", help="Path to the DuckDB database file"
+        "--db",
+        default="data/db_backup/improved_financial_data.duckdb",
+        help="Path to the DuckDB database file",
     )
-    parser.add_argument("--port", type=int, default=4213, help="Port to use for the UI server")
+    parser.add_argument(
+        "--port", type=int, default=4213, help="Port to use for the UI server"
+    )
     parser.add_argument("--listen", default="127.0.0.1", help="Interface to listen on")
 
     args = parser.parse_args()

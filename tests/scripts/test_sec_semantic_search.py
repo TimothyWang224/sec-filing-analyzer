@@ -7,16 +7,15 @@ various semantic searches on SEC filings.
 
 import argparse
 import asyncio
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from sec_filing_analyzer.config import StorageConfig
 from src.tools.sec_semantic_search import SECSemanticSearchTool
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -63,9 +62,15 @@ async def test_semantic_search(
         for i, result in enumerate(results["results"]):
             print(f"\n--- Result {i + 1} ---")
             print(f"Score: {result['score']:.4f}")
-            print(f"Company: {result['metadata']['company']} ({result['metadata']['ticker']})")
-            print(f"Filing: {result['metadata']['filing_type']} ({result['metadata']['filing_date']})")
-            print(f"Section: {result['metadata']['section']} ({result['metadata']['section_type']})")
+            print(
+                f"Company: {result['metadata']['company']} ({result['metadata']['ticker']})"
+            )
+            print(
+                f"Filing: {result['metadata']['filing_type']} ({result['metadata']['filing_date']})"
+            )
+            print(
+                f"Section: {result['metadata']['section']} ({result['metadata']['section_type']})"
+            )
             print(f"Text: {result['text'][:200]}...")
 
         return results
@@ -78,14 +83,36 @@ async def test_semantic_search(
 def main():
     """Main function to run the test script."""
     parser = argparse.ArgumentParser(description="Test the SEC Semantic Search Tool")
-    parser.add_argument("--query", type=str, default="revenue growth and profitability", help="Search query text")
-    parser.add_argument("--companies", type=str, nargs="*", help="List of company tickers to search within")
-    parser.add_argument("--top_k", type=int, default=5, help="Number of results to return")
-    parser.add_argument("--filing_types", type=str, nargs="*", help="List of filing types to filter by")
-    parser.add_argument("--start_date", type=str, help="Start date for filing search (YYYY-MM-DD)")
-    parser.add_argument("--end_date", type=str, help="End date for filing search (YYYY-MM-DD)")
-    parser.add_argument("--sections", type=str, nargs="*", help="List of document sections to filter by")
-    parser.add_argument("--keywords", type=str, nargs="*", help="List of keywords to search for")
+    parser.add_argument(
+        "--query",
+        type=str,
+        default="revenue growth and profitability",
+        help="Search query text",
+    )
+    parser.add_argument(
+        "--companies",
+        type=str,
+        nargs="*",
+        help="List of company tickers to search within",
+    )
+    parser.add_argument(
+        "--top_k", type=int, default=5, help="Number of results to return"
+    )
+    parser.add_argument(
+        "--filing_types", type=str, nargs="*", help="List of filing types to filter by"
+    )
+    parser.add_argument(
+        "--start_date", type=str, help="Start date for filing search (YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--end_date", type=str, help="End date for filing search (YYYY-MM-DD)"
+    )
+    parser.add_argument(
+        "--sections", type=str, nargs="*", help="List of document sections to filter by"
+    )
+    parser.add_argument(
+        "--keywords", type=str, nargs="*", help="List of keywords to search for"
+    )
     parser.add_argument(
         "--hybrid_weight",
         type=float,

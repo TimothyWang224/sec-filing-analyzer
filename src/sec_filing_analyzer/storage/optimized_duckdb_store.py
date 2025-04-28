@@ -6,14 +6,12 @@ extracted from SEC filings using DuckDB with batch operations.
 """
 
 import logging
-import os
 
 # Add the project root to the Python path
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import duckdb
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -31,7 +29,12 @@ class OptimizedDuckDBStore:
     An optimized interface to store and query financial data using DuckDB with batch operations.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        batch_size: int = 100,
+        read_only: bool = True,
+    ):
         """Initialize the optimized DuckDB financial store.
 
         Args:
@@ -46,12 +49,16 @@ class OptimizedDuckDBStore:
         # Use the DuckDB manager to get a connection with the appropriate mode
         if read_only:
             self.conn = duckdb_manager.get_read_only_connection(self.db_path)
-            logger.info(f"Initialized optimized DuckDB financial store at {self.db_path} in read-only mode")
+            logger.info(
+                f"Initialized optimized DuckDB financial store at {self.db_path} in read-only mode"
+            )
         else:
             self.conn = duckdb_manager.get_read_write_connection(self.db_path)
             # Initialize schema only in read-write mode
             self._initialize_schema()
-            logger.info(f"Initialized optimized DuckDB financial store at {self.db_path} in read-write mode")
+            logger.info(
+                f"Initialized optimized DuckDB financial store at {self.db_path} in read-write mode"
+            )
 
     def _initialize_schema(self):
         """Initialize the database schema."""
@@ -291,7 +298,9 @@ class OptimizedDuckDBStore:
                 return False
 
             # Build the SET clause
-            set_clause = ", ".join([f"{key} = ?" for key in filing_data.keys() if key != "id"])
+            set_clause = ", ".join(
+                [f"{key} = ?" for key in filing_data.keys() if key != "id"]
+            )
 
             # Build the parameter list
             params = [filing_data[key] for key in filing_data.keys() if key != "id"]
@@ -445,7 +454,10 @@ class OptimizedDuckDBStore:
                     continue
 
                 # Generate a unique ID if not provided
-                fact_id = fact.get("id") or f"{filing_id}_{xbrl_tag}_{fact.get('context_id', 'default')}"
+                fact_id = (
+                    fact.get("id")
+                    or f"{filing_id}_{xbrl_tag}_{fact.get('context_id', 'default')}"
+                )
 
                 row = {
                     "id": fact_id,
@@ -475,7 +487,9 @@ class OptimizedDuckDBStore:
 
                 # Insert or replace facts
                 # Get the column names from the financial_facts table
-                columns_result = self.conn.execute("PRAGMA table_info(financial_facts)").fetchdf()
+                columns_result = self.conn.execute(
+                    "PRAGMA table_info(financial_facts)"
+                ).fetchdf()
                 column_names = columns_result["name"].tolist()
 
                 # Remove the created_at column as it has a default value
@@ -535,7 +549,9 @@ class OptimizedDuckDBStore:
             logger.error(f"Error storing time series metric: {e}")
             return False
 
-    def store_time_series_metrics_batch(self, metrics_data: List[Dict[str, Any]]) -> int:
+    def store_time_series_metrics_batch(
+        self, metrics_data: List[Dict[str, Any]]
+    ) -> int:
         """Store multiple time series metrics in a batch.
 
         Args:
@@ -593,7 +609,9 @@ class OptimizedDuckDBStore:
 
             # Insert or replace metrics
             # Get the column names from the time_series_metrics table
-            columns_result = self.conn.execute("PRAGMA table_info(time_series_metrics)").fetchdf()
+            columns_result = self.conn.execute(
+                "PRAGMA table_info(time_series_metrics)"
+            ).fetchdf()
             column_names = columns_result["name"].tolist()
 
             # Remove the created_at column as it has a default value
@@ -690,7 +708,9 @@ class OptimizedDuckDBStore:
 
             # Insert or replace ratios
             # Get the column names from the financial_ratios table
-            columns_result = self.conn.execute("PRAGMA table_info(financial_ratios)").fetchdf()
+            columns_result = self.conn.execute(
+                "PRAGMA table_info(financial_ratios)"
+            ).fetchdf()
             column_names = columns_result["name"].tolist()
 
             # Remove the created_at column as it has a default value
@@ -770,7 +790,12 @@ class OptimizedDuckDBStore:
                 fiscal_year = data.get("fiscal_year")
                 fiscal_quarter = data.get("fiscal_quarter")
 
-                if not filing_id or not accession_number or not fiscal_year or not fiscal_quarter:
+                if (
+                    not filing_id
+                    or not accession_number
+                    or not fiscal_year
+                    or not fiscal_quarter
+                ):
                     continue
 
                 filing = {
@@ -897,12 +922,20 @@ class OptimizedDuckDBStore:
 
             # Pivot the result for easier analysis
             if not result.empty:
-                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
-                pivoted = result.pivot(index="period", columns="metric_name", values="value").reset_index()
+                result["period"] = result.apply(
+                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
+                )
+                pivoted = result.pivot(
+                    index="period", columns="metric_name", values="value"
+                ).reset_index()
 
                 # Add year and quarter columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
-                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
+                pivoted["fiscal_year"] = pivoted["period"].apply(
+                    lambda x: int(x.split("Q")[0])
+                )
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(
+                    lambda x: int(x.split("Q")[1])
+                )
 
                 # Sort by year and quarter
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
@@ -970,12 +1003,20 @@ class OptimizedDuckDBStore:
 
             # Pivot the result for easier comparison
             if not result.empty:
-                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
-                pivoted = result.pivot(index="period", columns="ticker", values="value").reset_index()
+                result["period"] = result.apply(
+                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
+                )
+                pivoted = result.pivot(
+                    index="period", columns="ticker", values="value"
+                ).reset_index()
 
                 # Add year and quarter columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
-                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
+                pivoted["fiscal_year"] = pivoted["period"].apply(
+                    lambda x: int(x.split("Q")[0])
+                )
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(
+                    lambda x: int(x.split("Q")[1])
+                )
 
                 # Sort by year and quarter
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
@@ -997,13 +1038,19 @@ class OptimizedDuckDBStore:
             stats = {}
 
             # Get company count
-            stats["company_count"] = self.conn.execute("SELECT COUNT(*) as count FROM companies").fetchone()[0]
+            stats["company_count"] = self.conn.execute(
+                "SELECT COUNT(*) as count FROM companies"
+            ).fetchone()[0]
 
             # Get filing count
-            stats["filing_count"] = self.conn.execute("SELECT COUNT(*) as count FROM filings").fetchone()[0]
+            stats["filing_count"] = self.conn.execute(
+                "SELECT COUNT(*) as count FROM filings"
+            ).fetchone()[0]
 
             # Get fact count
-            stats["fact_count"] = self.conn.execute("SELECT COUNT(*) as count FROM financial_facts").fetchone()[0]
+            stats["fact_count"] = self.conn.execute(
+                "SELECT COUNT(*) as count FROM financial_facts"
+            ).fetchone()[0]
 
             # Get time series count
             stats["time_series_count"] = self.conn.execute(
@@ -1011,16 +1058,22 @@ class OptimizedDuckDBStore:
             ).fetchone()[0]
 
             # Get ratio count
-            stats["ratio_count"] = self.conn.execute("SELECT COUNT(*) as count FROM financial_ratios").fetchone()[0]
+            stats["ratio_count"] = self.conn.execute(
+                "SELECT COUNT(*) as count FROM financial_ratios"
+            ).fetchone()[0]
 
             # Get companies
             stats["companies"] = (
-                self.conn.execute("SELECT ticker FROM companies ORDER BY ticker").fetchdf()["ticker"].tolist()
+                self.conn.execute("SELECT ticker FROM companies ORDER BY ticker")
+                .fetchdf()["ticker"]
+                .tolist()
             )
 
             # Get filing types
             stats["filing_types"] = (
-                self.conn.execute("SELECT DISTINCT filing_type FROM filings ORDER BY filing_type")
+                self.conn.execute(
+                    "SELECT DISTINCT filing_type FROM filings ORDER BY filing_type"
+                )
                 .fetchdf()["filing_type"]
                 .tolist()
             )

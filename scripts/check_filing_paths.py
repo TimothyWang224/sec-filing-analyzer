@@ -3,7 +3,6 @@ Script to check filing paths in DuckDB
 """
 
 import duckdb
-import pandas as pd
 
 
 def check_filing_paths():
@@ -31,12 +30,16 @@ def check_filing_paths():
             path_columns = [
                 col
                 for col in schema["column_name"]
-                if "path" in col.lower() or "url" in col.lower() or "file" in col.lower()
+                if "path" in col.lower()
+                or "url" in col.lower()
+                or "file" in col.lower()
             ]
             if path_columns:
                 print(f"Table {table} has potential path columns: {path_columns}")
                 for col in path_columns:
-                    sample = conn.execute(f"SELECT DISTINCT {col} FROM {table} LIMIT 5").fetchdf()
+                    sample = conn.execute(
+                        f"SELECT DISTINCT {col} FROM {table} LIMIT 5"
+                    ).fetchdf()
                     print(f"Sample values for {col}:")
                     print(sample)
 
@@ -44,7 +47,12 @@ def check_filing_paths():
         print("\nSearching for potential file path values:")
         for table in tables["name"]:
             for col in conn.execute(f"DESCRIBE {table}").fetchdf()["column_name"]:
-                if conn.execute(f"SELECT typeof({col}) FROM {table} LIMIT 1").fetchone()[0] == "VARCHAR":
+                if (
+                    conn.execute(
+                        f"SELECT typeof({col}) FROM {table} LIMIT 1"
+                    ).fetchone()[0]
+                    == "VARCHAR"
+                ):
                     # Check if any values look like file paths
                     path_check = conn.execute(f"""
                         SELECT {col} FROM {table} 

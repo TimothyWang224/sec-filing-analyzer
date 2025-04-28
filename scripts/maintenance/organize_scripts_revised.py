@@ -7,7 +7,6 @@ This script:
 3. Creates README.md files for each directory
 """
 
-import os
 import shutil
 from pathlib import Path
 
@@ -270,7 +269,11 @@ def organize_scripts():
             "streamlit_duckdb_explorer.py",
             "explore_vector_store.py",
         ],
-        "scripts/maintenance": ["cleanup_databases.py", "cleanup_root_directory.py", "organize_scripts_revised.py"],
+        "scripts/maintenance": [
+            "cleanup_databases.py",
+            "cleanup_root_directory.py",
+            "organize_scripts_revised.py",
+        ],
         "scripts/examples": [
             "test_with_mock_data.py",
             "test_with_simplified_schema.py",
@@ -307,7 +310,9 @@ def organize_scripts():
                 console.print(f"[yellow]Script not found: {script}[/yellow]")
 
     console.print("\n[bold green]Script organization complete![/bold green]")
-    console.print("[bold]Scripts have been organized into the following structure:[/bold]")
+    console.print(
+        "[bold]Scripts have been organized into the following structure:[/bold]"
+    )
     console.print("- scripts/etl/")
     console.print("- scripts/db/duckdb/")
     console.print("- scripts/db/neo4j/")
@@ -323,7 +328,9 @@ def organize_scripts():
 
 def main():
     """Main function."""
-    console.print("[bold]Organizing scripts into a more robust directory structure...[/bold]")
+    console.print(
+        "[bold]Organizing scripts into a more robust directory structure...[/bold]"
+    )
 
     # Create the directory structure
     create_directory_structure()

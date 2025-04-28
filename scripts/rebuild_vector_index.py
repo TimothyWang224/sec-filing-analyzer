@@ -8,19 +8,19 @@ that were created by the migration script. It also updates the company_doc_mappi
 import argparse
 import json
 import logging
-import os
 from pathlib import Path
 
 import faiss
 import numpy as np
 
-from sec_filing_analyzer.config import VectorStoreConfig
 
 # Import from the project
 from sec_filing_analyzer.storage import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -62,7 +62,9 @@ def rebuild_index(vector_store_path: str = "data/vector_store", use_gpu: bool = 
     with open(company_mapping_path, "w") as f:
         json.dump(company_mapping, f, indent=2)
 
-    logger.info(f"Updated company_doc_mapping.json with {len(company_mapping)} companies")
+    logger.info(
+        f"Updated company_doc_mapping.json with {len(company_mapping)} companies"
+    )
 
     # Force rebuild the index for all companies
     companies = list(company_mapping.keys())
@@ -127,9 +129,14 @@ def rebuild_index(vector_store_path: str = "data/vector_store", use_gpu: bool = 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Rebuild the FAISS vector index")
     parser.add_argument(
-        "--vector-store-path", type=str, default="data/vector_store", help="Path to the vector store directory"
+        "--vector-store-path",
+        type=str,
+        default="data/vector_store",
+        help="Path to the vector store directory",
     )
-    parser.add_argument("--no-gpu", action="store_true", help="Don't use GPU acceleration")
+    parser.add_argument(
+        "--no-gpu", action="store_true", help="Don't use GPU acceleration"
+    )
 
     args = parser.parse_args()
 

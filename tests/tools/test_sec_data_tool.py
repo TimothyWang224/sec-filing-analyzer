@@ -18,7 +18,10 @@ class TestSECDataTool:
     def test_init(self, tool):
         """Test initializing the tool."""
         assert tool.name == "sec_data"
-        assert "tool for retrieving and processing sec filing data" in tool.description.lower()
+        assert (
+            "tool for retrieving and processing sec filing data"
+            in tool.description.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_execute_valid_parameters(self, tool):
@@ -49,7 +52,9 @@ class TestSECDataTool:
     async def test_execute_minimal_parameters(self, tool):
         """Test executing the tool with minimal parameters."""
         # Execute the tool
-        result = await tool.execute(query_type="sec_data", parameters={"ticker": "AAPL"})
+        result = await tool.execute(
+            query_type="sec_data", parameters={"ticker": "AAPL"}
+        )
 
         # Check that the result is correct
         assert result["ticker"] == "AAPL"
@@ -60,7 +65,9 @@ class TestSECDataTool:
     async def test_execute_invalid_query_type(self, tool):
         """Test executing the tool with an invalid query type."""
         # Execute the tool with an invalid query type
-        result = await tool.execute(query_type="invalid_query", parameters={"ticker": "AAPL"})
+        result = await tool.execute(
+            query_type="invalid_query", parameters={"ticker": "AAPL"}
+        )
 
         # Check that the result contains an error message
         assert result["query_type"] == "invalid_query"
@@ -84,7 +91,10 @@ class TestSECDataTool:
     async def test_execute_invalid_filing_type(self, tool):
         """Test executing the tool with an invalid filing type."""
         # Execute the tool with an invalid filing type
-        result = await tool.execute(query_type="sec_data", parameters={"ticker": "AAPL", "filing_type": "invalid"})
+        result = await tool.execute(
+            query_type="sec_data",
+            parameters={"ticker": "AAPL", "filing_type": "invalid"},
+        )
 
         # Check that the result contains an error message
         assert result["query_type"] == "sec_data"
@@ -130,7 +140,9 @@ class TestSECDataTool:
     def test_validate_args_invalid_query_type(self, tool):
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
-        result = tool.validate_args(query_type="invalid_query", parameters={"ticker": "AAPL"})
+        result = tool.validate_args(
+            query_type="invalid_query", parameters={"ticker": "AAPL"}
+        )
 
         # Check that validation failed
         assert not result

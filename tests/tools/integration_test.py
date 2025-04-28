@@ -13,7 +13,9 @@ from src.tools.sec_semantic_search import SECSemanticSearchTool
 from src.tools.tool_details import ToolDetailsTool
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -27,7 +29,12 @@ async def test_sec_data_tool():
     # Execute the tool
     result = await tool.execute(
         query_type="sec_data",
-        parameters={"ticker": "AAPL", "filing_type": "10-K", "start_date": "2023-01-01", "end_date": "2023-12-31"},
+        parameters={
+            "ticker": "AAPL",
+            "filing_type": "10-K",
+            "start_date": "2023-01-01",
+            "end_date": "2023-12-31",
+        },
     )
 
     # Log the result
@@ -46,7 +53,12 @@ async def test_sec_financial_data_tool():
     # Execute the tool
     result = await tool.execute(
         query_type="financial_facts",
-        parameters={"ticker": "AAPL", "metrics": ["Revenue"], "start_date": "2022-01-01", "end_date": "2022-12-31"},
+        parameters={
+            "ticker": "AAPL",
+            "metrics": ["Revenue"],
+            "start_date": "2022-01-01",
+            "end_date": "2022-12-31",
+        },
     )
 
     # Log the result
@@ -106,7 +118,8 @@ async def test_sec_graph_query_tool():
 
         # Execute the tool
         result = await tool.execute(
-            query_type="company_filings", parameters={"ticker": "AAPL", "filing_types": ["10-K"], "limit": 5}
+            query_type="company_filings",
+            parameters={"ticker": "AAPL", "filing_types": ["10-K"], "limit": 5},
         )
 
         # Log the result
@@ -123,7 +136,9 @@ async def test_tool_details_tool():
     tool = ToolDetailsTool()
 
     # Execute the tool
-    result = await tool.execute(query_type="tool_details", parameters={"tool_name": "sec_data"})
+    result = await tool.execute(
+        query_type="tool_details", parameters={"tool_name": "sec_data"}
+    )
 
     # Log the result
     logger.info(f"ToolDetailsTool result: {result}")

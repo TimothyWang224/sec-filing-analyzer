@@ -5,15 +5,12 @@ This module provides classes and utilities for handling errors in agent tool cal
 including error classification, recovery strategies, and circuit breaker patterns.
 """
 
-import asyncio
 import logging
-import random
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
-from ...tools.registry import ToolRegistry
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +38,11 @@ class ToolError:
     """
 
     def __init__(
-        self, error_type: ToolErrorType, message: str, tool_name: str, original_exception: Optional[Exception] = None
+        self,
+        error_type: ToolErrorType,
+        message: str,
+        tool_name: str,
+        original_exception: Optional[Exception] = None,
     ):
         """
         Initialize a tool error.
@@ -134,16 +135,34 @@ class ErrorClassifier:
         # Check for parameter errors
         if any(
             keyword in error_message.lower()
-            for keyword in ["parameter", "argument", "missing", "required", "invalid", "type error"]
+            for keyword in [
+                "parameter",
+                "argument",
+                "missing",
+                "required",
+                "invalid",
+                "type error",
+            ]
         ):
-            return ToolError(ToolErrorType.PARAMETER_ERROR, error_message, tool_name, exception)
+            return ToolError(
+                ToolErrorType.PARAMETER_ERROR, error_message, tool_name, exception
+            )
 
         # Check for network errors
         elif any(
             keyword in error_message.lower()
-            for keyword in ["connection", "timeout", "network", "unreachable", "dns", "socket"]
+            for keyword in [
+                "connection",
+                "timeout",
+                "network",
+                "unreachable",
+                "dns",
+                "socket",
+            ]
         ):
-            return ToolError(ToolErrorType.NETWORK_ERROR, error_message, tool_name, exception)
+            return ToolError(
+                ToolErrorType.NETWORK_ERROR, error_message, tool_name, exception
+            )
 
         # Check for authentication errors
         elif any(
@@ -158,28 +177,48 @@ class ErrorClassifier:
                 "credentials",
             ]
         ):
-            return ToolError(ToolErrorType.AUTH_ERROR, error_message, tool_name, exception)
+            return ToolError(
+                ToolErrorType.AUTH_ERROR, error_message, tool_name, exception
+            )
 
         # Check for rate limit errors
         elif any(
-            keyword in error_message.lower() for keyword in ["rate limit", "quota", "too many requests", "throttle"]
+            keyword in error_message.lower()
+            for keyword in ["rate limit", "quota", "too many requests", "throttle"]
         ):
-            return ToolError(ToolErrorType.RATE_LIMIT_ERROR, error_message, tool_name, exception)
+            return ToolError(
+                ToolErrorType.RATE_LIMIT_ERROR, error_message, tool_name, exception
+            )
 
         # Check for data errors
         elif any(
             keyword in error_message.lower()
-            for keyword in ["not found", "no data", "empty", "no results", "invalid data"]
+            for keyword in [
+                "not found",
+                "no data",
+                "empty",
+                "no results",
+                "invalid data",
+            ]
         ):
-            return ToolError(ToolErrorType.DATA_ERROR, error_message, tool_name, exception)
+            return ToolError(
+                ToolErrorType.DATA_ERROR, error_message, tool_name, exception
+            )
 
         # Check for system errors
-        elif any(keyword in error_message.lower() for keyword in ["internal", "server error", "system", "unexpected"]):
-            return ToolError(ToolErrorType.SYSTEM_ERROR, error_message, tool_name, exception)
+        elif any(
+            keyword in error_message.lower()
+            for keyword in ["internal", "server error", "system", "unexpected"]
+        ):
+            return ToolError(
+                ToolErrorType.SYSTEM_ERROR, error_message, tool_name, exception
+            )
 
         # Default to unknown error
         else:
-            return ToolError(ToolErrorType.UNKNOWN_ERROR, error_message, tool_name, exception)
+            return ToolError(
+                ToolErrorType.UNKNOWN_ERROR, error_message, tool_name, exception
+            )
 
 
 class ToolCircuitBreaker:
@@ -222,7 +261,9 @@ class ToolCircuitBreaker:
         # Check if we should open the circuit
         if self.failure_counts[tool_name] >= self.failure_threshold:
             self.circuit_status[tool_name]["status"] = "open"
-            logger.warning(f"Circuit opened for tool {tool_name} after {self.failure_threshold} consecutive failures")
+            logger.warning(
+                f"Circuit opened for tool {tool_name} after {self.failure_threshold} consecutive failures"
+            )
 
     def record_success(self, tool_name: str) -> None:
         """
@@ -331,7 +372,9 @@ class ErrorAnalyzer:
 
         return [{"type": e[0].value, "count": e[1]} for e in sorted_errors[:limit]]
 
-    def get_error_suggestions(self, tool_name: str, error_type: ToolErrorType) -> List[str]:
+    def get_error_suggestions(
+        self, tool_name: str, error_type: ToolErrorType
+    ) -> List[str]:
         """
         Get suggestions for fixing common errors.
 
@@ -361,7 +404,11 @@ class ErrorAnalyzer:
                 "Consider upgrading API tier for higher limits",
             ]
         elif error_type == ToolErrorType.AUTH_ERROR:
-            return ["Verify API credentials", "Check if API keys are expired", "Ensure proper permissions are set"]
+            return [
+                "Verify API credentials",
+                "Check if API keys are expired",
+                "Ensure proper permissions are set",
+            ]
         elif error_type == ToolErrorType.DATA_ERROR:
             return [
                 "Verify the requested data exists",
@@ -369,7 +416,11 @@ class ErrorAnalyzer:
                 "Try a different query or parameters",
             ]
         elif error_type == ToolErrorType.SYSTEM_ERROR:
-            return ["Check system logs for details", "Verify system dependencies", "Contact system administrator"]
+            return [
+                "Check system logs for details",
+                "Verify system dependencies",
+                "Contact system administrator",
+            ]
         else:
             return ["No specific suggestions available for this error type"]
 
@@ -392,8 +443,6 @@ class ErrorAnalyzer:
         elif error.error_type == ToolErrorType.RATE_LIMIT_ERROR:
             return "I've reached the limit for data requests. Please try again in a few minutes."
         elif error.error_type == ToolErrorType.AUTH_ERROR:
-            return (
-                "I don't have the necessary permissions to access this data. Please check your authentication settings."
-            )
+            return "I don't have the necessary permissions to access this data. Please check your authentication settings."
         else:
             return f"I encountered an error while processing your request: {error.message}. Please try again or rephrase your question."

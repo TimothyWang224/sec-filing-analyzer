@@ -75,7 +75,9 @@ class SECDataTool(Tool):
         """Initialize the SEC data tool."""
         super().__init__()
 
-    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute the SEC data retrieval tool.
 
@@ -121,7 +123,9 @@ class SECDataTool(Tool):
                 params = param_model(**parameters)
             except Exception as e:
                 return self.format_error_response(
-                    query_type=query_type, parameters=parameters, error_message=f"Parameter validation error: {str(e)}"
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}",
                 )
 
             # Extract parameters
@@ -129,7 +133,10 @@ class SECDataTool(Tool):
             filing_type = params.filing_type or "10-K"
             start_date = params.start_date or "2023-01-01"
             end_date = params.end_date or "2023-12-31"
-            sections = params.sections or ["Financial Statements", "Management Discussion"]
+            sections = params.sections or [
+                "Financial Statements",
+                "Management Discussion",
+            ]
 
             try:
                 # This is a placeholder for the actual SEC data retrieval logic
@@ -142,17 +149,35 @@ class SECDataTool(Tool):
                 # Create mock data for demonstration purposes
                 mock_data = {
                     "financial_statements": {
-                        "balance_sheet": {"assets": "500M", "liabilities": "300M", "equity": "200M"},
-                        "income_statement": {"revenue": "100M", "net_income": "20M", "eps": "2.00"},
+                        "balance_sheet": {
+                            "assets": "500M",
+                            "liabilities": "300M",
+                            "equity": "200M",
+                        },
+                        "income_statement": {
+                            "revenue": "100M",
+                            "net_income": "20M",
+                            "eps": "2.00",
+                        },
                     },
                     "management_discussion": {
-                        "key_points": ["Strong revenue growth", "Improved margins", "Market expansion"],
-                        "risks": ["Market competition", "Regulatory changes", "Economic conditions"],
+                        "key_points": [
+                            "Strong revenue growth",
+                            "Improved margins",
+                            "Market expansion",
+                        ],
+                        "risks": [
+                            "Market competition",
+                            "Regulatory changes",
+                            "Economic conditions",
+                        ],
                     },
                 }
 
                 # Create a custom result with additional fields
-                result = self.format_success_response(query_type=query_type, parameters=parameters, results=mock_data)
+                result = self.format_success_response(
+                    query_type=query_type, parameters=parameters, results=mock_data
+                )
 
                 # Add additional fields
                 result["ticker"] = ticker
@@ -166,16 +191,22 @@ class SECDataTool(Tool):
             except Exception as e:
                 logger.error(f"Error retrieving SEC data: {str(e)}")
                 return self.format_error_response(
-                    query_type=query_type, parameters=parameters, error_message=f"Error retrieving SEC data: {str(e)}"
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Error retrieving SEC data: {str(e)}",
                 )
 
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return self.format_error_response(
-                query_type=query_type, parameters=parameters, error_message=f"Unexpected error: {str(e)}"
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}",
             )
 
-    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
+    def validate_args(
+        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
+    ) -> bool:
         """
         Validate the tool arguments.
 
@@ -189,7 +220,9 @@ class SECDataTool(Tool):
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
-                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
+                logger.error(
+                    f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}"
+                )
                 return False
 
             # Validate parameters using the appropriate model

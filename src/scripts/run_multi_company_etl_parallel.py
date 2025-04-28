@@ -12,17 +12,22 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List
 
 # Import from the correct package path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))  # Add root to path
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+)  # Add root to path
 
-from sec_filing_analyzer.config import ETLConfig, Neo4jConfig, StorageConfig
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
 from sec_filing_analyzer.storage.graph_store import GraphStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Thread-local storage for pipeline instances
@@ -46,7 +51,9 @@ def get_pipeline(use_neo4j=True, neo4j_config=None):
             graph_store = GraphStore(use_neo4j=False)
 
         # Initialize pipeline
-        thread_local.pipeline = ParallelSECFilingETLPipeline(graph_store=graph_store, max_workers=4)
+        thread_local.pipeline = ParallelSECFilingETLPipeline(
+            graph_store=graph_store, max_workers=4
+        )
 
     return thread_local.pipeline
 
@@ -63,13 +70,21 @@ def get_neo4j_config():
 
 def parse_args():
     neo4j_config = get_neo4j_config()
-    parser = argparse.ArgumentParser(description="Process SEC filings for multiple companies in parallel")
+    parser = argparse.ArgumentParser(
+        description="Process SEC filings for multiple companies in parallel"
+    )
 
     # Company tickers argument - either from file or direct list
     ticker_group = parser.add_mutually_exclusive_group(required=True)
-    ticker_group.add_argument("--tickers", nargs="+", help="List of company ticker symbols (e.g., AAPL MSFT NVDA)")
     ticker_group.add_argument(
-        "--tickers-file", type=str, help="Path to a JSON file containing a list of ticker symbols"
+        "--tickers",
+        nargs="+",
+        help="List of company ticker symbols (e.g., AAPL MSFT NVDA)",
+    )
+    ticker_group.add_argument(
+        "--tickers-file",
+        type=str,
+        help="Path to a JSON file containing a list of ticker symbols",
     )
 
     # Date range arguments
@@ -78,21 +93,61 @@ def parse_args():
 
     # Filing types argument
     parser.add_argument(
-        "--filing-types", nargs="+", help="List of filing types to process (e.g., 10-K 10-Q)", default=["10-K", "10-Q"]
+        "--filing-types",
+        nargs="+",
+        help="List of filing types to process (e.g., 10-K 10-Q)",
+        default=["10-K", "10-Q"],
     )
 
     # Neo4j arguments
-    parser.add_argument("--no-neo4j", action="store_true", help="Use in-memory graph store instead of Neo4j")
-    parser.add_argument("--neo4j-username", type=str, default=neo4j_config["username"], help="Neo4j username")
-    parser.add_argument("--neo4j-password", type=str, default=neo4j_config["password"], help="Neo4j password")
-    parser.add_argument("--neo4j-url", type=str, default=neo4j_config["url"], help="Neo4j URL")
-    parser.add_argument("--neo4j-database", type=str, default=neo4j_config["database"], help="Neo4j database name")
+    parser.add_argument(
+        "--no-neo4j",
+        action="store_true",
+        help="Use in-memory graph store instead of Neo4j",
+    )
+    parser.add_argument(
+        "--neo4j-username",
+        type=str,
+        default=neo4j_config["username"],
+        help="Neo4j username",
+    )
+    parser.add_argument(
+        "--neo4j-password",
+        type=str,
+        default=neo4j_config["password"],
+        help="Neo4j password",
+    )
+    parser.add_argument(
+        "--neo4j-url", type=str, default=neo4j_config["url"], help="Neo4j URL"
+    )
+    parser.add_argument(
+        "--neo4j-database",
+        type=str,
+        default=neo4j_config["database"],
+        help="Neo4j database name",
+    )
 
     # Additional options
-    parser.add_argument("--retry-failed", action="store_true", help="Retry failed companies from previous runs")
-    parser.add_argument("--max-retries", type=int, default=3, help="Maximum number of retries for failed companies")
-    parser.add_argument("--max-workers", type=int, default=4, help="Maximum number of worker threads")
-    parser.add_argument("--rate-limit", type=float, default=0.5, help="Minimum time between API requests in seconds")
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry failed companies from previous runs",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for failed companies",
+    )
+    parser.add_argument(
+        "--max-workers", type=int, default=4, help="Maximum number of worker threads"
+    )
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=0.5,
+        help="Minimum time between API requests in seconds",
+    )
 
     return parser.parse_args()
 
@@ -122,7 +177,9 @@ def get_tickers_from_file(file_path):
         elif isinstance(data, dict) and "tickers" in data:
             return data["tickers"]
         else:
-            logger.error(f"Invalid format in {file_path}. Expected a list or a dict with 'tickers' key")
+            logger.error(
+                f"Invalid format in {file_path}. Expected a list or a dict with 'tickers' key"
+            )
             return []
     except Exception as e:
         logger.error(f"Error loading tickers from {file_path}: {str(e)}")
@@ -153,7 +210,9 @@ def load_latest_progress():
         return None
 
 
-def save_progress(completed: List[str], failed: List[str], no_filings: List[str], errors: dict):
+def save_progress(
+    completed: List[str], failed: List[str], no_filings: List[str], errors: dict
+):
     """Save progress to a file."""
     progress = {
         "timestamp": datetime.now().isoformat(),
@@ -186,21 +245,33 @@ def process_company(ticker, filing_types, start_date, end_date, args, rate_limit
     pipeline = get_pipeline(not args.no_neo4j, neo4j_config)
 
     retries = 0
-    result = {"ticker": ticker, "status": "failed", "filings_processed": 0, "error": None}
+    result = {
+        "ticker": ticker,
+        "status": "failed",
+        "filings_processed": 0,
+        "error": None,
+    }
 
     while retries <= args.max_retries:
         try:
-            logger.info(f"Processing company {ticker} (attempt {retries + 1}/{args.max_retries + 1})")
+            logger.info(
+                f"Processing company {ticker} (attempt {retries + 1}/{args.max_retries + 1})"
+            )
 
             # Apply rate limiting
             with rate_limiter:
                 # Download filings
                 downloaded_filings = pipeline.sec_downloader.download_company_filings(
-                    ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date
+                    ticker=ticker,
+                    filing_types=filing_types,
+                    start_date=start_date,
+                    end_date=end_date,
                 )
 
             if not downloaded_filings:
-                logger.warning(f"No filings found for {ticker} in the specified date range and filing types")
+                logger.warning(
+                    f"No filings found for {ticker} in the specified date range and filing types"
+                )
                 result["status"] = "no_filings"
                 return result
 
@@ -213,9 +284,13 @@ def process_company(ticker, filing_types, start_date, end_date, args, rate_limit
                     pipeline.process_filing_data(filing_data)
                     processed_count += 1
                 except Exception as e:
-                    logger.error(f"Error processing filing {filing_data['accession_number']}: {e}")
+                    logger.error(
+                        f"Error processing filing {filing_data['accession_number']}: {e}"
+                    )
 
-            logger.info(f"Successfully processed {processed_count} filings for {ticker}")
+            logger.info(
+                f"Successfully processed {processed_count} filings for {ticker}"
+            )
             result["status"] = "completed"
             result["filings_processed"] = processed_count
             return result
@@ -230,7 +305,9 @@ def process_company(ticker, filing_types, start_date, end_date, args, rate_limit
                 logger.info(f"Retrying {ticker} in 5 seconds...")
                 time.sleep(5)  # Wait before retrying
 
-    logger.error(f"Failed to process company {ticker} after {args.max_retries + 1} attempts")
+    logger.error(
+        f"Failed to process company {ticker} after {args.max_retries + 1} attempts"
+    )
     return result
 
 
@@ -290,7 +367,9 @@ def main():
     if args.retry_failed:
         progress = load_latest_progress()
         if progress:
-            logger.info(f"Loaded previous progress with {len(progress['failed'])} failed companies")
+            logger.info(
+                f"Loaded previous progress with {len(progress['failed'])} failed companies"
+            )
             # Only process previously failed companies
             tickers = progress["failed"]
             # Keep track of previously completed companies
@@ -305,11 +384,19 @@ def main():
     rate_limiter = RateLimiter(args.rate_limit)
 
     # Process companies in parallel
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=args.max_workers
+    ) as executor:
         # Submit tasks
         future_to_ticker = {
             executor.submit(
-                process_company, ticker, args.filing_types, args.start_date, args.end_date, args, rate_limiter
+                process_company,
+                ticker,
+                args.filing_types,
+                args.start_date,
+                args.end_date,
+                args,
+                rate_limiter,
             ): ticker
             for ticker in tickers
         }
@@ -321,7 +408,9 @@ def main():
                 result = future.result()
                 if result["status"] == "completed":
                     completed_tickers.append(ticker)
-                    logger.info(f"Successfully processed {ticker} with {result['filings_processed']} filings")
+                    logger.info(
+                        f"Successfully processed {ticker} with {result['filings_processed']} filings"
+                    )
                 elif result["status"] == "no_filings":
                     no_filings_tickers.append(ticker)
                     logger.info(f"No filings found for {ticker}")
@@ -345,7 +434,9 @@ def main():
 
     if no_filings_tickers:
         logger.info(f"Companies with no filings: {', '.join(no_filings_tickers)}")
-        logger.info("Consider using a different date range or filing types for these companies")
+        logger.info(
+            "Consider using a different date range or filing types for these companies"
+        )
 
     if failed_tickers:
         logger.info(f"Failed companies: {', '.join(failed_tickers)}")

@@ -7,11 +7,9 @@ This script provides a simple interface to explore the tables in a DuckDB databa
 import argparse
 
 import duckdb
-import pandas as pd
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.table import Table
 
 console = Console()
@@ -40,7 +38,9 @@ def describe_table(conn, table_name):
         schema = conn.execute(f"PRAGMA table_info('{table_name}')").fetchall()
 
         if not schema:
-            console.print(f"[yellow]Table '{table_name}' exists but has no columns.[/yellow]")
+            console.print(
+                f"[yellow]Table '{table_name}' exists but has no columns.[/yellow]"
+            )
             return
 
         table = Table(title=f"Schema for '{table_name}'", box=box.ROUNDED)
@@ -84,7 +84,10 @@ def show_sample(conn, table_name, limit=10):
             return
 
         # Create a rich table
-        table = Table(title=f"Sample Data from '{table_name}' (First {limit} rows)", box=box.ROUNDED)
+        table = Table(
+            title=f"Sample Data from '{table_name}' (First {limit} rows)",
+            box=box.ROUNDED,
+        )
 
         # Add columns
         for col in column_names:
@@ -152,7 +155,11 @@ def show_table_relationships(conn):
                         # This is likely a foreign key
                         # Try to guess the referenced table
                         ref_table = col_name.replace("_id", "")
-                        if ref_table in table_names or col_name in ["ticker", "filing_id", "fact_id"]:
+                        if ref_table in table_names or col_name in [
+                            "ticker",
+                            "filing_id",
+                            "fact_id",
+                        ]:
                             if col_name == "ticker":
                                 ref_table = "companies"
                             elif col_name == "filing_id":
@@ -184,20 +191,32 @@ def show_table_relationships(conn):
 
 def main():
     parser = argparse.ArgumentParser(description="Explore a DuckDB database")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
-    parser.add_argument("--list-tables", action="store_true", help="List all tables in the database")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
+    parser.add_argument(
+        "--list-tables", action="store_true", help="List all tables in the database"
+    )
     parser.add_argument("--describe", help="Describe a specific table")
     parser.add_argument("--sample", help="Show a sample of rows from a table")
-    parser.add_argument("--limit", type=int, default=10, help="Limit for sample rows (default: 10)")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Limit for sample rows (default: 10)"
+    )
     parser.add_argument("--query", help="Run a custom SQL query")
-    parser.add_argument("--relationships", action="store_true", help="Show table relationships")
+    parser.add_argument(
+        "--relationships", action="store_true", help="Show table relationships"
+    )
 
     args = parser.parse_args()
 
     try:
         # Connect to the database
         conn = duckdb.connect(args.db)
-        console.print(Panel(f"Connected to DuckDB database: [bold cyan]{args.db}[/bold cyan]"))
+        console.print(
+            Panel(f"Connected to DuckDB database: [bold cyan]{args.db}[/bold cyan]")
+        )
 
         # Execute the requested command
         if args.list_tables:

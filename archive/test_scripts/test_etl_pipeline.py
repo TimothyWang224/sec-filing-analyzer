@@ -15,7 +15,10 @@ pipeline = SECFilingETLPipeline(process_semantic=True, process_quantitative=True
 
 # Process NVDA filings
 result = pipeline.process_company(
-    ticker="NVDA", filing_types=["10-K", "10-Q", "8-K"], start_date=start_date, end_date=end_date
+    ticker="NVDA",
+    filing_types=["10-K", "10-Q", "8-K"],
+    start_date=start_date,
+    end_date=end_date,
 )
 
 # Print result

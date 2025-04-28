@@ -43,7 +43,9 @@ class Task:
             "result": self.result,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "dependencies": self.dependencies,
             "metadata": self.metadata,
         }
@@ -51,7 +53,11 @@ class Task:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Task":
         """Create task from dictionary."""
-        task = cls(task_id=data["task_id"], input_text=data["input_text"], priority=data.get("priority", 0))
+        task = cls(
+            task_id=data["task_id"],
+            input_text=data["input_text"],
+            priority=data.get("priority", 0),
+        )
         task.status = data.get("status", "pending")
         task.plan = data.get("plan")
         task.result = data.get("result")
@@ -91,7 +97,10 @@ class TaskQueue:
         """
         # Check if a task with the same input already exists
         for existing_task in self.tasks.values():
-            if existing_task.input_text.strip().lower() == task.input_text.strip().lower():
+            if (
+                existing_task.input_text.strip().lower()
+                == task.input_text.strip().lower()
+            ):
                 # Update priority if the new task has higher priority
                 if task.priority > existing_task.priority:
                     existing_task.priority = task.priority
@@ -183,7 +192,9 @@ class TaskQueue:
         self.current_task_id = None
 
         # Find all pending tasks
-        pending_tasks = [task for task in self.tasks.values() if task.status == "pending"]
+        pending_tasks = [
+            task for task in self.tasks.values() if task.status == "pending"
+        ]
 
         if not pending_tasks:
             return

@@ -2,7 +2,7 @@
 Tests for the SECEntities class in the graphrag module.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -25,8 +25,16 @@ SAMPLE_ENTITY_DATA = {
     "cik": "0000320193",
     "name": "Apple Inc.",
     "filings": [
-        {"accession_number": "0000320193-23-000077", "form": "10-K", "filing_date": "2023-10-27"},
-        {"accession_number": "0000320193-23-000078", "form": "10-Q", "filing_date": "2023-11-15"},
+        {
+            "accession_number": "0000320193-23-000077",
+            "form": "10-K",
+            "filing_date": "2023-10-27",
+        },
+        {
+            "accession_number": "0000320193-23-000078",
+            "form": "10-Q",
+            "filing_date": "2023-11-15",
+        },
     ],
 }
 
@@ -106,11 +114,15 @@ class TestSECEntities:
         assert isinstance(sec_entities, SECEntities)
 
     @patch("sec_filing_analyzer.graphrag.sec_entities.find_company")
-    def test_get_company_data_success(self, mock_find_company, sec_entities, mock_company, mock_entity_data):
+    def test_get_company_data_success(
+        self, mock_find_company, sec_entities, mock_company, mock_entity_data
+    ):
         """Test successful retrieval of company data."""
         # Setup mocks
         mock_find_company.return_value = mock_company
-        with patch.object(sec_entities, "_get_entity_data", return_value=mock_entity_data):
+        with patch.object(
+            sec_entities, "_get_entity_data", return_value=mock_entity_data
+        ):
             # Call the method
             result = sec_entities.get_company_data("AAPL")
 
@@ -157,7 +169,9 @@ class TestSECEntities:
     def test_format_company_data(self, sec_entities, mock_company, mock_entity_data):
         """Test formatting of company data."""
         # Setup mock for _get_entity_data
-        with patch.object(sec_entities, "_get_entity_data", return_value=mock_entity_data):
+        with patch.object(
+            sec_entities, "_get_entity_data", return_value=mock_entity_data
+        ):
             # Call the method
             result = sec_entities._format_company_data(mock_company)
 
@@ -174,7 +188,9 @@ class TestSECEntities:
             assert result["entity_data"] == mock_entity_data
 
     @patch("sec_filing_analyzer.graphrag.sec_entities.get_entity_submissions")
-    def test_get_entity_data_success(self, mock_get_entity_submissions, sec_entities, mock_entity_data):
+    def test_get_entity_data_success(
+        self, mock_get_entity_submissions, sec_entities, mock_entity_data
+    ):
         """Test successful retrieval of entity data."""
         # Setup mock
         mock_get_entity_submissions.return_value = mock_entity_data
@@ -204,7 +220,9 @@ class TestSECEntities:
         mock_get_entity_submissions.assert_called_once_with(SAMPLE_COMPANY_DATA["cik"])
 
     @patch("sec_filing_analyzer.graphrag.sec_entities.Document")
-    def test_get_filing_metadata_success(self, mock_document_class, sec_entities, mock_document):
+    def test_get_filing_metadata_success(
+        self, mock_document_class, sec_entities, mock_document
+    ):
         """Test successful extraction of filing metadata."""
         # Setup mock
         mock_document_class.parse.return_value = mock_document
@@ -253,7 +271,11 @@ class TestSECEntities:
     @patch.object(SECEntities, "get_filing_metadata")
     @patch.object(SECEntities, "get_company_data")
     def test_extract_entities_with_metadata(
-        self, mock_get_company_data, mock_get_filing_metadata, sec_entities, mock_company
+        self,
+        mock_get_company_data,
+        mock_get_filing_metadata,
+        sec_entities,
+        mock_company,
     ):
         """Test extraction of entities from filing with metadata."""
         # Setup mocks
@@ -273,7 +295,9 @@ class TestSECEntities:
 
     @patch.object(SECEntities, "get_filing_metadata")
     @patch.object(SECEntities, "get_company_data")
-    def test_extract_entities_no_metadata(self, mock_get_company_data, mock_get_filing_metadata, sec_entities):
+    def test_extract_entities_no_metadata(
+        self, mock_get_company_data, mock_get_filing_metadata, sec_entities
+    ):
         """Test extraction of entities from filing without metadata."""
         # Setup mocks
         mock_get_filing_metadata.return_value = {}
@@ -290,7 +314,9 @@ class TestSECEntities:
 
     @patch.object(SECEntities, "get_filing_metadata")
     @patch.object(SECEntities, "get_company_data")
-    def test_extract_entities_company_not_found(self, mock_get_company_data, mock_get_filing_metadata, sec_entities):
+    def test_extract_entities_company_not_found(
+        self, mock_get_company_data, mock_get_filing_metadata, sec_entities
+    ):
         """Test extraction of entities when company is not found."""
         # Setup mocks
         mock_get_filing_metadata.return_value = {"cik": SAMPLE_COMPANY_DATA["cik"]}

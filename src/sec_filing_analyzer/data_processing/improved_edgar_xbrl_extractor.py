@@ -10,13 +10,15 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from edgar import Filing, Financials, XBRLData
+from edgar import Financials, XBRLData
 
 from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
 from sec_filing_analyzer.utils import edgar_utils
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +38,9 @@ class ImprovedEdgarXBRLExtractor:
         """
         self.db = ImprovedDuckDBStore(db_path=db_path)
         self.batch_size = batch_size
-        logger.info(f"Initialized Improved Edgar XBRL extractor with database at {self.db.db_path}")
+        logger.info(
+            f"Initialized Improved Edgar XBRL extractor with database at {self.db.db_path}"
+        )
 
     def _generate_id(self, text: str) -> str:
         """
@@ -97,7 +101,9 @@ class ImprovedEdgarXBRLExtractor:
                 return fiscal_info
 
             # Extract fiscal year
-            fiscal_year_end = dei_facts[dei_facts["concept"].str.contains("FiscalYear", case=True, na=False)]
+            fiscal_year_end = dei_facts[
+                dei_facts["concept"].str.contains("FiscalYear", case=True, na=False)
+            ]
             if not fiscal_year_end.empty:
                 fiscal_year = fiscal_year_end.iloc[0].get("value")
                 try:
@@ -106,7 +112,9 @@ class ImprovedEdgarXBRLExtractor:
                     pass
 
             # Extract fiscal period
-            fiscal_period = dei_facts[dei_facts["concept"].str.contains("FiscalPeriod", case=True, na=False)]
+            fiscal_period = dei_facts[
+                dei_facts["concept"].str.contains("FiscalPeriod", case=True, na=False)
+            ]
             if not fiscal_period.empty:
                 period = fiscal_period.iloc[0].get("value")
                 if period:
@@ -125,7 +133,11 @@ class ImprovedEdgarXBRLExtractor:
                         fiscal_info["fiscal_quarter"] = 4
 
             # Extract fiscal period end date
-            period_end = dei_facts[dei_facts["concept"].str.contains("DocumentPeriodEndDate", case=True, na=False)]
+            period_end = dei_facts[
+                dei_facts["concept"].str.contains(
+                    "DocumentPeriodEndDate", case=True, na=False
+                )
+            ]
             if not period_end.empty:
                 end_date = period_end.iloc[0].get("value")
                 if end_date:
@@ -154,7 +166,11 @@ class ImprovedEdgarXBRLExtractor:
             if self.db.filing_exists(accession_number):
                 logger.info(f"Filing {accession_number} already exists in the database")
                 filing_id = self.db.get_filing_id(accession_number)
-                return {"status": "success", "message": "Filing already exists in the database", "filing_id": filing_id}
+                return {
+                    "status": "success",
+                    "message": "Filing already exists in the database",
+                    "filing_id": filing_id,
+                }
 
             # Get the filing using edgar_utils
             filing = edgar_utils.get_filing_by_accession(ticker, accession_number)
@@ -170,7 +186,11 @@ class ImprovedEdgarXBRLExtractor:
             metadata = edgar_utils.get_filing_metadata(filing, ticker)
 
             # Store company information
-            company_data = {"ticker": ticker, "name": metadata.get("company"), "cik": metadata.get("cik")}
+            company_data = {
+                "ticker": ticker,
+                "name": metadata.get("company"),
+                "cik": metadata.get("cik"),
+            }
             company_id = self.db.store_company(company_data)
 
             if not company_id:
@@ -211,7 +231,9 @@ class ImprovedEdgarXBRLExtractor:
             financials = Financials.extract(filing)
 
             if not financials:
-                logger.warning(f"Could not extract financials for {ticker} {accession_number}")
+                logger.warning(
+                    f"Could not extract financials for {ticker} {accession_number}"
+                )
                 return {
                     "status": "success",
                     "message": "Filing processed but could not extract financials",
@@ -247,7 +269,10 @@ class ImprovedEdgarXBRLExtractor:
             return {"error": str(e)}
 
     def process_company(
-        self, ticker: str, filing_types: Optional[List[str]] = None, limit: Optional[int] = None
+        self,
+        ticker: str,
+        filing_types: Optional[List[str]] = None,
+        limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Process all filings for a company.
@@ -270,7 +295,9 @@ class ImprovedEdgarXBRLExtractor:
             # Get all filings for the company using edgar_utils
             filings = []
             for form_type in filing_types:
-                form_filings = edgar_utils.get_filings(ticker, form_type=form_type, limit=limit)
+                form_filings = edgar_utils.get_filings(
+                    ticker, form_type=form_type, limit=limit
+                )
                 filings.extend(form_filings)
 
             if not filings:
@@ -297,7 +324,9 @@ class ImprovedEdgarXBRLExtractor:
             logger.error(f"Error processing company {ticker}: {e}")
             return {"error": str(e)}
 
-    def _process_financial_statements(self, financials: Financials, filing_id: int, fiscal_info: Dict[str, Any]):
+    def _process_financial_statements(
+        self, financials: Financials, filing_id: int, fiscal_info: Dict[str, Any]
+    ):
         """
         Process financial statements and store their data in the database.
 
@@ -314,11 +343,15 @@ class ImprovedEdgarXBRLExtractor:
 
             # Process balance sheet
             if balance_sheet:
-                self._process_statement(balance_sheet, "balance_sheet", filing_id, fiscal_info)
+                self._process_statement(
+                    balance_sheet, "balance_sheet", filing_id, fiscal_info
+                )
 
             # Process income statement
             if income_statement:
-                self._process_statement(income_statement, "income_statement", filing_id, fiscal_info)
+                self._process_statement(
+                    income_statement, "income_statement", filing_id, fiscal_info
+                )
 
             # Process cash flow statement
             if cash_flow:
@@ -327,7 +360,13 @@ class ImprovedEdgarXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error processing financial statements: {e}")
 
-    def _process_statement(self, statement, statement_type: str, filing_id: int, fiscal_info: Dict[str, Any]):
+    def _process_statement(
+        self,
+        statement,
+        statement_type: str,
+        filing_id: int,
+        fiscal_info: Dict[str, Any],
+    ):
         """
         Process a financial statement and store its data in the database.
 
@@ -413,14 +452,14 @@ class ImprovedEdgarXBRLExtractor:
         """
         try:
             if not hasattr(xbrl_data, "instance"):
-                logger.warning(f"XBRL data does not have instance attribute")
+                logger.warning("XBRL data does not have instance attribute")
                 return
 
             # Query all US-GAAP facts
             us_gaap_facts = xbrl_data.instance.query_facts(schema="us-gaap")
 
             if us_gaap_facts.empty:
-                logger.warning(f"No US-GAAP facts found")
+                logger.warning("No US-GAAP facts found")
                 return
 
             # Process facts
@@ -448,7 +487,9 @@ class ImprovedEdgarXBRLExtractor:
                     "metric_name": metric_name,
                     "display_name": concept,
                     "category": "us_gaap",  # Default category for US-GAAP facts
-                    "unit_of_measure": row.get("units", "USD"),  # Assuming financial values are in USD
+                    "unit_of_measure": row.get(
+                        "units", "USD"
+                    ),  # Assuming financial values are in USD
                 }
                 metric_id = self.db.store_metric(metric_data)
 

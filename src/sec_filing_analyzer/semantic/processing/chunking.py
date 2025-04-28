@@ -34,7 +34,9 @@ class DocumentChunker:
             chunk_overlap: Number of tokens to overlap between chunks
         """
         # Use FilingChunker internally
-        self.chunker = FilingChunker(max_chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        self.chunker = FilingChunker(
+            max_chunk_size=chunk_size, chunk_overlap=chunk_overlap
+        )
         logger.info(
             "DocumentChunker is now a wrapper around FilingChunker. Consider using FilingChunker directly for new code."
         )

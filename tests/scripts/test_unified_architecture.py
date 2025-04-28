@@ -8,7 +8,7 @@ import asyncio
 import logging
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 # Add the src directory to the path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
@@ -21,7 +21,9 @@ from src.sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
 from src.tools.registry import ToolRegistry
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -99,19 +101,36 @@ async def process_question(
 
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}")
-        return {"error": str(e), "answer": "An error occurred while processing your question."}
+        return {
+            "error": str(e),
+            "answer": "An error occurred while processing your question.",
+        }
 
 
 def main():
     """Main entry point for the script."""
     parser = argparse.ArgumentParser(description="Test the unified architecture")
-    parser.add_argument("--question", type=str, required=True, help="Question to ask the agent")
     parser.add_argument(
-        "--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="Logging level"
+        "--question", type=str, required=True, help="Question to ask the agent"
     )
-    parser.add_argument("--include_prompts", action="store_true", help="Include prompts and responses in logs")
-    parser.add_argument("--max_iterations", type=int, default=3, help="Maximum number of iterations")
-    parser.add_argument("--llm_model", type=str, default="gpt-4o-mini", help="LLM model to use")
+    parser.add_argument(
+        "--log_level",
+        type=str,
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Logging level",
+    )
+    parser.add_argument(
+        "--include_prompts",
+        action="store_true",
+        help="Include prompts and responses in logs",
+    )
+    parser.add_argument(
+        "--max_iterations", type=int, default=3, help="Maximum number of iterations"
+    )
+    parser.add_argument(
+        "--llm_model", type=str, default="gpt-4o-mini", help="LLM model to use"
+    )
 
     args = parser.parse_args()
 
@@ -122,7 +141,13 @@ def main():
 
     # Run the async function
     result = asyncio.run(
-        process_question(args.question, args.log_level, args.include_prompts, args.max_iterations, args.llm_model)
+        process_question(
+            args.question,
+            args.log_level,
+            args.include_prompts,
+            args.max_iterations,
+            args.llm_model,
+        )
     )
 
     # Print the result
@@ -146,7 +171,9 @@ def main():
     if supporting_data.get("financial_data"):
         print("\nFinancial Data:")
         for item in supporting_data["financial_data"]:
-            print(f"  - {item['metric']}: {item['value']} (Period: {item['period']}, Filing: {item['filing_type']})")
+            print(
+                f"  - {item['metric']}: {item['value']} (Period: {item['period']}, Filing: {item['filing_type']})"
+            )
 
     # Print iteration count
     print(f"\nCompleted in {result.get('iterations_completed', 'unknown')} iterations")

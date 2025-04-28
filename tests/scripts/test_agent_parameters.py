@@ -9,8 +9,6 @@ import argparse
 import asyncio
 import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.capabilities.logging import LoggingCapability
@@ -18,7 +16,9 @@ from src.capabilities.planning import PlanningCapability
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -115,7 +115,10 @@ async def run_phase_transition_demo():
 
     # Initialize agent
     agent = QASpecialistAgent(
-        environment=environment, max_planning_iterations=2, max_execution_iterations=3, max_refinement_iterations=1
+        environment=environment,
+        max_planning_iterations=2,
+        max_execution_iterations=3,
+        max_refinement_iterations=1,
     )
 
     # Demonstrate phase transitions
@@ -170,14 +173,44 @@ async def run_phase_transition_demo():
 def main():
     """Main function to run the test script."""
     parser = argparse.ArgumentParser(description="Test the new agent parameters")
-    parser.add_argument("--question", type=str, default="What was Apple's revenue in 2023?", help="Question to process")
-    parser.add_argument("--max-planning-iterations", type=int, default=2, help="Maximum planning iterations")
-    parser.add_argument("--max-execution-iterations", type=int, default=3, help="Maximum execution iterations")
-    parser.add_argument("--max-refinement-iterations", type=int, default=1, help="Maximum refinement iterations")
-    parser.add_argument("--max-tool-retries", type=int, default=2, help="Maximum tool retries")
-    parser.add_argument("--tools-per-iteration", type=int, default=1, help="Tools per iteration")
-    parser.add_argument("--enable-dynamic-termination", action="store_true", help="Enable dynamic termination")
-    parser.add_argument("--demo-phases", action="store_true", help="Run phase transition demo")
+    parser.add_argument(
+        "--question",
+        type=str,
+        default="What was Apple's revenue in 2023?",
+        help="Question to process",
+    )
+    parser.add_argument(
+        "--max-planning-iterations",
+        type=int,
+        default=2,
+        help="Maximum planning iterations",
+    )
+    parser.add_argument(
+        "--max-execution-iterations",
+        type=int,
+        default=3,
+        help="Maximum execution iterations",
+    )
+    parser.add_argument(
+        "--max-refinement-iterations",
+        type=int,
+        default=1,
+        help="Maximum refinement iterations",
+    )
+    parser.add_argument(
+        "--max-tool-retries", type=int, default=2, help="Maximum tool retries"
+    )
+    parser.add_argument(
+        "--tools-per-iteration", type=int, default=1, help="Tools per iteration"
+    )
+    parser.add_argument(
+        "--enable-dynamic-termination",
+        action="store_true",
+        help="Enable dynamic termination",
+    )
+    parser.add_argument(
+        "--demo-phases", action="store_true", help="Run phase transition demo"
+    )
 
     args = parser.parse_args()
 

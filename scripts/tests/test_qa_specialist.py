@@ -7,16 +7,15 @@ financial questions and evaluating the responses.
 
 import argparse
 import asyncio
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -48,10 +47,14 @@ async def test_qa_agent(question: str):
             semantic_context = result["supporting_data"].get("semantic_context", [])
             if semantic_context:
                 print("\n--- Semantic Context ---")
-                for i, context in enumerate(semantic_context[:3]):  # Show top 3 for brevity
+                for i, context in enumerate(
+                    semantic_context[:3]
+                ):  # Show top 3 for brevity
                     print(f"\nContext {i + 1}:")
                     print(f"Company: {context.get('company', 'N/A')}")
-                    print(f"Filing: {context.get('filing_type', 'N/A')} ({context.get('filing_date', 'N/A')})")
+                    print(
+                        f"Filing: {context.get('filing_type', 'N/A')} ({context.get('filing_date', 'N/A')})"
+                    )
                     print(f"Text: {context.get('text', 'N/A')[:200]}...")
 
             # Print financial data
@@ -93,7 +96,10 @@ def main():
     """Main function to run the test script."""
     parser = argparse.ArgumentParser(description="Test the QA Specialist Agent")
     parser.add_argument(
-        "--question", type=str, default="What was Apple's revenue growth in 2023?", help="Financial question to ask"
+        "--question",
+        type=str,
+        default="What was Apple's revenue growth in 2023?",
+        help="Financial question to ask",
     )
 
     args = parser.parse_args()

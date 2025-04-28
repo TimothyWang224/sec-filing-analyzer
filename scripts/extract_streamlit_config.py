@@ -6,7 +6,6 @@ and updates the unified configuration file.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -41,36 +40,64 @@ try:
             "port": streamlit_config.get("server", {}).get("port", 8501),
             "headless": streamlit_config.get("server", {}).get("headless", True),
             "enable_cors": streamlit_config.get("server", {}).get("enableCORS", True),
-            "enable_xsrf_protection": streamlit_config.get("server", {}).get("enableXsrfProtection", False),
-            "max_upload_size": streamlit_config.get("server", {}).get("maxUploadSize", 200),
+            "enable_xsrf_protection": streamlit_config.get("server", {}).get(
+                "enableXsrfProtection", False
+            ),
+            "max_upload_size": streamlit_config.get("server", {}).get(
+                "maxUploadSize", 200
+            ),
             "base_url_path": streamlit_config.get("server", {}).get("baseUrlPath", ""),
-            "enable_websocket_compression": streamlit_config.get("server", {}).get("enableWebsocketCompression", False),
+            "enable_websocket_compression": streamlit_config.get("server", {}).get(
+                "enableWebsocketCompression", False
+            ),
         },
         "browser": {
-            "server_address": streamlit_config.get("browser", {}).get("serverAddress", "localhost"),
-            "gather_usage_stats": streamlit_config.get("browser", {}).get("gatherUsageStats", False),
-            "serve_trailing_slash": streamlit_config.get("browser", {}).get("serveTrailingSlash", True),
+            "server_address": streamlit_config.get("browser", {}).get(
+                "serverAddress", "localhost"
+            ),
+            "gather_usage_stats": streamlit_config.get("browser", {}).get(
+                "gatherUsageStats", False
+            ),
+            "serve_trailing_slash": streamlit_config.get("browser", {}).get(
+                "serveTrailingSlash", True
+            ),
         },
         "theme": {"base": streamlit_config.get("theme", {}).get("base", "light")},
         "ui": {"hide_top_bar": streamlit_config.get("ui", {}).get("hideTopBar", False)},
         "client": {
-            "show_error_details": streamlit_config.get("client", {}).get("showErrorDetails", True),
-            "toolbar_mode": streamlit_config.get("client", {}).get("toolbarMode", "auto"),
+            "show_error_details": streamlit_config.get("client", {}).get(
+                "showErrorDetails", True
+            ),
+            "toolbar_mode": streamlit_config.get("client", {}).get(
+                "toolbarMode", "auto"
+            ),
             "caching": streamlit_config.get("client", {}).get("caching", False),
-            "display_enabled": streamlit_config.get("client", {}).get("displayEnabled", True),
+            "display_enabled": streamlit_config.get("client", {}).get(
+                "displayEnabled", True
+            ),
         },
         "runner": {
-            "magic_enabled": streamlit_config.get("runner", {}).get("magicEnabled", True),
-            "install_tracer": streamlit_config.get("runner", {}).get("installTracer", True),
-            "fix_matplotlib": streamlit_config.get("runner", {}).get("fixMatplotlib", True),
+            "magic_enabled": streamlit_config.get("runner", {}).get(
+                "magicEnabled", True
+            ),
+            "install_tracer": streamlit_config.get("runner", {}).get(
+                "installTracer", True
+            ),
+            "fix_matplotlib": streamlit_config.get("runner", {}).get(
+                "fixMatplotlib", True
+            ),
             "fast_reruns": streamlit_config.get("runner", {}).get("fastReruns", False),
         },
         "global": {
-            "disable_watchdog_warning": streamlit_config.get("global", {}).get("disableWatchdogWarning", False),
+            "disable_watchdog_warning": streamlit_config.get("global", {}).get(
+                "disableWatchdogWarning", False
+            ),
             "show_warning_on_direct_execution": streamlit_config.get("global", {}).get(
                 "showWarningOnDirectExecution", True
             ),
-            "data_frame_serialization": streamlit_config.get("global", {}).get("dataFrameSerialization", "arrow"),
+            "data_frame_serialization": streamlit_config.get("global", {}).get(
+                "dataFrameSerialization", "arrow"
+            ),
             "suppress_deprecation_warnings": streamlit_config.get("global", {}).get(
                 "suppressDeprecationWarnings", True
             ),

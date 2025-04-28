@@ -51,7 +51,9 @@ def main():
 
     # Create archive directory if it doesn't exist
     archive_dir = root_dir / "archive" / "scripts"
-    archive_timestamp_dir = archive_dir / datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    archive_timestamp_dir = archive_dir / datetime.datetime.now().strftime(
+        "%Y%m%d_%H%M%S"
+    )
 
     # Check if archive directory already exists
     if not archive_dir.exists():

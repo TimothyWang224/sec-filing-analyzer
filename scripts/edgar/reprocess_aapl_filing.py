@@ -6,7 +6,6 @@ that had zero vectors in the embedding.
 """
 
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -17,14 +16,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.config import ETLConfig
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
-from sec_filing_analyzer.utils.logging_utils import generate_embedding_error_report, setup_logging
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
+from sec_filing_analyzer.utils.logging_utils import (
+    generate_embedding_error_report,
+    setup_logging,
+)
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -61,7 +67,9 @@ def reprocess_aapl_filing():
         # Extract metadata
         metadata = filing_data["metadata"]
 
-        logger.info(f"Reprocessing AAPL filing: {metadata.get('form')} from {metadata.get('filing_date')}")
+        logger.info(
+            f"Reprocessing AAPL filing: {metadata.get('form')} from {metadata.get('filing_date')}"
+        )
 
         # Process the filing
         processed_data = pipeline.process_filing_data(metadata)

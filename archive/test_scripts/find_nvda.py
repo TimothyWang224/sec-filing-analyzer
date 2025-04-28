@@ -1,5 +1,4 @@
 import os
-import sys
 
 import duckdb
 
@@ -19,7 +18,9 @@ def check_for_nvda(db_path):
             return False
 
         # Check for NVDA ticker
-        result = conn.execute("SELECT COUNT(*) FROM companies WHERE ticker = 'NVDA'").fetchone()
+        result = conn.execute(
+            "SELECT COUNT(*) FROM companies WHERE ticker = 'NVDA'"
+        ).fetchone()
         has_nvda = result[0] > 0
 
         if has_nvda:

@@ -18,7 +18,9 @@ from sec_filing_analyzer.data_processing import XBRLExtractorFactory
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +44,9 @@ def test_edgar_xbrl_extractor():
 
         # Extract XBRL data
         logger.info(f"Extracting XBRL data for {ticker} {accession_number}...")
-        xbrl_data = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
+        xbrl_data = extractor.extract_financials(
+            ticker=ticker, filing_id=filing_id, accession_number=accession_number
+        )
 
         # Check if extraction was successful
         if "error" in xbrl_data:
@@ -103,7 +107,9 @@ def compare_extractors():
         accession_number = "0001564590-22-026876"  # Microsoft's 10-K from July 2022
 
         # Extract XBRL data using both extractors
-        logger.info(f"Extracting XBRL data for {ticker} {accession_number} using both extractors...")
+        logger.info(
+            f"Extracting XBRL data for {ticker} {accession_number} using both extractors..."
+        )
 
         edgar_data = edgar_extractor.extract_financials(
             ticker=ticker, filing_id=filing_id, accession_number=accession_number
@@ -132,7 +138,9 @@ def compare_extractors():
         logger.info(f"  Edgar Metrics: {len(edgar_data.get('metrics', {}))}")
         logger.info(f"  Simplified Metrics: {len(simplified_data.get('metrics', {}))}")
         logger.info(f"  Edgar Statements: {len(edgar_data.get('statements', {}))}")
-        logger.info(f"  Simplified Statements: {len(simplified_data.get('statements', {}))}")
+        logger.info(
+            f"  Simplified Statements: {len(simplified_data.get('statements', {}))}"
+        )
 
         return {"edgar": edgar_data, "simplified": simplified_data}
 

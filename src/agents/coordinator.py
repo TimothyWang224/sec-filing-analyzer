@@ -15,8 +15,12 @@ from .risk_analyst import RiskAnalystAgent
 # Try to import from the config files, but use defaults if not available
 # These imports are used in the configuration fallback mechanism
 try:
-    from sec_filing_analyzer.config import AGENT_CONFIG  # Used for global config fallback
-    from sec_filing_analyzer.llm import get_agent_config  # Used for agent-specific config
+    from sec_filing_analyzer.config import (
+        AGENT_CONFIG,
+    )  # Used for global config fallback
+    from sec_filing_analyzer.llm import (
+        get_agent_config,
+    )  # Used for agent-specific config
 
     HAS_CONFIG = True
 except ImportError:
@@ -30,7 +34,9 @@ class FinancialDiligenceCoordinator(Agent):
         self,
         capabilities: Optional[List[Capability]] = None,
         # Agent iteration parameters
-        max_iterations: Optional[int] = None,  # Legacy parameter, still used for backward compatibility
+        max_iterations: Optional[
+            int
+        ] = None,  # Legacy parameter, still used for backward compatibility
         max_planning_iterations: Optional[int] = None,
         max_execution_iterations: Optional[int] = None,
         max_refinement_iterations: Optional[int] = None,
@@ -63,9 +69,16 @@ class FinancialDiligenceCoordinator(Agent):
             max_tool_calls: Maximum number of tool calls per iteration
         """
         goals = [
-            Goal(name="coordination", description="Coordinate multiple agents for comprehensive analysis"),
-            Goal(name="synthesis", description="Synthesize insights from multiple agents"),
-            Goal(name="reporting", description="Generate comprehensive diligence reports"),
+            Goal(
+                name="coordination",
+                description="Coordinate multiple agents for comprehensive analysis",
+            ),
+            Goal(
+                name="synthesis", description="Synthesize insights from multiple agents"
+            ),
+            Goal(
+                name="reporting", description="Generate comprehensive diligence reports"
+            ),
         ]
 
         # Initialize the base agent with agent type for configuration
@@ -99,12 +112,16 @@ class FinancialDiligenceCoordinator(Agent):
         self.environment = environment or FinancialEnvironment()
 
         # Add TimeAwarenessCapability if not already present
-        has_time_awareness = any(isinstance(cap, TimeAwarenessCapability) for cap in self.capabilities)
+        has_time_awareness = any(
+            isinstance(cap, TimeAwarenessCapability) for cap in self.capabilities
+        )
         if not has_time_awareness:
             self.capabilities.append(TimeAwarenessCapability())
 
         # Add PlanningCapability if not already present
-        has_planning = any(isinstance(cap, PlanningCapability) for cap in self.capabilities)
+        has_planning = any(
+            isinstance(cap, PlanningCapability) for cap in self.capabilities
+        )
         if not has_planning:
             self.capabilities.append(
                 PlanningCapability(
@@ -181,10 +198,14 @@ class FinancialDiligenceCoordinator(Agent):
         qa_specialist_model = "gpt-4o-mini"
         qa_specialist_temp = 0.5
         qa_specialist_tokens = 4000
-        qa_specialist_max_iterations = 5  # Increased from 3 to 5 for more complex queries
+        qa_specialist_max_iterations = (
+            5  # Increased from 3 to 5 for more complex queries
+        )
         qa_specialist_planning = 1
         qa_specialist_execution = 5  # Increased from 2 to 5 to allow more tool calls
-        qa_specialist_refinement = 2  # Increased from 1 to 2 for better answer refinement
+        qa_specialist_refinement = (
+            2  # Increased from 1 to 2 for better answer refinement
+        )
 
         # Try to use configuration values if available
         use_config = False
@@ -196,40 +217,60 @@ class FinancialDiligenceCoordinator(Agent):
                     "model", AGENT_CONFIG.get("llm_model", financial_analyst_model)
                 )
                 financial_analyst_temp = financial_analyst_config.get(
-                    "temperature", AGENT_CONFIG.get("llm_temperature", financial_analyst_temp)
+                    "temperature",
+                    AGENT_CONFIG.get("llm_temperature", financial_analyst_temp),
                 )
                 financial_analyst_tokens = financial_analyst_config.get(
-                    "max_tokens", AGENT_CONFIG.get("llm_max_tokens", financial_analyst_tokens)
+                    "max_tokens",
+                    AGENT_CONFIG.get("llm_max_tokens", financial_analyst_tokens),
                 )
                 financial_analyst_planning = financial_analyst_config.get(
-                    "max_planning_iterations", AGENT_CONFIG.get("max_planning_iterations", financial_analyst_planning)
+                    "max_planning_iterations",
+                    AGENT_CONFIG.get(
+                        "max_planning_iterations", financial_analyst_planning
+                    ),
                 )
                 financial_analyst_execution = financial_analyst_config.get(
                     "max_execution_iterations",
-                    AGENT_CONFIG.get("max_execution_iterations", financial_analyst_execution),
+                    AGENT_CONFIG.get(
+                        "max_execution_iterations", financial_analyst_execution
+                    ),
                 )
                 financial_analyst_refinement = financial_analyst_config.get(
                     "max_refinement_iterations",
-                    AGENT_CONFIG.get("max_refinement_iterations", financial_analyst_refinement),
+                    AGENT_CONFIG.get(
+                        "max_refinement_iterations", financial_analyst_refinement
+                    ),
                 )
 
                 # Get configuration for risk analyst
                 risk_analyst_config = get_agent_config("risk_analyst")
-                risk_analyst_model = risk_analyst_config.get("model", AGENT_CONFIG.get("llm_model", risk_analyst_model))
+                risk_analyst_model = risk_analyst_config.get(
+                    "model", AGENT_CONFIG.get("llm_model", risk_analyst_model)
+                )
                 risk_analyst_temp = risk_analyst_config.get(
-                    "temperature", AGENT_CONFIG.get("llm_temperature", risk_analyst_temp)
+                    "temperature",
+                    AGENT_CONFIG.get("llm_temperature", risk_analyst_temp),
                 )
                 risk_analyst_tokens = risk_analyst_config.get(
-                    "max_tokens", AGENT_CONFIG.get("llm_max_tokens", risk_analyst_tokens)
+                    "max_tokens",
+                    AGENT_CONFIG.get("llm_max_tokens", risk_analyst_tokens),
                 )
                 risk_analyst_planning = risk_analyst_config.get(
-                    "max_planning_iterations", AGENT_CONFIG.get("max_planning_iterations", risk_analyst_planning)
+                    "max_planning_iterations",
+                    AGENT_CONFIG.get("max_planning_iterations", risk_analyst_planning),
                 )
                 risk_analyst_execution = risk_analyst_config.get(
-                    "max_execution_iterations", AGENT_CONFIG.get("max_execution_iterations", risk_analyst_execution)
+                    "max_execution_iterations",
+                    AGENT_CONFIG.get(
+                        "max_execution_iterations", risk_analyst_execution
+                    ),
                 )
                 risk_analyst_refinement = risk_analyst_config.get(
-                    "max_refinement_iterations", AGENT_CONFIG.get("max_refinement_iterations", risk_analyst_refinement)
+                    "max_refinement_iterations",
+                    AGENT_CONFIG.get(
+                        "max_refinement_iterations", risk_analyst_refinement
+                    ),
                 )
 
                 # Get configuration for QA specialist
@@ -238,19 +279,28 @@ class FinancialDiligenceCoordinator(Agent):
                     "model", AGENT_CONFIG.get("llm_model", qa_specialist_model)
                 )
                 qa_specialist_temp = qa_specialist_config.get(
-                    "temperature", AGENT_CONFIG.get("llm_temperature", qa_specialist_temp)
+                    "temperature",
+                    AGENT_CONFIG.get("llm_temperature", qa_specialist_temp),
                 )
                 qa_specialist_tokens = qa_specialist_config.get(
-                    "max_tokens", AGENT_CONFIG.get("llm_max_tokens", qa_specialist_tokens)
+                    "max_tokens",
+                    AGENT_CONFIG.get("llm_max_tokens", qa_specialist_tokens),
                 )
                 qa_specialist_planning = qa_specialist_config.get(
-                    "max_planning_iterations", AGENT_CONFIG.get("max_planning_iterations", qa_specialist_planning)
+                    "max_planning_iterations",
+                    AGENT_CONFIG.get("max_planning_iterations", qa_specialist_planning),
                 )
                 qa_specialist_execution = qa_specialist_config.get(
-                    "max_execution_iterations", AGENT_CONFIG.get("max_execution_iterations", qa_specialist_execution)
+                    "max_execution_iterations",
+                    AGENT_CONFIG.get(
+                        "max_execution_iterations", qa_specialist_execution
+                    ),
                 )
                 qa_specialist_refinement = qa_specialist_config.get(
-                    "max_refinement_iterations", AGENT_CONFIG.get("max_refinement_iterations", qa_specialist_refinement)
+                    "max_refinement_iterations",
+                    AGENT_CONFIG.get(
+                        "max_refinement_iterations", qa_specialist_refinement
+                    ),
                 )
 
                 use_config = True
@@ -261,28 +311,52 @@ class FinancialDiligenceCoordinator(Agent):
         # Use environment variables if config was not available or failed
         if not use_config:
             # Financial analyst defaults
-            financial_analyst_model = os.getenv("FINANCIAL_ANALYST_MODEL", "gpt-4o-mini")
-            financial_analyst_temp = float(os.getenv("FINANCIAL_ANALYST_TEMPERATURE", "0.3"))
-            financial_analyst_tokens = int(os.getenv("FINANCIAL_ANALYST_MAX_TOKENS", "1000"))
-            financial_analyst_planning = int(os.getenv("FINANCIAL_ANALYST_PLANNING_ITERATIONS", "1"))
-            financial_analyst_execution = int(os.getenv("FINANCIAL_ANALYST_EXECUTION_ITERATIONS", "2"))
-            financial_analyst_refinement = int(os.getenv("FINANCIAL_ANALYST_REFINEMENT_ITERATIONS", "1"))
+            financial_analyst_model = os.getenv(
+                "FINANCIAL_ANALYST_MODEL", "gpt-4o-mini"
+            )
+            financial_analyst_temp = float(
+                os.getenv("FINANCIAL_ANALYST_TEMPERATURE", "0.3")
+            )
+            financial_analyst_tokens = int(
+                os.getenv("FINANCIAL_ANALYST_MAX_TOKENS", "1000")
+            )
+            financial_analyst_planning = int(
+                os.getenv("FINANCIAL_ANALYST_PLANNING_ITERATIONS", "1")
+            )
+            financial_analyst_execution = int(
+                os.getenv("FINANCIAL_ANALYST_EXECUTION_ITERATIONS", "2")
+            )
+            financial_analyst_refinement = int(
+                os.getenv("FINANCIAL_ANALYST_REFINEMENT_ITERATIONS", "1")
+            )
 
             # Risk analyst defaults
             risk_analyst_model = os.getenv("RISK_ANALYST_MODEL", "gpt-4o-mini")
             risk_analyst_temp = float(os.getenv("RISK_ANALYST_TEMPERATURE", "0.3"))
             risk_analyst_tokens = int(os.getenv("RISK_ANALYST_MAX_TOKENS", "1000"))
-            risk_analyst_planning = int(os.getenv("RISK_ANALYST_PLANNING_ITERATIONS", "1"))
-            risk_analyst_execution = int(os.getenv("RISK_ANALYST_EXECUTION_ITERATIONS", "2"))
-            risk_analyst_refinement = int(os.getenv("RISK_ANALYST_REFINEMENT_ITERATIONS", "1"))
+            risk_analyst_planning = int(
+                os.getenv("RISK_ANALYST_PLANNING_ITERATIONS", "1")
+            )
+            risk_analyst_execution = int(
+                os.getenv("RISK_ANALYST_EXECUTION_ITERATIONS", "2")
+            )
+            risk_analyst_refinement = int(
+                os.getenv("RISK_ANALYST_REFINEMENT_ITERATIONS", "1")
+            )
 
             # QA specialist defaults
             qa_specialist_model = os.getenv("QA_SPECIALIST_MODEL", "gpt-4o-mini")
             qa_specialist_temp = float(os.getenv("QA_SPECIALIST_TEMPERATURE", "0.5"))
             qa_specialist_tokens = int(os.getenv("QA_SPECIALIST_MAX_TOKENS", "4000"))
-            qa_specialist_max_iterations = int(os.getenv("QA_SPECIALIST_MAX_ITERATIONS", "5"))  # Increased from 3 to 5
-            qa_specialist_planning = int(os.getenv("QA_SPECIALIST_PLANNING_ITERATIONS", "1"))
-            qa_specialist_execution = int(os.getenv("QA_SPECIALIST_EXECUTION_ITERATIONS", "5"))  # Increased from 2 to 5
+            qa_specialist_max_iterations = int(
+                os.getenv("QA_SPECIALIST_MAX_ITERATIONS", "5")
+            )  # Increased from 3 to 5
+            qa_specialist_planning = int(
+                os.getenv("QA_SPECIALIST_PLANNING_ITERATIONS", "1")
+            )
+            qa_specialist_execution = int(
+                os.getenv("QA_SPECIALIST_EXECUTION_ITERATIONS", "5")
+            )  # Increased from 2 to 5
             qa_specialist_refinement = int(
                 os.getenv("QA_SPECIALIST_REFINEMENT_ITERATIONS", "2")
             )  # Increased from 1 to 2
@@ -320,7 +394,10 @@ class FinancialDiligenceCoordinator(Agent):
         )
 
     async def run(
-        self, user_input: str, memory: Optional[List[Dict]] = None, chat_mode: bool = False
+        self,
+        user_input: str,
+        memory: Optional[List[Dict]] = None,
+        chat_mode: bool = False,
     ) -> Dict[str, Any]:
         """
         Run the financial diligence coordinator.
@@ -347,7 +424,7 @@ class FinancialDiligenceCoordinator(Agent):
 
         # Set initial phase to planning
         self.state.set_phase("planning")
-        self.logger.info(f"Starting planning phase")
+        self.logger.info("Starting planning phase")
 
         # Initialize variables for results
         financial_analysis = None
@@ -383,7 +460,7 @@ class FinancialDiligenceCoordinator(Agent):
                 self._rollover_token_surplus("planning", "execution")
 
                 self.state.set_phase("execution")
-                self.logger.info(f"Moving to execution phase")
+                self.logger.info("Moving to execution phase")
 
         # Phase 2: Execution
         while not self.should_terminate() and self.state.current_phase == "execution":
@@ -401,24 +478,34 @@ class FinancialDiligenceCoordinator(Agent):
 
             # Get the agent selection from memory
             memory_items = self.get_memory()
-            agent_selection_items = [item for item in memory_items if item.get("type") == "agent_selection"]
-            agent_selection = agent_selection_items[-1].get("content", {}) if agent_selection_items else {}
+            agent_selection_items = [
+                item for item in memory_items if item.get("type") == "agent_selection"
+            ]
+            agent_selection = (
+                agent_selection_items[-1].get("content", {})
+                if agent_selection_items
+                else {}
+            )
 
             # Log if a tool is specified in the current step (but don't execute it directly)
             if current_step and "tool" in current_step:
                 tool_name = current_step.get("tool")
 
                 self.logger.info(f"Tool specified in plan step: {tool_name}")
-                self.logger.info(f"This will be delegated to a specialized agent")
+                self.logger.info("This will be delegated to a specialized agent")
 
             # If we have a plan with a current step, follow it
             if current_step:
-                self.logger.info(f"Executing plan step: {current_step.get('description')}")
+                self.logger.info(
+                    f"Executing plan step: {current_step.get('description')}"
+                )
 
                 # If the step specifies an agent, run that agent
                 if "agent" in current_step:
                     agent_name = current_step.get("agent")
-                    self.logger.info(f"Running {agent_name} as specified in the plan...")
+                    self.logger.info(
+                        f"Running {agent_name} as specified in the plan..."
+                    )
 
                     # Extract high-level task information from the step
                     task_objective = current_step.get("objective", "")
@@ -432,18 +519,28 @@ class FinancialDiligenceCoordinator(Agent):
                         "context": {
                             "user_query": user_input,
                             "step_number": current_step.get("step_number"),
-                            "total_steps": len(planning_context.get("plan", {}).get("steps", [])),
+                            "total_steps": len(
+                                planning_context.get("plan", {}).get("steps", [])
+                            ),
                         },
                     }
 
-                    self.logger.info(f"Running {agent_name} with high-level task: {task_objective or task_description}")
+                    self.logger.info(
+                        f"Running {agent_name} with high-level task: {task_objective or task_description}"
+                    )
 
                     if agent_name == "financial_analyst":
-                        financial_analysis = await self.financial_analyst.run(user_input, plan=task_plan)
+                        financial_analysis = await self.financial_analyst.run(
+                            user_input, plan=task_plan
+                        )
                     elif agent_name == "risk_analyst":
-                        risk_analysis = await self.risk_analyst.run(user_input, plan=task_plan)
+                        risk_analysis = await self.risk_analyst.run(
+                            user_input, plan=task_plan
+                        )
                     elif agent_name == "qa_specialist":
-                        qa_response = await self.qa_specialist.run(user_input, plan=task_plan)
+                        qa_response = await self.qa_specialist.run(
+                            user_input, plan=task_plan
+                        )
                 else:
                     # Run selected agents based on the agent selection
                     # Get the plan context for potential agent instructions
@@ -459,7 +556,9 @@ class FinancialDiligenceCoordinator(Agent):
                     for step in steps:
                         if step.get("agent") == "financial_analyst":
                             financial_analyst_task = {
-                                "task_objective": step.get("objective", step.get("description", "")),
+                                "task_objective": step.get(
+                                    "objective", step.get("description", "")
+                                ),
                                 "success_criteria": step.get("success_criteria", []),
                                 "context": {
                                     "user_query": user_input,
@@ -469,7 +568,9 @@ class FinancialDiligenceCoordinator(Agent):
                             }
                         elif step.get("agent") == "risk_analyst":
                             risk_analyst_task = {
-                                "task_objective": step.get("objective", step.get("description", "")),
+                                "task_objective": step.get(
+                                    "objective", step.get("description", "")
+                                ),
                                 "success_criteria": step.get("success_criteria", []),
                                 "context": {
                                     "user_query": user_input,
@@ -479,7 +580,9 @@ class FinancialDiligenceCoordinator(Agent):
                             }
                         elif step.get("agent") == "qa_specialist":
                             qa_specialist_task = {
-                                "task_objective": step.get("objective", step.get("description", "")),
+                                "task_objective": step.get(
+                                    "objective", step.get("description", "")
+                                ),
                                 "success_criteria": step.get("success_criteria", []),
                                 "context": {
                                     "user_query": user_input,
@@ -488,28 +591,47 @@ class FinancialDiligenceCoordinator(Agent):
                                 },
                             }
 
-                    if agent_selection.get("financial_analyst", False) and not financial_analysis:
+                    if (
+                        agent_selection.get("financial_analyst", False)
+                        and not financial_analysis
+                    ):
                         task_desc = (
                             financial_analyst_task.get("task_objective")
                             if financial_analyst_task
                             else "Analyze financial information"
                         )
-                        self.logger.info(f"Running Financial Analyst Agent with task: {task_desc}")
-                        financial_analysis = await self.financial_analyst.run(user_input, plan=financial_analyst_task)
+                        self.logger.info(
+                            f"Running Financial Analyst Agent with task: {task_desc}"
+                        )
+                        financial_analysis = await self.financial_analyst.run(
+                            user_input, plan=financial_analyst_task
+                        )
 
                     if agent_selection.get("risk_analyst", False) and not risk_analysis:
                         task_desc = (
-                            risk_analyst_task.get("task_objective") if risk_analyst_task else "Analyze risk factors"
+                            risk_analyst_task.get("task_objective")
+                            if risk_analyst_task
+                            else "Analyze risk factors"
                         )
-                        self.logger.info(f"Running Risk Analyst Agent with task: {task_desc}")
-                        risk_analysis = await self.risk_analyst.run(user_input, plan=risk_analyst_task)
+                        self.logger.info(
+                            f"Running Risk Analyst Agent with task: {task_desc}"
+                        )
+                        risk_analysis = await self.risk_analyst.run(
+                            user_input, plan=risk_analyst_task
+                        )
 
                     if agent_selection.get("qa_specialist", False) and not qa_response:
                         task_desc = (
-                            qa_specialist_task.get("task_objective") if qa_specialist_task else "Retrieve information"
+                            qa_specialist_task.get("task_objective")
+                            if qa_specialist_task
+                            else "Retrieve information"
                         )
-                        self.logger.info(f"Running QA Specialist Agent with task: {task_desc}")
-                        qa_response = await self.qa_specialist.run(user_input, plan=qa_specialist_task)
+                        self.logger.info(
+                            f"Running QA Specialist Agent with task: {task_desc}"
+                        )
+                        qa_response = await self.qa_specialist.run(
+                            user_input, plan=qa_specialist_task
+                        )
             else:
                 # Run selected agents based on the agent selection
                 # Get the plan context for potential agent instructions
@@ -556,7 +678,9 @@ class FinancialDiligenceCoordinator(Agent):
                 for step in steps:
                     if step.get("agent") == "financial_analyst":
                         financial_analyst_task = {
-                            "task_objective": step.get("objective", step.get("description", "")),
+                            "task_objective": step.get(
+                                "objective", step.get("description", "")
+                            ),
                             "success_criteria": step.get("success_criteria", []),
                             "context": {
                                 "user_query": user_input,
@@ -566,7 +690,9 @@ class FinancialDiligenceCoordinator(Agent):
                         }
                     elif step.get("agent") == "risk_analyst":
                         risk_analyst_task = {
-                            "task_objective": step.get("objective", step.get("description", "")),
+                            "task_objective": step.get(
+                                "objective", step.get("description", "")
+                            ),
                             "success_criteria": step.get("success_criteria", []),
                             "context": {
                                 "user_query": user_input,
@@ -576,7 +702,9 @@ class FinancialDiligenceCoordinator(Agent):
                         }
                     elif step.get("agent") == "qa_specialist":
                         qa_specialist_task = {
-                            "task_objective": step.get("objective", step.get("description", "")),
+                            "task_objective": step.get(
+                                "objective", step.get("description", "")
+                            ),
                             "success_criteria": step.get("success_criteria", []),
                             "context": {
                                 "user_query": user_input,
@@ -586,41 +714,59 @@ class FinancialDiligenceCoordinator(Agent):
                         }
 
                 # Use tasks from plan if available, otherwise use defaults
-                if agent_selection.get("financial_analyst", False) and not financial_analysis:
+                if (
+                    agent_selection.get("financial_analyst", False)
+                    and not financial_analysis
+                ):
                     task = financial_analyst_task or default_tasks["financial_analyst"]
                     task_desc = task.get("task_objective")
-                    self.logger.info(f"Running Financial Analyst Agent with task: {task_desc}")
-                    financial_analysis = await self.financial_analyst.run(user_input, plan=task)
+                    self.logger.info(
+                        f"Running Financial Analyst Agent with task: {task_desc}"
+                    )
+                    financial_analysis = await self.financial_analyst.run(
+                        user_input, plan=task
+                    )
 
                 if agent_selection.get("risk_analyst", False) and not risk_analysis:
                     task = risk_analyst_task or default_tasks["risk_analyst"]
                     task_desc = task.get("task_objective")
-                    self.logger.info(f"Running Risk Analyst Agent with task: {task_desc}")
+                    self.logger.info(
+                        f"Running Risk Analyst Agent with task: {task_desc}"
+                    )
                     risk_analysis = await self.risk_analyst.run(user_input, plan=task)
 
                 if agent_selection.get("qa_specialist", False) and not qa_response:
                     task = qa_specialist_task or default_tasks["qa_specialist"]
                     task_desc = task.get("task_objective")
-                    self.logger.info(f"Running QA Specialist Agent with task: {task_desc}")
+                    self.logger.info(
+                        f"Running QA Specialist Agent with task: {task_desc}"
+                    )
                     qa_response = await self.qa_specialist.run(user_input, plan=task)
 
             self.increment_iteration()
 
             # If we've run all the selected agents, move to refinement phase
             all_agents_run = True
-            if agent_selection.get("financial_analyst", False) and not financial_analysis:
+            if (
+                agent_selection.get("financial_analyst", False)
+                and not financial_analysis
+            ):
                 all_agents_run = False
             if agent_selection.get("risk_analyst", False) and not risk_analysis:
                 all_agents_run = False
             if agent_selection.get("qa_specialist", False) and not qa_response:
                 all_agents_run = False
 
-            if all_agents_run or self.state.phase_iterations["execution"] >= self.max_execution_iterations:
+            if (
+                all_agents_run
+                or self.state.phase_iterations["execution"]
+                >= self.max_execution_iterations
+            ):
                 # Roll over unused tokens from execution to refinement
                 self._rollover_token_surplus("execution", "refinement")
 
                 self.state.set_phase("refinement")
-                self.logger.info(f"Moving to refinement phase")
+                self.logger.info("Moving to refinement phase")
 
         # Phase 3: Refinement
         while not self.should_terminate() and self.state.current_phase == "refinement":
@@ -640,26 +786,41 @@ class FinancialDiligenceCoordinator(Agent):
                 )
 
                 # Add result to memory
-                self.add_to_memory({"type": "diligence_report", "content": diligence_report})
+                self.add_to_memory(
+                    {"type": "diligence_report", "content": diligence_report}
+                )
             else:
                 # Refine the existing report
                 diligence_report = await self._refine_diligence_report(
-                    user_input, diligence_report, financial_analysis, risk_analysis, qa_response
+                    user_input,
+                    diligence_report,
+                    financial_analysis,
+                    risk_analysis,
+                    qa_response,
                 )
 
                 # Add refined result to memory
-                self.add_to_memory({"type": "refined_diligence_report", "content": diligence_report})
+                self.add_to_memory(
+                    {"type": "refined_diligence_report", "content": diligence_report}
+                )
 
             # Process result with capabilities
             for capability in self.capabilities:
                 diligence_report = await capability.process_result(
-                    self, {"input": user_input}, user_input, {"type": "diligence_report"}, diligence_report
+                    self,
+                    {"input": user_input},
+                    user_input,
+                    {"type": "diligence_report"},
+                    diligence_report,
                 )
 
             self.increment_iteration()
 
             # If we've done enough refinement, we're done
-            if self.state.phase_iterations["refinement"] >= self.max_refinement_iterations:
+            if (
+                self.state.phase_iterations["refinement"]
+                >= self.max_refinement_iterations
+            ):
                 break
 
         result = {
@@ -737,11 +898,19 @@ class FinancialDiligenceCoordinator(Agent):
                 agent_selection = json.loads(json_match.group(0))
             else:
                 # Default to running all agents if parsing fails
-                agent_selection = {"financial_analyst": True, "risk_analyst": True, "qa_specialist": True}
+                agent_selection = {
+                    "financial_analyst": True,
+                    "risk_analyst": True,
+                    "qa_specialist": True,
+                }
         except Exception as e:
             print(f"Error parsing agent selection: {str(e)}")
             # Default to running all agents if parsing fails
-            agent_selection = {"financial_analyst": True, "risk_analyst": True, "qa_specialist": True}
+            agent_selection = {
+                "financial_analyst": True,
+                "risk_analyst": True,
+                "qa_specialist": True,
+            }
 
         return agent_selection
 
@@ -777,9 +946,13 @@ class FinancialDiligenceCoordinator(Agent):
 
             # Log the analyses that were passed in (to use the parameters and avoid IDE warnings)
             if financial_analysis:
-                print(f"Financial analysis data available: {len(str(financial_analysis))} characters")
+                print(
+                    f"Financial analysis data available: {len(str(financial_analysis))} characters"
+                )
             if risk_analysis:
-                print(f"Risk analysis data available: {len(str(risk_analysis))} characters")
+                print(
+                    f"Risk analysis data available: {len(str(risk_analysis))} characters"
+                )
             if qa_response:
                 print(f"QA response data available: {len(str(qa_response))} characters")
 
@@ -820,7 +993,9 @@ class FinancialDiligenceCoordinator(Agent):
                 import re
 
                 json_match = re.search(r"\[.*\]", findings_response, re.DOTALL)
-                refined_findings = json.loads(json_match.group(0)) if json_match else key_findings
+                refined_findings = (
+                    json.loads(json_match.group(0)) if json_match else key_findings
+                )
             except:
                 refined_findings = key_findings
 
@@ -834,13 +1009,17 @@ class FinancialDiligenceCoordinator(Agent):
             Format your response as a JSON array of recommendation strings.
             """
 
-            recommendations_response = await self.llm.generate(prompt=recommendations_prompt)
+            recommendations_response = await self.llm.generate(
+                prompt=recommendations_prompt
+            )
 
             # Try to parse recommendations as JSON
             try:
                 # Extract JSON from the response
                 json_match = re.search(r"\[.*\]", recommendations_response, re.DOTALL)
-                refined_recommendations = json.loads(json_match.group(0)) if json_match else recommendations
+                refined_recommendations = (
+                    json.loads(json_match.group(0)) if json_match else recommendations
+                )
             except:
                 refined_recommendations = recommendations
 
@@ -849,7 +1028,9 @@ class FinancialDiligenceCoordinator(Agent):
             refined_report["executive_summary"] = refined_summary.strip()
             refined_report["key_findings"] = refined_findings
             refined_report["recommendations"] = refined_recommendations
-            refined_report["refinement_iteration"] = refined_report.get("refinement_iteration", 0) + 1
+            refined_report["refinement_iteration"] = (
+                refined_report.get("refinement_iteration", 0) + 1
+            )
 
             # Add confidence score if dynamic termination is enabled
             if self.enable_dynamic_termination:
@@ -864,7 +1045,9 @@ class FinancialDiligenceCoordinator(Agent):
                 confidence_response = await self.llm.generate(prompt=confidence_prompt)
                 try:
                     confidence = float(confidence_response.strip())
-                    refined_report["confidence"] = min(max(confidence, 0.0), 1.0)  # Ensure it's between 0 and 1
+                    refined_report["confidence"] = min(
+                        max(confidence, 0.0), 1.0
+                    )  # Ensure it's between 0 and 1
                 except ValueError:
                     refined_report["confidence"] = 0.5  # Default if parsing fails
 
@@ -900,24 +1083,37 @@ class FinancialDiligenceCoordinator(Agent):
             financial_health = {}
             if financial_analysis:
                 financial_health = {
-                    "metrics": financial_analysis.get("analysis", {}).get("metrics", {}),
+                    "metrics": financial_analysis.get("analysis", {}).get(
+                        "metrics", {}
+                    ),
                     "trends": financial_analysis.get("analysis", {}).get("trends", []),
-                    "insights": financial_analysis.get("analysis", {}).get("insights", []),
+                    "insights": financial_analysis.get("analysis", {}).get(
+                        "insights", []
+                    ),
                 }
 
             # Extract risk profile information
             risk_profile = {}
             if risk_analysis:
                 risk_profile = {
-                    "risk_factors": risk_analysis.get("risk_analysis", {}).get("risk_factors", {}),
-                    "risk_trends": risk_analysis.get("risk_analysis", {}).get("risk_trends", []),
-                    "recommendations": risk_analysis.get("risk_analysis", {}).get("recommendations", []),
+                    "risk_factors": risk_analysis.get("risk_analysis", {}).get(
+                        "risk_factors", {}
+                    ),
+                    "risk_trends": risk_analysis.get("risk_analysis", {}).get(
+                        "risk_trends", []
+                    ),
+                    "recommendations": risk_analysis.get("risk_analysis", {}).get(
+                        "recommendations", []
+                    ),
                 }
 
             # Extract QA information
             qa_info = {}
             if qa_response:
-                qa_info = {"question": input, "answer": qa_response.get("answer", {}).get("answer", "")}
+                qa_info = {
+                    "question": input,
+                    "answer": qa_response.get("answer", {}).get("answer", ""),
+                }
 
             # Generate executive summary using the LLM
             summary_prompt = f"""
@@ -959,7 +1155,9 @@ class FinancialDiligenceCoordinator(Agent):
             Format your response as a JSON array of recommendation descriptions.
             """
 
-            recommendations_response = await self.llm.generate(prompt=recommendations_prompt)
+            recommendations_response = await self.llm.generate(
+                prompt=recommendations_prompt
+            )
 
             # Try to parse recommendations as JSON
             try:
@@ -967,7 +1165,9 @@ class FinancialDiligenceCoordinator(Agent):
                 json_match = re.search(r"\[.*\]", recommendations_response, re.DOTALL)
                 recommendations = json.loads(json_match.group(0)) if json_match else []
             except:
-                recommendations = ["Insufficient data to provide meaningful recommendations"]
+                recommendations = [
+                    "Insufficient data to provide meaningful recommendations"
+                ]
 
             # Return the comprehensive diligence report
             return {
@@ -1012,7 +1212,9 @@ class FinancialDiligenceCoordinator(Agent):
             if isinstance(companies_result, dict):
                 if "companies" in companies_result:
                     return companies_result["companies"]
-                elif "results" in companies_result and isinstance(companies_result["results"], list):
+                elif "results" in companies_result and isinstance(
+                    companies_result["results"], list
+                ):
                     # Extract tickers from the results
                     tickers = []
                     for company in companies_result["results"]:
@@ -1027,7 +1229,9 @@ class FinancialDiligenceCoordinator(Agent):
                         tickers.append(company["ticker"])
                 return tickers
 
-            self.logger.warning(f"Unexpected companies result format: {type(companies_result)}")
+            self.logger.warning(
+                f"Unexpected companies result format: {type(companies_result)}"
+            )
             # Fallback to hardcoded list of companies we know are in the database
             return ["AAPL", "GOOG", "MSFT", "NVDA"]
         except Exception as e:
@@ -1036,7 +1240,9 @@ class FinancialDiligenceCoordinator(Agent):
             self.logger.info("Using fallback hardcoded company list")
             return ["AAPL", "GOOG", "MSFT", "NVDA"]
 
-    def _format_for_chat(self, user_input: str, diligence_report: Dict[str, Any]) -> str:
+    def _format_for_chat(
+        self, user_input: str, diligence_report: Dict[str, Any]
+    ) -> str:
         """
         Format the diligence report for chat interface.
 
@@ -1048,24 +1254,30 @@ class FinancialDiligenceCoordinator(Agent):
             Formatted response string for chat interface
         """
         # Log that we're formatting the response
-        self.logger.info(f"Formatting response for: {user_input[:50]}{'...' if len(user_input) > 50 else ''}")
+        self.logger.info(
+            f"Formatting response for: {user_input[:50]}{'...' if len(user_input) > 50 else ''}"
+        )
         if not diligence_report:
             return "I'm sorry, I couldn't generate a report based on your request. Please try again with more specific information."
 
         if "error" in diligence_report:
-            return (
-                f"I encountered an error while analyzing your request: {diligence_report.get('error', 'Unknown error')}"
-            )
+            return f"I encountered an error while analyzing your request: {diligence_report.get('error', 'Unknown error')}"
 
         # Check if this is a QA-type request
-        if diligence_report.get("qa_response") and len(diligence_report.get("qa_response", "")) > 10:
+        if (
+            diligence_report.get("qa_response")
+            and len(diligence_report.get("qa_response", "")) > 10
+        ):
             return diligence_report.get("qa_response")
 
         # Format the diligence report for chat
         response = ""
 
         # Add executive summary
-        if "executive_summary" in diligence_report and diligence_report["executive_summary"]:
+        if (
+            "executive_summary" in diligence_report
+            and diligence_report["executive_summary"]
+        ):
             response += diligence_report["executive_summary"]
 
         # Add key findings if available
@@ -1075,7 +1287,10 @@ class FinancialDiligenceCoordinator(Agent):
                 response += f"\n{i + 1}. {finding}"
 
         # Add recommendations if available
-        if "recommendations" in diligence_report and diligence_report["recommendations"]:
+        if (
+            "recommendations" in diligence_report
+            and diligence_report["recommendations"]
+        ):
             response += "\n\n**Recommendations:**\n"
             for i, rec in enumerate(diligence_report["recommendations"]):
                 response += f"\n{i + 1}. {rec}"

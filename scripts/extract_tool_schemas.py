@@ -6,7 +6,6 @@ and saves them as JSON files in the data/schemas directory.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -31,7 +30,9 @@ try:
 
         print(f"Saved schema for tool: {tool_name} to {schema_file}")
 
-    print(f"Successfully extracted {len(TOOL_PARAMETER_SCHEMAS)} tool schemas to {schemas_dir}")
+    print(
+        f"Successfully extracted {len(TOOL_PARAMETER_SCHEMAS)} tool schemas to {schemas_dir}"
+    )
 
 except Exception as e:
     print(f"Error extracting tool schemas: {str(e)}")

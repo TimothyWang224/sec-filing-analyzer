@@ -4,10 +4,11 @@ import logging
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.capabilities.planning import PlanningCapability
-from src.contracts import Plan, PlanStep, extract_value
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 
 async def test_planning_capability():
@@ -17,7 +18,11 @@ async def test_planning_capability():
     print("=" * 80 + "\n")
 
     # Create a QA Specialist Agent
-    agent = QASpecialistAgent(max_planning_iterations=2, max_execution_iterations=5, max_refinement_iterations=3)
+    agent = QASpecialistAgent(
+        max_planning_iterations=2,
+        max_execution_iterations=5,
+        max_refinement_iterations=3,
+    )
 
     # Add planning capability
     planning_capability = PlanningCapability(agent)

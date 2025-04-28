@@ -5,7 +5,6 @@ Tool for agents to interact with the SEC filing ETL pipeline.
 """
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from rich.console import Console
@@ -37,7 +36,10 @@ class SECETLTool:
         )
 
     def process_company(
-        self, ticker: str, years: Optional[List[int]] = None, filing_types: Optional[List[str]] = None
+        self,
+        ticker: str,
+        years: Optional[List[int]] = None,
+        filing_types: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Process SEC filings for a company.
 
@@ -51,14 +53,20 @@ class SECETLTool:
         """
         try:
             return self.pipeline.process_company(
-                ticker=ticker, years=years, filing_types=filing_types, show_progress=True
+                ticker=ticker,
+                years=years,
+                filing_types=filing_types,
+                show_progress=True,
             )
         except Exception as e:
             logger.error(f"Error processing company {ticker}: {str(e)}")
             raise
 
     def process_companies(
-        self, tickers: List[str], years: Optional[List[int]] = None, filing_types: Optional[List[str]] = None
+        self,
+        tickers: List[str],
+        years: Optional[List[int]] = None,
+        filing_types: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Process SEC filings for multiple companies.
 
@@ -72,7 +80,10 @@ class SECETLTool:
         """
         try:
             return self.pipeline.process_companies(
-                tickers=tickers, years=years, filing_types=filing_types, show_progress=True
+                tickers=tickers,
+                years=years,
+                filing_types=filing_types,
+                show_progress=True,
             )
         except Exception as e:
             logger.error(f"Error processing companies: {str(e)}")

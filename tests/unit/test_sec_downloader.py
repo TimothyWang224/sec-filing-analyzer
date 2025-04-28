@@ -16,7 +16,9 @@ from sec_filing_analyzer.data_retrieval.sec_downloader import SECFilingsDownload
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +34,10 @@ def test_download_nvda_filings():
         # Download NVDA filings
         logger.info("Downloading NVDA filings from 2023")
         filings = sec_downloader.download_company_filings(
-            ticker="NVDA", filing_types=["10-K"], start_date="2023-01-01", end_date="2023-12-31"
+            ticker="NVDA",
+            filing_types=["10-K"],
+            start_date="2023-01-01",
+            end_date="2023-12-31",
         )
 
         # Log results
@@ -41,8 +46,12 @@ def test_download_nvda_filings():
             logger.info(
                 f"Filing {i + 1}: {filing.get('form', 'Unknown')} from {filing.get('filing_date', 'Unknown date')}"
             )
-            logger.info(f"Accession number: {filing.get('accession_number', 'Unknown')}")
-            logger.info(f"Company: {filing.get('company', 'Unknown')} ({filing.get('ticker', 'Unknown')})")
+            logger.info(
+                f"Accession number: {filing.get('accession_number', 'Unknown')}"
+            )
+            logger.info(
+                f"Company: {filing.get('company', 'Unknown')} ({filing.get('ticker', 'Unknown')})"
+            )
 
     except Exception as e:
         logger.error(f"Error downloading filings: {str(e)}")
