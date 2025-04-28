@@ -32,6 +32,11 @@ def run_pre_commit():
     # Skip the log-wrapper hook to avoid infinite recursion
     os.environ["SKIP"] = "log-wrapper"
 
+    # Check if we're already in a pre-commit run
+    if os.environ.get("PRE_COMMIT_RUNNING") == "1":
+        print("Already running in pre-commit, skipping log wrapper")
+        return 0
+
     try:
         # Create log file
         ensure_log_dir()
@@ -47,11 +52,10 @@ def run_pre_commit():
 
         try:
             # Create the latest.log link
-            if sys.platform == "win32":
-                # Windows doesn't support symbolic links easily, so just copy the file later
-                pass
-            else:
+            if sys.platform != "win32":
+                # On non-Windows platforms, create a symbolic link
                 latest_link.symlink_to(log_file.name)
+            # On Windows, we'll copy the file later
         except Exception as e:
             print(f"Warning: Could not create latest.log link: {e}")
 
