@@ -60,7 +60,10 @@ class FinancialDataProcessor:
 
             # Extract XBRL data
             xbrl_data = self.xbrl_extractor.extract_financials(
-                ticker=ticker, filing_id=filing_id, accession_number=accession_number, filing_url=filing_url
+                ticker=ticker,
+                filing_id=filing_id,
+                accession_number=accession_number,
+                filing_url=filing_url,
             )
 
             # Store XBRL data
@@ -79,7 +82,9 @@ class FinancialDataProcessor:
 
 # Integration function for the ETL pipeline
 def process_filing_financials(
-    filing_id: str, filing_metadata: Dict[str, Any], processor: Optional[FinancialDataProcessor] = None
+    filing_id: str,
+    filing_metadata: Dict[str, Any],
+    processor: Optional[FinancialDataProcessor] = None,
 ) -> bool:
     """Process financial data for a filing.
 

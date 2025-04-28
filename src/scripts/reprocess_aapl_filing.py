@@ -6,7 +6,6 @@ that had zero vectors in the embedding.
 """
 
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -17,8 +16,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.config import ETLConfig
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
-from sec_filing_analyzer.utils.logging_utils import generate_embedding_error_report, setup_logging
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
+from sec_filing_analyzer.utils.logging_utils import (
+    generate_embedding_error_report,
+    setup_logging,
+)
 
 # Load environment variables
 load_dotenv()

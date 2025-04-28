@@ -214,7 +214,9 @@ def create_simplified_schema(db_path):
 
 def test_extractor(ticker, accession_number, db_path):
     """Test the improved XBRL extractor."""
-    from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
+    from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import (
+        ImprovedEdgarXBRLExtractor,
+    )
 
     # Set edgar identity
     print("Setting edgar identity...")

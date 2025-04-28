@@ -51,7 +51,11 @@ class Task:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Task":
         """Create task from dictionary."""
-        task = cls(task_id=data["task_id"], input_text=data["input_text"], priority=data.get("priority", 0))
+        task = cls(
+            task_id=data["task_id"],
+            input_text=data["input_text"],
+            priority=data.get("priority", 0),
+        )
         task.status = data.get("status", "pending")
         task.plan = data.get("plan")
         task.result = data.get("result")

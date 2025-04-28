@@ -13,7 +13,11 @@ import webbrowser
 
 def main():
     parser = argparse.ArgumentParser(description="Launch the DuckDB Explorer")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
 
     args = parser.parse_args()
 
@@ -31,7 +35,9 @@ def main():
     env["STREAMLIT_ONBOARDING_DISABLED"] = "true"  # Disable onboarding
 
     # Launch Streamlit
-    streamlit_script = os.path.join(os.path.dirname(__file__), "streamlit_duckdb_explorer.py")
+    streamlit_script = os.path.join(
+        os.path.dirname(__file__), "streamlit_duckdb_explorer.py"
+    )
     cmd = ["streamlit", "run", streamlit_script, "--", "--db", db_path]
 
     print(f"Launching DuckDB Explorer for database: {db_path}")

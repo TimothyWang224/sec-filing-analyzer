@@ -12,13 +12,14 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List
 
 # Import from the correct package path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))  # Add root to path
 
-from sec_filing_analyzer.config import ETLConfig, Neo4jConfig, StorageConfig
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
 from sec_filing_analyzer.storage.graph_store import GraphStore
 
 # Configure logging
@@ -67,9 +68,15 @@ def parse_args():
 
     # Company tickers argument - either from file or direct list
     ticker_group = parser.add_mutually_exclusive_group(required=True)
-    ticker_group.add_argument("--tickers", nargs="+", help="List of company ticker symbols (e.g., AAPL MSFT NVDA)")
     ticker_group.add_argument(
-        "--tickers-file", type=str, help="Path to a JSON file containing a list of ticker symbols"
+        "--tickers",
+        nargs="+",
+        help="List of company ticker symbols (e.g., AAPL MSFT NVDA)",
+    )
+    ticker_group.add_argument(
+        "--tickers-file",
+        type=str,
+        help="Path to a JSON file containing a list of ticker symbols",
     )
 
     # Date range arguments
@@ -78,21 +85,57 @@ def parse_args():
 
     # Filing types argument
     parser.add_argument(
-        "--filing-types", nargs="+", help="List of filing types to process (e.g., 10-K 10-Q)", default=["10-K", "10-Q"]
+        "--filing-types",
+        nargs="+",
+        help="List of filing types to process (e.g., 10-K 10-Q)",
+        default=["10-K", "10-Q"],
     )
 
     # Neo4j arguments
-    parser.add_argument("--no-neo4j", action="store_true", help="Use in-memory graph store instead of Neo4j")
-    parser.add_argument("--neo4j-username", type=str, default=neo4j_config["username"], help="Neo4j username")
-    parser.add_argument("--neo4j-password", type=str, default=neo4j_config["password"], help="Neo4j password")
+    parser.add_argument(
+        "--no-neo4j",
+        action="store_true",
+        help="Use in-memory graph store instead of Neo4j",
+    )
+    parser.add_argument(
+        "--neo4j-username",
+        type=str,
+        default=neo4j_config["username"],
+        help="Neo4j username",
+    )
+    parser.add_argument(
+        "--neo4j-password",
+        type=str,
+        default=neo4j_config["password"],
+        help="Neo4j password",
+    )
     parser.add_argument("--neo4j-url", type=str, default=neo4j_config["url"], help="Neo4j URL")
-    parser.add_argument("--neo4j-database", type=str, default=neo4j_config["database"], help="Neo4j database name")
+    parser.add_argument(
+        "--neo4j-database",
+        type=str,
+        default=neo4j_config["database"],
+        help="Neo4j database name",
+    )
 
     # Additional options
-    parser.add_argument("--retry-failed", action="store_true", help="Retry failed companies from previous runs")
-    parser.add_argument("--max-retries", type=int, default=3, help="Maximum number of retries for failed companies")
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry failed companies from previous runs",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for failed companies",
+    )
     parser.add_argument("--max-workers", type=int, default=4, help="Maximum number of worker threads")
-    parser.add_argument("--rate-limit", type=float, default=0.5, help="Minimum time between API requests in seconds")
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=0.5,
+        help="Minimum time between API requests in seconds",
+    )
 
     return parser.parse_args()
 
@@ -186,7 +229,12 @@ def process_company(ticker, filing_types, start_date, end_date, args, rate_limit
     pipeline = get_pipeline(not args.no_neo4j, neo4j_config)
 
     retries = 0
-    result = {"ticker": ticker, "status": "failed", "filings_processed": 0, "error": None}
+    result = {
+        "ticker": ticker,
+        "status": "failed",
+        "filings_processed": 0,
+        "error": None,
+    }
 
     while retries <= args.max_retries:
         try:
@@ -196,7 +244,10 @@ def process_company(ticker, filing_types, start_date, end_date, args, rate_limit
             with rate_limiter:
                 # Download filings
                 downloaded_filings = pipeline.sec_downloader.download_company_filings(
-                    ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date
+                    ticker=ticker,
+                    filing_types=filing_types,
+                    start_date=start_date,
+                    end_date=end_date,
                 )
 
             if not downloaded_filings:
@@ -309,7 +360,13 @@ def main():
         # Submit tasks
         future_to_ticker = {
             executor.submit(
-                process_company, ticker, args.filing_types, args.start_date, args.end_date, args, rate_limiter
+                process_company,
+                ticker,
+                args.filing_types,
+                args.start_date,
+                args.end_date,
+                args,
+                rate_limiter,
             ): ticker
             for ticker in tickers
         }

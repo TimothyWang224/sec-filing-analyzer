@@ -1,6 +1,11 @@
 from typing import Any, Dict, Optional
 
-from agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
+from agents import (
+    FinancialAnalystAgent,
+    FinancialDiligenceCoordinator,
+    QASpecialistAgent,
+    RiskAnalystAgent,
+)
 from capabilities import SECAnalysisCapability
 from environments import FinancialEnvironment
 from memory import FinancialMemory

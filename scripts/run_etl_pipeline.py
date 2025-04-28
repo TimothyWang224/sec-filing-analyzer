@@ -4,7 +4,6 @@ Script to run the ETL pipeline
 
 import logging
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add the project root to the Python path
@@ -15,7 +14,9 @@ from src.sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from src.sec_filing_analyzer.storage.sync_manager import StorageSyncManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -48,7 +49,10 @@ def run_etl_pipeline():
         for ticker in companies:
             logger.info(f"Processing {ticker}...")
             result = pipeline.process_company(
-                ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date
+                ticker=ticker,
+                filing_types=filing_types,
+                start_date=start_date,
+                end_date=end_date,
             )
 
             logger.info(f"Result for {ticker}: {result}")

@@ -4,10 +4,8 @@ ETL Logs Viewer
 This page displays logs and statistics for ETL runs.
 """
 
-import json
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 
 import pandas as pd
 import plotly.express as px
@@ -17,7 +15,6 @@ import streamlit as st
 from sec_filing_analyzer.utils.etl_logging import (
     generate_etl_report,
     get_etl_log_dir,
-    get_etl_run_logs,
     get_etl_run_stats,
     get_recent_etl_runs,
 )
@@ -110,7 +107,8 @@ with tab1:
 
                 # Create a more descriptive x-axis label
                 completed_runs["run_label"] = completed_runs.apply(
-                    lambda row: f"{row['run_id']} ({row['start_time_formatted']})", axis=1
+                    lambda row: f"{row['run_id']} ({row['start_time_formatted']})",
+                    axis=1,
                 )
 
                 # Sort by start time
@@ -138,7 +136,9 @@ with tab2:
         # Create a selectbox for run selection
         run_options = [(run["run_id"], run.get("description", run["run_id"])) for run in st.session_state.etl_runs]
         selected_run_tuple = st.selectbox(
-            "Select ETL Run", options=run_options, format_func=lambda x: f"{x[1]} ({x[0]})"
+            "Select ETL Run",
+            options=run_options,
+            format_func=lambda x: f"{x[1]} ({x[0]})",
         )
 
         if selected_run_tuple:
@@ -218,12 +218,17 @@ with tab2:
 
                     fig.add_trace(
                         go.Scatter(
-                            x=rate_df["timestamp"], y=rate_df["new_rate"], mode="lines+markers", name="Rate Limit (s)"
+                            x=rate_df["timestamp"],
+                            y=rate_df["new_rate"],
+                            mode="lines+markers",
+                            name="Rate Limit (s)",
                         )
                     )
 
                     fig.update_layout(
-                        title="Rate Limit Adjustments Over Time", xaxis_title="Time", yaxis_title="Rate Limit (seconds)"
+                        title="Rate Limit Adjustments Over Time",
+                        xaxis_title="Time",
+                        yaxis_title="Rate Limit (seconds)",
                     )
 
                     st.plotly_chart(fig, use_container_width=True)

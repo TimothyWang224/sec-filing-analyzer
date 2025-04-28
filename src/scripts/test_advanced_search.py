@@ -6,11 +6,8 @@ including different FAISS index types and advanced filtering options.
 """
 
 import argparse
-import json
 import logging
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.search import CoordinatedSearch
@@ -133,7 +130,11 @@ def test_advanced_filtering(store_path: str):
 
     # 3. Test keyword filtering
     logger.info("\n3. Testing keyword filtering")
-    keywords_tests = [(["revenue", "growth"], "any"), (["revenue", "growth"], "all"), (["revenue growth"], "exact")]
+    keywords_tests = [
+        (["revenue", "growth"], "any"),
+        (["revenue", "growth"], "all"),
+        (["revenue growth"], "exact"),
+    ]
 
     for keywords, match_type in keywords_tests:
         results = vector_store.search_vectors(
@@ -245,7 +246,10 @@ def main():
     """Main function to test advanced search capabilities."""
     parser = argparse.ArgumentParser(description="Test advanced search capabilities")
     parser.add_argument(
-        "--test", choices=["faiss", "filtering", "coordinated", "all"], default="all", help="Test to run (default: all)"
+        "--test",
+        choices=["faiss", "filtering", "coordinated", "all"],
+        default="all",
+        help="Test to run (default: all)",
     )
     args = parser.parse_args()
 

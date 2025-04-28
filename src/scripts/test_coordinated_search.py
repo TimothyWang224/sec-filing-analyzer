@@ -5,11 +5,8 @@ This script demonstrates the coordinated search functionality that combines
 the optimized vector store and graph store.
 """
 
-import json
 import logging
-import time
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.search import CoordinatedSearch

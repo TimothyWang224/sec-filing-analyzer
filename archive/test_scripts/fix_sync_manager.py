@@ -1,6 +1,5 @@
 import logging
 import os
-from pathlib import Path
 
 import duckdb
 
@@ -38,7 +37,9 @@ def fix_sync_manager():
             has_fiscal_quarter = "fiscal_quarter" in columns
 
             if not has_fiscal_period and has_fiscal_quarter:
-                logger.info("Database has fiscal_quarter but not fiscal_period. Adding fiscal_period column...")
+                logger.info(
+                    "Database has fiscal_quarter but not fiscal_period. Adding fiscal_period column..."
+                )
 
                 # Add fiscal_period column
                 conn.execute("""
@@ -59,9 +60,13 @@ def fix_sync_manager():
                         END
                 """)
 
-                logger.info("Added fiscal_period column and populated it based on fiscal_quarter")
+                logger.info(
+                    "Added fiscal_period column and populated it based on fiscal_quarter"
+                )
             elif not has_fiscal_period and not has_fiscal_quarter:
-                logger.info("Database has neither fiscal_period nor fiscal_quarter. Adding fiscal_period column...")
+                logger.info(
+                    "Database has neither fiscal_period nor fiscal_quarter. Adding fiscal_period column..."
+                )
 
                 # Add fiscal_period column
                 conn.execute("""

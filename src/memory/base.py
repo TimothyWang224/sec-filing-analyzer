@@ -26,7 +26,12 @@ class Memory:
         self.items: List[MemoryItem] = []
         self.max_items = max_items
 
-    def add(self, content: Dict[str, Any], type: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add(
+        self,
+        content: Dict[str, Any],
+        type: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Add a new item to memory.
 

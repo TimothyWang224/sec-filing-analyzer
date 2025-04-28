@@ -113,13 +113,22 @@ class XBRLExtractor:
 
         # Create mappings
         for tag in income_statement_tags:
-            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "income_statement"}
+            mappings[tag] = {
+                "standard_name": self._normalize_tag(tag),
+                "category": "income_statement",
+            }
 
         for tag in balance_sheet_tags:
-            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "balance_sheet"}
+            mappings[tag] = {
+                "standard_name": self._normalize_tag(tag),
+                "category": "balance_sheet",
+            }
 
         for tag in cash_flow_tags:
-            mappings[tag] = {"standard_name": self._normalize_tag(tag), "category": "cash_flow"}
+            mappings[tag] = {
+                "standard_name": self._normalize_tag(tag),
+                "category": "cash_flow",
+            }
 
         # Add specific mappings for tags that need special handling
         mappings["RevenueFromContractWithCustomerExcludingAssessedTax"] = {
@@ -127,9 +136,15 @@ class XBRLExtractor:
             "category": "income_statement",
         }
 
-        mappings["SalesRevenueNet"] = {"standard_name": "revenue", "category": "income_statement"}
+        mappings["SalesRevenueNet"] = {
+            "standard_name": "revenue",
+            "category": "income_statement",
+        }
 
-        mappings["CostOfGoodsAndServicesSold"] = {"standard_name": "cost_of_revenue", "category": "income_statement"}
+        mappings["CostOfGoodsAndServicesSold"] = {
+            "standard_name": "cost_of_revenue",
+            "category": "income_statement",
+        }
 
         return mappings
 
@@ -152,7 +167,11 @@ class XBRLExtractor:
         return s3
 
     def extract_financials(
-        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
+        self,
+        ticker: str,
+        filing_id: str,
+        accession_number: str,
+        filing_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Extract financial data from XBRL filings.
 
@@ -252,7 +271,12 @@ class XBRLExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def _extract_filing_type(self, filing_url: str) -> Optional[str]:
         """Extract filing type from filing URL.
@@ -449,7 +473,12 @@ class XBRLExtractor:
                         standard_name = mapping.get("standard_name", standard_name)
 
                     # Create fact entry
-                    fact = {"xbrl_tag": concept, "metric_name": standard_name, "value": value, "category": category}
+                    fact = {
+                        "xbrl_tag": concept,
+                        "metric_name": standard_name,
+                        "value": value,
+                        "category": category,
+                    }
 
                     # Add to facts list
                     financials["facts"].append(fact)

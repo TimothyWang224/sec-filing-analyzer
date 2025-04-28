@@ -63,11 +63,25 @@ def compare_database_stats(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBS
     table.add_column("New Schema", style="blue")
 
     table.add_row(
-        "Companies", str(old_stats.get("companies_count", "N/A")), str(new_stats.get("companies_count", "N/A"))
+        "Companies",
+        str(old_stats.get("companies_count", "N/A")),
+        str(new_stats.get("companies_count", "N/A")),
     )
-    table.add_row("Filings", str(old_stats.get("filings_count", "N/A")), str(new_stats.get("filings_count", "N/A")))
-    table.add_row("Facts", str(old_stats.get("facts_count", "N/A")), str(new_stats.get("facts_count", "N/A")))
-    table.add_row("Metrics", str(old_stats.get("metrics_count", "N/A")), str(new_stats.get("metrics_count", "N/A")))
+    table.add_row(
+        "Filings",
+        str(old_stats.get("filings_count", "N/A")),
+        str(new_stats.get("filings_count", "N/A")),
+    )
+    table.add_row(
+        "Facts",
+        str(old_stats.get("facts_count", "N/A")),
+        str(new_stats.get("facts_count", "N/A")),
+    )
+    table.add_row(
+        "Metrics",
+        str(old_stats.get("metrics_count", "N/A")),
+        str(new_stats.get("metrics_count", "N/A")),
+    )
     table.add_row(
         "Year Range",
         f"{old_stats.get('min_year', 'N/A')} - {old_stats.get('max_year', 'N/A')}",
@@ -183,7 +197,12 @@ def compare_filings(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, t
         console.print(new_filings.head(limit))
 
 
-def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, ticker: str, accession_number: str):
+def compare_facts(
+    old_db: OptimizedDuckDBStore,
+    new_db: ImprovedDuckDBStore,
+    ticker: str,
+    accession_number: str,
+):
     """Compare facts for a filing in both databases."""
     # Get filing ID from old database
     try:
@@ -318,8 +337,16 @@ def compare_time_series(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStor
 
 def main():
     parser = argparse.ArgumentParser(description="Compare DuckDB schemas")
-    parser.add_argument("--old-db", default="data/financial_data.duckdb", help="Path to the old DuckDB database")
-    parser.add_argument("--new-db", default="data/financial_data_new.duckdb", help="Path to the new DuckDB database")
+    parser.add_argument(
+        "--old-db",
+        default="data/financial_data.duckdb",
+        help="Path to the old DuckDB database",
+    )
+    parser.add_argument(
+        "--new-db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the new DuckDB database",
+    )
     parser.add_argument("--stats", action="store_true", help="Compare database statistics")
     parser.add_argument("--companies", action="store_true", help="Compare companies")
     parser.add_argument("--filings", help="Compare filings for a company (specify ticker)")

@@ -68,7 +68,11 @@ def fetch_msft_filing_direct():
                             filing_response = requests.get(filing_url, headers=headers)
                             if filing_response.status_code == 200:
                                 # Save the filing index page
-                                with open(output_dir / f"MSFT_{accession}_index.html", "w", encoding="utf-8") as f:
+                                with open(
+                                    output_dir / f"MSFT_{accession}_index.html",
+                                    "w",
+                                    encoding="utf-8",
+                                ) as f:
                                     f.write(filing_response.text)
                                 print(f"Saved filing index to {output_dir}/MSFT_{accession}_index.html")
 
@@ -88,7 +92,9 @@ def fetch_msft_filing_direct():
                                     if doc_response.status_code == 200:
                                         # Save the main document
                                         with open(
-                                            output_dir / f"MSFT_{accession}_main.html", "w", encoding="utf-8"
+                                            output_dir / f"MSFT_{accession}_main.html",
+                                            "w",
+                                            encoding="utf-8",
                                         ) as f:
                                             f.write(doc_response.text)
                                         print(f"Saved main document to {output_dir}/MSFT_{accession}_main.html")

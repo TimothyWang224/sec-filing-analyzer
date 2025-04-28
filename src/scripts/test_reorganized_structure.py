@@ -6,7 +6,6 @@ by importing and instantiating classes from the new locations.
 """
 
 import logging
-import os
 
 from dotenv import load_dotenv
 
@@ -22,7 +21,9 @@ def test_semantic_imports():
     """Test importing classes from the semantic module."""
     try:
         # Import classes from the semantic module
-        from sec_filing_analyzer.semantic.embeddings.embedding_generator import EmbeddingGenerator
+        from sec_filing_analyzer.semantic.embeddings.embedding_generator import (
+            EmbeddingGenerator,
+        )
         from sec_filing_analyzer.semantic.processing.chunking import DocumentChunker
         from sec_filing_analyzer.semantic.storage.vector_store import VectorStore
 
@@ -42,8 +43,12 @@ def test_quantitative_imports():
     """Test importing classes from the quantitative module."""
     try:
         # Import classes from the quantitative module
-        from sec_filing_analyzer.quantitative.processing.edgar_xbrl_to_duckdb import EdgarXBRLToDuckDBExtractor
-        from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import OptimizedDuckDBStore
+        from sec_filing_analyzer.quantitative.processing.edgar_xbrl_to_duckdb import (
+            EdgarXBRLToDuckDBExtractor,
+        )
+        from sec_filing_analyzer.quantitative.storage.optimized_duckdb_store import (
+            OptimizedDuckDBStore,
+        )
 
         # Instantiate classes
         db_path = "data/test_financial_data.duckdb"
@@ -62,7 +67,9 @@ def test_pipeline_imports():
     try:
         # Import classes from the pipeline module
         from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
-        from sec_filing_analyzer.pipeline.quantitative_pipeline import QuantitativeETLPipeline
+        from sec_filing_analyzer.pipeline.quantitative_pipeline import (
+            QuantitativeETLPipeline,
+        )
         from sec_filing_analyzer.pipeline.semantic_pipeline import SemanticETLPipeline
 
         # Instantiate classes

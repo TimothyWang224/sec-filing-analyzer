@@ -6,23 +6,24 @@ including incremental updates and merging.
 """
 
 import logging
-import os
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-import numpy as np
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.embeddings import EmbeddingGenerator
 from sec_filing_analyzer.storage import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
-def create_test_documents(num_docs: int = 10, company: str = "TEST") -> List[Dict[str, Any]]:
+def create_test_documents(
+    num_docs: int = 10, company: str = "TEST"
+) -> List[Dict[str, Any]]:
     """Create test documents for delta index testing.
 
     Args:
@@ -96,7 +97,9 @@ def test_delta_index(store_path: str, index_type: str = "flat"):
     logger.info("\nTest 2: Search with delta index")
 
     # Perform a search
-    results = vector_store.search_vectors(query_text="revenue growth", companies=["TESTA"], top_k=5)
+    results = vector_store.search_vectors(
+        query_text="revenue growth", companies=["TESTA"], top_k=5
+    )
 
     logger.info(f"Found {len(results)} results")
     for i, result in enumerate(results[:3]):  # Show top 3
@@ -123,7 +126,9 @@ def test_delta_index(store_path: str, index_type: str = "flat"):
     logger.info("\nTest 4: Search across both companies")
 
     # Perform a search
-    results = vector_store.search_vectors(query_text="revenue growth", companies=["TESTA", "TESTB"], top_k=5)
+    results = vector_store.search_vectors(
+        query_text="revenue growth", companies=["TESTA", "TESTB"], top_k=5
+    )
 
     logger.info(f"Found {len(results)} results")
     for i, result in enumerate(results[:3]):  # Show top 3
@@ -149,7 +154,9 @@ def test_delta_index(store_path: str, index_type: str = "flat"):
     logger.info("\nTest 6: Search after merge")
 
     # Perform a search
-    results = vector_store.search_vectors(query_text="revenue growth", companies=["TESTA", "TESTB"], top_k=5)
+    results = vector_store.search_vectors(
+        query_text="revenue growth", companies=["TESTA", "TESTB"], top_k=5
+    )
 
     logger.info(f"Found {len(results)} results")
     for i, result in enumerate(results[:3]):  # Show top 3
@@ -178,7 +185,9 @@ def test_delta_index(store_path: str, index_type: str = "flat"):
     logger.info("\nTest 8: Search across all companies")
 
     # Perform a search
-    results = vector_store.search_vectors(query_text="revenue growth", companies=["TESTA", "TESTB", "TESTC"], top_k=5)
+    results = vector_store.search_vectors(
+        query_text="revenue growth", companies=["TESTA", "TESTB", "TESTC"], top_k=5
+    )
 
     logger.info(f"Found {len(results)} results")
     for i, result in enumerate(results[:3]):  # Show top 3
@@ -219,15 +228,21 @@ def test_delta_index(store_path: str, index_type: str = "flat"):
     # Remove index files
     for company in ["TESTA", "TESTB", "TESTC"]:
         for suffix in ["main", "delta"]:
-            index_path = vector_store.index_dir / f"{company}_{index_type}_{suffix}.index"
+            index_path = (
+                vector_store.index_dir / f"{company}_{index_type}_{suffix}.index"
+            )
             if index_path.exists():
                 index_path.unlink()
 
-            mapping_path = vector_store.index_dir / f"{company}_{index_type}_{suffix}.mapping.json"
+            mapping_path = (
+                vector_store.index_dir / f"{company}_{index_type}_{suffix}.mapping.json"
+            )
             if mapping_path.exists():
                 mapping_path.unlink()
 
-            params_path = vector_store.index_dir / f"{company}_{index_type}_{suffix}.params.json"
+            params_path = (
+                vector_store.index_dir / f"{company}_{index_type}_{suffix}.params.json"
+            )
             if params_path.exists():
                 params_path.unlink()
 

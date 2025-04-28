@@ -50,4 +50,6 @@ except Exception as e:
 if all_filings:
     print("\nFirst few filings:")
     for i, filing in enumerate(all_filings[:5]):
-        print(f"{i + 1}. {filing.form} - {filing.filing_date} - {filing.accession_number}")
+        print(
+            f"{i + 1}. {filing.form} - {filing.filing_date} - {filing.accession_number}"
+        )

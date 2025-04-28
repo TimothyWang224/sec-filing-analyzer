@@ -28,7 +28,11 @@ def test_specific_filing():
         # Get a specific 8-K filing from 2022
         logger.info("Getting a specific 8-K filing from 2022...")
         filings = edgar_utils.get_filings(
-            ticker="MSFT", form_type="8-K", start_date="2022-01-01", end_date="2022-12-31", limit=1
+            ticker="MSFT",
+            form_type="8-K",
+            start_date="2022-01-01",
+            end_date="2022-12-31",
+            limit=1,
         )
 
         if not filings:

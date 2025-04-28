@@ -6,13 +6,13 @@ while respecting token limits for embedding models.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
 import tiktoken
 from bs4 import BeautifulSoup
-from edgar.files.htmltools import ChunkedDocument, adjust_for_empty_items, chunks2df, detect_decimal_items
+from edgar.files.htmltools import ChunkedDocument
 from llama_index.core.text_splitter import TokenTextSplitter
 from llama_index.embeddings.openai import OpenAIEmbedding
 
@@ -85,7 +85,13 @@ class FilingChunker:
         sub_chunk_metadata = []
         for i, sub_chunk in enumerate(sub_chunks):
             sub_chunk_meta = chunk_meta.copy()
-            sub_chunk_meta.update({"is_sub_chunk": True, "sub_chunk_index": i, "parent_chunk_text": chunk_text})
+            sub_chunk_meta.update(
+                {
+                    "is_sub_chunk": True,
+                    "sub_chunk_index": i,
+                    "parent_chunk_text": chunk_text,
+                }
+            )
             sub_chunk_metadata.append(sub_chunk_meta)
 
         return sub_chunks, sub_chunk_metadata

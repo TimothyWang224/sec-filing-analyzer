@@ -4,8 +4,6 @@ Test Unified Configuration
 This script tests the unified configuration system with all the new configuration types.
 """
 
-import json
-import os
 import sys
 from pathlib import Path
 
@@ -61,16 +59,22 @@ try:
     # Test validation
     print("Testing configuration validation:")
     config = ConfigProvider.get_agent_config("coordinator")
-    print(f"Coordinator config validation: {ConfigProvider.validate_config(config, 'agent')}")
+    print(
+        f"Coordinator config validation: {ConfigProvider.validate_config(config, 'agent')}"
+    )
 
     etl_config = vars(ConfigProvider.get_config(ETLConfig))
     print(f"ETL config validation: {ConfigProvider.validate_config(etl_config, 'etl')}")
 
     vector_store_config = vars(ConfigProvider.get_config(VectorStoreConfig))
-    print(f"Vector store config validation: {ConfigProvider.validate_config(vector_store_config, 'vector_store')}")
+    print(
+        f"Vector store config validation: {ConfigProvider.validate_config(vector_store_config, 'vector_store')}"
+    )
 
     streamlit_config = vars(ConfigProvider.get_config(StreamlitConfig))
-    print(f"Streamlit config validation: {ConfigProvider.validate_config(streamlit_config, 'streamlit')}")
+    print(
+        f"Streamlit config validation: {ConfigProvider.validate_config(streamlit_config, 'streamlit')}"
+    )
     print()
 
     print("All tests completed successfully!")

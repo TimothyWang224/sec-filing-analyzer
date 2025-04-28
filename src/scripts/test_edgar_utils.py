@@ -6,8 +6,6 @@ to retrieve SEC filings in a consistent way.
 """
 
 import logging
-import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 

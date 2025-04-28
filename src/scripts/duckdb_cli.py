@@ -9,7 +9,6 @@ import os
 import sys
 
 import duckdb
-import pandas as pd
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
@@ -85,7 +84,10 @@ def show_sample(conn, table_name, limit=10):
             return
 
         # Create a rich table
-        table = Table(title=f"Sample Data from '{table_name}' (First {limit} rows)", box=box.ROUNDED)
+        table = Table(
+            title=f"Sample Data from '{table_name}' (First {limit} rows)",
+            box=box.ROUNDED,
+        )
 
         # Add columns
         for col in column_names:
@@ -201,7 +203,11 @@ export "SELECT * FROM companies" companies.csv
 
 def main():
     parser = argparse.ArgumentParser(description="DuckDB CLI")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
     parser.add_argument("--list-tables", action="store_true", help="List all tables in the database")
     parser.add_argument("--describe", help="Describe a specific table")
     parser.add_argument("--sample", help="Show a sample of rows from a table")

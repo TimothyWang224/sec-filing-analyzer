@@ -6,7 +6,6 @@ leveraging edgartools for entity handling and maintaining graph-specific functio
 """
 
 import logging
-import re
 from typing import Any, Dict, List, Optional
 
 # Import from the installed edgar package

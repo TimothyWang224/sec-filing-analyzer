@@ -9,8 +9,8 @@ and time series analysis.
 import calendar
 import logging
 import re
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any, Dict, List, Tuple
 
 from ..agents.base import Agent
 from .base import Capability
@@ -104,7 +104,11 @@ class TimeAwarenessCapability(Capability):
             Processed action with time awareness
         """
         # If the action involves querying financial data, add time parameters
-        if action.get("tool") in ["sec_financial_data", "sec_semantic_search", "sec_graph_query"]:
+        if action.get("tool") in [
+            "sec_financial_data",
+            "sec_semantic_search",
+            "sec_graph_query",
+        ]:
             # Extract temporal references from the context
             temporal_references = context.get("temporal_references", {})
 
@@ -149,7 +153,12 @@ class TimeAwarenessCapability(Capability):
         return action
 
     async def process_result(
-        self, agent: Agent, context: Dict[str, Any], response: str, action: Dict[str, Any], result: Any
+        self,
+        agent: Agent,
+        context: Dict[str, Any],
+        response: str,
+        action: Dict[str, Any],
+        result: Any,
     ) -> Any:
         """
         Process the result to enhance time awareness.
@@ -302,7 +311,10 @@ class TimeAwarenessCapability(Capability):
             for rel_time, rel_period in relative_refs:
                 if rel_time.lower() in ["last", "previous"] and rel_period.lower() == "year":
                     last_year = self.current_time.year - 1
-                    references["date_range"] = (f"{last_year}-01-01", f"{last_year}-12-31")
+                    references["date_range"] = (
+                        f"{last_year}-01-01",
+                        f"{last_year}-12-31",
+                    )
                 elif rel_time.lower() in ["last", "previous"] and rel_period.lower() == "quarter":
                     last_quarter_date = self._get_last_quarter_date()
                     quarter_start, quarter_end = self._get_quarter_range(last_quarter_date)

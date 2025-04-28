@@ -2,7 +2,7 @@
 Unit tests for the Tool base class.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,7 +16,7 @@ class TestTool(Tool):
 
     _tool_name = "testtool"
 
-    async def _execute(self, **kwargs):
+    async def _execute_abstract(self, **kwargs):
         """Execute the test tool."""
         return {"result": "test_result"}
 
@@ -99,7 +99,9 @@ class TestToolBase:
         mock_tool_spec.output_key = "testtool"
 
         # Mock the ToolRegistry.get_tool_spec method to return our mock tool spec
-        with patch("src.tools.registry.ToolRegistry.get_tool_spec", return_value=mock_tool_spec):
+        with patch(
+            "src.tools.registry.ToolRegistry.get_tool_spec", return_value=mock_tool_spec
+        ):
             # Create a tool
             tool = TestTool()
 

@@ -7,17 +7,16 @@ financial question answering with temporal awareness.
 
 import argparse
 import asyncio
-import json
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from src.agents.qa_specialist import QASpecialistAgent
 from src.capabilities.time_awareness import TimeAwarenessCapability
 from src.environments.financial import FinancialEnvironment
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +30,9 @@ async def run_time_aware_qa(question: str):
         time_awareness = TimeAwarenessCapability()
 
         # Initialize QA specialist agent with time awareness
-        agent = QASpecialistAgent(capabilities=[time_awareness], environment=environment)
+        agent = QASpecialistAgent(
+            capabilities=[time_awareness], environment=environment
+        )
 
         # Run the agent
         logger.info(f"Processing question: {question}")
@@ -57,10 +58,14 @@ async def run_time_aware_qa(question: str):
                 print(f"Filing Types: {', '.join(analysis['filing_types'])}")
 
             if "date_range" in analysis and analysis["date_range"]:
-                print(f"Date Range: {analysis['date_range'][0]} to {analysis['date_range'][1]}")
+                print(
+                    f"Date Range: {analysis['date_range'][0]} to {analysis['date_range'][1]}"
+                )
 
             if "fiscal_year" in analysis and "fiscal_quarter" in analysis:
-                print(f"Fiscal Period: FY{analysis['fiscal_year']} {analysis['fiscal_quarter']}")
+                print(
+                    f"Fiscal Period: FY{analysis['fiscal_year']} {analysis['fiscal_quarter']}"
+                )
 
             if "temporal_references" in analysis:
                 print("\nTemporal References:")
@@ -76,10 +81,14 @@ async def run_time_aware_qa(question: str):
             semantic_context = result["supporting_data"].get("semantic_context", [])
             if semantic_context:
                 print("\n--- Semantic Context ---")
-                for i, context in enumerate(semantic_context[:3]):  # Show top 3 for brevity
+                for i, context in enumerate(
+                    semantic_context[:3]
+                ):  # Show top 3 for brevity
                     print(f"\nContext {i + 1}:")
                     print(f"Company: {context.get('company', 'N/A')}")
-                    print(f"Filing: {context.get('filing_type', 'N/A')} ({context.get('filing_date', 'N/A')})")
+                    print(
+                        f"Filing: {context.get('filing_type', 'N/A')} ({context.get('filing_date', 'N/A')})"
+                    )
                     print(f"Text: {context.get('text', 'N/A')[:200]}...")
 
             # Print financial data

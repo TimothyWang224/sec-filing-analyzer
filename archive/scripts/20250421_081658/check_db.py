@@ -2,7 +2,6 @@
 Check the current state of the database and file system.
 """
 
-import os
 from pathlib import Path
 
 import duckdb
@@ -12,7 +11,9 @@ def check_database():
     """Check the current state of the database."""
     try:
         # Connect to the database
-        conn = duckdb.connect("data/db_backup/improved_financial_data.duckdb", read_only=True)
+        conn = duckdb.connect(
+            "data/db_backup/improved_financial_data.duckdb", read_only=True
+        )
 
         # Check companies table
         print("Companies in DuckDB:")
@@ -25,14 +26,18 @@ def check_database():
         print(f"Total filings: {filings_count}")
 
         # Check company_id in filings
-        company_ids = conn.execute("SELECT DISTINCT company_id FROM filings_new").fetchdf()
+        company_ids = conn.execute(
+            "SELECT DISTINCT company_id FROM filings_new"
+        ).fetchdf()
         print("Distinct company_ids in filings:")
         print(company_ids)
 
         # Get company names for each company_id
         print("\nCompany names for each company_id in filings:")
         for company_id in company_ids["company_id"]:
-            company_name = conn.execute("SELECT name FROM companies WHERE company_id = ?", [company_id]).fetchone()
+            company_name = conn.execute(
+                "SELECT name FROM companies WHERE company_id = ?", [company_id]
+            ).fetchone()
             if company_name:
                 print(f"Company ID {company_id}: {company_name[0]}")
             else:

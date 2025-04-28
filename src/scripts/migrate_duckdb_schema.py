@@ -7,7 +7,6 @@ This script migrates data from the old DuckDB schema to the new improved schema.
 import argparse
 import logging
 import os
-from pathlib import Path
 
 import duckdb
 from rich.console import Console
@@ -266,10 +265,42 @@ def migrate_metrics_and_facts(old_conn, new_conn):
 
     # Determine category based on metric name
     def determine_category(metric_name):
-        income_keywords = ["revenue", "income", "profit", "loss", "earnings", "expense", "margin", "ebitda", "eps"]
-        balance_keywords = ["asset", "liability", "equity", "debt", "cash", "receivable", "payable", "inventory"]
-        cash_flow_keywords = ["cash_flow", "operating_cash", "investing_cash", "financing_cash", "capex"]
-        ratio_keywords = ["ratio", "margin", "return", "turnover", "coverage", "per_share"]
+        income_keywords = [
+            "revenue",
+            "income",
+            "profit",
+            "loss",
+            "earnings",
+            "expense",
+            "margin",
+            "ebitda",
+            "eps",
+        ]
+        balance_keywords = [
+            "asset",
+            "liability",
+            "equity",
+            "debt",
+            "cash",
+            "receivable",
+            "payable",
+            "inventory",
+        ]
+        cash_flow_keywords = [
+            "cash_flow",
+            "operating_cash",
+            "investing_cash",
+            "financing_cash",
+            "capex",
+        ]
+        ratio_keywords = [
+            "ratio",
+            "margin",
+            "return",
+            "turnover",
+            "coverage",
+            "per_share",
+        ]
 
         metric_lower = metric_name.lower()
 
@@ -473,14 +504,26 @@ def migrate_metrics_and_facts(old_conn, new_conn):
 
 def main():
     parser = argparse.ArgumentParser(description="Migrate DuckDB schema")
-    parser.add_argument("--old-db", default="data/financial_data.duckdb", help="Path to the old DuckDB database")
-    parser.add_argument("--new-db", default="data/financial_data_new.duckdb", help="Path to the new DuckDB database")
+    parser.add_argument(
+        "--old-db",
+        default="data/financial_data.duckdb",
+        help="Path to the old DuckDB database",
+    )
+    parser.add_argument(
+        "--new-db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the new DuckDB database",
+    )
     parser.add_argument(
         "--schema",
         default="src/sec_filing_analyzer/storage/improved_financial_db_schema.sql",
         help="Path to the new schema SQL file",
     )
-    parser.add_argument("--overwrite", action="store_true", help="Overwrite the new database if it exists")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite the new database if it exists",
+    )
 
     args = parser.parse_args()
 

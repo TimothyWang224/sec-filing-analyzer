@@ -12,10 +12,18 @@ from sec_filing_analyzer.config import ETLConfig, StorageConfig
 from sec_filing_analyzer.data_processing.chunking import FilingChunker
 from sec_filing_analyzer.data_retrieval import SECFilingsDownloader
 from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
-from sec_filing_analyzer.data_retrieval.parallel_filing_processor import ParallelFilingProcessor
+from sec_filing_analyzer.data_retrieval.parallel_filing_processor import (
+    ParallelFilingProcessor,
+)
 from sec_filing_analyzer.pipeline.quantitative_pipeline import QuantitativeETLPipeline
-from sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
-from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
+from sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import (
+    RobustEmbeddingGenerator,
+)
+from sec_filing_analyzer.storage import (
+    GraphStore,
+    LlamaIndexVectorStore,
+    OptimizedVectorStore,
+)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -174,7 +182,12 @@ class ParallelSECFilingETLPipeline:
         Returns:
             Dictionary with processing results
         """
-        result = {"ticker": ticker, "status": "failed", "filings_processed": 0, "error": None}
+        result = {
+            "ticker": ticker,
+            "status": "failed",
+            "filings_processed": 0,
+            "error": None,
+        }
 
         try:
             # Download filings
@@ -358,7 +371,10 @@ class ParallelSECFilingETLPipeline:
                         full_text_embedding, full_text_metadata = full_text_result
                     else:
                         full_text_embedding = full_text_result
-                        full_text_metadata = {"any_fallbacks": False, "fallback_count": 0}
+                        full_text_metadata = {
+                            "any_fallbacks": False,
+                            "fallback_count": 0,
+                        }
                     processed_data["embedding"] = full_text_embedding[0]
 
                     # Add full text embedding metadata
@@ -404,12 +420,15 @@ class ParallelSECFilingETLPipeline:
 
             # Save processed filing to disk
             self.file_storage.save_processed_filing(
-                filing_id=accession_number, processed_data=processed_data, metadata=filing_data
+                filing_id=accession_number,
+                processed_data=processed_data,
+                metadata=filing_data,
             )
 
             # Cache filing for quick access
             self.file_storage.cache_filing(
-                filing_id=accession_number, filing_data={"metadata": filing_data, "processed_data": processed_data}
+                filing_id=accession_number,
+                filing_data={"metadata": filing_data, "processed_data": processed_data},
             )
 
             return processed_data

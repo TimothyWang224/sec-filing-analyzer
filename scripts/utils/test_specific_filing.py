@@ -13,7 +13,9 @@ from sec_filing_analyzer.utils import edgar_utils
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +30,11 @@ def test_specific_filing():
         # Get a specific 8-K filing from 2022
         logger.info("Getting a specific 8-K filing from 2022...")
         filings = edgar_utils.get_filings(
-            ticker="MSFT", form_type="8-K", start_date="2022-01-01", end_date="2022-12-31", limit=1
+            ticker="MSFT",
+            form_type="8-K",
+            start_date="2022-01-01",
+            end_date="2022-12-31",
+            limit=1,
         )
 
         if not filings:
@@ -46,10 +52,16 @@ def test_specific_filing():
 
         # Check what content we got
         logger.info("Filing content:")
-        logger.info(f"  Text: {'Available' if content.get('text') else 'Not available'}")
-        logger.info(f"  HTML: {'Available' if content.get('html') else 'Not available'}")
+        logger.info(
+            f"  Text: {'Available' if content.get('text') else 'Not available'}"
+        )
+        logger.info(
+            f"  HTML: {'Available' if content.get('html') else 'Not available'}"
+        )
         logger.info(f"  XML: {'Available' if content.get('xml') else 'Not available'}")
-        logger.info(f"  XBRL: {'Available' if content.get('xbrl') else 'Not available'}")
+        logger.info(
+            f"  XBRL: {'Available' if content.get('xbrl') else 'Not available'}"
+        )
 
         # Get filing metadata
         logger.info("Getting filing metadata...")

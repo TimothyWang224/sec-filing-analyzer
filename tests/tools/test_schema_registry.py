@@ -3,10 +3,8 @@ Unit tests for the SchemaRegistry class.
 """
 
 import json
-import os
 from unittest.mock import mock_open, patch
 
-import pytest
 
 from src.tools.schema_registry import SchemaRegistry
 
@@ -34,7 +32,10 @@ class TestSchemaRegistry:
             }
         )
 
-        with patch("os.path.exists", return_value=True), patch("builtins.open", mock_open(read_data=schema_json)):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=schema_json)),
+        ):
             # Load the schema
             result = SchemaRegistry.load_schema("test_schema", "test_schema.json")
 
@@ -42,7 +43,10 @@ class TestSchemaRegistry:
             assert result
             assert "test_schema" in SchemaRegistry._db_schemas
             assert "test_schema" in SchemaRegistry._schema_files
-            assert SchemaRegistry._db_schemas["test_schema"]["fields"]["field1"]["type"] == "string"
+            assert (
+                SchemaRegistry._db_schemas["test_schema"]["fields"]["field1"]["type"]
+                == "string"
+            )
 
     def test_load_schema_file_not_found(self):
         """Test loading a schema from a file that doesn't exist."""
@@ -108,7 +112,10 @@ class TestSchemaRegistry:
     def test_get_field_mapping(self):
         """Test getting a field mapping."""
         # Add a field mapping to the registry
-        SchemaRegistry._field_mappings["test_schema"] = {"param1": "field1", "param2": "field2"}
+        SchemaRegistry._field_mappings["test_schema"] = {
+            "param1": "field1",
+            "param2": "field2",
+        }
 
         # Get the field mapping
         field_name = SchemaRegistry.get_field_mapping("test_schema", "param1")
@@ -127,7 +134,10 @@ class TestSchemaRegistry:
     def test_resolve_field_with_mapping(self):
         """Test resolving a field name with a mapping."""
         # Add a field mapping to the registry
-        SchemaRegistry._field_mappings["test_schema"] = {"param1": "field1", "param2": "field2"}
+        SchemaRegistry._field_mappings["test_schema"] = {
+            "param1": "field1",
+            "param2": "field2",
+        }
 
         # Resolve the field name
         field_name = SchemaRegistry.resolve_field("test_schema", "param1")
@@ -146,7 +156,9 @@ class TestSchemaRegistry:
     def test_resolve_field_with_default(self):
         """Test resolving a field name with a default value."""
         # Resolve the field name with a default
-        field_name = SchemaRegistry.resolve_field("test_schema", "param1", default="default_field")
+        field_name = SchemaRegistry.resolve_field(
+            "test_schema", "param1", default="default_field"
+        )
 
         # Check that the default was returned
         assert field_name == "default_field"
@@ -163,7 +175,10 @@ class TestSchemaRegistry:
         }
 
         # Add field mappings
-        SchemaRegistry._field_mappings["test_schema"] = {"param1": "field1", "param2": "field2"}
+        SchemaRegistry._field_mappings["test_schema"] = {
+            "param1": "field1",
+            "param2": "field2",
+        }
 
         # Validate the schema
         is_valid, errors = SchemaRegistry.validate_schema("test_schema")
@@ -266,7 +281,9 @@ class TestSchemaRegistry:
         SchemaRegistry._schema_files["schema2"] = "schema2.json"
 
         # Mock the load_schema method
-        with patch("src.tools.schema_registry.SchemaRegistry.load_schema", return_value=True):
+        with patch(
+            "src.tools.schema_registry.SchemaRegistry.load_schema", return_value=True
+        ):
             # Reload all schemas
             result = SchemaRegistry.reload_all_schemas()
 
@@ -349,7 +366,10 @@ class TestSchemaRegistry:
     def test_find_field_by_name(self):
         """Test finding a field by its name."""
         # Add a schema to the registry
-        SchemaRegistry._db_schemas["test_schema"] = {"name": "test_schema", "fields": {"field1": {"type": "string"}}}
+        SchemaRegistry._db_schemas["test_schema"] = {
+            "name": "test_schema",
+            "fields": {"field1": {"type": "string"}},
+        }
 
         # Find field by name
         field_name = SchemaRegistry.find_field_by_alias("test_schema", "field1")

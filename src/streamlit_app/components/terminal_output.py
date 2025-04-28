@@ -6,8 +6,7 @@ This component displays terminal output in the Streamlit UI.
 
 import queue
 import threading
-import time
-from typing import Callable, List, Optional
+from typing import Callable, List
 
 import streamlit as st
 

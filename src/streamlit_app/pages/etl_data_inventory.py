@@ -7,7 +7,12 @@ This page shows what companies and filings are currently stored in the system.
 import streamlit as st
 
 # Set page config first (must be the first Streamlit command)
-st.set_page_config(page_title="ETL Data Inventory", page_icon="📊", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="ETL Data Inventory",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 import logging
 import os
@@ -16,7 +21,6 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import duckdb
 import pandas as pd
 
 # Add the project root to the Python path
@@ -24,7 +28,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import terminal output component
 from streamlit_app.components.terminal_output import (
-    TerminalOutputCapture,
     display_terminal_output,
     run_with_output_capture,
 )
@@ -279,7 +282,7 @@ def get_duckdb_data(db_path="data/db_backup/improved_financial_data.duckdb", _re
                 f.ticker, f.filing_type
             """
         filing_counts_df = conn.execute(filing_counts_query).fetchdf()
-        logger.info(f"Retrieved filing counts by company, type, and processing status")
+        logger.info("Retrieved filing counts by company, type, and processing status")
 
         # Note: We don't close the connection since it's managed by the DuckDB manager
         # and may be reused by other parts of the application
@@ -383,9 +386,18 @@ st.sidebar.header("Filters")
 
 # Processing status filter
 st.sidebar.subheader("Processing Status")
-all_processing_statuses = ["downloaded", "processed", "embedded", "xbrl_processed", "error", "unknown"]
+all_processing_statuses = [
+    "downloaded",
+    "processed",
+    "embedded",
+    "xbrl_processed",
+    "error",
+    "unknown",
+]
 selected_processing_statuses = st.sidebar.multiselect(
-    "Select Processing Status", options=all_processing_statuses, default=all_processing_statuses
+    "Select Processing Status",
+    options=all_processing_statuses,
+    default=all_processing_statuses,
 )
 
 # Date range filter
@@ -559,7 +571,9 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
     with col4:
         # Add refresh button for data summary
         if st.button(
-            "🔄 Refresh Summary", key="refresh_summary", help="Refresh the data summary to see the latest changes"
+            "🔄 Refresh Summary",
+            key="refresh_summary",
+            help="Refresh the data summary to see the latest changes",
         ):
             refresh_data()
 
@@ -618,7 +632,8 @@ if companies_df is not None and filings_df is not None and filing_counts_df is n
 
                 # Display as a table
                 st.dataframe(
-                    company_filings[["filing_type", "count", "earliest_date", "latest_date"]], use_container_width=True
+                    company_filings[["filing_type", "count", "earliest_date", "latest_date"]],
+                    use_container_width=True,
                 )
 
                 # Add a button to view details
@@ -658,7 +673,11 @@ with col2:
         st.markdown(f"**Refresh time:** {st.session_state.refresh_duration} seconds")
 with col3:
     # Add refresh button
-    if st.button("🔄 Refresh Data", key="refresh_inventory", help="Refresh the data to see the latest changes"):
+    if st.button(
+        "🔄 Refresh Data",
+        key="refresh_inventory",
+        help="Refresh the data to see the latest changes",
+    ):
         refresh_data()
 
 # Create tabs for different views
@@ -802,7 +821,13 @@ with inventory_tabs[0]:
                     processing_status = status_map.get(fiscal_period, "unknown")
 
                     # Check if file exists on disk
-                    file_path = get_filing_path(ticker, filing["filing_type"], filing_date, accession_number, None)
+                    file_path = get_filing_path(
+                        ticker,
+                        filing["filing_type"],
+                        filing_date,
+                        accession_number,
+                        None,
+                    )
                     file_exists = file_path is not None
 
                     # Create status icon based on processing status
@@ -1009,7 +1034,13 @@ with inventory_tabs[2]:
                     processing_status = filing.get("processing_status", "unknown")
 
                     # Check if file exists on disk
-                    file_path = get_filing_path(ticker, filing_type, filing_date, accession_number, local_file_path)
+                    file_path = get_filing_path(
+                        ticker,
+                        filing_type,
+                        filing_date,
+                        accession_number,
+                        local_file_path,
+                    )
                     file_exists = file_path is not None
 
                     # Create status icon based on processing status
@@ -1257,7 +1288,11 @@ with date_tabs[2]:
 
     # Start date picker
     with custom_col1:
-        custom_start_date = st.date_input("Start Date", value=st.session_state.retrieval_start_date, key="custom_start")
+        custom_start_date = st.date_input(
+            "Start Date",
+            value=st.session_state.retrieval_start_date,
+            key="custom_start",
+        )
 
     # End date picker
     with custom_col2:

@@ -11,7 +11,6 @@ import logging
 import os
 import sys
 import webbrowser
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -23,7 +22,9 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Launch DuckDB UI")
     parser.add_argument("--db", required=True, help="Path to DuckDB database file")
-    parser.add_argument("--port", type=int, default=8080, help="Port to run the DuckDB UI on")
+    parser.add_argument(
+        "--port", type=int, default=8080, help="Port to run the DuckDB UI on"
+    )
     args = parser.parse_args()
 
     # Get absolute path to the database file
@@ -47,9 +48,13 @@ def main():
         logger.info("Successfully connected to database")
 
         # Check if the database has tables
-        tables = conn.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='main'").fetchall()
+        tables = conn.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='main'"
+        ).fetchall()
         table_names = [t[0] for t in tables]
-        logger.info(f"Database contains {len(table_names)} tables: {', '.join(table_names)}")
+        logger.info(
+            f"Database contains {len(table_names)} tables: {', '.join(table_names)}"
+        )
 
         # Close the connection
         conn.close()
@@ -63,8 +68,12 @@ def main():
 
                 logger.info("DuckDB Web UI module found")
             except ImportError:
-                logger.error("DuckDB Web UI module not found. Please install it with: pip install duckdb-web-ui")
-                print("Error: DuckDB Web UI module not found. Please install it with: pip install duckdb-web-ui")
+                logger.error(
+                    "DuckDB Web UI module not found. Please install it with: pip install duckdb-web-ui"
+                )
+                print(
+                    "Error: DuckDB Web UI module not found. Please install it with: pip install duckdb-web-ui"
+                )
                 return 1
 
             # Launch the web UI

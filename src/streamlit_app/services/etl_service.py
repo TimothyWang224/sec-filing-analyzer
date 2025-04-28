@@ -7,7 +7,6 @@ This service handles ETL pipeline execution and tracking for the Streamlit appli
 import inspect
 import logging
 import threading
-import time
 import uuid
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
@@ -179,7 +178,7 @@ class ETLService:
             # If we're trying to open in read-only mode but already have a read-write connection,
             # we need to use read-write mode to avoid connection conflicts
             if read_only and read_write_key in duckdb_manager._active_connections:
-                logger.info(f"Using read-write mode for sync manager because a read-write connection already exists")
+                logger.info("Using read-write mode for sync manager because a read-write connection already exists")
                 read_only = False
 
             # Make sure the database directory exists
@@ -422,7 +421,7 @@ class ETLService:
                         log_callback(
                             f"Storage synchronization partially completed. Failed components: {failed_components}"
                         )
-                        log_callback(f"The successful parts have been synchronized and are available in the inventory.")
+                        log_callback("The successful parts have been synchronized and are available in the inventory.")
                 else:
                     job.add_log("Storage synchronization failed")
                     if log_callback:
@@ -628,7 +627,11 @@ class ETLService:
             return {"error": str(e)}
 
     def estimate_filings_count(
-        self, tickers: List[str], filing_types: List[str], start_date: str, end_date: str
+        self,
+        tickers: List[str],
+        filing_types: List[str],
+        start_date: str,
+        end_date: str,
     ) -> int:
         """
         Estimate the number of filings to retrieve.

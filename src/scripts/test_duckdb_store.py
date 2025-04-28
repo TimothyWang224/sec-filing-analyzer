@@ -4,7 +4,6 @@ Test DuckDB Financial Store
 This script tests the DuckDB financial store.
 """
 
-import json
 import logging
 import os
 import sys
@@ -13,7 +12,9 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import SimplifiedXBRLExtractor
+from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
+    SimplifiedXBRLExtractor,
+)
 from sec_filing_analyzer.storage.duckdb_financial_store import DuckDBFinancialStore
 
 # Configure logging
@@ -38,7 +39,11 @@ def test_duckdb_store():
 
     # Store a company
     store.store_company(
-        ticker="AAPL", name="Apple Inc.", cik="0000320193", sector="Technology", industry="Consumer Electronics"
+        ticker="AAPL",
+        name="Apple Inc.",
+        cik="0000320193",
+        sector="Technology",
+        industry="Consumer Electronics",
     )
 
     # Store a filing
@@ -85,17 +90,29 @@ def test_duckdb_store():
     store.store_financial_facts("AAPL_10K_2023", facts)
 
     # Store time series metrics
-    metrics = {"revenue": 394328000000, "net_income": 96995000000, "total_assets": 352583000000}
+    metrics = {
+        "revenue": 394328000000,
+        "net_income": 96995000000,
+        "total_assets": 352583000000,
+    }
 
     store.store_time_series_metrics(
-        ticker="AAPL", filing_id="AAPL_10K_2023", fiscal_year=2023, fiscal_quarter=4, metrics=metrics
+        ticker="AAPL",
+        filing_id="AAPL_10K_2023",
+        fiscal_year=2023,
+        fiscal_quarter=4,
+        metrics=metrics,
     )
 
     # Store financial ratios
     ratios = {"net_margin": 0.246, "return_on_assets": 0.275, "return_on_equity": 0.789}
 
     store.store_financial_ratios(
-        ticker="AAPL", filing_id="AAPL_10K_2023", fiscal_year=2023, fiscal_quarter=4, ratios=ratios
+        ticker="AAPL",
+        filing_id="AAPL_10K_2023",
+        fiscal_year=2023,
+        fiscal_quarter=4,
+        ratios=ratios,
     )
 
     # Get updated database stats

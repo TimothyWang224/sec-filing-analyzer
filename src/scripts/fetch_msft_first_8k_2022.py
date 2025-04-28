@@ -74,7 +74,7 @@ def fetch_msft_first_8k_2022():
                     first_8k_2022 = filing
 
         if first_8k_2022:
-            print(f"Found first 8-K filing of 2022:")
+            print("Found first 8-K filing of 2022:")
             print(f"Accession: {first_8k_2022.accession_number}")
             print(f"Form: {first_8k_2022.form}")
             print(f"Date: {first_8k_2022.filing_date}")
@@ -85,7 +85,7 @@ def fetch_msft_first_8k_2022():
             filing_text = first_8k_2022.text
 
             # Save the filing text
-            output_file = output_dir / f"MSFT_first_8k_2022.txt"
+            output_file = output_dir / "MSFT_first_8k_2022.txt"
             with open(output_file, "w", encoding="utf-8") as f:
                 f.write(filing_text)
             print(f"Saved filing text to {output_file}")
@@ -96,7 +96,7 @@ def fetch_msft_first_8k_2022():
                 xbrl_data = first_8k_2022.xbrl
 
                 # Save XBRL data
-                xbrl_file = output_dir / f"MSFT_first_8k_2022_xbrl.json"
+                xbrl_file = output_dir / "MSFT_first_8k_2022_xbrl.json"
                 with open(xbrl_file, "w", encoding="utf-8") as f:
                     json.dump(xbrl_data, f, indent=2, default=str)
                 print(f"Saved XBRL data to {xbrl_file}")
@@ -106,7 +106,7 @@ def fetch_msft_first_8k_2022():
             # Try to extract document content
             if hasattr(first_8k_2022, "document"):
                 document = first_8k_2022.document
-                doc_file = output_dir / f"MSFT_first_8k_2022_document.html"
+                doc_file = output_dir / "MSFT_first_8k_2022_document.html"
                 with open(doc_file, "w", encoding="utf-8") as f:
                     f.write(str(document))
                 print(f"Saved document content to {doc_file}")

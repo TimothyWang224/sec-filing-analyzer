@@ -5,7 +5,6 @@ This script tests the improved Edgar XBRL extractor with a known filing.
 """
 
 import logging
-import os
 from pathlib import Path
 
 from edgar import set_identity
@@ -13,10 +12,14 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 
-from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
+from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import (
+    ImprovedEdgarXBRLExtractor,
+)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -48,7 +51,9 @@ def test_improved_edgar_extractor():
         # Initialize the schema
         import duckdb
 
-        from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
+        from sec_filing_analyzer.storage.improved_duckdb_store import (
+            ImprovedDuckDBStore,
+        )
 
         # Create the database directory if it doesn't exist
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -57,7 +62,9 @@ def test_improved_edgar_extractor():
         conn = duckdb.connect(db_path)
 
         # Initialize the schema
-        schema_path = "src/sec_filing_analyzer/storage/simplified_financial_db_schema.sql"
+        schema_path = (
+            "src/sec_filing_analyzer/storage/simplified_financial_db_schema.sql"
+        )
         with open(schema_path, "r") as f:
             schema_sql = f.read()
 
@@ -137,7 +144,9 @@ def test_improved_edgar_extractor():
         if filing:
             facts = db.get_filing_facts(filing.get("filing_id"))
 
-            console.print(f"\n[bold]Facts for Filing (showing first 5 of {len(facts)}):[/bold]")
+            console.print(
+                f"\n[bold]Facts for Filing (showing first 5 of {len(facts)}):[/bold]"
+            )
             if not facts.empty:
                 console.print(facts.head(5))
             else:

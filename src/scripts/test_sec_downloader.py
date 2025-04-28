@@ -29,7 +29,10 @@ def test_download_filings():
         # Download filings for Microsoft
         logger.info("Downloading filings for Microsoft...")
         filings = sec_downloader.download_company_filings(
-            ticker="MSFT", filing_types=["8-K"], start_date="2022-01-01", end_date="2022-12-31"
+            ticker="MSFT",
+            filing_types=["8-K"],
+            start_date="2022-01-01",
+            end_date="2022-12-31",
         )
 
         logger.info(f"Downloaded {len(filings)} filings")

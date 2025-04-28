@@ -4,7 +4,6 @@ Test Parallel XBRL Extractor and Optimized DuckDB Store
 This script tests the parallel XBRL extractor and optimized DuckDB store.
 """
 
-import json
 import logging
 import os
 import sys
@@ -14,7 +13,9 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.data_processing.parallel_xbrl_extractor import ParallelXBRLExtractor
+from sec_filing_analyzer.data_processing.parallel_xbrl_extractor import (
+    ParallelXBRLExtractor,
+)
 from sec_filing_analyzer.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Configure logging
@@ -40,7 +41,10 @@ def test_parallel_extraction(tickers, accession_numbers, max_workers=4):
             accession_number = accession_numbers[i]
             filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
 
-            company = {"ticker": ticker, "filings": [{"filing_id": filing_id, "accession_number": accession_number}]}
+            company = {
+                "ticker": ticker,
+                "filings": [{"filing_id": filing_id, "accession_number": accession_number}],
+            }
             companies.append(company)
 
     # Start timer
@@ -54,7 +58,7 @@ def test_parallel_extraction(tickers, accession_numbers, max_workers=4):
     elapsed = end_time - start_time
 
     # Print results
-    print(f"\n=== Parallel XBRL Extraction Results ===")
+    print("\n=== Parallel XBRL Extraction Results ===")
     print(f"Processed {len(companies)} companies with {max_workers} workers")
     print(f"Total time: {elapsed:.2f} seconds")
 
@@ -108,7 +112,7 @@ def test_optimized_duckdb_store(financial_data):
     end_time = time.time()
     elapsed = end_time - start_time
 
-    print(f"\n=== Batch Storage Results ===")
+    print("\n=== Batch Storage Results ===")
     print(f"Stored {stored_count} financial data records")
     print(f"Total time: {elapsed:.2f} seconds")
 
@@ -134,7 +138,7 @@ def test_optimized_duckdb_store(financial_data):
         tickers = list(financial_data.keys())
         comparison_df = store.compare_companies(tickers=tickers, metric="revenue")
 
-        print(f"\n=== Company Comparison (Revenue) ===")
+        print("\n=== Company Comparison (Revenue) ===")
         print(comparison_df)
 
 
@@ -142,7 +146,13 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Test parallel XBRL extractor and optimized DuckDB store")
-    parser.add_argument("--tickers", type=str, nargs="+", default=["AAPL", "MSFT"], help="Company ticker symbols")
+    parser.add_argument(
+        "--tickers",
+        type=str,
+        nargs="+",
+        default=["AAPL", "MSFT"],
+        help="Company ticker symbols",
+    )
     parser.add_argument(
         "--accessions",
         type=str,
@@ -159,7 +169,9 @@ if __name__ == "__main__":
 
     # Test parallel extraction
     results = test_parallel_extraction(
-        tickers=args.tickers, accession_numbers=args.accessions, max_workers=args.workers
+        tickers=args.tickers,
+        accession_numbers=args.accessions,
+        max_workers=args.workers,
     )
 
     # Test optimized DuckDB store

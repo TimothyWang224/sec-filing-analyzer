@@ -7,9 +7,8 @@ and configuring their schema mappings.
 
 import logging
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional, Type, Union
+from typing import Dict, List, Optional
 
-from .base import Tool
 from .registry import ToolRegistry
 from .schema_registry import SchemaRegistry
 

@@ -5,7 +5,6 @@ This script updates the unified configuration file with all the settings from va
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -14,7 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     # Import the ConfigProvider
-    from src.sec_filing_analyzer.config import ConfigProvider, ETLConfig, StreamlitConfig, VectorStoreConfig
+    from src.sec_filing_analyzer.config import (
+        ConfigProvider,
+        ETLConfig,
+        StreamlitConfig,
+        VectorStoreConfig,
+    )
 
     # Initialize the ConfigProvider
     ConfigProvider.initialize()

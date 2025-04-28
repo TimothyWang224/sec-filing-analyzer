@@ -4,8 +4,7 @@ LLM-driven tool calling implementation.
 
 import json
 import logging
-import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from sec_filing_analyzer.llm import BaseLLM
 
@@ -106,7 +105,14 @@ Return a JSON array of tool calls, where each tool call includes the tool name a
             # Execute the tool
             try:
                 result = await self.environment.execute_tool(tool_name, tool_args)
-                results.append({"tool": tool_name, "parameters": tool_args, "result": result, "status": "success"})
+                results.append(
+                    {
+                        "tool": tool_name,
+                        "parameters": tool_args,
+                        "result": result,
+                        "status": "success",
+                    }
+                )
             except Exception as e:
                 error_message = str(e)
                 logger.error(f"Error executing tool {tool_name}: {error_message}")

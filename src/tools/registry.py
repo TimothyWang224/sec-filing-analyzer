@@ -5,11 +5,11 @@ Tool registry for managing tools with automatic documentation extraction.
 import inspect
 import logging
 import re
-from typing import Any, Dict, List, Optional, Type, Union, get_type_hints
+from typing import Any, Dict, Optional, get_type_hints
 
 from pydantic import Field
 
-from ..contracts import BaseModel, ToolSpec
+from ..contracts import ToolSpec
 from .memoization import clear_tool_caches
 from .schema_registry import SchemaRegistry
 
@@ -129,7 +129,10 @@ class ToolRegistry:
 
         # Create the ToolSpec
         cls._tool_specs[tool_name] = ToolSpec(
-            name=tool_name, input_schema=input_models, output_key=output_key, description=description
+            name=tool_name,
+            input_schema=input_models,
+            output_key=output_key,
+            description=description,
         )
 
         # Add metadata to the class
@@ -204,7 +207,11 @@ class ToolRegistry:
             args_section = args_match.group(1).strip()
 
             # Extract parameter descriptions
-            param_matches = re.finditer(r"(\w+)(?:\s*\(\w+\))?\s*:\s*(.*?)(?=\n\s*\w+\s*:|$)", args_section, re.DOTALL)
+            param_matches = re.finditer(
+                r"(\w+)(?:\s*\(\w+\))?\s*:\s*(.*?)(?=\n\s*\w+\s*:|$)",
+                args_section,
+                re.DOTALL,
+            )
 
             for match in param_matches:
                 param_name = match.group(1).strip()
@@ -341,7 +348,10 @@ class ToolRegistry:
 
                 # Create the ToolSpec
                 tool_spec = ToolSpec(
-                    name=name, input_schema=input_models, output_key=output_key, description=tool["description"]
+                    name=name,
+                    input_schema=input_models,
+                    output_key=output_key,
+                    description=tool["description"],
                 )
 
                 # Store the tool spec for future use

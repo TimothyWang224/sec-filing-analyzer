@@ -7,16 +7,17 @@ using NumPy binary storage and FAISS for efficient similarity search.
 
 import json
 import logging
-import os
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import faiss
 import numpy as np
-from llama_index.core import Document
-from llama_index.core.schema import NodeWithScore, TextNode
+
+# Import storage utilities
+from sec_filing_analyzer.storage.cache_utils import get_metadata, load_cached_mapping
+from sec_filing_analyzer.storage.duckdb_metadata_store import DuckDBMetadataStore
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,7 @@ class OptimizedVectorStore:
         store_path: Optional[str] = None,
         index_type: str = "flat",
         use_gpu: bool = False,
+        use_duckdb: bool = False,
         nlist: int = 100,  # For IVF indexes
         nprobe: int = 10,  # For IVF indexes
         m: int = 16,  # For HNSW indexes
@@ -46,6 +48,7 @@ class OptimizedVectorStore:
             store_path: Optional path to store the vector store data
             index_type: Type of FAISS index to use ('flat', 'ivf', 'hnsw', 'ivfpq')
             use_gpu: Whether to use GPU acceleration if available
+            use_duckdb: Whether to use DuckDB for metadata storage
             nlist: Number of clusters for IVF indexes
             nprobe: Number of clusters to visit during search for IVF indexes
             m: Number of connections per element for HNSW indexes
@@ -69,6 +72,23 @@ class OptimizedVectorStore:
         # Create company-specific directories
         self.company_dir = self.store_path / "by_company"
         self.company_dir.mkdir(parents=True, exist_ok=True)
+
+        # DuckDB configuration
+        self.use_duckdb = use_duckdb
+        self.db_path = self.store_path / "metadata.duckdb"
+        self.db_store = None
+
+        if self.use_duckdb:
+            # Initialize DuckDB metadata store
+            try:
+                self.db_store = DuckDBMetadataStore(self.db_path, read_only=True, create_if_missing=False)
+                logger.info(f"Using DuckDB for metadata storage at {self.db_path}")
+            except FileNotFoundError:
+                logger.warning(f"DuckDB metadata store not found at {self.db_path}, falling back to file-based storage")
+                self.use_duckdb = False
+            except Exception as e:
+                logger.warning(f"Error initializing DuckDB metadata store: {e}, falling back to file-based storage")
+                self.use_duckdb = False
 
         # Initialize in-memory storage for metadata
         self.metadata_store = self._load_metadata_store()
@@ -104,21 +124,83 @@ class OptimizedVectorStore:
         Returns:
             Dictionary mapping document IDs to metadata
         """
+        start_time = time.time()
+
+        # If using DuckDB, we don't need to load all metadata into memory
+        # We'll just return an empty dictionary and load metadata on-demand
+        if self.use_duckdb and self.db_store:
+            logger.info("Using DuckDB for metadata storage, skipping full metadata load")
+            # Return an empty dictionary - metadata will be loaded on-demand
+            return {}
+
+        # Check if we have a consolidated metadata cache
+        cache_dir = self.store_path / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        consolidated_path = cache_dir / "consolidated_metadata.json"
+
+        if consolidated_path.exists():
+            try:
+                # Try to use orjson for faster parsing if available
+                try:
+                    import orjson
+
+                    with open(consolidated_path, "rb") as f:
+                        metadata_store = orjson.loads(f.read())
+                except ImportError:
+                    with open(consolidated_path, "r", encoding="utf-8") as f:
+                        metadata_store = json.load(f)
+
+                logger.info(
+                    f"Loaded consolidated metadata for {len(metadata_store)} documents in {time.time() - start_time:.2f} seconds"
+                )
+                return metadata_store
+            except Exception as e:
+                logger.warning(f"Error loading consolidated metadata: {e}, falling back to individual files")
+
+        # If no consolidated file exists or loading failed, load from individual files
         metadata_store = {}
 
         if not self.metadata_dir.exists():
             return metadata_store
 
+        # Try to use orjson for faster parsing if available
+        try:
+            import orjson
+
+            use_orjson = True
+        except ImportError:
+            use_orjson = False
+
         for metadata_file in self.metadata_dir.glob("*.json"):
             try:
                 doc_id = metadata_file.stem
-                with open(metadata_file, "r", encoding="utf-8") as f:
-                    metadata = json.load(f)
+                if use_orjson:
+                    with open(metadata_file, "rb") as f:
+                        metadata = orjson.loads(f.read())
+                else:
+                    with open(metadata_file, "r", encoding="utf-8") as f:
+                        metadata = json.load(f)
                 metadata_store[doc_id] = metadata
             except Exception as e:
                 logger.warning(f"Error loading metadata from {metadata_file}: {e}")
 
-        logger.info(f"Loaded metadata for {len(metadata_store)} documents")
+        # Save consolidated metadata for next time
+        try:
+            # Try to use orjson for faster serialization if available
+            try:
+                import orjson
+
+                with open(consolidated_path, "wb") as f:
+                    f.write(orjson.dumps(metadata_store))
+            except ImportError:
+                with open(consolidated_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata_store, f)
+
+            logger.info(f"Created consolidated metadata cache with {len(metadata_store)} documents")
+        except Exception as e:
+            logger.warning(f"Error creating consolidated metadata cache: {e}")
+
+        logger.info(f"Loaded metadata for {len(metadata_store)} documents in {time.time() - start_time:.2f} seconds")
         return metadata_store
 
     def _build_company_to_docs_mapping(self) -> Dict[str, Set[str]]:
@@ -127,24 +209,52 @@ class OptimizedVectorStore:
         Returns:
             Dictionary mapping company tickers to sets of document IDs
         """
-        company_to_docs = defaultdict(set)
+        start_time = time.time()
 
-        for doc_id, metadata in self.metadata_store.items():
-            ticker = metadata.get("ticker", "unknown")
-            company_to_docs[ticker].add(doc_id)
+        # If using DuckDB, use it to build the mapping
+        if self.use_duckdb and self.db_store:
+            try:
+                company_to_docs = self.db_store.build_company_to_docs_mapping()
+                logger.info(
+                    f"Built company-to-documents mapping from DuckDB for {len(company_to_docs)} companies in {time.time() - start_time:.2f} seconds"
+                )
+                return company_to_docs
+            except Exception as e:
+                logger.warning(
+                    f"Error building company-to-documents mapping from DuckDB: {e}, falling back to file-based mapping"
+                )
 
-            # Also add to "all" category for queries that don't specify a company
-            company_to_docs["all"].add(doc_id)
+        # Define the rebuild function for file-based mapping
+        def rebuild_mapping():
+            company_to_docs = defaultdict(set)
 
-        # Save the mapping to disk for future reference
-        mapping_file = self.store_path / "company_doc_mapping.json"
-        serializable_mapping = {k: list(v) for k, v in company_to_docs.items()}
+            for doc_id, metadata in self.metadata_store.items():
+                ticker = metadata.get("ticker", "unknown")
+                company_to_docs[ticker].add(doc_id)
 
-        with open(mapping_file, "w", encoding="utf-8") as f:
-            json.dump(serializable_mapping, f, indent=2)
+                # Also add to "all" category for queries that don't specify a company
+                company_to_docs["all"].add(doc_id)
 
-        logger.info(f"Built company-to-documents mapping for {len(company_to_docs)} companies")
-        return company_to_docs
+            # Save the mapping to disk for future reference (legacy format)
+            mapping_file = self.store_path / "company_doc_mapping.json"
+            serializable_mapping = {k: list(v) for k, v in company_to_docs.items()}
+
+            with open(mapping_file, "w", encoding="utf-8") as f:
+                json.dump(serializable_mapping, f, indent=2)
+
+            logger.info(
+                f"Built company-to-documents mapping for {len(company_to_docs)} companies in {time.time() - start_time:.2f} seconds"
+            )
+            return company_to_docs
+
+        # Use the cached mapping loader
+        cache_file = self.store_path / "cache" / "company_doc_mapping.json"
+        return load_cached_mapping(
+            cache_file=cache_file,
+            metadata_dir=self.metadata_dir,
+            rebuild_func=rebuild_mapping,
+            force_rebuild=False,
+        )
 
     def _save_metadata(self, doc_id: str, metadata: Dict[str, Any]) -> None:
         """Save metadata to disk.
@@ -357,7 +467,11 @@ class OptimizedVectorStore:
             FAISS index
         """
         # Store index parameters for future reference
-        self.index_params = {"type": self.index_type, "dimension": vector_dim, "num_vectors": num_vectors}
+        self.index_params = {
+            "type": self.index_type,
+            "dimension": vector_dim,
+            "num_vectors": num_vectors,
+        }
 
         # Create the appropriate index based on type
         if self.index_type == "flat":
@@ -1189,7 +1303,31 @@ class OptimizedVectorStore:
         Returns:
             Metadata dictionary or None if not found
         """
-        return self.metadata_store.get(doc_id)
+        # Check in-memory cache first
+        if doc_id in self.metadata_store:
+            return self.metadata_store[doc_id]
+
+        # If using DuckDB, get metadata from there
+        if self.use_duckdb and self.db_store:
+            try:
+                metadata = self.db_store.get_metadata(doc_id)
+                if metadata:
+                    # Update in-memory store
+                    self.metadata_store[doc_id] = metadata
+                    return metadata
+            except Exception as e:
+                logger.warning(
+                    f"Error getting metadata from DuckDB for {doc_id}: {e}, falling back to file-based storage"
+                )
+
+        # Use the cached metadata getter
+        metadata = get_metadata(self.metadata_dir, doc_id)
+
+        # Update in-memory store if found
+        if metadata:
+            self.metadata_store[doc_id] = metadata
+
+        return metadata
 
     def get_document_text(self, doc_id: str) -> Optional[str]:
         """Get text for a document.
@@ -1296,18 +1434,32 @@ class OptimizedVectorStore:
         Returns:
             Dictionary with statistics
         """
+        if self.use_duckdb and self.db_store:
+            # Get document count from DuckDB
+            doc_count = self.db_store.get_document_count()
+            company_count = self.db_store.get_company_count()
+        else:
+            doc_count = len(self.metadata_store)
+            company_count = len(self.list_companies())
+
         stats = {
-            "total_documents": len(self.metadata_store),
-            "total_companies": len(self.list_companies()),
+            "total_documents": doc_count,
+            "total_companies": company_count,
             "documents_by_company": {
                 company: len(docs) for company, docs in self.company_to_docs.items() if company != "all"
             },
             "storage_size_mb": 0,
+            "using_duckdb": self.use_duckdb and self.db_store is not None,
         }
 
         # Calculate storage size
         total_size = 0
-        for dir_path in [self.metadata_dir, self.text_dir, self.embeddings_dir, self.company_dir]:
+        for dir_path in [
+            self.metadata_dir,
+            self.text_dir,
+            self.embeddings_dir,
+            self.company_dir,
+        ]:
             for file_path in dir_path.glob("**/*"):
                 if file_path.is_file():
                     total_size += file_path.stat().st_size
@@ -1315,3 +1467,13 @@ class OptimizedVectorStore:
         stats["storage_size_mb"] = total_size / (1024 * 1024)
 
         return stats
+
+    def __del__(self):
+        """Clean up resources when the object is deleted."""
+        # Close DuckDB connection if it exists
+        if hasattr(self, "db_store") and self.db_store:
+            try:
+                self.db_store.close()
+                logger.debug("Closed DuckDB connection")
+            except Exception as e:
+                logger.warning(f"Error closing DuckDB connection: {e}")

@@ -10,7 +10,7 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 from ..config import ConfigProvider, ETLConfig
 from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
@@ -221,7 +221,10 @@ class OptimizedParallelProcessor:
             return max(2, min(self.max_workers, int(filing_count * complexity_factor)))
 
     def process_filings(
-        self, filings: List[Dict[str, Any]], force_reprocess: bool = False, run_id: Optional[str] = None
+        self,
+        filings: List[Dict[str, Any]],
+        force_reprocess: bool = False,
+        run_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Process a list of filings in parallel.
 
@@ -243,7 +246,11 @@ class OptimizedParallelProcessor:
         if not filings:
             logger.warning("No filings to process")
             log_etl_end(run_id, status="completed", error="No filings to process")
-            return {"status": "no_filings", "stats": self.stats.to_dict(), "run_id": run_id}
+            return {
+                "status": "no_filings",
+                "stats": self.stats.to_dict(),
+                "run_id": run_id,
+            }
 
         # Update stats
         self.stats.total_filings = len(filings)
@@ -443,12 +450,20 @@ class OptimizedParallelProcessor:
                         )
 
             processing_time = time.time() - start_time
-            return {"success": True, "result": result, "processing_time": processing_time}
+            return {
+                "success": True,
+                "result": result,
+                "processing_time": processing_time,
+            }
 
         except Exception as e:
             logger.error(f"Error processing filing {filing_id}: {str(e)}")
             processing_time = time.time() - start_time
-            return {"success": False, "error": str(e), "processing_time": processing_time}
+            return {
+                "success": False,
+                "error": str(e),
+                "processing_time": processing_time,
+            }
 
     def process_company_filings(
         self,
@@ -500,7 +515,11 @@ class OptimizedParallelProcessor:
             try:
                 with self.rate_limiter:
                     filings = self.sec_downloader.download_company_filings(
-                        ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
+                        ticker=ticker,
+                        filing_types=filing_types,
+                        start_date=start_date,
+                        end_date=end_date,
+                        limit=limit,
                     )
                 api_time = time.time() - api_start
                 log_api_call(run_id, "SEC_API_COMPANY", True, api_time)
@@ -508,9 +527,16 @@ class OptimizedParallelProcessor:
                 api_time = time.time() - api_start
                 log_api_call(run_id, "SEC_API_COMPANY", False, api_time, str(e))
                 log_company_processing(
-                    run_id=run_id, ticker=ticker, status="failed", error=f"Failed to download filings: {str(e)}"
+                    run_id=run_id,
+                    ticker=ticker,
+                    status="failed",
+                    error=f"Failed to download filings: {str(e)}",
                 )
-                log_etl_end(run_id, status="failed", error=f"Failed to download filings for {ticker}: {str(e)}")
+                log_etl_end(
+                    run_id,
+                    status="failed",
+                    error=f"Failed to download filings for {ticker}: {str(e)}",
+                )
                 return {
                     "status": "error",
                     "error": f"Failed to download filings: {str(e)}",
@@ -522,7 +548,11 @@ class OptimizedParallelProcessor:
             logger.warning(f"No filings found for {ticker}")
             log_company_processing(run_id=run_id, ticker=ticker, status="completed", filings_processed=0)
             log_etl_end(run_id, status="completed", error=f"No filings found for {ticker}")
-            return {"status": "no_filings", "stats": self.stats.to_dict(), "run_id": run_id}
+            return {
+                "status": "no_filings",
+                "stats": self.stats.to_dict(),
+                "run_id": run_id,
+            }
 
         # Process filings
         with log_phase_timing(run_id, f"process_{ticker}"):
@@ -637,7 +667,10 @@ class OptimizedParallelProcessor:
                 except Exception as e:
                     error_msg = str(e)
                     logger.error(f"Error processing company {ticker}: {error_msg}")
-                    results["companies"][ticker] = {"status": "error", "error": error_msg}
+                    results["companies"][ticker] = {
+                        "status": "error",
+                        "error": error_msg,
+                    }
 
                     # Log company processing error
                     log_company_processing(run_id=run_id, ticker=ticker, status="failed", error=error_msg)

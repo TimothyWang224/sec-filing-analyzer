@@ -7,7 +7,6 @@ for faster loading and processing during semantic search.
 
 import json
 import logging
-import os
 import shutil
 from pathlib import Path
 
@@ -15,11 +14,15 @@ import numpy as np
 from tqdm import tqdm
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
-def migrate_embeddings(vector_store_path: str = "data/vector_store", backup: bool = True):
+def migrate_embeddings(
+    vector_store_path: str = "data/vector_store", backup: bool = True
+):
     """
     Migrate embeddings from JSON to NumPy binary format.
 
@@ -60,7 +63,9 @@ def migrate_embeddings(vector_store_path: str = "data/vector_store", backup: boo
             with open(company_mapping_path, "r") as f:
                 company_mapping = json.load(f)
         except json.JSONDecodeError:
-            logger.warning("Could not parse company_doc_mapping.json, creating a new one")
+            logger.warning(
+                "Could not parse company_doc_mapping.json, creating a new one"
+            )
             company_mapping = {}
 
     # Process each JSON file
@@ -114,7 +119,9 @@ def migrate_embeddings(vector_store_path: str = "data/vector_store", backup: boo
             logger.error(f"Error migrating {json_file}: {e}")
             error_count += 1
 
-    logger.info(f"Migration complete: {migrated_count} files migrated, {error_count} errors")
+    logger.info(
+        f"Migration complete: {migrated_count} files migrated, {error_count} errors"
+    )
 
     # Update company mapping if it was empty
     if not company_mapping and company_dir.exists():
@@ -128,18 +135,31 @@ def migrate_embeddings(vector_store_path: str = "data/vector_store", backup: boo
         with open(company_mapping_path, "w") as f:
             json.dump(new_mapping, f, indent=2)
 
-        logger.info(f"Updated company_doc_mapping.json with {len(new_mapping)} companies")
+        logger.info(
+            f"Updated company_doc_mapping.json with {len(new_mapping)} companies"
+        )
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Migrate embeddings from JSON to NumPy binary format")
-    parser.add_argument(
-        "--vector-store-path", type=str, default="data/vector_store", help="Path to the vector store directory"
+    parser = argparse.ArgumentParser(
+        description="Migrate embeddings from JSON to NumPy binary format"
     )
-    parser.add_argument("--no-backup", action="store_true", help="Don't create a backup of the original JSON files")
+    parser.add_argument(
+        "--vector-store-path",
+        type=str,
+        default="data/vector_store",
+        help="Path to the vector store directory",
+    )
+    parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Don't create a backup of the original JSON files",
+    )
 
     args = parser.parse_args()
 
-    migrate_embeddings(vector_store_path=args.vector_store_path, backup=not args.no_backup)
+    migrate_embeddings(
+        vector_store_path=args.vector_store_path, backup=not args.no_backup
+    )

@@ -13,10 +13,14 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import SimplifiedXBRLExtractor
+from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
+    SimplifiedXBRLExtractor,
+)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -34,7 +38,9 @@ def test_simplified_xbrl_extractor(ticker: str, accession_number: str):
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
 
     # Extract financials
-    financials = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
+    financials = extractor.extract_financials(
+        ticker=ticker, filing_id=filing_id, accession_number=accession_number
+    )
 
     # Check for errors
     if "error" in financials:
@@ -82,8 +88,15 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Test the simplified XBRL extractor")
-    parser.add_argument("--ticker", type=str, default="AAPL", help="Company ticker symbol")
-    parser.add_argument("--accession", type=str, default="0000320193-23-000077", help="SEC accession number")
+    parser.add_argument(
+        "--ticker", type=str, default="AAPL", help="Company ticker symbol"
+    )
+    parser.add_argument(
+        "--accession",
+        type=str,
+        default="0000320193-23-000077",
+        help="SEC accession number",
+    )
 
     args = parser.parse_args()
 

@@ -4,12 +4,9 @@ Data Management Page
 This page provides tools for managing data across different storage systems.
 """
 
-import json
 import logging
 import os
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -48,7 +45,12 @@ lifecycle_manager = DataLifecycleManager(
 )
 
 # Set page config
-st.set_page_config(page_title="Data Management", page_icon="🗄️", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Data Management",
+    page_icon="🗄️",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 # Title and description
 st.title("Data Management")
@@ -222,7 +224,9 @@ with tabs[1]:
             filing_type_options = [f"{ft['filing_type']} ({ft['count']})" for ft in filing_types_result["filing_types"]]
 
             selected_filing_type_option = st.selectbox(
-                "Select Filing Type", options=filing_type_options, key="delete_filing_type"
+                "Select Filing Type",
+                options=filing_type_options,
+                key="delete_filing_type",
             )
 
             # Extract filing type from selection
@@ -242,7 +246,9 @@ with tabs[1]:
                 ]
 
                 selected_filing_date_option = st.selectbox(
-                    "Select Filing", options=filing_date_options, key="delete_filing_date"
+                    "Select Filing",
+                    options=filing_date_options,
+                    key="delete_filing_date",
                 )
 
                 # Extract accession number from selection
@@ -270,15 +276,23 @@ with tabs[1]:
                         st.metric("Filing Date", filing_info["filing_date"])
 
                     # Dry run option
-                    dry_run = st.checkbox("Dry Run (simulate deletion without actually deleting files)", value=True)
+                    dry_run = st.checkbox(
+                        "Dry Run (simulate deletion without actually deleting files)",
+                        value=True,
+                    )
 
                     # Confirmation
                     confirmation = st.text_input(
-                        f"Type '{selected_ticker}' to confirm deletion", key="delete_confirmation"
+                        f"Type '{selected_ticker}' to confirm deletion",
+                        key="delete_confirmation",
                     )
 
                     # Delete button
-                    if st.button("Delete Filing", type="primary", disabled=(confirmation != selected_ticker)):
+                    if st.button(
+                        "Delete Filing",
+                        type="primary",
+                        disabled=(confirmation != selected_ticker),
+                    ):
                         if confirmation == selected_ticker:
                             # Show spinner while deleting
                             with st.spinner("Deleting filing..."):
@@ -430,7 +444,10 @@ with tabs[2]:
 
                     # Convert to dataframe
                     embedding_counts_df = pd.DataFrame(
-                        {"company": list(embedding_counts.keys()), "count": list(embedding_counts.values())}
+                        {
+                            "company": list(embedding_counts.keys()),
+                            "count": list(embedding_counts.values()),
+                        }
                     ).sort_values(by="count", ascending=False)
 
                     st.dataframe(embedding_counts_df, use_container_width=True)
@@ -475,7 +492,10 @@ with tabs[2]:
 
                 # Convert to dataframe
                 subdir_counts_df = pd.DataFrame(
-                    {"subdirectory": list(subdir_counts.keys()), "count": list(subdir_counts.values())}
+                    {
+                        "subdirectory": list(subdir_counts.keys()),
+                        "count": list(subdir_counts.values()),
+                    }
                 ).sort_values(by="count", ascending=False)
 
                 st.dataframe(subdir_counts_df, use_container_width=True)

@@ -192,9 +192,15 @@ def extract_xbrl_direct():
                                         # Extract values
                                         if hasattr(item, "values"):
                                             values = {}
-                                            for period, period_values in item.values.items():
+                                            for (
+                                                period,
+                                                period_values,
+                                            ) in item.values.items():
                                                 period_dict = {}
-                                                for dim_key, dim_value in period_values.items():
+                                                for (
+                                                    dim_key,
+                                                    dim_value,
+                                                ) in period_values.items():
                                                     if dim_key == ():
                                                         # Base value
                                                         period_dict["value"] = dim_value.get("value")
@@ -215,7 +221,11 @@ def extract_xbrl_direct():
             logger.info(f"Extracted {len(statements)} statements")
 
             # Create the final data structure
-            xbrl_result = {"metadata": metadata, "facts": facts, "statements": statements}
+            xbrl_result = {
+                "metadata": metadata,
+                "facts": facts,
+                "statements": statements,
+            }
 
             # Save to file
             output_file = output_dir / "msft_xbrl_direct.json"

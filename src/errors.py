@@ -34,7 +34,12 @@ class ParameterError(ToolError):
 class QueryTypeUnsupported(ToolError):
     """Error raised when a query type is not supported by a tool."""
 
-    def __init__(self, query_type: str, tool_name: str, supported_types: Optional[List[str]] = None):
+    def __init__(
+        self,
+        query_type: str,
+        tool_name: str,
+        supported_types: Optional[List[str]] = None,
+    ):
         self.query_type = query_type
         self.tool_name = tool_name
         self.supported_types = supported_types or []
@@ -44,7 +49,12 @@ class QueryTypeUnsupported(ToolError):
             message += f" Supported types are: {', '.join(self.supported_types)}"
 
         super().__init__(
-            message, {"query_type": query_type, "tool_name": tool_name, "supported_types": self.supported_types}
+            message,
+            {
+                "query_type": query_type,
+                "tool_name": tool_name,
+                "supported_types": self.supported_types,
+            },
         )
 
     def user_message(self) -> str:
@@ -71,12 +81,20 @@ class StorageUnavailable(ToolError):
 class DataNotFound(ToolError):
     """Error raised when requested data is not found."""
 
-    def __init__(self, data_type: str, query_params: Dict[str, Any], message: Optional[str] = None):
+    def __init__(
+        self,
+        data_type: str,
+        query_params: Dict[str, Any],
+        message: Optional[str] = None,
+    ):
         self.data_type = data_type
         self.query_params = query_params
 
         default_message = f"Could not find {data_type} data matching the query parameters."
-        super().__init__(message or default_message, {"data_type": data_type, "query_params": query_params})
+        super().__init__(
+            message or default_message,
+            {"data_type": data_type, "query_params": query_params},
+        )
 
     def user_message(self) -> str:
         """Return a user-friendly error message."""

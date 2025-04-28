@@ -10,11 +10,14 @@ import json
 import logging
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..agents.base import Agent
-from ..contracts import Plan, PlanStep, extract_value
-from ..tools.tool_parameter_helper import generate_tool_parameter_prompt, validate_tool_parameters
+from ..contracts import Plan, PlanStep
+from ..tools.tool_parameter_helper import (
+    generate_tool_parameter_prompt,
+    validate_tool_parameters,
+)
 from .base import Capability
 
 # Configure logging
@@ -51,7 +54,10 @@ class PlanningCapability(Capability):
             is_coordinator: Whether this capability belongs to a coordinator agent
             respect_existing_plan: Whether to respect an existing plan from a coordinator
         """
-        super().__init__(name="planning", description="Creates and manages execution plans for complex tasks")
+        super().__init__(
+            name="planning",
+            description="Creates and manages execution plans for complex tasks",
+        )
         self.enable_dynamic_replanning = enable_dynamic_replanning
         self.enable_step_reflection = enable_step_reflection
         self.min_steps_before_reflection = min_steps_before_reflection
@@ -439,7 +445,10 @@ class PlanningCapability(Capability):
                     action["args"] = parameters
 
             # Add plan context to the action
-            action["plan_context"] = {"step_id": current_step.step_id, "description": current_step.description}
+            action["plan_context"] = {
+                "step_id": current_step.step_id,
+                "description": current_step.description,
+            }
 
         return action
 
@@ -497,7 +506,12 @@ class PlanningCapability(Capability):
         return None
 
     async def process_result(
-        self, agent: Agent, context: Dict[str, Any], prompt: str, action: Dict[str, Any], result: Any
+        self,
+        agent: Agent,
+        context: Dict[str, Any],
+        prompt: str,
+        action: Dict[str, Any],
+        result: Any,
     ) -> Any:
         """
         Process the result to update the plan status.
@@ -573,7 +587,10 @@ class PlanningCapability(Capability):
                 can_modify = self.current_plan.can_modify if hasattr(self.current_plan, "can_modify") else True
                 if self.enable_dynamic_replanning and can_modify:
                     updated_plan = await self._reflect_and_update_plan(
-                        self.current_plan, self.completed_steps, self.step_results, prompt
+                        self.current_plan,
+                        self.completed_steps,
+                        self.step_results,
+                        prompt,
                     )
 
                     # If the plan was updated, use the new plan
@@ -692,7 +709,10 @@ The system automatically validates tool outputs using the done_check condition.
 Return your plan in the exact JSON format requested."""
 
         plan_response = await self.agent.llm.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=0.3, return_usage=True
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.3,
+            return_usage=True,
         )
 
         # Count tokens if return_usage is True
@@ -825,7 +845,16 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
 
         # Look for common financial metrics
         metrics = []
-        for metric in ["revenue", "income", "profit", "earnings", "eps", "assets", "liabilities", "debt"]:
+        for metric in [
+            "revenue",
+            "income",
+            "profit",
+            "earnings",
+            "eps",
+            "assets",
+            "liabilities",
+            "debt",
+        ]:
             if metric.lower() in user_input.lower():
                 metrics.append(metric.capitalize())
 
@@ -1149,7 +1178,10 @@ Consider what has been learned from completed steps and whether the plan still a
 Return the updated plan in the exact JSON format of the original plan."""
 
         reflection_response = await self.agent.llm.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=0.3, return_usage=True
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=0.3,
+            return_usage=True,
         )
 
         # Count tokens if return_usage is True

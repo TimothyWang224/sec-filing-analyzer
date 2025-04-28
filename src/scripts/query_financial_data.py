@@ -6,12 +6,10 @@ It can generate reports, compare companies, and analyze financial metrics.
 """
 
 import argparse
-import json
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -73,11 +71,22 @@ def show_company_metrics(
     """
     # Default metrics if none provided
     if not metrics:
-        metrics = ["revenue", "operating_income", "net_income", "eps_diluted", "total_assets", "stockholders_equity"]
+        metrics = [
+            "revenue",
+            "operating_income",
+            "net_income",
+            "eps_diluted",
+            "total_assets",
+            "stockholders_equity",
+        ]
 
     # Get metrics
     df = financial_store.get_company_metrics(
-        ticker=ticker, metrics=metrics, start_year=start_year, end_year=end_year, quarterly=quarterly
+        ticker=ticker,
+        metrics=metrics,
+        start_year=start_year,
+        end_year=end_year,
+        quarterly=quarterly,
     )
 
     if df.empty:
@@ -136,11 +145,15 @@ def compare_companies(
     """
     # Get comparison data
     df = financial_store.compare_companies(
-        tickers=tickers, metric=metric, start_year=start_year, end_year=end_year, quarterly=quarterly
+        tickers=tickers,
+        metric=metric,
+        start_year=start_year,
+        end_year=end_year,
+        quarterly=quarterly,
     )
 
     if df.empty:
-        print(f"No data found for comparison")
+        print("No data found for comparison")
         return
 
     print(f"\n=== Comparison of {metric.replace('_', ' ').title()} ===")
@@ -206,7 +219,11 @@ def show_financial_ratios(
 
     # Get ratios
     df = financial_store.get_financial_ratios(
-        ticker=ticker, ratios=ratios, start_year=start_year, end_year=end_year, quarterly=quarterly
+        ticker=ticker,
+        ratios=ratios,
+        start_year=start_year,
+        end_year=end_year,
+        quarterly=quarterly,
     )
 
     if df.empty:
@@ -267,10 +284,10 @@ def show_filing_info(
     )
 
     if df.empty:
-        print(f"No filings found")
+        print("No filings found")
         return
 
-    print(f"\n=== Filing Information ===")
+    print("\n=== Filing Information ===")
     print(df.to_string(index=False))
 
 
@@ -285,17 +302,22 @@ def run_custom_query(financial_store: FinancialDataStore, query: str) -> None:
     df = financial_store.run_custom_query(query)
 
     if df.empty:
-        print(f"No results found")
+        print("No results found")
         return
 
-    print(f"\n=== Query Results ===")
+    print("\n=== Query Results ===")
     print(df.to_string(index=False))
 
 
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Query financial data from DuckDB")
-    parser.add_argument("--db-path", type=str, default="data/financial_data.duckdb", help="Path to DuckDB database")
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        default="data/financial_data.duckdb",
+        help="Path to DuckDB database",
+    )
     parser.add_argument("--stats", action="store_true", help="Show database statistics")
     parser.add_argument("--ticker", type=str, help="Company ticker symbol")
     parser.add_argument("--metrics", type=str, help="Comma-separated list of metrics to show")

@@ -1,8 +1,13 @@
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 # Base configuration shared across all LLMs
-BASE_CONFIG = {"temperature": 0.7, "max_tokens": 1000, "top_p": 1.0, "frequency_penalty": 0.0, "presence_penalty": 0.0}
+BASE_CONFIG = {
+    "temperature": 0.7,
+    "max_tokens": 1000,
+    "top_p": 1.0,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0,
+}
 
 # Base agent execution configuration shared across all agents
 BASE_AGENT_CONFIG = {

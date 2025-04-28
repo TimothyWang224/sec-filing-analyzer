@@ -6,6 +6,7 @@ This page provides a user interface for interacting with the agent workflow.
 
 import asyncio
 import sys
+import time
 import uuid
 from pathlib import Path
 
@@ -19,7 +20,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 try:
     from sec_filing_analyzer.config import ConfigProvider
     from sec_filing_analyzer.llm.llm_config import LLMConfigFactory, get_agent_types
-    from src.agents import FinancialAnalystAgent, FinancialDiligenceCoordinator, QASpecialistAgent, RiskAnalystAgent
+    from src.agents import (
+        FinancialAnalystAgent,
+        FinancialDiligenceCoordinator,
+        QASpecialistAgent,
+        RiskAnalystAgent,
+    )
     from src.capabilities import LoggingCapability, TimeAwarenessCapability
     from src.environments import FinancialEnvironment
 
@@ -53,7 +59,10 @@ except ImportError as e:
 
 # Set page config
 st.set_page_config(
-    page_title="Agent Workflow - SEC Filing Analyzer", page_icon="🤖", layout="wide", initial_sidebar_state="expanded"
+    page_title="Agent Workflow - SEC Filing Analyzer",
+    page_icon="🤖",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Initialize configuration
@@ -87,12 +96,19 @@ if imports_successful:
         agent_types = get_agent_types()
     except Exception as e:
         st.error(f"Error getting agent types: {e}")
-        agent_types = ["coordinator", "financial_analyst", "risk_analyst", "qa_specialist"]
+        agent_types = [
+            "coordinator",
+            "financial_analyst",
+            "risk_analyst",
+            "qa_specialist",
+        ]
 else:
     agent_types = get_agent_types()
 
 agent_type = st.sidebar.selectbox(
-    "Select Agent Type", agent_types, index=agent_types.index("coordinator") if "coordinator" in agent_types else 0
+    "Select Agent Type",
+    agent_types,
+    index=agent_types.index("coordinator") if "coordinator" in agent_types else 0,
 )
 
 # LLM model selection
@@ -114,7 +130,9 @@ model_options = list(available_models.keys())
 model_descriptions = [f"{model} - {desc}" for model, desc in available_models.items()]
 
 selected_model_index = st.sidebar.selectbox(
-    "Select LLM Model", range(len(model_options)), format_func=lambda i: model_descriptions[i]
+    "Select LLM Model",
+    range(len(model_options)),
+    format_func=lambda i: model_descriptions[i],
 )
 selected_model = model_options[selected_model_index]
 
@@ -136,9 +154,24 @@ with st.sidebar.expander("Advanced Settings"):
     max_tool_retries = st.number_input("Max Tool Retries", min_value=1, max_value=5, value=2)
     max_duration_seconds = st.number_input("Max Duration (seconds)", min_value=30, max_value=600, value=180)
 
+# Storage settings
+with st.sidebar.expander("Storage Settings"):
+    use_duckdb = st.checkbox(
+        "Use DuckDB for metadata storage",
+        value=False,
+        help="Enables faster metadata access using DuckDB. Requires a pre-built metadata.duckdb file.",
+    )
+    st.info("DuckDB provides faster metadata access but requires running the migration script first.")
+    if use_duckdb:
+        st.success("DuckDB will be used for metadata storage if available.")
+
 # Initialize agent
 if st.sidebar.button("Initialize Agent"):
     with st.spinner("Initializing agent..."):
+        # Create a progress bar
+        progress_bar = st.progress(0)
+        start_time = time.time()
+
         if not imports_successful:
             st.error("Cannot initialize agent: Required components are not available.")
             st.info("Please make sure the SEC Filing Analyzer package is installed correctly using 'poetry install'.")
@@ -146,6 +179,7 @@ if st.sidebar.button("Initialize Agent"):
         else:
             try:
                 # Get recommended configuration
+                progress_bar.progress(10, text="Getting configuration...")
                 try:
                     config = LLMConfigFactory.get_recommended_config(
                         agent_type=agent_type, task_complexity=task_complexity
@@ -153,7 +187,11 @@ if st.sidebar.button("Initialize Agent"):
                 except Exception as config_error:
                     st.warning(f"Error getting recommended config: {config_error}")
                     # Use default config
-                    config = {"model": selected_model, "temperature": temperature, "max_tokens": max_tokens}
+                    config = {
+                        "model": selected_model,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                    }
 
                 # Override with user settings
                 config.update(
@@ -171,9 +209,19 @@ if st.sidebar.button("Initialize Agent"):
                 )
 
                 # Initialize environment
+                progress_bar.progress(20, text="Initializing environment...")
+                env_start_time = time.time()
                 environment = None
                 try:
-                    environment = FinancialEnvironment()
+                    # Use DuckDB if requested
+                    environment = FinancialEnvironment(use_duckdb=use_duckdb)
+                    env_time = time.time() - env_start_time
+
+                    # Show appropriate message based on DuckDB usage
+                    if use_duckdb:
+                        st.sidebar.success(f"Environment initialized with DuckDB in {env_time:.2f} seconds")
+                    else:
+                        st.sidebar.info(f"Environment initialized in {env_time:.2f} seconds")
                 except Exception as env_error:
                     st.error(f"Error initializing environment: {env_error}")
                     st.session_state.agent_initialized = False
@@ -185,6 +233,7 @@ if st.sidebar.button("Initialize Agent"):
                     st.session_state.agent_initialized = False
                 else:
                     # Initialize capabilities
+                    progress_bar.progress(60, text="Initializing capabilities...")
                     try:
                         capabilities = [TimeAwarenessCapability(), LoggingCapability()]
                     except Exception as cap_error:
@@ -192,26 +241,41 @@ if st.sidebar.button("Initialize Agent"):
                         capabilities = []
 
                     # Initialize agent based on type
+                    progress_bar.progress(80, text=f"Creating {agent_type} agent...")
+                    agent_start_time = time.time()
                     try:
                         if agent_type == "coordinator":
                             st.session_state.agent = FinancialDiligenceCoordinator(
-                                environment=environment, capabilities=capabilities, **config
+                                environment=environment,
+                                capabilities=capabilities,
+                                **config,
                             )
                         elif agent_type == "financial_analyst":
                             st.session_state.agent = FinancialAnalystAgent(
-                                environment=environment, capabilities=capabilities, **config
+                                environment=environment,
+                                capabilities=capabilities,
+                                **config,
                             )
                         elif agent_type == "risk_analyst":
                             st.session_state.agent = RiskAnalystAgent(
-                                environment=environment, capabilities=capabilities, **config
+                                environment=environment,
+                                capabilities=capabilities,
+                                **config,
                             )
                         elif agent_type == "qa_specialist":
                             st.session_state.agent = QASpecialistAgent(
-                                environment=environment, capabilities=capabilities, **config
+                                environment=environment,
+                                capabilities=capabilities,
+                                **config,
                             )
 
+                        agent_time = time.time() - agent_start_time
+                        total_time = time.time() - start_time
+
+                        progress_bar.progress(100, text="Agent initialized!")
                         st.session_state.agent_initialized = True
-                        st.success(f"{agent_type.title()} agent initialized successfully!")
+                        st.success(f"{agent_type.title()} agent initialized successfully in {total_time:.2f} seconds!")
+                        st.sidebar.info(f"Agent creation: {agent_time:.2f}s, Total: {total_time:.2f}s")
 
                         # Clear chat history when initializing a new agent
                         st.session_state.messages = []
@@ -291,5 +355,8 @@ with col2:
 
         # Create a download button
         st.download_button(
-            label="Download CSV", data=csv, file_name=f"conversation_{uuid.uuid4().hex[:8]}.csv", mime="text/csv"
+            label="Download CSV",
+            data=csv,
+            file_name=f"conversation_{uuid.uuid4().hex[:8]}.csv",
+            mime="text/csv",
         )

@@ -5,7 +5,7 @@ This module defines the interfaces for graph and vector storage.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 
 class VectorStoreInterface(ABC):
@@ -13,7 +13,10 @@ class VectorStoreInterface(ABC):
 
     @abstractmethod
     def upsert_vectors(
-        self, vectors: List[List[float]], ids: List[str], metadata: Optional[List[Dict[str, Any]]] = None
+        self,
+        vectors: List[List[float]],
+        ids: List[str],
+        metadata: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
         """
         Upsert vectors to the store.
@@ -30,7 +33,10 @@ class VectorStoreInterface(ABC):
 
     @abstractmethod
     def search_vectors(
-        self, query_vector: List[float], top_k: int = 10, filter_metadata: Optional[Dict[str, Any]] = None
+        self,
+        query_vector: List[float],
+        top_k: int = 10,
+        filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Search for similar vectors.
@@ -94,7 +100,11 @@ class GraphStoreInterface(ABC):
 
     @abstractmethod
     def add_relation(
-        self, source_id: str, target_id: str, relation_type: str, properties: Optional[Dict[str, Any]] = None
+        self,
+        source_id: str,
+        target_id: str,
+        relation_type: str,
+        properties: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Add a relation to the graph.
@@ -157,7 +167,10 @@ class GraphStoreInterface(ABC):
 
     @abstractmethod
     def vector_similarity_search(
-        self, query_embedding: List[float], similarity_top_k: int = 2, filter_metadata: Optional[Dict[str, Any]] = None
+        self,
+        query_embedding: List[float],
+        similarity_top_k: int = 2,
+        filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Perform vector similarity search.

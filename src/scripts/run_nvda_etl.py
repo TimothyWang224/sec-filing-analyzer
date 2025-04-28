@@ -6,10 +6,8 @@ import argparse
 import logging
 import os
 from datetime import datetime
-from pathlib import Path
-from typing import List, Optional
 
-from sec_filing_analyzer.config import ETLConfig, Neo4jConfig, StorageConfig
+from sec_filing_analyzer.config import Neo4jConfig
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from sec_filing_analyzer.storage.graph_store import GraphStore
 
@@ -36,9 +34,16 @@ def parse_args():
     parser.add_argument("--start-date", help="Start date (YYYY-MM-DD)", required=True)
     parser.add_argument("--end-date", help="End date (YYYY-MM-DD)", required=True)
     parser.add_argument(
-        "--filing-types", nargs="+", help="List of filing types to process (e.g., 10-K 10-Q)", default=["10-K", "10-Q"]
+        "--filing-types",
+        nargs="+",
+        help="List of filing types to process (e.g., 10-K 10-Q)",
+        default=["10-K", "10-Q"],
     )
-    parser.add_argument("--no-neo4j", action="store_true", help="Disable Neo4j and use in-memory graph store instead")
+    parser.add_argument(
+        "--no-neo4j",
+        action="store_true",
+        help="Disable Neo4j and use in-memory graph store instead",
+    )
     parser.add_argument("--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"])
     parser.add_argument("--neo4j-username", help="Neo4j username", default=neo4j_config["username"])
     parser.add_argument("--neo4j-password", help="Neo4j password", default=neo4j_config["password"])
@@ -47,10 +52,23 @@ def parse_args():
     # Parallel processing options
     parser.add_argument("--no-parallel", action="store_true", help="Disable parallel processing")
     parser.add_argument(
-        "--max-workers", type=int, default=4, help="Maximum number of worker threads for parallel processing"
+        "--max-workers",
+        type=int,
+        default=4,
+        help="Maximum number of worker threads for parallel processing",
     )
-    parser.add_argument("--batch-size", type=int, default=100, help="Batch size for embedding generation")
-    parser.add_argument("--rate-limit", type=float, default=0.1, help="Minimum time between API requests in seconds")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Batch size for embedding generation",
+    )
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=0.1,
+        help="Minimum time between API requests in seconds",
+    )
     return parser.parse_args()
 
 
@@ -117,7 +135,10 @@ def main():
 
         # Process company filings
         result = pipeline.process_company(
-            ticker=args.ticker, filing_types=args.filing_types, start_date=args.start_date, end_date=args.end_date
+            ticker=args.ticker,
+            filing_types=args.filing_types,
+            start_date=args.start_date,
+            end_date=args.end_date,
         )
 
         # Check result status

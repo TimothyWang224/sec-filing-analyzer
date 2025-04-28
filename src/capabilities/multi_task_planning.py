@@ -6,14 +6,12 @@ This module provides an enhanced planning capability that can handle multiple ta
 
 import json
 import logging
-import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict
 
 from ..agents.base import Agent
-from ..agents.task_queue import Task, TaskQueue
-from ..tools.tool_parameter_helper import generate_tool_parameter_prompt, validate_tool_parameters
-from .base import Capability
+from ..agents.task_queue import TaskQueue
+from ..tools.tool_parameter_helper import validate_tool_parameters
 from .planning import PlanningCapability
 
 # Configure logging
@@ -164,7 +162,13 @@ class MultiTaskPlanningCapability(PlanningCapability):
             logger.info(f"Plan: {json.dumps(self.current_plan, indent=2)}")
 
             # Add plan to agent memory
-            agent.add_to_memory({"type": "plan", "content": self.current_plan, "task_id": current_task.task_id})
+            agent.add_to_memory(
+                {
+                    "type": "plan",
+                    "content": self.current_plan,
+                    "task_id": current_task.task_id,
+                }
+            )
 
         # If we have a plan, update the current step
         if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
@@ -317,7 +321,12 @@ class MultiTaskPlanningCapability(PlanningCapability):
         return prompt
 
     async def process_result(
-        self, agent: Agent, context: Dict[str, Any], prompt: str, action: Dict[str, Any], result: Any
+        self,
+        agent: Agent,
+        context: Dict[str, Any],
+        prompt: str,
+        action: Dict[str, Any],
+        result: Any,
     ) -> Any:
         """
         Process the result to update the plan status.
@@ -377,7 +386,10 @@ class MultiTaskPlanningCapability(PlanningCapability):
                 # Reflect on the plan and potentially update it
                 if self.enable_dynamic_replanning:
                     updated_plan = await self._reflect_and_update_plan(
-                        self.current_plan, self.completed_steps, self.step_results, prompt
+                        self.current_plan,
+                        self.completed_steps,
+                        self.step_results,
+                        prompt,
                     )
 
                     # If the plan was updated, use the new plan

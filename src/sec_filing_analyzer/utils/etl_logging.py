@@ -8,13 +8,12 @@ and rate limit monitoring.
 
 import json
 import logging
-import os
 import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional
 
 # Import ETLConfig to get the database path
 from ..config import ConfigProvider, ETLConfig
@@ -143,7 +142,11 @@ def log_etl_start(run_id: str, parameters: Dict[str, Any], description: Optional
             "api_calls": 0,
             "api_errors": 0,
             "rate_limit_history": [],
-            "embedding_stats": {"total_tokens": 0, "total_chunks": 0, "fallback_count": 0},
+            "embedding_stats": {
+                "total_tokens": 0,
+                "total_chunks": 0,
+                "fallback_count": 0,
+            },
             "phase_timings": {},
             "errors": [],
         }
@@ -273,7 +276,11 @@ def log_company_processing(
             _run_stats[run_id]["filings_skipped"] += filings_skipped
             if error:
                 _run_stats[run_id]["errors"].append(
-                    {"timestamp": datetime.now().isoformat(), "company": ticker, "message": error}
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "company": ticker,
+                        "message": error,
+                    }
                 )
 
     # Log message
@@ -312,12 +319,16 @@ def log_filing_processing(
     extra = {"run_id": run_id}
     if status == "completed":
         etl_logger.info(
-            f"Processed filing {filing_id} ({company} {filing_type}) in {processing_time:.2f}s", extra=extra
+            f"Processed filing {filing_id} ({company} {filing_type}) in {processing_time:.2f}s",
+            extra=extra,
         )
     elif status == "skipped":
         etl_logger.info(f"Skipped filing {filing_id} ({company} {filing_type})", extra=extra)
     else:
-        etl_logger.error(f"Failed to process filing {filing_id} ({company} {filing_type}): {error}", extra=extra)
+        etl_logger.error(
+            f"Failed to process filing {filing_id} ({company} {filing_type}): {error}",
+            extra=extra,
+        )
         # Update run statistics with error
         with _run_stats_lock:
             if run_id in _run_stats:
@@ -332,7 +343,13 @@ def log_filing_processing(
                 )
 
 
-def log_api_call(run_id: str, api_name: str, success: bool, response_time: float, error: Optional[str] = None) -> None:
+def log_api_call(
+    run_id: str,
+    api_name: str,
+    success: bool,
+    response_time: float,
+    error: Optional[str] = None,
+) -> None:
     """Log API call results.
 
     Args:
@@ -354,7 +371,10 @@ def log_api_call(run_id: str, api_name: str, success: bool, response_time: float
     if success:
         etl_logger.debug(f"API call to {api_name} succeeded in {response_time:.2f}s", extra=extra)
     else:
-        etl_logger.warning(f"API call to {api_name} failed in {response_time:.2f}s: {error}", extra=extra)
+        etl_logger.warning(
+            f"API call to {api_name} failed in {response_time:.2f}s: {error}",
+            extra=extra,
+        )
 
 
 def log_rate_limit_adjustment(run_id: str, old_rate: float, new_rate: float, reason: str) -> None:
@@ -370,12 +390,20 @@ def log_rate_limit_adjustment(run_id: str, old_rate: float, new_rate: float, rea
     with _run_stats_lock:
         if run_id in _run_stats:
             _run_stats[run_id]["rate_limit_history"].append(
-                {"timestamp": datetime.now().isoformat(), "old_rate": old_rate, "new_rate": new_rate, "reason": reason}
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "old_rate": old_rate,
+                    "new_rate": new_rate,
+                    "reason": reason,
+                }
             )
 
     # Log message
     extra = {"run_id": run_id}
-    etl_logger.info(f"Rate limit adjusted from {old_rate:.2f}s to {new_rate:.2f}s: {reason}", extra=extra)
+    etl_logger.info(
+        f"Rate limit adjusted from {old_rate:.2f}s to {new_rate:.2f}s: {reason}",
+        extra=extra,
+    )
 
 
 def log_embedding_stats(run_id: str, tokens_used: int, chunks_processed: int, fallback_count: int) -> None:
@@ -397,7 +425,8 @@ def log_embedding_stats(run_id: str, tokens_used: int, chunks_processed: int, fa
     # Log message
     extra = {"run_id": run_id}
     etl_logger.info(
-        f"Embedding stats: {tokens_used} tokens, {chunks_processed} chunks, {fallback_count} fallbacks", extra=extra
+        f"Embedding stats: {tokens_used} tokens, {chunks_processed} chunks, {fallback_count} fallbacks",
+        extra=extra,
     )
 
 
@@ -429,7 +458,11 @@ def log_phase_timing(run_id: str, phase_name: str):
                     _run_stats[run_id]["phase_timings"][phase_name] = []
 
                 _run_stats[run_id]["phase_timings"][phase_name].append(
-                    {"start_time": start_time, "end_time": end_time, "duration": duration}
+                    {
+                        "start_time": start_time,
+                        "end_time": end_time,
+                        "duration": duration,
+                    }
                 )
 
         etl_logger.info(f"Completed phase: {phase_name} in {duration:.2f}s", extra=extra)

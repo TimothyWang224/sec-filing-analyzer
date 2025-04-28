@@ -4,11 +4,12 @@ Test script for the robust embedding generator.
 
 import json
 import logging
-import os
 
 from dotenv import load_dotenv
 
-from src.sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
+from src.sec_filing_analyzer.semantic.embeddings.robust_embedding_generator import (
+    RobustEmbeddingGenerator,
+)
 
 # Load environment variables
 load_dotenv()
@@ -22,7 +23,10 @@ def test_robust_embedding_generator():
     """Test the robust embedding generator with various inputs."""
     # Initialize generator
     generator = RobustEmbeddingGenerator(
-        model="text-embedding-3-small", max_tokens_per_chunk=4000, rate_limit=0.5, batch_size=10
+        model="text-embedding-3-small",
+        max_tokens_per_chunk=4000,
+        rate_limit=0.5,
+        batch_size=10,
     )
 
     # Test cases
@@ -31,7 +35,10 @@ def test_robust_embedding_generator():
         {"name": "empty_string", "input": ""},
         {"name": "none_value", "input": None},
         {"name": "very_long", "input": "This is a test. " * 2000},  # Should be chunked
-        {"name": "batch_processing", "input": ["Text " + str(i) for i in range(25)]},  # Should be processed in batches
+        {
+            "name": "batch_processing",
+            "input": ["Text " + str(i) for i in range(25)],
+        },  # Should be processed in batches
     ]
 
     results = {}
@@ -51,7 +58,11 @@ def test_robust_embedding_generator():
                     "token_usage": generator.token_usage.copy(),
                 }
             except Exception as e:
-                results[name] = {"success": False, "error": str(e), "token_usage": generator.token_usage.copy()}
+                results[name] = {
+                    "success": False,
+                    "error": str(e),
+                    "token_usage": generator.token_usage.copy(),
+                }
 
     # Test batch processing
     logger.info("Testing batch processing")
@@ -65,7 +76,11 @@ def test_robust_embedding_generator():
             "token_usage": generator.token_usage.copy(),
         }
     except Exception as e:
-        results["batch_processing"] = {"success": False, "error": str(e), "token_usage": generator.token_usage.copy()}
+        results["batch_processing"] = {
+            "success": False,
+            "error": str(e),
+            "token_usage": generator.token_usage.copy(),
+        }
 
     # Save results to file
     with open("robust_embedding_test_results.json", "w") as f:

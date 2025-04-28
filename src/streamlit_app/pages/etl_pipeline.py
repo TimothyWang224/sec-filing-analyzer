@@ -4,9 +4,7 @@ ETL Pipeline Page
 This page provides a user interface for configuring and running the ETL pipeline.
 """
 
-import asyncio
 import sys
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -24,7 +22,10 @@ from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
 
 # Set page config
 st.set_page_config(
-    page_title="ETL Pipeline - SEC Filing Analyzer", page_icon="📊", layout="wide", initial_sidebar_state="expanded"
+    page_title="ETL Pipeline - SEC Filing Analyzer",
+    page_icon="📊",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Initialize configuration
@@ -49,7 +50,9 @@ tickers = [ticker.strip() for ticker in ticker_input.split(",") if ticker.strip(
 # Filing type selection
 st.sidebar.subheader("Filing Types")
 filing_types = st.sidebar.multiselect(
-    "Select Filing Types", ["10-K", "10-Q", "8-K", "S-1", "DEF 14A"], default=["10-K", "10-Q"]
+    "Select Filing Types",
+    ["10-K", "10-Q", "8-K", "S-1", "DEF 14A"],
+    default=["10-K", "10-Q"],
 )
 
 # Date range selection
@@ -224,7 +227,12 @@ with tab3:
                 num_filings = len(result.get("results", []))
 
             summary_data.append(
-                {"Ticker": ticker, "Status": status, "Filings Processed": num_filings, "Details": details}
+                {
+                    "Ticker": ticker,
+                    "Status": status,
+                    "Filings Processed": num_filings,
+                    "Details": details,
+                }
             )
 
         summary_df = pd.DataFrame(summary_data)

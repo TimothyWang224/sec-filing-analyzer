@@ -1,6 +1,4 @@
 import json
-import os
-from pathlib import Path
 
 import duckdb
 
@@ -21,7 +19,9 @@ def examine_duckdb(db_path):
         for table in results["tables"]:
             # Get schema
             schema = con.execute(f"DESCRIBE {table}").fetchall()
-            results[f"{table}_schema"] = [{"column": col[0], "type": col[1]} for col in schema]
+            results[f"{table}_schema"] = [
+                {"column": col[0], "type": col[1]} for col in schema
+            ]
 
             # Get row count
             count = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

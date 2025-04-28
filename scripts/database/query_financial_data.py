@@ -6,12 +6,10 @@ It can generate reports, compare companies, and analyze financial metrics.
 """
 
 import argparse
-import json
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -23,7 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +50,9 @@ def show_database_stats(financial_store: FinancialDataStore) -> None:
     for filing_type in stats.get("filing_types", []):
         print(f"  {filing_type}")
 
-    print(f"\nYear Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}")
+    print(
+        f"\nYear Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}"
+    )
 
 
 def show_company_metrics(
@@ -73,11 +75,22 @@ def show_company_metrics(
     """
     # Default metrics if none provided
     if not metrics:
-        metrics = ["revenue", "operating_income", "net_income", "eps_diluted", "total_assets", "stockholders_equity"]
+        metrics = [
+            "revenue",
+            "operating_income",
+            "net_income",
+            "eps_diluted",
+            "total_assets",
+            "stockholders_equity",
+        ]
 
     # Get metrics
     df = financial_store.get_company_metrics(
-        ticker=ticker, metrics=metrics, start_year=start_year, end_year=end_year, quarterly=quarterly
+        ticker=ticker,
+        metrics=metrics,
+        start_year=start_year,
+        end_year=end_year,
+        quarterly=quarterly,
     )
 
     if df.empty:
@@ -136,11 +149,15 @@ def compare_companies(
     """
     # Get comparison data
     df = financial_store.compare_companies(
-        tickers=tickers, metric=metric, start_year=start_year, end_year=end_year, quarterly=quarterly
+        tickers=tickers,
+        metric=metric,
+        start_year=start_year,
+        end_year=end_year,
+        quarterly=quarterly,
     )
 
     if df.empty:
-        print(f"No data found for comparison")
+        print("No data found for comparison")
         return
 
     print(f"\n=== Comparison of {metric.replace('_', ' ').title()} ===")
@@ -206,7 +223,11 @@ def show_financial_ratios(
 
     # Get ratios
     df = financial_store.get_financial_ratios(
-        ticker=ticker, ratios=ratios, start_year=start_year, end_year=end_year, quarterly=quarterly
+        ticker=ticker,
+        ratios=ratios,
+        start_year=start_year,
+        end_year=end_year,
+        quarterly=quarterly,
     )
 
     if df.empty:
@@ -267,10 +288,10 @@ def show_filing_info(
     )
 
     if df.empty:
-        print(f"No filings found")
+        print("No filings found")
         return
 
-    print(f"\n=== Filing Information ===")
+    print("\n=== Filing Information ===")
     print(df.to_string(index=False))
 
 
@@ -285,28 +306,45 @@ def run_custom_query(financial_store: FinancialDataStore, query: str) -> None:
     df = financial_store.run_custom_query(query)
 
     if df.empty:
-        print(f"No results found")
+        print("No results found")
         return
 
-    print(f"\n=== Query Results ===")
+    print("\n=== Query Results ===")
     print(df.to_string(index=False))
 
 
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Query financial data from DuckDB")
-    parser.add_argument("--db-path", type=str, default="data/financial_data.duckdb", help="Path to DuckDB database")
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        default="data/financial_data.duckdb",
+        help="Path to DuckDB database",
+    )
     parser.add_argument("--stats", action="store_true", help="Show database statistics")
     parser.add_argument("--ticker", type=str, help="Company ticker symbol")
-    parser.add_argument("--metrics", type=str, help="Comma-separated list of metrics to show")
-    parser.add_argument("--ratios", type=str, help="Comma-separated list of ratios to show")
-    parser.add_argument("--compare", type=str, help="Comma-separated list of tickers to compare")
+    parser.add_argument(
+        "--metrics", type=str, help="Comma-separated list of metrics to show"
+    )
+    parser.add_argument(
+        "--ratios", type=str, help="Comma-separated list of ratios to show"
+    )
+    parser.add_argument(
+        "--compare", type=str, help="Comma-separated list of tickers to compare"
+    )
     parser.add_argument("--metric", type=str, help="Metric to compare")
-    parser.add_argument("--filing-type", type=str, help="Filing type (10-K, 10-Q, etc.)")
+    parser.add_argument(
+        "--filing-type", type=str, help="Filing type (10-K, 10-Q, etc.)"
+    )
     parser.add_argument("--start-year", type=int, help="Start year (inclusive)")
     parser.add_argument("--end-year", type=int, help="End year (inclusive)")
-    parser.add_argument("--quarterly", action="store_true", help="Include quarterly data")
-    parser.add_argument("--filings", action="store_true", help="Show filing information")
+    parser.add_argument(
+        "--quarterly", action="store_true", help="Include quarterly data"
+    )
+    parser.add_argument(
+        "--filings", action="store_true", help="Show filing information"
+    )
     parser.add_argument("--query", type=str, help="Run a custom SQL query")
 
     args = parser.parse_args()

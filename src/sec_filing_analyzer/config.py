@@ -4,13 +4,12 @@ Unified Configuration
 Configuration settings for the SEC Filing Analyzer project.
 """
 
-import glob
 import json
 import logging
 import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from dotenv import load_dotenv
 
@@ -309,7 +308,10 @@ class ConfigProvider:
             cls._external_config_path = Path(config_path)
         else:
             # Try to find the config file in standard locations
-            config_paths = [Path("data/config/config.json"), Path("data/config/etl_config.json")]
+            config_paths = [
+                Path("data/config/config.json"),
+                Path("data/config/etl_config.json"),
+            ]
             for path in config_paths:
                 if path.exists():
                     cls._external_config_path = path

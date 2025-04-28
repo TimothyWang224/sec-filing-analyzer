@@ -8,19 +8,13 @@ This module provides functionality to synchronize data between different storage
 - Neo4j (graph database)
 """
 
-import hashlib
 import json
 import logging
-import os
 
 # Import the DuckDB manager
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
-import duckdb
-import numpy as np
+from typing import Any, Dict, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
@@ -281,7 +275,13 @@ class StorageSyncManager:
                                             id, filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
                                         ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                         """,
-                                        [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"],
+                                        [
+                                            f"{ticker}_{accession_number}",
+                                            filing_id,
+                                            company_id,
+                                            accession_number,
+                                            "Q3",
+                                        ],
                                     )
 
                                     # Make sure company exists
@@ -508,7 +508,15 @@ class StorageSyncManager:
         path_parts = file_path.parts
 
         # Check if filing type is in the path
-        for filing_type_candidate in ["10-K", "10-Q", "8-K", "20-F", "40-F", "6-K", "DEF 14A"]:
+        for filing_type_candidate in [
+            "10-K",
+            "10-Q",
+            "8-K",
+            "20-F",
+            "40-F",
+            "6-K",
+            "DEF 14A",
+        ]:
             if filing_type_candidate in path_parts:
                 filing_type = filing_type_candidate
                 break
@@ -953,7 +961,12 @@ class StorageSyncManager:
                 "filings": {"in_files_not_in_db": [], "in_db_not_in_files": []},
                 "embeddings": {"exist_but_not_tracked": []},
             },
-            "fixes": {"companies_added": [], "filings_added": [], "filings_updated": [], "errors": []},
+            "fixes": {
+                "companies_added": [],
+                "filings_added": [],
+                "filings_updated": [],
+                "errors": [],
+            },
         }
 
         try:
@@ -1221,7 +1234,13 @@ class StorageSyncManager:
                                     id, filing_id, company_id, accession_number, fiscal_period, created_at, updated_at
                                 ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                                 """,
-                                [f"{ticker}_{accession_number}", filing_id, company_id, accession_number, "Q3"],
+                                [
+                                    f"{ticker}_{accession_number}",
+                                    filing_id,
+                                    company_id,
+                                    accession_number,
+                                    "Q3",
+                                ],
                             )
 
                             results["fixes"]["filings_added"].append(
@@ -1244,10 +1263,18 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Storage Synchronization Manager")
-    parser.add_argument("--db-path", default="data/financial_data.duckdb", help="Path to DuckDB database")
+    parser.add_argument(
+        "--db-path",
+        default="data/financial_data.duckdb",
+        help="Path to DuckDB database",
+    )
     parser.add_argument("--vector-store-path", default="data/vector_store", help="Path to vector store")
     parser.add_argument("--filings-dir", default="data/filings", help="Path to filings directory")
-    parser.add_argument("--graph-store-dir", default="data/graph_store", help="Path to graph store directory")
+    parser.add_argument(
+        "--graph-store-dir",
+        default="data/graph_store",
+        help="Path to graph store directory",
+    )
     parser.add_argument(
         "--action",
         choices=[

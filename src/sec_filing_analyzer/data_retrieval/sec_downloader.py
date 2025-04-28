@@ -41,7 +41,8 @@ class SECFilingsDownloader:
         self.file_storage = file_storage or FileStorage()
         self.xbrl_cache_dir = xbrl_cache_dir
         self.xbrl_extractor = XBRLExtractorFactory.create_extractor(
-            extractor_type="edgar" if use_edgar_xbrl else "simplified", cache_dir=xbrl_cache_dir
+            extractor_type="edgar" if use_edgar_xbrl else "simplified",
+            cache_dir=xbrl_cache_dir,
         )
 
     def get_filings(
@@ -79,7 +80,11 @@ class SECFilingsDownloader:
             if filing_types:
                 for form_type in filing_types:
                     form_filings = edgar_utils.get_filings(
-                        ticker=ticker, form_type=form_type, start_date=start_date, end_date=end_date, limit=limit
+                        ticker=ticker,
+                        form_type=form_type,
+                        start_date=start_date,
+                        end_date=end_date,
+                        limit=limit,
                     )
                     filings.extend(form_filings)
             else:
@@ -306,7 +311,10 @@ class SECFilingsDownloader:
 
             # Use the XBRL extractor to extract data
             xbrl_data = self.xbrl_extractor.extract_financials(
-                ticker=ticker, filing_id=filing_id, accession_number=accession_number, filing_url=filing_url
+                ticker=ticker,
+                filing_id=filing_id,
+                accession_number=accession_number,
+                filing_url=filing_url,
             )
 
             # Cache the XBRL data
@@ -316,10 +324,18 @@ class SECFilingsDownloader:
             return xbrl_data
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {e}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def list_filings(
-        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
+        self,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None,
+        filing_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         List available filings.

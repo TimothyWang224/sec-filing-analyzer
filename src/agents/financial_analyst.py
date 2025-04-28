@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Any, Dict, List, Optional
 
 from ..capabilities.base import Capability
@@ -51,9 +50,18 @@ class FinancialAnalystAgent(Agent):
             max_tool_calls: Maximum number of tool calls per iteration
         """
         goals = [
-            Goal(name="financial_analysis", description="Analyze financial statements and metrics to provide insights"),
-            Goal(name="ratio_calculation", description="Calculate and interpret key financial ratios"),
-            Goal(name="trend_analysis", description="Identify trends and changes in financial metrics"),
+            Goal(
+                name="financial_analysis",
+                description="Analyze financial statements and metrics to provide insights",
+            ),
+            Goal(
+                name="ratio_calculation",
+                description="Calculate and interpret key financial ratios",
+            ),
+            Goal(
+                name="trend_analysis",
+                description="Identify trends and changes in financial metrics",
+            ),
         ]
 
         # Initialize the base agent with agent type for configuration
@@ -107,7 +115,10 @@ class FinancialAnalystAgent(Agent):
             )
 
     async def run(
-        self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None
+        self,
+        user_input: str,
+        plan: Optional[Dict] = None,
+        memory: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
         """
         Run the financial analyst agent with a provided high-level task.
@@ -139,7 +150,10 @@ class FinancialAnalystAgent(Agent):
                 self.state.update_context(
                     {
                         "planning": {
-                            "high_level_task": {"objective": task_objective, "success_criteria": success_criteria}
+                            "high_level_task": {
+                                "objective": task_objective,
+                                "success_criteria": success_criteria,
+                            }
                         }
                     }
                 )
@@ -177,7 +191,7 @@ class FinancialAnalystAgent(Agent):
 
         # Set initial phase to planning
         self.state.set_phase("planning")
-        self.logger.info(f"Starting planning phase")
+        self.logger.info("Starting planning phase")
 
         # Phase 1: Planning
         while not self.should_terminate() and self.state.current_phase == "planning":
@@ -192,7 +206,7 @@ class FinancialAnalystAgent(Agent):
             # If there's no current task, we're done with planning
             if not current_task:
                 self.state.set_phase("execution")
-                self.logger.info(f"No tasks to plan for, moving to execution phase")
+                self.logger.info("No tasks to plan for, moving to execution phase")
                 break
 
             # In planning phase, we focus on understanding the financial analysis tasks
@@ -203,7 +217,10 @@ class FinancialAnalystAgent(Agent):
                 {
                     "type": "task_analysis",
                     "task_id": current_task.task_id,
-                    "content": {"task": current_task.input_text, "analysis": "Planning financial analysis"},
+                    "content": {
+                        "task": current_task.input_text,
+                        "analysis": "Planning financial analysis",
+                    },
                 }
             )
 
@@ -212,7 +229,7 @@ class FinancialAnalystAgent(Agent):
             # If we've done enough planning, move to execution phase
             if self.state.phase_iterations["planning"] >= self.max_planning_iterations:
                 self.state.set_phase("execution")
-                self.logger.info(f"Moving to execution phase")
+                self.logger.info("Moving to execution phase")
                 break
 
         # Phase 2: Execution
@@ -228,7 +245,7 @@ class FinancialAnalystAgent(Agent):
             # If there's no current task, we're done with execution
             if not current_task:
                 self.state.set_phase("refinement")
-                self.logger.info(f"No tasks to execute, moving to refinement phase")
+                self.logger.info("No tasks to execute, moving to refinement phase")
                 break
 
             # In execution phase, we gather data and generate initial financial analysis
@@ -250,7 +267,11 @@ class FinancialAnalystAgent(Agent):
 
             # Add result to memory
             self.add_to_memory(
-                {"type": "financial_analysis", "task_id": current_task.task_id, "content": analysis_result}
+                {
+                    "type": "financial_analysis",
+                    "task_id": current_task.task_id,
+                    "content": analysis_result,
+                }
             )
 
             # Process result with capabilities
@@ -282,7 +303,7 @@ class FinancialAnalystAgent(Agent):
             # If we've done enough execution, move to refinement phase
             if self.state.phase_iterations["execution"] >= self.max_execution_iterations:
                 self.state.set_phase("refinement")
-                self.logger.info(f"Moving to refinement phase")
+                self.logger.info("Moving to refinement phase")
                 break
 
         # Phase 3: Refinement
@@ -293,7 +314,7 @@ class FinancialAnalystAgent(Agent):
                     break
 
             # In refinement phase, we improve the financial analysis results
-            self.logger.info(f"Refining financial analysis results")
+            self.logger.info("Refining financial analysis results")
 
             # Get all completed task results
             completed_tasks = list(task_results.values())
@@ -312,7 +333,11 @@ class FinancialAnalystAgent(Agent):
 
                     # Add refined result to memory
                     self.add_to_memory(
-                        {"type": "refined_financial_analysis", "task_id": task_id, "content": refined_analysis}
+                        {
+                            "type": "refined_financial_analysis",
+                            "task_id": task_id,
+                            "content": refined_analysis,
+                        }
                     )
 
             self.increment_iteration()
@@ -583,7 +608,7 @@ class FinancialAnalystAgent(Agent):
             analysis_response = await self.llm.generate(prompt=analysis_prompt)
 
             # Extract key metrics for structured output
-            metrics_prompt = f"""
+            metrics_prompt = """
             Based on the financial data and your analysis, extract the key financial metrics and their values.
             Format your response as a JSON object with metric names as keys and values as strings.
             Include metrics like revenue growth, profit margin, debt ratio, etc.
@@ -599,10 +624,14 @@ class FinancialAnalystAgent(Agent):
                 json_match = re.search(r"\{.*\}", metrics_response, re.DOTALL)
                 metrics_json = json.loads(json_match.group(0)) if json_match else {}
             except:
-                metrics_json = {"revenue_growth": "N/A", "profit_margin": "N/A", "debt_ratio": "N/A"}
+                metrics_json = {
+                    "revenue_growth": "N/A",
+                    "profit_margin": "N/A",
+                    "debt_ratio": "N/A",
+                }
 
             # Extract trends
-            trends_prompt = f"""
+            trends_prompt = """
             Based on the financial data and your analysis, list the key financial trends observed.
             Format your response as a JSON array of trend descriptions.
             """
@@ -618,7 +647,7 @@ class FinancialAnalystAgent(Agent):
                 trends_json = ["Insufficient data to determine trends"]
 
             # Extract insights
-            insights_prompt = f"""
+            insights_prompt = """
             Based on the financial data and your analysis, provide key financial insights.
             Format your response as a JSON array of insight descriptions.
             """
@@ -640,7 +669,10 @@ class FinancialAnalystAgent(Agent):
                 "metrics": metrics_json,
                 "trends": trends_json,
                 "insights": insights_json,
-                "supporting_data": {"financial_metrics": financial_metrics, "financial_context": financial_context},
+                "supporting_data": {
+                    "financial_metrics": financial_metrics,
+                    "financial_context": financial_context,
+                },
             }
 
         except Exception as e:

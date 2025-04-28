@@ -9,7 +9,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import edgar
 
@@ -204,7 +204,12 @@ class EdgarXBRLExtractorSimple:
 
         except Exception as e:
             logger.error(f"Error extracting financials for {ticker} {accession_number}: {e}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def _extract_statement_data(self, statement) -> Dict[str, Any]:
         """

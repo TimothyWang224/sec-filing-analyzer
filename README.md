@@ -400,11 +400,23 @@ For details on code quality tool configurations and exclusions, see [Code Qualit
 
 ### Running Tests
 
-Run the tests with coverage reporting:
+Run the tests with coverage reporting and logging:
 
 ```bash
-poetry run pytest tests/ --cov=src --cov-report=xml
+# Using the pytest-log wrapper (recommended)
+poetry run pytest-log tests/ --cov=src --cov-report=xml
+
+# Or using the script directly
+python scripts/pytest_log_wrapper.py tests/ --cov=src --cov-report=xml
+
+# Windows PowerShell
+.\scripts\run_pytest_with_logs.ps1 tests/ --cov=src --cov-report=xml
+
+# Linux/macOS
+./scripts/run_pytest_with_logs.sh tests/ --cov=src --cov-report=xml
 ```
+
+This will run the tests and save the output to log files in `~/.sec_filing_analyzer_logs/pytest/`.
 
 ### Security Scanning
 
@@ -441,8 +453,14 @@ If you want to generate logs without running the actual hooks (for example, to t
 #### Log Locations
 
 Logs are saved to:
+
+**Pre-commit logs:**
 - Latest run: `~/.sec_filing_analyzer_logs/latest.log`
 - Timestamped logs: `~/.sec_filing_analyzer_logs/precommit_YYYYMMDD_HHMMSS.log`
+
+**Pytest logs:**
+- Latest run: `~/.sec_filing_analyzer_logs/pytest/latest.log` (text) and `~/.sec_filing_analyzer_logs/pytest/latest.xml` (JUnit XML)
+- Timestamped logs: `~/.sec_filing_analyzer_logs/pytest/pytest_YYYYMMDD_HHMMSS.log` (text) and `~/.sec_filing_analyzer_logs/pytest/pytest_YYYYMMDD_HHMMSS.xml` (JUnit XML)
 
 #### Log Features
 

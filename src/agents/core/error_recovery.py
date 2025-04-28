@@ -6,8 +6,7 @@ various recovery strategies to handle tool call failures.
 """
 
 import logging
-import time
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Awaitable, Callable, Dict, Optional, Union
 
 from sec_filing_analyzer.llm import BaseLLM
 
@@ -16,7 +15,13 @@ from ...tools.llm_parameter_completer import LLMParameterCompleter
 from ...tools.registry import ToolRegistry
 from .adaptive_retry import AdaptiveRetryStrategy
 from .alternative_tools import AlternativeToolSelector
-from .error_handling import ErrorAnalyzer, ErrorClassifier, ToolCircuitBreaker, ToolError, ToolErrorType
+from .error_handling import (
+    ErrorAnalyzer,
+    ErrorClassifier,
+    ToolCircuitBreaker,
+    ToolError,
+    ToolErrorType,
+)
 from .plan_step_retry import prepare_step_for_retry
 
 # Configure logging
@@ -58,7 +63,8 @@ class ErrorRecoveryManager:
         self.parameter_completer = LLMParameterCompleter(llm)
         self.retry_strategy = AdaptiveRetryStrategy(base_delay=base_delay)
         self.circuit_breaker = ToolCircuitBreaker(
-            failure_threshold=circuit_breaker_threshold, reset_timeout=circuit_breaker_reset_timeout
+            failure_threshold=circuit_breaker_threshold,
+            reset_timeout=circuit_breaker_reset_timeout,
         )
         self.alternative_selector = AlternativeToolSelector(llm)
         self.error_analyzer = ErrorAnalyzer()
@@ -92,7 +98,9 @@ class ErrorRecoveryManager:
 
             # Create a circuit open error
             error = ToolError(
-                ToolErrorType.SYSTEM_ERROR, f"Circuit open for tool {tool_name} due to repeated failures", tool_name
+                ToolErrorType.SYSTEM_ERROR,
+                f"Circuit open for tool {tool_name} due to repeated failures",
+                tool_name,
             )
 
             return {
@@ -201,7 +209,10 @@ class ErrorRecoveryManager:
             try:
                 # Complete parameters using the LLM with error context
                 fixed_args = await self.parameter_completer.complete_parameters(
-                    tool_name=tool_name, partial_parameters=tool_args, user_input=user_input, context=error_context
+                    tool_name=tool_name,
+                    partial_parameters=tool_args,
+                    user_input=user_input,
+                    context=error_context,
                 )
 
                 # If parameters were fixed, try again

@@ -6,7 +6,6 @@ This module provides a custom logger that captures output to the terminal compon
 
 import logging
 import sys
-from typing import Optional
 
 # Import the terminal output capture
 from src.streamlit_app.components.terminal_output import TerminalOutputCapture

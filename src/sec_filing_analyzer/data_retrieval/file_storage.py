@@ -48,7 +48,13 @@ class FileStorage:
 
         logger.info(f"Initialized file storage with base directory: {self.base_dir}")
 
-    def save_raw_filing(self, filing_id: str, content: str, metadata: Dict[str, Any], format: str = "txt") -> Path:
+    def save_raw_filing(
+        self,
+        filing_id: str,
+        content: str,
+        metadata: Dict[str, Any],
+        format: str = "txt",
+    ) -> Path:
         """
         Save raw filing content to disk.
 
@@ -484,7 +490,10 @@ class FileStorage:
         return data
 
     def list_filings(
-        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
+        self,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None,
+        filing_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         List available filings.
@@ -527,7 +536,11 @@ class FileStorage:
         return filings
 
     def save_xbrl_data(
-        self, filing_id: str, xbrl_data: Dict[str, Any], ticker: Optional[str] = None, year: Optional[str] = None
+        self,
+        filing_id: str,
+        xbrl_data: Dict[str, Any],
+        ticker: Optional[str] = None,
+        year: Optional[str] = None,
     ) -> Path:
         """
         Save XBRL data to disk.

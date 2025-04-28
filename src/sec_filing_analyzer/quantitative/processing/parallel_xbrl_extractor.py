@@ -26,7 +26,12 @@ class ParallelXBRLExtractor:
     A parallel extractor for XBRL data from SEC filings using the edgar package.
     """
 
-    def __init__(self, cache_dir: Optional[str] = None, max_workers: int = 4, rate_limit: float = 0.2):
+    def __init__(
+        self,
+        cache_dir: Optional[str] = None,
+        max_workers: int = 4,
+        rate_limit: float = 0.2,
+    ):
         """Initialize the parallel XBRL extractor.
 
         Args:
@@ -79,7 +84,11 @@ class ParallelXBRLExtractor:
         self.last_request_time = time.time()
 
     def extract_financials(
-        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
+        self,
+        ticker: str,
+        filing_id: str,
+        accession_number: str,
+        filing_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Extract financial data from XBRL filings.
 
@@ -171,7 +180,12 @@ class ParallelXBRLExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def extract_financials_batch(self, batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Extract financial data for a batch of filings.
@@ -195,7 +209,10 @@ class ParallelXBRLExtractor:
                 continue
 
             result = self.extract_financials(
-                ticker=ticker, filing_id=filing_id, accession_number=accession_number, filing_url=filing_url
+                ticker=ticker,
+                filing_id=filing_id,
+                accession_number=accession_number,
+                filing_url=filing_url,
             )
 
             results.append(result)
@@ -353,7 +370,7 @@ class ParallelXBRLExtractor:
         try:
             # Check if filing has XBRL data
             if not hasattr(filing_obj, "xbrl") or not filing_obj.xbrl:
-                logger.info(f"Filing does not have XBRL data or xbrl attribute")
+                logger.info("Filing does not have XBRL data or xbrl attribute")
                 return
 
             xbrl_data = filing_obj.xbrl
@@ -508,7 +525,10 @@ class ParallelXBRLExtractor:
                         financials["statements"] = {}
 
                     # Store statement data with metadata
-                    statement_data = {"data": df.to_dict(orient="records"), "metadata": statement_metadata}
+                    statement_data = {
+                        "data": df.to_dict(orient="records"),
+                        "metadata": statement_metadata,
+                    }
                     financials["statements"][statement_name] = statement_data
 
                     # Process statement data
@@ -691,7 +711,11 @@ class ParallelXBRLExtractor:
                 "net_income": ["net income", "net earnings", "net profit", "net loss"],
                 "total_assets": ["total assets", "assets total"],
                 "total_liabilities": ["total liabilities", "liabilities total"],
-                "stockholders_equity": ["stockholders equity", "shareholders equity", "total equity"],
+                "stockholders_equity": [
+                    "stockholders equity",
+                    "shareholders equity",
+                    "total equity",
+                ],
             }
 
             # Look for metrics in the index
@@ -923,7 +947,12 @@ class ParallelXBRLExtractor:
         Returns:
             Dictionary with context information
         """
-        result = {"period_type": None, "start_date": None, "end_date": None, "is_primary": False}
+        result = {
+            "period_type": None,
+            "start_date": None,
+            "end_date": None,
+            "is_primary": False,
+        }
 
         try:
             # Extract period information

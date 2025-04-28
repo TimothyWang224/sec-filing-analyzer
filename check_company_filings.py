@@ -1,5 +1,4 @@
 import duckdb
-import pandas as pd
 
 # Connect to the database
 try:
@@ -69,7 +68,7 @@ for ticker in tickers:
         else:
             # Try to find any column that might contain the ticker
             print(f"Searching for {ticker} in filings table...")
-            sample_query = f"SELECT * FROM filings LIMIT 5"
+            sample_query = "SELECT * FROM filings LIMIT 5"
             sample = conn.execute(sample_query).fetchdf()
             print(f"Sample filings data: {sample}")
             continue

@@ -7,7 +7,7 @@ each expects and provides.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type
 
 from pydantic import BaseModel, Field, field_validator
 

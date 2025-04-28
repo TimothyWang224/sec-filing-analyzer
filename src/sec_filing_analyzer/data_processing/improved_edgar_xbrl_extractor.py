@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from edgar import Filing, Financials, XBRLData
+from edgar import Financials, XBRLData
 
 from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
 from sec_filing_analyzer.utils import edgar_utils
@@ -154,7 +154,11 @@ class ImprovedEdgarXBRLExtractor:
             if self.db.filing_exists(accession_number):
                 logger.info(f"Filing {accession_number} already exists in the database")
                 filing_id = self.db.get_filing_id(accession_number)
-                return {"status": "success", "message": "Filing already exists in the database", "filing_id": filing_id}
+                return {
+                    "status": "success",
+                    "message": "Filing already exists in the database",
+                    "filing_id": filing_id,
+                }
 
             # Get the filing using edgar_utils
             filing = edgar_utils.get_filing_by_accession(ticker, accession_number)
@@ -170,7 +174,11 @@ class ImprovedEdgarXBRLExtractor:
             metadata = edgar_utils.get_filing_metadata(filing, ticker)
 
             # Store company information
-            company_data = {"ticker": ticker, "name": metadata.get("company"), "cik": metadata.get("cik")}
+            company_data = {
+                "ticker": ticker,
+                "name": metadata.get("company"),
+                "cik": metadata.get("cik"),
+            }
             company_id = self.db.store_company(company_data)
 
             if not company_id:
@@ -247,7 +255,10 @@ class ImprovedEdgarXBRLExtractor:
             return {"error": str(e)}
 
     def process_company(
-        self, ticker: str, filing_types: Optional[List[str]] = None, limit: Optional[int] = None
+        self,
+        ticker: str,
+        filing_types: Optional[List[str]] = None,
+        limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Process all filings for a company.
@@ -327,7 +338,13 @@ class ImprovedEdgarXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error processing financial statements: {e}")
 
-    def _process_statement(self, statement, statement_type: str, filing_id: int, fiscal_info: Dict[str, Any]):
+    def _process_statement(
+        self,
+        statement,
+        statement_type: str,
+        filing_id: int,
+        fiscal_info: Dict[str, Any],
+    ):
         """
         Process a financial statement and store its data in the database.
 
@@ -413,14 +430,14 @@ class ImprovedEdgarXBRLExtractor:
         """
         try:
             if not hasattr(xbrl_data, "instance"):
-                logger.warning(f"XBRL data does not have instance attribute")
+                logger.warning("XBRL data does not have instance attribute")
                 return
 
             # Query all US-GAAP facts
             us_gaap_facts = xbrl_data.instance.query_facts(schema="us-gaap")
 
             if us_gaap_facts.empty:
-                logger.warning(f"No US-GAAP facts found")
+                logger.warning("No US-GAAP facts found")
                 return
 
             # Process facts

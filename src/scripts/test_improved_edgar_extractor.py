@@ -5,7 +5,6 @@ This script tests the improved Edgar XBRL extractor with a known filing.
 """
 
 import logging
-import os
 from pathlib import Path
 
 from edgar import set_identity
@@ -13,7 +12,9 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 
-from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
+from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import (
+    ImprovedEdgarXBRLExtractor,
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -48,7 +49,9 @@ def test_improved_edgar_extractor():
         # Initialize the schema
         import duckdb
 
-        from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
+        from sec_filing_analyzer.storage.improved_duckdb_store import (
+            ImprovedDuckDBStore,
+        )
 
         # Create the database directory if it doesn't exist
         os.makedirs(os.path.dirname(db_path), exist_ok=True)

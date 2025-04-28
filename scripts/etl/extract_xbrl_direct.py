@@ -15,7 +15,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -102,7 +104,11 @@ def extract_xbrl_direct():
                     # Process each period
                     for period, period_values in row.items():
                         # Skip if no values or not a dict
-                        if period_values is None or pd.isna(period_values) or not isinstance(period_values, dict):
+                        if (
+                            period_values is None
+                            or pd.isna(period_values)
+                            or not isinstance(period_values, dict)
+                        ):
                             continue
 
                         # Process base values (non-dimensional)
@@ -119,7 +125,9 @@ def extract_xbrl_direct():
                                 # Create fact entry
                                 fact = {
                                     "concept": concept,
-                                    "value": numeric_value if numeric_value is not None else value,
+                                    "value": numeric_value
+                                    if numeric_value is not None
+                                    else value,
                                     "units": base_value.get("units"),
                                     "decimals": base_value.get("decimals"),
                                     "period": period,
@@ -159,13 +167,22 @@ def extract_xbrl_direct():
                                 statement_name = key.replace("Statement", "").lower()
 
                                 # Map to standard statement names
-                                if "income" in statement_name or "operations" in statement_name:
+                                if (
+                                    "income" in statement_name
+                                    or "operations" in statement_name
+                                ):
                                     statement_type = "income_statement"
-                                elif "balance" in statement_name or "financial position" in statement_name:
+                                elif (
+                                    "balance" in statement_name
+                                    or "financial position" in statement_name
+                                ):
                                     statement_type = "balance_sheet"
                                 elif "cash" in statement_name:
                                     statement_type = "cash_flow"
-                                elif "equity" in statement_name or "stockholder" in statement_name:
+                                elif (
+                                    "equity" in statement_name
+                                    or "stockholder" in statement_name
+                                ):
                                     statement_type = "equity"
                                 elif "comprehensive" in statement_name:
                                     statement_type = "comprehensive_income"
@@ -174,9 +191,15 @@ def extract_xbrl_direct():
 
                                 # Extract statement metadata
                                 statement_data = {
-                                    "name": statement.name if hasattr(statement, "name") else key,
-                                    "label": statement.label if hasattr(statement, "label") else key,
-                                    "periods": statement.periods if hasattr(statement, "periods") else [],
+                                    "name": statement.name
+                                    if hasattr(statement, "name")
+                                    else key,
+                                    "label": statement.label
+                                    if hasattr(statement, "label")
+                                    else key,
+                                    "periods": statement.periods
+                                    if hasattr(statement, "periods")
+                                    else [],
                                 }
 
                                 # Extract line items
@@ -184,20 +207,34 @@ def extract_xbrl_direct():
                                     line_items = []
                                     for item in statement.line_items:
                                         line_item = {
-                                            "concept": item.concept if hasattr(item, "concept") else None,
-                                            "label": item.label if hasattr(item, "label") else None,
-                                            "level": item.level if hasattr(item, "level") else 0,
+                                            "concept": item.concept
+                                            if hasattr(item, "concept")
+                                            else None,
+                                            "label": item.label
+                                            if hasattr(item, "label")
+                                            else None,
+                                            "level": item.level
+                                            if hasattr(item, "level")
+                                            else 0,
                                         }
 
                                         # Extract values
                                         if hasattr(item, "values"):
                                             values = {}
-                                            for period, period_values in item.values.items():
+                                            for (
+                                                period,
+                                                period_values,
+                                            ) in item.values.items():
                                                 period_dict = {}
-                                                for dim_key, dim_value in period_values.items():
+                                                for (
+                                                    dim_key,
+                                                    dim_value,
+                                                ) in period_values.items():
                                                     if dim_key == ():
                                                         # Base value
-                                                        period_dict["value"] = dim_value.get("value")
+                                                        period_dict["value"] = (
+                                                            dim_value.get("value")
+                                                        )
                                                     else:
                                                         # Skip dimensional values for simplicity
                                                         pass
@@ -215,7 +252,11 @@ def extract_xbrl_direct():
             logger.info(f"Extracted {len(statements)} statements")
 
             # Create the final data structure
-            xbrl_result = {"metadata": metadata, "facts": facts, "statements": statements}
+            xbrl_result = {
+                "metadata": metadata,
+                "facts": facts,
+                "statements": statements,
+            }
 
             # Save to file
             output_file = output_dir / "msft_xbrl_direct.json"

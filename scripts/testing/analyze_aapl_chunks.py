@@ -7,7 +7,6 @@ characters, formatting, or other issues that might cause embedding generation to
 
 import json
 import logging
-import os
 import re
 import statistics
 import sys
@@ -21,13 +20,17 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.config import ETLConfig
-from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
+from sec_filing_analyzer.embeddings.parallel_embeddings import (
+    ParallelEmbeddingGenerator,
+)
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -102,14 +105,18 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
 
         if control_chars:
             results["chunks_with_control_chars"] += 1
-            issues.append(f"Contains {len(control_chars)} control characters: {', '.join(control_chars)}")
+            issues.append(
+                f"Contains {len(control_chars)} control characters: {', '.join(control_chars)}"
+            )
 
         # Check for long lines
         lines = chunk.split("\n")
         long_lines = [line for line in lines if len(line) > 1000]
         if long_lines:
             results["chunks_with_long_lines"] += 1
-            issues.append(f"Contains {len(long_lines)} lines longer than 1000 characters")
+            issues.append(
+                f"Contains {len(long_lines)} lines longer than 1000 characters"
+            )
 
         # Check for excessive whitespace
         whitespace_ratio = len(re.findall(r"\s", chunk)) / max(1, len(chunk))
@@ -120,7 +127,11 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
         # If any issues were found, add to problematic chunks
         if issues:
             results["problematic_chunks"].append(
-                {"index": i, "issues": issues, "preview": chunk[:100] + "..." if len(chunk) > 100 else chunk}
+                {
+                    "index": i,
+                    "issues": issues,
+                    "preview": chunk[:100] + "..." if len(chunk) > 100 else chunk,
+                }
             )
 
     # Calculate statistics on chunk lengths
@@ -219,7 +230,9 @@ def main():
             {
                 "index": i,
                 "error": error_messages[i],
-                "preview": chunks[i][:100] + "..." if len(chunks[i]) > 100 else chunks[i],
+                "preview": chunks[i][:100] + "..."
+                if len(chunks[i]) > 100
+                else chunks[i],
             }
             for i in range(len(chunks))
             if not success_flags[i]
@@ -230,22 +243,36 @@ def main():
     print("\nAnalysis Results:")
     print(f"Total chunks: {analysis_results['total_chunks']}")
     print(f"Empty chunks: {analysis_results['empty_chunks']}")
-    print(f"Chunks with unusual characters: {analysis_results['chunks_with_unusual_chars']}")
-    print(f"Chunks with control characters: {analysis_results['chunks_with_control_chars']}")
+    print(
+        f"Chunks with unusual characters: {analysis_results['chunks_with_unusual_chars']}"
+    )
+    print(
+        f"Chunks with control characters: {analysis_results['chunks_with_control_chars']}"
+    )
     print(f"Chunks with long lines: {analysis_results['chunks_with_long_lines']}")
-    print(f"Chunks with excessive whitespace: {analysis_results['chunks_with_excessive_whitespace']}")
+    print(
+        f"Chunks with excessive whitespace: {analysis_results['chunks_with_excessive_whitespace']}"
+    )
 
     print("\nChunk Length Statistics:")
     for key, value in analysis_results["chunk_length_stats"].items():
-        print(f"  {key}: {value:.2f}" if isinstance(value, float) else f"  {key}: {value}")
+        print(
+            f"  {key}: {value:.2f}" if isinstance(value, float) else f"  {key}: {value}"
+        )
 
     print("\nEmbedding Test Results:")
-    print(f"Successful chunks: {analysis_results['embedding_test_results']['successful_chunks']}")
-    print(f"Failed chunks: {analysis_results['embedding_test_results']['failed_chunks']}")
+    print(
+        f"Successful chunks: {analysis_results['embedding_test_results']['successful_chunks']}"
+    )
+    print(
+        f"Failed chunks: {analysis_results['embedding_test_results']['failed_chunks']}"
+    )
 
     if analysis_results["embedding_test_results"]["failures"]:
         print("\nFailed Chunks:")
-        for failure in analysis_results["embedding_test_results"]["failures"][:5]:  # Show first 5 failures
+        for failure in analysis_results["embedding_test_results"]["failures"][
+            :5
+        ]:  # Show first 5 failures
             print(f"  Chunk {failure['index']}: {failure['error']}")
             print(f"  Preview: {failure['preview']}")
             print()

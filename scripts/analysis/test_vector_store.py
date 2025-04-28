@@ -4,13 +4,14 @@ Test script for the vector store.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage import LlamaIndexVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +26,9 @@ def main():
     metadata = {"title": "Test Document", "author": "Test Author", "date": "2023-01-01"}
 
     # Add the document to the vector store
-    vector_store.upsert_vectors(vectors=[embedding], ids=[doc_id], metadata=[metadata], texts=[text])
+    vector_store.upsert_vectors(
+        vectors=[embedding], ids=[doc_id], metadata=[metadata], texts=[text]
+    )
 
     # List all documents
     all_docs = vector_store.list_documents()
@@ -38,7 +41,9 @@ def main():
 
     logger.info(f"Document metadata: {doc_metadata}")
     logger.info(f"Document text: {doc_text}")
-    logger.info(f"Document embedding length: {len(doc_embedding) if doc_embedding else 0}")
+    logger.info(
+        f"Document embedding length: {len(doc_embedding) if doc_embedding else 0}"
+    )
 
     # Check if files were created
     vector_store_path = Path(StorageConfig().vector_store_path)

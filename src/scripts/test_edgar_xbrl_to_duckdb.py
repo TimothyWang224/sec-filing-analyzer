@@ -8,11 +8,12 @@ financial data from SEC filings and store it in a DuckDB database.
 import argparse
 import logging
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
-from sec_filing_analyzer.data_processing.edgar_xbrl_to_duckdb import EdgarXBRLToDuckDBExtractor
+from sec_filing_analyzer.data_processing.edgar_xbrl_to_duckdb import (
+    EdgarXBRLToDuckDBExtractor,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -219,9 +220,17 @@ def main():
     )
     parser.add_argument("--ticker", help="Company ticker symbol")
     parser.add_argument("--accession", help="SEC accession number (for single filing mode)")
-    parser.add_argument("--tickers", help="Comma-separated list of ticker symbols (for multiple companies mode)")
+    parser.add_argument(
+        "--tickers",
+        help="Comma-separated list of ticker symbols (for multiple companies mode)",
+    )
     parser.add_argument("--filing-types", help="Comma-separated list of filing types (e.g., 10-K,10-Q)")
-    parser.add_argument("--limit", type=int, default=5, help="Maximum number of filings to process per company")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Maximum number of filings to process per company",
+    )
     parser.add_argument("--db-path", help="Path to the DuckDB database file")
 
     args = parser.parse_args()

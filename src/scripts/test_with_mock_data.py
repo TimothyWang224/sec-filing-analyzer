@@ -4,12 +4,9 @@ Test the improved DuckDB store with mock data.
 
 import logging
 import os
-from datetime import date
 
 import duckdb
-from rich import box
 from rich.console import Console
-from rich.table import Table
 
 from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStore
 

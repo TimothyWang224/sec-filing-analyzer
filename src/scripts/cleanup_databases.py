@@ -7,7 +7,6 @@ This script:
 3. Deletes all other DuckDB databases
 """
 
-import os
 import shutil
 from pathlib import Path
 

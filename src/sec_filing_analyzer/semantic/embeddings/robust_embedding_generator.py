@@ -96,7 +96,7 @@ class RobustEmbeddingGenerator:
             try:
                 return list(embedding)
             except:
-                logger.warning(f"Could not convert embedding to list, returning zeros")
+                logger.warning("Could not convert embedding to list, returning zeros")
                 return [0.0] * self.dimensions
 
     def _apply_rate_limit(self):
@@ -272,7 +272,10 @@ class RobustEmbeddingGenerator:
 
             # Handle empty list case
             if not texts:
-                return [[0.0] * self.dimensions], {"all_fallbacks": False, "token_usage": self.token_usage}
+                return [[0.0] * self.dimensions], {
+                    "all_fallbacks": False,
+                    "token_usage": self.token_usage,
+                }
 
             # Preprocess texts: handle None values, empty strings, and large texts
             processed_texts = []

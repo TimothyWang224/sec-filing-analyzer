@@ -15,11 +15,15 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 
-from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
+from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import (
+    ImprovedEdgarXBRLExtractor,
+)
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", stream=sys.stdout
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
 
@@ -63,7 +67,9 @@ def test_extractor(ticker, accession_number, db_path):
 
     # Set edgar identity
     print("Setting edgar identity...")
-    set_identity("timothy.yi.wang@gmail.com")  # Using the user's email from the repository
+    set_identity(
+        "timothy.yi.wang@gmail.com"
+    )  # Using the user's email from the repository
 
     # Create the extractor
     print("Creating extractor...")
@@ -125,7 +131,9 @@ def test_extractor(ticker, accession_number, db_path):
             # Get facts for the filing
             facts = extractor.db.get_filing_facts(filing_id)
 
-            console.print(f"\n[bold]Facts for Filing (showing first 5 of {len(facts)}):[/bold]")
+            console.print(
+                f"\n[bold]Facts for Filing (showing first 5 of {len(facts)}):[/bold]"
+            )
             if not facts.empty:
                 console.print(facts.head(5))
             else:

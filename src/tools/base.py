@@ -54,7 +54,11 @@ class Tool(ABC):
     def __init__(self) -> None:
         """Initialize a tool."""
         # Get name from class if registered, otherwise use class name
-        self.name = getattr(self.__class__, "_tool_name", self.__class__.__name__.lower().replace("tool", ""))
+        self.name = getattr(
+            self.__class__,
+            "_tool_name",
+            self.__class__.__name__.lower().replace("tool", ""),
+        )
 
         # Get description from class docstring
         self.description = (
@@ -180,21 +184,7 @@ class Tool(ABC):
 
         return resolved_params
 
-    async def _execute(self, **_: Any) -> Dict[str, Any]:
-        """
-        Internal execute method to be implemented by subclasses.
-
-        Subclasses should use format_success_response and format_error_response
-        to ensure consistent response formatting.
-
-        Args:
-            **_: Keyword arguments for the tool (unused in base class)
-
-        Returns:
-            A standardized response dictionary. Use format_success_response or
-            format_error_response to create this dictionary.
-        """
-        raise NotImplementedError("Subclasses must implement _execute")
+    # This method is already defined above as an abstract method
 
     def format_error_response(
         self,
@@ -300,7 +290,7 @@ class Tool(ABC):
             logger.info(f"Resolved parameters for {self.name}: {kwargs} -> {resolved_params}")
 
         # Execute the tool with resolved parameters
-        result = await self._execute(**resolved_params)
+        result = await self._execute_abstract(**resolved_params)
 
         # Get the tool spec to determine the output key
         from .registry import ToolRegistry

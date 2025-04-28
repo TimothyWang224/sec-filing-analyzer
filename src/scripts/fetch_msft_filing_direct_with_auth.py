@@ -54,7 +54,11 @@ def fetch_msft_filing_direct():
     accession_no_dashes = accession.replace("-", "")
 
     # Headers required by SEC
-    headers = {"User-Agent": sec_identity, "Accept-Encoding": "gzip, deflate", "Host": "www.sec.gov"}
+    headers = {
+        "User-Agent": sec_identity,
+        "Accept-Encoding": "gzip, deflate",
+        "Host": "www.sec.gov",
+    }
 
     try:
         # First, get the company submissions to find the filing
@@ -96,7 +100,11 @@ def fetch_msft_filing_direct():
                             filing_response = requests.get(filing_url, headers=headers)
                             if filing_response.status_code == 200:
                                 # Save the filing index page
-                                with open(output_dir / f"MSFT_{accession}_index.html", "w", encoding="utf-8") as f:
+                                with open(
+                                    output_dir / f"MSFT_{accession}_index.html",
+                                    "w",
+                                    encoding="utf-8",
+                                ) as f:
                                     f.write(filing_response.text)
                                 print(f"Saved filing index to {output_dir}/MSFT_{accession}_index.html")
 
@@ -116,7 +124,9 @@ def fetch_msft_filing_direct():
                                     if doc_response.status_code == 200:
                                         # Save the main document
                                         with open(
-                                            output_dir / f"MSFT_{accession}_main.html", "w", encoding="utf-8"
+                                            output_dir / f"MSFT_{accession}_main.html",
+                                            "w",
+                                            encoding="utf-8",
                                         ) as f:
                                             f.write(doc_response.text)
                                         print(f"Saved main document to {output_dir}/MSFT_{accession}_main.html")

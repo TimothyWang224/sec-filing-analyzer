@@ -3,7 +3,6 @@ Temporary script to check DuckDB schema
 """
 
 import duckdb
-import pandas as pd
 
 
 def check_schema():

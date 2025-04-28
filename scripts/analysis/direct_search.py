@@ -4,16 +4,17 @@ Direct search script for the vector store.
 
 import json
 import logging
-import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import List
 
 import numpy as np
 
 from sec_filing_analyzer.embeddings import EmbeddingGenerator
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 

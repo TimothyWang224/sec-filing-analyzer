@@ -20,21 +20,32 @@ class TestToolDetailsTool:
     def test_init(self, tool):
         """Test initializing the tool."""
         assert tool.name == "tool_details"
-        assert "tool for getting detailed information about other tools" in tool.description.lower()
+        assert (
+            "tool for getting detailed information about other tools"
+            in tool.description.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_execute_valid_tool_name(self, tool):
         """Test executing the tool with a valid tool name."""
         # Mock the ToolRegistry.get and get_tool_documentation methods
-        mock_tool_info = {"description": "A test tool", "parameters": {"param1": {"description": "A test parameter"}}}
+        mock_tool_info = {
+            "description": "A test tool",
+            "parameters": {"param1": {"description": "A test parameter"}},
+        }
         mock_doc = "TOOL: test_tool\nDESCRIPTION: A test tool\nPARAMETERS:\n  param1: A test parameter"
 
         with (
             patch("src.tools.registry.ToolRegistry.get", return_value=mock_tool_info),
-            patch("src.tools.registry.ToolRegistry.get_tool_documentation", return_value=mock_doc),
+            patch(
+                "src.tools.registry.ToolRegistry.get_tool_documentation",
+                return_value=mock_doc,
+            ),
         ):
             # Execute the tool
-            result = await tool.execute(query_type="tool_details", parameters={"tool_name": "test_tool"})
+            result = await tool.execute(
+                query_type="tool_details", parameters={"tool_name": "test_tool"}
+            )
 
             # Check that the result is correct
             assert result["success"] is True
@@ -51,10 +62,15 @@ class TestToolDetailsTool:
         # Mock the ToolRegistry.get method to return None
         with (
             patch("src.tools.registry.ToolRegistry.get", return_value=None),
-            patch("src.tools.registry.ToolRegistry.list_tools", return_value={"tool1": {}, "tool2": {}}),
+            patch(
+                "src.tools.registry.ToolRegistry.list_tools",
+                return_value={"tool1": {}, "tool2": {}},
+            ),
         ):
             # Execute the tool
-            result = await tool.execute(query_type="tool_details", parameters={"tool_name": "nonexistent_tool"})
+            result = await tool.execute(
+                query_type="tool_details", parameters={"tool_name": "nonexistent_tool"}
+            )
 
             # Check that the result contains the error message
             assert result["success"] is False
@@ -67,7 +83,9 @@ class TestToolDetailsTool:
     async def test_execute_invalid_query_type(self, tool):
         """Test executing the tool with an invalid query type."""
         # Execute the tool with an invalid query type
-        result = await tool.execute(query_type="invalid_query", parameters={"tool_name": "test_tool"})
+        result = await tool.execute(
+            query_type="invalid_query", parameters={"tool_name": "test_tool"}
+        )
 
         # Check that the result contains an error message
         assert result["query_type"] == "invalid_query"
@@ -78,7 +96,9 @@ class TestToolDetailsTool:
     def test_validate_args_valid(self, tool):
         """Test validating valid arguments."""
         # Validate arguments
-        result = tool.validate_args(query_type="tool_details", parameters={"tool_name": "test_tool"})
+        result = tool.validate_args(
+            query_type="tool_details", parameters={"tool_name": "test_tool"}
+        )
 
         # Check that validation passed
         assert result is True
@@ -86,7 +106,9 @@ class TestToolDetailsTool:
     def test_validate_args_invalid_query_type(self, tool):
         """Test validating arguments with an invalid query type."""
         # Validate arguments with an invalid query type
-        result = tool.validate_args(query_type="invalid_query", parameters={"tool_name": "test_tool"})
+        result = tool.validate_args(
+            query_type="invalid_query", parameters={"tool_name": "test_tool"}
+        )
 
         # Check that validation failed
         assert result is False
@@ -102,7 +124,9 @@ class TestToolDetailsTool:
     def test_validate_args_invalid_tool_name(self, tool):
         """Test validating arguments with an invalid tool name."""
         # Validate arguments with an invalid tool name
-        result = tool.validate_args(query_type="tool_details", parameters={"tool_name": ""})
+        result = tool.validate_args(
+            query_type="tool_details", parameters={"tool_name": ""}
+        )
 
         # Check that validation failed
         assert result is False

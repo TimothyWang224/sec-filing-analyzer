@@ -11,7 +11,6 @@ import pandas as pd
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.table import Table
 
 console = Console()
@@ -75,10 +74,19 @@ def run_query(conn, query, output_format="table", output_file=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Run SQL queries against a DuckDB database")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
     parser.add_argument("--query", help="SQL query to run")
     parser.add_argument("--query-file", help="File containing SQL query to run")
-    parser.add_argument("--format", choices=["table", "csv", "json", "pandas"], default="table", help="Output format")
+    parser.add_argument(
+        "--format",
+        choices=["table", "csv", "json", "pandas"],
+        default="table",
+        help="Output format",
+    )
     parser.add_argument("--output", help="Output file (for CSV or JSON format)")
 
     args = parser.parse_args()

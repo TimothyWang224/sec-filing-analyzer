@@ -49,12 +49,18 @@ class QASpecialistAgent(Agent):
             max_tool_calls: Maximum number of tool calls per iteration
         """
         goals = [
-            Goal(name="question_answering", description="Answer financial questions accurately and comprehensively"),
+            Goal(
+                name="question_answering",
+                description="Answer financial questions accurately and comprehensively",
+            ),
             Goal(
                 name="explanation_generation",
                 description="Generate clear and detailed explanations of financial concepts",
             ),
-            Goal(name="context_understanding", description="Understand and maintain context across multiple questions"),
+            Goal(
+                name="context_understanding",
+                description="Understand and maintain context across multiple questions",
+            ),
         ]
 
         # Initialize the base agent with agent type for configuration
@@ -135,7 +141,10 @@ class QASpecialistAgent(Agent):
             )
 
     async def run(
-        self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None
+        self,
+        user_input: str,
+        plan: Optional[Dict] = None,
+        memory: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
         """
         Run the QA specialist agent with a provided plan.
@@ -183,7 +192,7 @@ class QASpecialistAgent(Agent):
         else:
             # Set initial phase to planning if no plan was provided
             self.state.set_phase("planning")
-            self.logger.info(f"Starting planning phase")
+            self.logger.info("Starting planning phase")
 
         # Execute the agent loop through all phases
         answer = None
@@ -207,7 +216,11 @@ class QASpecialistAgent(Agent):
             # Process with capabilities
             for capability in self.capabilities:
                 await capability.process_result(
-                    self, {"input": user_input}, user_input, {"type": "question_analysis"}, question_analysis
+                    self,
+                    {"input": user_input},
+                    user_input,
+                    {"type": "question_analysis"},
+                    question_analysis,
                 )
 
             self.increment_iteration()
@@ -215,7 +228,7 @@ class QASpecialistAgent(Agent):
             # If we've done enough planning, move to execution phase
             if self.state.phase_iterations["planning"] >= self.max_planning_iterations:
                 self.state.set_phase("execution")
-                self.logger.info(f"Moving to execution phase")
+                self.logger.info("Moving to execution phase")
 
         # Phase 2: Execution
         while not self.should_terminate() and self.state.current_phase == "execution":
@@ -242,7 +255,12 @@ class QASpecialistAgent(Agent):
                 # Add the task objective to the planning context
                 if hasattr(self.state, "update_context"):
                     self.state.update_context(
-                        {"planning": {"task_objective": task_objective, "success_criteria": success_criteria}}
+                        {
+                            "planning": {
+                                "task_objective": task_objective,
+                                "success_criteria": success_criteria,
+                            }
+                        }
                     )
 
                 # Use LLM-driven tool selection based on the task objective
@@ -307,17 +325,33 @@ class QASpecialistAgent(Agent):
                     # Execute the selected tool
                     try:
                         tool_result = await self.environment.execute_action(
-                            {"tool": early_classification["tool"], "args": early_classification["args"]}
+                            {
+                                "tool": early_classification["tool"],
+                                "args": early_classification["args"],
+                            }
                         )
 
                         # Create a tool results structure
                         tool_results = {
                             "input": user_input,
                             "tool_calls": [
-                                {"tool": early_classification["tool"], "args": early_classification["args"]}
+                                {
+                                    "tool": early_classification["tool"],
+                                    "args": early_classification["args"],
+                                }
                             ],
-                            "results": [{"success": True, "tool": early_classification["tool"], "result": tool_result}],
-                            "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                            "results": [
+                                {
+                                    "success": True,
+                                    "tool": early_classification["tool"],
+                                    "result": tool_result,
+                                }
+                            ],
+                            "timing": {
+                                "total": 0.0,
+                                "tool_selection": 0.0,
+                                "tool_execution": 0.0,
+                            },
                         }
 
                         # Add the result to memory
@@ -339,7 +373,11 @@ class QASpecialistAgent(Agent):
                         # Process result with capabilities
                         for capability in self.capabilities:
                             answer = await capability.process_result(
-                                self, {"input": user_input}, user_input, {"type": "qa_response"}, answer
+                                self,
+                                {"input": user_input},
+                                user_input,
+                                {"type": "qa_response"},
+                                answer,
                             )
 
                         # Increment iteration counter
@@ -348,13 +386,13 @@ class QASpecialistAgent(Agent):
                         # Check if success criteria have been met
                         if self._check_success_criteria(user_input, tool_result):
                             self.state.set_phase("refinement")
-                            self.logger.info(f"Success criteria met, moving to refinement phase")
+                            self.logger.info("Success criteria met, moving to refinement phase")
                             continue
 
                         # If we've done enough execution, move to refinement phase
                         if self.state.phase_iterations["execution"] >= self.max_execution_iterations:
                             self.state.set_phase("refinement")
-                            self.logger.info(f"Moving to refinement phase")
+                            self.logger.info("Moving to refinement phase")
 
                         # Skip the rest of the loop body
                         continue
@@ -388,9 +426,17 @@ class QASpecialistAgent(Agent):
                                         "query_type": {
                                             "type": "string",
                                             "description": "The type of query to perform. For financial metrics like revenue, profit, EPS, etc., use 'financial_facts'.",
-                                            "enum": ["financial_facts", "companies", "metrics", "filings"],
+                                            "enum": [
+                                                "financial_facts",
+                                                "companies",
+                                                "metrics",
+                                                "filings",
+                                            ],
                                         },
-                                        "ticker": {"type": "string", "description": "The company ticker symbol"},
+                                        "ticker": {
+                                            "type": "string",
+                                            "description": "The company ticker symbol",
+                                        },
                                         "metrics": {
                                             "type": "array",
                                             "description": "List of financial metrics to retrieve",
@@ -494,13 +540,28 @@ class QASpecialistAgent(Agent):
                             tool_results = {
                                 "input": user_input,
                                 "tool_calls": [{"tool": tool_name, "args": tool_params}],
-                                "results": [{"success": True, "tool": tool_name, "result": tool_result}],
-                                "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                                "results": [
+                                    {
+                                        "success": True,
+                                        "tool": tool_name,
+                                        "result": tool_result,
+                                    }
+                                ],
+                                "timing": {
+                                    "total": 0.0,
+                                    "tool_selection": 0.0,
+                                    "tool_execution": 0.0,
+                                },
                             }
 
                             # Add the result to memory
                             self.add_to_memory(
-                                {"type": "tool_result", "tool": tool_name, "args": tool_params, "result": tool_result}
+                                {
+                                    "type": "tool_result",
+                                    "tool": tool_name,
+                                    "args": tool_params,
+                                    "result": tool_result,
+                                }
                             )
 
                             # Check if success criteria have been met
@@ -514,7 +575,11 @@ class QASpecialistAgent(Agent):
                                 # Process result with capabilities
                                 for capability in self.capabilities:
                                     answer = await capability.process_result(
-                                        self, {"input": user_input}, user_input, {"type": "qa_response"}, answer
+                                        self,
+                                        {"input": user_input},
+                                        user_input,
+                                        {"type": "qa_response"},
+                                        answer,
                                     )
 
                                 # Increment iteration counter
@@ -525,7 +590,7 @@ class QASpecialistAgent(Agent):
 
                                 # Move to refinement phase
                                 self.state.set_phase("refinement")
-                                self.logger.info(f"Success criteria met, moving to refinement phase")
+                                self.logger.info("Success criteria met, moving to refinement phase")
                                 continue
 
                             # Generate answer using the tool results
@@ -552,7 +617,11 @@ class QASpecialistAgent(Agent):
             # Process result with capabilities
             for capability in self.capabilities:
                 answer = await capability.process_result(
-                    self, {"input": user_input}, user_input, {"type": "qa_response"}, answer
+                    self,
+                    {"input": user_input},
+                    user_input,
+                    {"type": "qa_response"},
+                    answer,
                 )
 
             self.increment_iteration()
@@ -564,7 +633,7 @@ class QASpecialistAgent(Agent):
 
                 # Set phase to refinement
                 self.state.set_phase("refinement")
-                self.logger.info(f"Moving to refinement phase")
+                self.logger.info("Moving to refinement phase")
 
         # Phase 3: Refinement
         while not self.should_terminate() and self.state.current_phase == "refinement":
@@ -592,7 +661,11 @@ class QASpecialistAgent(Agent):
                 # Process result with capabilities
                 for capability in self.capabilities:
                     refined_answer = await capability.process_result(
-                        self, {"input": user_input}, user_input, {"type": "qa_response"}, refined_answer
+                        self,
+                        {"input": user_input},
+                        user_input,
+                        {"type": "qa_response"},
+                        refined_answer,
                     )
 
                 answer = refined_answer
@@ -659,7 +732,7 @@ class QASpecialistAgent(Agent):
                 # Try to use the parent class method first
                 try:
                     tool_results = await self.process_with_llm_tools(input)
-                    self.logger.info(f"Successfully processed input with LLM tools")
+                    self.logger.info("Successfully processed input with LLM tools")
                 except AttributeError:
                     # If the parent method fails, use our own implementation
                     self.logger.info("Parent process_with_llm_tools failed, using local implementation")
@@ -679,7 +752,10 @@ class QASpecialistAgent(Agent):
                     try:
                         # Use the financial data tool to query available companies
                         companies_result = await self.environment.execute_action(
-                            {"tool": "sec_financial_data", "args": {"query_type": "companies"}}
+                            {
+                                "tool": "sec_financial_data",
+                                "args": {"query_type": "companies"},
+                            }
                         )
 
                         # Extract company information
@@ -699,7 +775,11 @@ class QASpecialistAgent(Agent):
                         # Create a successful result
                         tool_results = {
                             "results": [
-                                {"success": True, "tool": "sec_financial_data", "result": {"companies": companies}}
+                                {
+                                    "success": True,
+                                    "tool": "sec_financial_data",
+                                    "result": {"companies": companies},
+                                }
                             ]
                         }
                     except Exception as e:
@@ -824,7 +904,7 @@ class QASpecialistAgent(Agent):
             # Generate an explanation of the sources
             explanation = "This answer is based on "
             if financial_data:
-                explanation += f"financial data from SEC filings"
+                explanation += "financial data from SEC filings"
             if semantic_context:
                 explanation += f"{', and ' if financial_data else ''}information found in SEC filing text"
             if filing_info:
@@ -876,14 +956,32 @@ class QASpecialistAgent(Agent):
             # Execute the selected tool
             try:
                 result = await self.environment.execute_action(
-                    {"tool": early_classification["tool"], "args": early_classification["args"]}
+                    {
+                        "tool": early_classification["tool"],
+                        "args": early_classification["args"],
+                    }
                 )
 
                 return {
                     "input": input_text,
-                    "tool_calls": [{"tool": early_classification["tool"], "args": early_classification["args"]}],
-                    "results": [{"success": True, "tool": early_classification["tool"], "result": result}],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "tool_calls": [
+                        {
+                            "tool": early_classification["tool"],
+                            "args": early_classification["args"],
+                        }
+                    ],
+                    "results": [
+                        {
+                            "success": True,
+                            "tool": early_classification["tool"],
+                            "result": result,
+                        }
+                    ],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
             except Exception as e:
                 self.logger.error(f"Error executing deterministic tool selection: {str(e)}")
@@ -982,23 +1080,45 @@ class QASpecialistAgent(Agent):
 
                 # Execute the financial data tool
                 result = await self.environment.execute_action(
-                    {"tool": "sec_financial_data", "args": {"query_type": query_type, "parameters": parameters}}
+                    {
+                        "tool": "sec_financial_data",
+                        "args": {"query_type": query_type, "parameters": parameters},
+                    }
                 )
 
                 return {
                     "input": input_text,
                     "tool_calls": [
-                        {"tool": "sec_financial_data", "args": {"query_type": query_type, "parameters": parameters}}
+                        {
+                            "tool": "sec_financial_data",
+                            "args": {
+                                "query_type": query_type,
+                                "parameters": parameters,
+                            },
+                        }
                     ],
-                    "results": [{"success": True, "tool": "sec_financial_data", "result": result}],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "results": [
+                        {
+                            "success": True,
+                            "tool": "sec_financial_data",
+                            "result": result,
+                        }
+                    ],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
             elif tool_name == "sec_semantic_search":
                 # For semantic search queries
                 result = await self.environment.execute_action(
                     {
                         "tool": "sec_semantic_search",
-                        "args": {"query": input_text, "companies": companies if companies else None},
+                        "args": {
+                            "query": input_text,
+                            "companies": companies if companies else None,
+                        },
                     }
                 )
 
@@ -1007,11 +1127,24 @@ class QASpecialistAgent(Agent):
                     "tool_calls": [
                         {
                             "tool": "sec_semantic_search",
-                            "args": {"query": input_text, "companies": companies if companies else None},
+                            "args": {
+                                "query": input_text,
+                                "companies": companies if companies else None,
+                            },
                         }
                     ],
-                    "results": [{"success": True, "tool": "sec_semantic_search", "result": result}],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "results": [
+                        {
+                            "success": True,
+                            "tool": "sec_semantic_search",
+                            "result": result,
+                        }
+                    ],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
             elif tool_name == "sec_graph_query":
                 # For graph queries
@@ -1019,16 +1152,29 @@ class QASpecialistAgent(Agent):
                 parameters = {"company": companies[0]} if companies else {}
 
                 result = await self.environment.execute_action(
-                    {"tool": "sec_graph_query", "args": {"query_type": query_type, "parameters": parameters}}
+                    {
+                        "tool": "sec_graph_query",
+                        "args": {"query_type": query_type, "parameters": parameters},
+                    }
                 )
 
                 return {
                     "input": input_text,
                     "tool_calls": [
-                        {"tool": "sec_graph_query", "args": {"query_type": query_type, "parameters": parameters}}
+                        {
+                            "tool": "sec_graph_query",
+                            "args": {
+                                "query_type": query_type,
+                                "parameters": parameters,
+                            },
+                        }
                     ],
                     "results": [{"success": True, "tool": "sec_graph_query", "result": result}],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
             elif tool_name == "sec_data":
                 # For filing data queries
@@ -1047,14 +1193,26 @@ class QASpecialistAgent(Agent):
                     )  # Recursive call will select a different tool
 
                 result = await self.environment.execute_action(
-                    {"tool": "sec_data", "args": {"company": company, "filing_type": filing_type}}
+                    {
+                        "tool": "sec_data",
+                        "args": {"company": company, "filing_type": filing_type},
+                    }
                 )
 
                 return {
                     "input": input_text,
-                    "tool_calls": [{"tool": "sec_data", "args": {"company": company, "filing_type": filing_type}}],
+                    "tool_calls": [
+                        {
+                            "tool": "sec_data",
+                            "args": {"company": company, "filing_type": filing_type},
+                        }
+                    ],
                     "results": [{"success": True, "tool": "sec_data", "result": result}],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
         except Exception as e:
             self.logger.error(f"Error in LLM-driven tool selection: {str(e)}")
@@ -1063,7 +1221,10 @@ class QASpecialistAgent(Agent):
                 result = await self.environment.execute_action(
                     {
                         "tool": "sec_semantic_search",
-                        "args": {"query": input_text, "companies": companies if companies else None},
+                        "args": {
+                            "query": input_text,
+                            "companies": companies if companies else None,
+                        },
                     }
                 )
 
@@ -1072,11 +1233,24 @@ class QASpecialistAgent(Agent):
                     "tool_calls": [
                         {
                             "tool": "sec_semantic_search",
-                            "args": {"query": input_text, "companies": companies if companies else None},
+                            "args": {
+                                "query": input_text,
+                                "companies": companies if companies else None,
+                            },
                         }
                     ],
-                    "results": [{"success": True, "tool": "sec_semantic_search", "result": result}],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "results": [
+                        {
+                            "success": True,
+                            "tool": "sec_semantic_search",
+                            "result": result,
+                        }
+                    ],
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
             except Exception as e:
                 self.logger.error(f"Error executing fallback semantic search: {str(e)}")
@@ -1084,7 +1258,11 @@ class QASpecialistAgent(Agent):
                     "input": input_text,
                     "tool_calls": [],
                     "results": [],
-                    "timing": {"total": 0.0, "tool_selection": 0.0, "tool_execution": 0.0},
+                    "timing": {
+                        "total": 0.0,
+                        "tool_selection": 0.0,
+                        "tool_execution": 0.0,
+                    },
                 }
 
     async def _generate_answer_from_results(self, input: str, tool_results: Dict[str, Any]) -> Dict[str, Any]:
@@ -1218,7 +1396,7 @@ class QASpecialistAgent(Agent):
             # Generate an explanation of the sources
             explanation = "This answer is based on "
             if financial_data:
-                explanation += f"financial data from SEC filings"
+                explanation += "financial data from SEC filings"
             if semantic_context:
                 explanation += f"{', and ' if financial_data else ''}information found in SEC filing text"
             if filing_info:
@@ -1448,7 +1626,18 @@ class QASpecialistAgent(Agent):
             List of company tickers
         """
         # List of common tickers to check for
-        common_tickers = ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "META", "TSLA", "NVDA", "IBM", "INTC"]
+        common_tickers = [
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "GOOG",
+            "AMZN",
+            "META",
+            "TSLA",
+            "NVDA",
+            "IBM",
+            "INTC",
+        ]
 
         # Check for exact ticker matches
         companies = []
@@ -1500,7 +1689,7 @@ class QASpecialistAgent(Agent):
                             if isinstance(result, dict) and any(
                                 metric.lower() in str(result).lower() for metric in metrics
                             ):
-                                self.logger.info(f"Success criteria met: Found requested metric in results")
+                                self.logger.info("Success criteria met: Found requested metric in results")
                                 return True
 
         # If we reach here, success criteria are not met
@@ -1568,7 +1757,10 @@ class QASpecialistAgent(Agent):
             metrics.append("Revenue")
 
         # Use TimeAwarenessCapability to extract temporal information
-        time_capability = next((cap for cap in self.capabilities if isinstance(cap, TimeAwarenessCapability)), None)
+        time_capability = next(
+            (cap for cap in self.capabilities if isinstance(cap, TimeAwarenessCapability)),
+            None,
+        )
         temporal_info = {}
 
         if time_capability:
@@ -1601,4 +1793,9 @@ class QASpecialistAgent(Agent):
             if date_range:
                 temporal_info["date_range"] = date_range
 
-        return {"companies": companies, "filing_types": filing_types, "metrics": metrics, **temporal_info}
+        return {
+            "companies": companies,
+            "filing_types": filing_types,
+            "metrics": metrics,
+            **temporal_info,
+        }

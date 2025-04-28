@@ -48,9 +48,18 @@ class RiskAnalystAgent(Agent):
             max_tool_calls: Maximum number of tool calls per iteration
         """
         goals = [
-            Goal(name="risk_identification", description="Identify potential financial and operational risks"),
-            Goal(name="risk_assessment", description="Assess the severity and likelihood of identified risks"),
-            Goal(name="risk_monitoring", description="Monitor and track changes in risk factors"),
+            Goal(
+                name="risk_identification",
+                description="Identify potential financial and operational risks",
+            ),
+            Goal(
+                name="risk_assessment",
+                description="Assess the severity and likelihood of identified risks",
+            ),
+            Goal(
+                name="risk_monitoring",
+                description="Monitor and track changes in risk factors",
+            ),
         ]
 
         # Initialize the base agent with agent type for configuration
@@ -125,7 +134,10 @@ class RiskAnalystAgent(Agent):
             )
 
     async def run(
-        self, user_input: str, plan: Optional[Dict] = None, memory: Optional[List[Dict]] = None
+        self,
+        user_input: str,
+        plan: Optional[Dict] = None,
+        memory: Optional[List[Dict]] = None,
     ) -> Dict[str, Any]:
         """
         Run the risk analyst agent with a provided high-level task.
@@ -157,7 +169,10 @@ class RiskAnalystAgent(Agent):
                 self.state.update_context(
                     {
                         "planning": {
-                            "high_level_task": {"objective": task_objective, "success_criteria": success_criteria}
+                            "high_level_task": {
+                                "objective": task_objective,
+                                "success_criteria": success_criteria,
+                            }
                         }
                     }
                 )
@@ -171,7 +186,7 @@ class RiskAnalystAgent(Agent):
 
         # Set initial phase to planning
         self.state.set_phase("planning")
-        self.logger.info(f"Starting planning phase")
+        self.logger.info("Starting planning phase")
 
         # Execute the agent loop through all phases
         risk_analysis = None
@@ -195,7 +210,11 @@ class RiskAnalystAgent(Agent):
             # Process with capabilities
             for capability in self.capabilities:
                 await capability.process_result(
-                    self, {"input": user_input}, user_input, {"type": "company_info"}, company_info
+                    self,
+                    {"input": user_input},
+                    user_input,
+                    {"type": "company_info"},
+                    company_info,
                 )
 
             self.increment_iteration()
@@ -203,7 +222,7 @@ class RiskAnalystAgent(Agent):
             # If we've done enough planning, move to execution phase
             if self.state.phase_iterations["planning"] >= self.max_planning_iterations:
                 self.state.set_phase("execution")
-                self.logger.info(f"Moving to execution phase")
+                self.logger.info("Moving to execution phase")
 
         # Phase 2: Execution
         while not self.should_terminate() and self.state.current_phase == "execution":
@@ -224,7 +243,11 @@ class RiskAnalystAgent(Agent):
             # Process result with capabilities
             for capability in self.capabilities:
                 risk_analysis = await capability.process_result(
-                    self, {"input": user_input}, user_input, {"type": "risk_analysis"}, risk_analysis
+                    self,
+                    {"input": user_input},
+                    user_input,
+                    {"type": "risk_analysis"},
+                    risk_analysis,
                 )
 
             self.increment_iteration()
@@ -232,7 +255,7 @@ class RiskAnalystAgent(Agent):
             # If we've done enough execution, move to refinement phase
             if self.state.phase_iterations["execution"] >= self.max_execution_iterations:
                 self.state.set_phase("refinement")
-                self.logger.info(f"Moving to refinement phase")
+                self.logger.info("Moving to refinement phase")
 
         # Phase 3: Refinement
         while not self.should_terminate() and self.state.current_phase == "refinement":
@@ -260,7 +283,11 @@ class RiskAnalystAgent(Agent):
                 # Process result with capabilities
                 for capability in self.capabilities:
                     refined_analysis = await capability.process_result(
-                        self, {"input": user_input}, user_input, {"type": "risk_analysis"}, refined_analysis
+                        self,
+                        {"input": user_input},
+                        user_input,
+                        {"type": "risk_analysis"},
+                        refined_analysis,
                     )
 
                 risk_analysis = refined_analysis
@@ -307,7 +334,14 @@ class RiskAnalystAgent(Agent):
         sector = None
 
         # Common industries and sectors
-        industries = ["technology", "healthcare", "finance", "retail", "energy", "manufacturing"]
+        industries = [
+            "technology",
+            "healthcare",
+            "finance",
+            "retail",
+            "energy",
+            "manufacturing",
+        ]
         sectors = ["tech", "health", "financial", "consumer", "energy", "industrial"]
 
         for ind in industries:
@@ -321,7 +355,10 @@ class RiskAnalystAgent(Agent):
                 break
 
         # Extract potential time frame
-        time_capability = next((cap for cap in self.capabilities if isinstance(cap, TimeAwarenessCapability)), None)
+        time_capability = next(
+            (cap for cap in self.capabilities if isinstance(cap, TimeAwarenessCapability)),
+            None,
+        )
         temporal_info = {}
 
         if time_capability:
@@ -335,7 +372,13 @@ class RiskAnalystAgent(Agent):
                 temporal_info["year"] = year
                 temporal_info["date_range"] = [f"{year}-01-01", f"{year}-12-31"]
 
-        return {"company_name": company_name, "ticker": ticker, "industry": industry, "sector": sector, **temporal_info}
+        return {
+            "company_name": company_name,
+            "ticker": ticker,
+            "industry": industry,
+            "sector": sector,
+            **temporal_info,
+        }
 
     async def _refine_risk_analysis(self, input: str, current_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -518,7 +561,7 @@ class RiskAnalystAgent(Agent):
             analysis_response = await self.llm.generate(prompt=analysis_prompt)
 
             # Extract financial risks
-            financial_risks_prompt = f"""
+            financial_risks_prompt = """
             Based on the SEC filing information and your analysis, identify the key financial risks.
             For each risk, provide the name, severity (High/Medium/Low), likelihood (High/Medium/Low), and a brief description.
             Format your response as a JSON array of risk objects.
@@ -544,7 +587,7 @@ class RiskAnalystAgent(Agent):
                 ]
 
             # Extract operational risks
-            operational_risks_prompt = f"""
+            operational_risks_prompt = """
             Based on the SEC filing information and your analysis, identify the key operational risks.
             For each risk, provide the name, severity (High/Medium/Low), likelihood (High/Medium/Low), and a brief description.
             Format your response as a JSON array of risk objects.
@@ -603,7 +646,10 @@ class RiskAnalystAgent(Agent):
             return {
                 "input": input,
                 "analysis": analysis_response.strip(),
-                "risk_factors": {"financial_risks": financial_risks_json, "operational_risks": operational_risks_json},
+                "risk_factors": {
+                    "financial_risks": financial_risks_json,
+                    "operational_risks": operational_risks_json,
+                },
                 "risk_trends": trends_json,
                 "recommendations": recommendations_json,
                 "supporting_data": {"risk_context": risk_context},

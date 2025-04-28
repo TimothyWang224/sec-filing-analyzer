@@ -7,7 +7,6 @@ in their embeddings, which indicates a failure in the embedding generation proce
 
 import json
 import logging
-import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List

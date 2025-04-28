@@ -22,11 +22,15 @@ try:
         print(f"Total filings: {total_filings}")
 
         # Check if there are any NVDA filings
-        nvda_filings = conn.execute("SELECT COUNT(*) FROM filings WHERE ticker = 'NVDA'").fetchone()[0]
+        nvda_filings = conn.execute(
+            "SELECT COUNT(*) FROM filings WHERE ticker = 'NVDA'"
+        ).fetchone()[0]
         print(f"NVDA filings: {nvda_filings}")
 
         # Get a list of all tickers
-        tickers = conn.execute("SELECT DISTINCT ticker FROM filings ORDER BY ticker").fetchdf()
+        tickers = conn.execute(
+            "SELECT DISTINCT ticker FROM filings ORDER BY ticker"
+        ).fetchdf()
         print(f"Tickers in database: {tickers['ticker'].tolist()}")
     else:
         print("No filings table found in the database")

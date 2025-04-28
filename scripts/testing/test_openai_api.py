@@ -11,7 +11,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import openai
 from dotenv import load_dotenv
@@ -23,7 +23,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Configure OpenAI client
@@ -113,7 +115,14 @@ def main():
 
     # Add some chunks from the middle and end
     if len(chunks) > 1:
-        sample_indices.extend([len(chunks) // 4, len(chunks) // 2, (3 * len(chunks)) // 4, len(chunks) - 1])
+        sample_indices.extend(
+            [
+                len(chunks) // 4,
+                len(chunks) // 2,
+                (3 * len(chunks)) // 4,
+                len(chunks) - 1,
+            ]
+        )
 
     # Add some random chunks
     import random
@@ -174,7 +183,12 @@ def main():
 
     with open(results_path, "w", encoding="utf-8") as f:
         json.dump(
-            {"total_tested": len(results), "successful": len(successful), "failed": len(failed), "results": results},
+            {
+                "total_tested": len(results),
+                "successful": len(successful),
+                "failed": len(failed),
+                "results": results,
+            },
             f,
             indent=2,
             ensure_ascii=False,

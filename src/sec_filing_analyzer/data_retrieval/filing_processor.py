@@ -5,7 +5,6 @@ This module provides functionality for processing SEC filings.
 """
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -314,7 +313,10 @@ class FilingProcessor:
         return None
 
     def list_filings(
-        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
+        self,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None,
+        filing_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         List available filings.

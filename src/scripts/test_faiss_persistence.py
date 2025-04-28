@@ -9,7 +9,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage import OptimizedVectorStore

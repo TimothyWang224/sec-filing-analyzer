@@ -7,10 +7,8 @@ organizing them into appropriate subdirectories based on their content.
 """
 
 import os
-import re
 import shutil
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from rich.console import Console
@@ -32,7 +30,9 @@ def migrate_logs():
 
     # Check if the old log directory exists
     if not old_log_dir.exists():
-        console.print("[yellow]Old log directory not found. Nothing to migrate.[/yellow]")
+        console.print(
+            "[yellow]Old log directory not found. Nothing to migrate.[/yellow]"
+        )
         return
 
     # Get all log files from the old directory
@@ -41,7 +41,9 @@ def migrate_logs():
     all_files = log_files + json_files
 
     if not all_files:
-        console.print("[yellow]No log files found in the old directory. Nothing to migrate.[/yellow]")
+        console.print(
+            "[yellow]No log files found in the old directory. Nothing to migrate.[/yellow]"
+        )
         return
 
     console.print(f"[green]Found {len(all_files)} log files to migrate.[/green]")
@@ -92,10 +94,17 @@ def migrate_logs():
             progress.update(task, advance=1, description=f"[cyan]Migrated {file.name}")
 
     console.print("[green]Log migration completed successfully![/green]")
-    console.print(f"[green]Migrated {len(all_files)} log files from {old_log_dir} to data/logs/[/green]")
+    console.print(
+        f"[green]Migrated {len(all_files)} log files from {old_log_dir} to data/logs/[/green]"
+    )
 
     # Ask if the user wants to delete the old log directory
-    if console.input("[yellow]Do you want to delete the old log directory? (y/n): [/yellow]").lower() == "y":
+    if (
+        console.input(
+            "[yellow]Do you want to delete the old log directory? (y/n): [/yellow]"
+        ).lower()
+        == "y"
+    ):
         shutil.rmtree(old_log_dir)
         console.print("[green]Old log directory deleted.[/green]")
     else:
@@ -104,8 +113,12 @@ def migrate_logs():
 
 if __name__ == "__main__":
     console.print("[bold cyan]Log Migration Utility[/bold cyan]")
-    console.print("This script will migrate log files from the old ./logs directory to the new data/logs directory.")
-    console.print("The logs will be organized into appropriate subdirectories based on their content.")
+    console.print(
+        "This script will migrate log files from the old ./logs directory to the new data/logs directory."
+    )
+    console.print(
+        "The logs will be organized into appropriate subdirectories based on their content."
+    )
 
     if console.input("[yellow]Do you want to proceed? (y/n): [/yellow]").lower() == "y":
         migrate_logs()

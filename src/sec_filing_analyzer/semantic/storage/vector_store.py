@@ -8,7 +8,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -28,8 +28,6 @@ class VectorStoreInterface:
 
 from llama_index.core import Document, StorageContext, VectorStoreIndex
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.schema import QueryBundle
 from llama_index.core.vector_stores import SimpleVectorStore
 
 # Setup logging
@@ -128,7 +126,13 @@ class VectorStore(VectorStoreInterface):
         results = []
         for embedding_id in sorted_ids[:top_k]:
             metadata = self.get_metadata(embedding_id)
-            results.append({"id": embedding_id, "score": float(similarities[embedding_id]), "metadata": metadata})
+            results.append(
+                {
+                    "id": embedding_id,
+                    "score": float(similarities[embedding_id]),
+                    "metadata": metadata,
+                }
+            )
 
         return results
 
@@ -250,7 +254,10 @@ class PineconeVectorStore(VectorStoreInterface):
     """Pinecone implementation of vector store."""
 
     def __init__(
-        self, api_key: Optional[str] = None, environment: str = "gcp-starter", index_name: str = "sec-filings"
+        self,
+        api_key: Optional[str] = None,
+        environment: str = "gcp-starter",
+        index_name: str = "sec-filings",
     ):
         """Initialize Pinecone vector store."""
         try:
@@ -276,13 +283,20 @@ class PineconeVectorStore(VectorStoreInterface):
             raise
 
     def upsert_vectors(
-        self, vectors: List[List[float]], ids: List[str], metadata: Optional[List[Dict[str, Any]]] = None
+        self,
+        vectors: List[List[float]],
+        ids: List[str],
+        metadata: Optional[List[Dict[str, Any]]] = None,
     ) -> bool:
         """Upsert vectors to Pinecone."""
         try:
             vectors_to_upsert = []
             for i, (vector, id_) in enumerate(zip(vectors, ids)):
-                vector_data = {"id": id_, "values": vector, "metadata": metadata[i] if metadata else {}}
+                vector_data = {
+                    "id": id_,
+                    "values": vector,
+                    "metadata": metadata[i] if metadata else {},
+                }
                 vectors_to_upsert.append(vector_data)
 
             batch_size = 100
@@ -298,11 +312,19 @@ class PineconeVectorStore(VectorStoreInterface):
             return False
 
     def search_vectors(
-        self, query_vector: List[float], top_k: int = 10, filter_metadata: Optional[Dict[str, Any]] = None
+        self,
+        query_vector: List[float],
+        top_k: int = 10,
+        filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Search for similar vectors in Pinecone."""
         try:
-            results = self.index.query(vector=query_vector, top_k=top_k, include_metadata=True, filter=filter_metadata)
+            results = self.index.query(
+                vector=query_vector,
+                top_k=top_k,
+                include_metadata=True,
+                filter=filter_metadata,
+            )
 
             return [{"id": match.id, "score": match.score, "metadata": match.metadata} for match in results.matches]
 
@@ -316,7 +338,11 @@ class PineconeVectorStore(VectorStoreInterface):
             result = self.index.fetch(ids=[vector_id])
             if vector_id in result.vectors:
                 vector = result.vectors[vector_id]
-                return {"id": vector.id, "values": vector.values, "metadata": vector.metadata}
+                return {
+                    "id": vector.id,
+                    "values": vector.values,
+                    "metadata": vector.metadata,
+                }
             return None
         except Exception as e:
             logger.error(f"Error getting vector from Pinecone: {str(e)}")
@@ -409,7 +435,15 @@ class LlamaIndexVectorStore:
                 # Limit metadata size to avoid LlamaIndex errors
                 limited_meta = {}
                 for key, value in meta.items():
-                    if key in ["ticker", "form", "filing_date", "company", "cik", "item", "original_doc_id"]:
+                    if key in [
+                        "ticker",
+                        "form",
+                        "filing_date",
+                        "company",
+                        "cik",
+                        "item",
+                        "original_doc_id",
+                    ]:
                         limited_meta[key] = value
 
                 # Add chunk metadata if it's a chunk
@@ -425,7 +459,6 @@ class LlamaIndexVectorStore:
                 if vector and isinstance(vector, list) and len(vector) > 0 and isinstance(vector[0], list):
                     # This is a list of lists, we need to flatten it
                     logger.warning(f"Embedding for {id_} is a list of lists, flattening it")
-                    import numpy as np
 
                     # Use the first embedding in the list
                     vector = vector[0]
@@ -578,7 +611,14 @@ class LlamaIndexVectorStore:
                             logger.debug(f"Skipping {doc_id} due to metadata filter")
                             continue
 
-                    formatted_results.append({"id": doc_id, "score": score, "metadata": metadata, "text": text})
+                    formatted_results.append(
+                        {
+                            "id": doc_id,
+                            "score": score,
+                            "metadata": metadata,
+                            "text": text,
+                        }
+                    )
                 except Exception as e:
                     logger.warning(f"Error formatting node: {e}")
                     # Skip this node
@@ -876,7 +916,14 @@ class LlamaIndexVectorStore:
                             # Limit metadata size to avoid LlamaIndex errors
                             limited_metadata = {}
                             for key, value in metadata.items():
-                                if key in ["ticker", "form", "filing_date", "company", "cik", "item"]:
+                                if key in [
+                                    "ticker",
+                                    "form",
+                                    "filing_date",
+                                    "company",
+                                    "cik",
+                                    "item",
+                                ]:
                                     limited_metadata[key] = value
 
                             # Add chunk metadata if it's a chunk
@@ -887,7 +934,12 @@ class LlamaIndexVectorStore:
                                 if "is_table" in chunk_meta:
                                     limited_metadata["is_table"] = chunk_meta["is_table"]
 
-                            doc = Document(text=text, metadata=limited_metadata, embedding=embedding, doc_id=doc_id)
+                            doc = Document(
+                                text=text,
+                                metadata=limited_metadata,
+                                embedding=embedding,
+                                doc_id=doc_id,
+                            )
                             documents.append(doc)
                     except Exception as e:
                         logger.warning(f"Error loading document {doc_id}: {e}")
@@ -904,7 +956,8 @@ class LlamaIndexVectorStore:
                     logger.info("No documents found, creating empty index")
                     # Create an empty index
                     self.index = VectorStoreIndex.from_documents(
-                        documents=[Document(text="", doc_id="temp")], storage_context=self.storage_context
+                        documents=[Document(text="", doc_id="temp")],
+                        storage_context=self.storage_context,
                     )
                     # Remove temporary document
                     self.vector_store.delete("temp")

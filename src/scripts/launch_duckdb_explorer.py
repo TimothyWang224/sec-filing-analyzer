@@ -13,7 +13,11 @@ import webbrowser
 
 def main():
     parser = argparse.ArgumentParser(description="Launch the DuckDB Explorer")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
 
     args = parser.parse_args()
 

@@ -11,13 +11,10 @@ This module provides functionality to manage the lifecycle of data across differ
 import json
 import logging
 import os
-import shutil
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Optional
 
 import duckdb
-import numpy as np
 
 from ..config import ConfigProvider, ETLConfig, StorageConfig
 from .sync_manager import StorageSyncManager
@@ -312,7 +309,8 @@ class DataLifecycleManager:
         try:
             # Get filing from DuckDB
             filing = self.conn.execute(
-                "SELECT id, ticker FROM filings WHERE accession_number = ?", [accession_number]
+                "SELECT id, ticker FROM filings WHERE accession_number = ?",
+                [accession_number],
             ).fetchone()
 
             if not filing:
@@ -394,7 +392,11 @@ class DataLifecycleManager:
 
             return {
                 "status": "success",
-                "details": {"files_deleted": len(files_to_delete), "files": files_to_delete, "deleted": not dry_run},
+                "details": {
+                    "files_deleted": len(files_to_delete),
+                    "files": files_to_delete,
+                    "deleted": not dry_run,
+                },
             }
 
         except Exception as e:
@@ -437,7 +439,11 @@ class DataLifecycleManager:
 
             return {
                 "status": "success",
-                "details": {"files_deleted": len(files_to_delete), "files": files_to_delete, "deleted": not dry_run},
+                "details": {
+                    "files_deleted": len(files_to_delete),
+                    "files": files_to_delete,
+                    "deleted": not dry_run,
+                },
             }
 
         except Exception as e:
@@ -457,7 +463,8 @@ class DataLifecycleManager:
         try:
             # Get filings from DuckDB
             filings = self.conn.execute(
-                "SELECT * FROM filings WHERE ticker = ? ORDER BY filing_date DESC", [ticker]
+                "SELECT * FROM filings WHERE ticker = ? ORDER BY filing_date DESC",
+                [ticker],
             ).fetchdf()
 
             if filings.empty:
@@ -534,12 +541,20 @@ class DataLifecycleManager:
 
             if filing_dates.empty:
                 logger.warning(f"No filing dates found for {ticker} {filing_type}")
-                return {"ticker": ticker, "filing_type": filing_type, "filing_dates": []}
+                return {
+                    "ticker": ticker,
+                    "filing_type": filing_type,
+                    "filing_dates": [],
+                }
 
             # Convert to list of dictionaries
             filing_dates_list = filing_dates.to_dict(orient="records")
 
-            return {"ticker": ticker, "filing_type": filing_type, "filing_dates": filing_dates_list}
+            return {
+                "ticker": ticker,
+                "filing_type": filing_type,
+                "filing_dates": filing_dates_list,
+            }
 
         except Exception as e:
             logger.error(f"Error getting filing dates for {ticker} {filing_type}: {e}")
@@ -551,14 +566,26 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Data Lifecycle Manager")
-    parser.add_argument("--db-path", default="data/financial_data.duckdb", help="Path to DuckDB database")
+    parser.add_argument(
+        "--db-path",
+        default="data/financial_data.duckdb",
+        help="Path to DuckDB database",
+    )
     parser.add_argument("--vector-store-path", default="data/vector_store", help="Path to vector store")
     parser.add_argument("--filings-dir", default="data/filings", help="Path to filings directory")
-    parser.add_argument("--graph-store-dir", default="data/graph_store", help="Path to graph store directory")
+    parser.add_argument(
+        "--graph-store-dir",
+        default="data/graph_store",
+        help="Path to graph store directory",
+    )
     parser.add_argument("--action", choices=["info", "delete"], required=True, help="Action to perform")
     parser.add_argument("--accession-number", help="SEC accession number")
     parser.add_argument("--ticker", help="Company ticker")
-    parser.add_argument("--dry-run", action="store_true", help="Simulate deletion without actually deleting files")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Simulate deletion without actually deleting files",
+    )
 
     args = parser.parse_args()
 

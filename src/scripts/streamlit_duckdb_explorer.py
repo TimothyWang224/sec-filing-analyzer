@@ -5,7 +5,6 @@ A Streamlit app for exploring DuckDB databases.
 """
 
 import os
-from pathlib import Path
 
 import duckdb
 import pandas as pd
@@ -99,7 +98,10 @@ with tab1:
     # Pagination
     rows_per_page = st.slider("Rows per page", min_value=5, max_value=100, value=10, step=5)
     page = st.number_input(
-        "Page", min_value=1, max_value=max(1, (row_count + rows_per_page - 1) // rows_per_page), value=1
+        "Page",
+        min_value=1,
+        max_value=max(1, (row_count + rows_per_page - 1) // rows_per_page),
+        value=1,
     )
 
     offset = (page - 1) * rows_per_page
@@ -132,7 +134,7 @@ with tab2:
                 {
                     "Column": col,
                     "Potential Referenced Table": col.replace("_id", "")
-                    if not col in ["ticker", "filing_id", "fact_id"]
+                    if col not in ["ticker", "filing_id", "fact_id"]
                     else "companies"
                     if col == "ticker"
                     else "filings"
@@ -197,7 +199,12 @@ with tab3:
             # Export options
             if not result.empty:
                 csv = result.to_csv(index=False).encode("utf-8")
-                st.download_button(label="Download as CSV", data=csv, file_name=f"query_result.csv", mime="text/csv")
+                st.download_button(
+                    label="Download as CSV",
+                    data=csv,
+                    file_name="query_result.csv",
+                    mime="text/csv",
+                )
         except Exception as e:
             st.error(f"Error executing query: {e}")
 
@@ -231,12 +238,16 @@ with tab4:
 
         with col1:
             selected_tickers = st.multiselect(
-                "Select Companies", tickers, default=["MSFT"] if "MSFT" in tickers else tickers[:1]
+                "Select Companies",
+                tickers,
+                default=["MSFT"] if "MSFT" in tickers else tickers[:1],
             )
 
         with col2:
             selected_metrics = st.multiselect(
-                "Select Metrics", metrics, default=["Revenue"] if "Revenue" in metrics else metrics[:1]
+                "Select Metrics",
+                metrics,
+                default=["Revenue"] if "Revenue" in metrics else metrics[:1],
             )
 
         with col3:
@@ -275,7 +286,11 @@ with tab4:
                             color="ticker",
                             facet_row="metric_name",
                             title=f"{', '.join(selected_metrics)} for {', '.join(selected_tickers)} ({period_type})",
-                            labels={"value": "Value", "end_date": "Date", "ticker": "Company"},
+                            labels={
+                                "value": "Value",
+                                "end_date": "Date",
+                                "ticker": "Company",
+                            },
                         )
                         st.plotly_chart(fig, use_container_width=True)
                     else:
@@ -287,7 +302,11 @@ with tab4:
                             facet_row="metric_name",
                             barmode="group",
                             title=f"{', '.join(selected_metrics)} for {', '.join(selected_tickers)} ({period_type})",
-                            labels={"value": "Value", "end_date": "Date", "ticker": "Company"},
+                            labels={
+                                "value": "Value",
+                                "end_date": "Date",
+                                "ticker": "Company",
+                            },
                         )
                         st.plotly_chart(fig, use_container_width=True)
                 else:
@@ -324,7 +343,11 @@ with tab4:
 
             if not viz_data.empty:
                 # Choose visualization type
-                viz_type = st.selectbox("Visualization Type", ["Scatter Plot", "Bar Chart", "Line Chart"], index=0)
+                viz_type = st.selectbox(
+                    "Visualization Type",
+                    ["Scatter Plot", "Bar Chart", "Line Chart"],
+                    index=0,
+                )
 
                 if viz_type == "Scatter Plot":
                     fig = px.scatter(

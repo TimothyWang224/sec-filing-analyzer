@@ -7,12 +7,9 @@ to the OpenAI API limits to help optimize batch sizes and rate limits.
 
 import json
 import logging
-import os
 import sys
-import time
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,7 +19,6 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.config import ETLConfig
-from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
 
 # Load environment variables
 load_dotenv()
@@ -109,7 +105,14 @@ def analyze_filings_token_usage() -> Dict[str, Any]:
             tokens = estimate_tokens_in_filing(file_path)
 
             if tokens > 0:
-                filing_tokens.append({"filing_id": file_path.stem, "company": company, "form": form, "tokens": tokens})
+                filing_tokens.append(
+                    {
+                        "filing_id": file_path.stem,
+                        "company": company,
+                        "form": form,
+                        "tokens": tokens,
+                    }
+                )
 
                 # Update company stats
                 if company not in company_tokens:
@@ -164,7 +167,10 @@ def estimate_api_usage(stats: Dict[str, Any], batch_size: int = 50) -> Dict[str,
     total_chunks = total_tokens / batch_size
 
     # Estimate time to process all filings
-    requests_per_minute = min(OPENAI_LIMITS["requests_per_minute"], OPENAI_LIMITS["tokens_per_minute"] / batch_size)
+    requests_per_minute = min(
+        OPENAI_LIMITS["requests_per_minute"],
+        OPENAI_LIMITS["tokens_per_minute"] / batch_size,
+    )
     minutes_to_process = total_chunks / requests_per_minute
 
     # Estimate daily capacity
@@ -332,7 +338,15 @@ def main():
             if key in stats_copy and isinstance(stats_copy[key], np.number):
                 stats_copy[key] = float(stats_copy[key])
 
-        json.dump({"stats": stats_copy, "api_usage": api_usage, "openai_limits": OPENAI_LIMITS}, f, indent=2)
+        json.dump(
+            {
+                "stats": stats_copy,
+                "api_usage": api_usage,
+                "openai_limits": OPENAI_LIMITS,
+            },
+            f,
+            indent=2,
+        )
 
     logger.info(f"Token usage data saved to {data_path}")
 

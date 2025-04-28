@@ -18,7 +18,12 @@ load_dotenv()
 class OpenAILLM(BaseLLM):
     """OpenAI LLM implementation using the OpenAI API."""
 
-    def __init__(self, model: str = "gpt-4-turbo-preview", api_key: Optional[str] = None, **kwargs: Any):
+    def __init__(
+        self,
+        model: str = "gpt-4-turbo-preview",
+        api_key: Optional[str] = None,
+        **kwargs: Any,
+    ):
         """Initialize the OpenAI LLM.
 
         Args:
@@ -36,7 +41,8 @@ class OpenAILLM(BaseLLM):
 
         # Create OpenAI client instance
         self.client = openai.OpenAI(
-            api_key=self.api_key, base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1")
+            api_key=self.api_key,
+            base_url=os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
         )
 
     @timed_function(category="llm")
@@ -241,7 +247,10 @@ class OpenAILLM(BaseLLM):
             if isinstance(function_call, str):
                 api_params["tool_choice"] = function_call
             elif isinstance(function_call, dict) and "name" in function_call:
-                api_params["tool_choice"] = {"type": "function", "function": {"name": function_call["name"]}}
+                api_params["tool_choice"] = {
+                    "type": "function",
+                    "function": {"name": function_call["name"]},
+                }
 
         # Time the API call specifically
         with TimingContext("openai_api_call", category="api", logger=logger):
@@ -273,7 +282,10 @@ class OpenAILLM(BaseLLM):
         if hasattr(message, "tool_calls") and message.tool_calls:
             tool_call = message.tool_calls[0]
             if tool_call.type == "function":
-                result["function_call"] = {"name": tool_call.function.name, "arguments": tool_call.function.arguments}
+                result["function_call"] = {
+                    "name": tool_call.function.name,
+                    "arguments": tool_call.function.arguments,
+                }
 
         # Add usage information if requested
         if return_usage:

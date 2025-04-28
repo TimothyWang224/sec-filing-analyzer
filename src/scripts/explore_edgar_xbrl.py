@@ -8,8 +8,6 @@ import logging
 import sys
 from pathlib import Path
 
-import pandas as pd
-
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -109,7 +107,7 @@ def explore_xbrl_capabilities():
                         # Try to convert to pandas
                         if hasattr(statement, "to_pandas"):
                             df = statement.to_pandas()
-                            print(f"\nStatement as DataFrame:")
+                            print("\nStatement as DataFrame:")
                             print(df.head())
 
                 # Check if there are facts

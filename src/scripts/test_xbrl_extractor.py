@@ -9,7 +9,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Import XBRL extractor
-from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import SimplifiedXBRLExtractor
+from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
+    SimplifiedXBRLExtractor,
+)
 
 # Load environment variables
 load_dotenv()

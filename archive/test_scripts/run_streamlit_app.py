@@ -17,7 +17,9 @@ def main():
     print("Launching SEC Filing Analyzer Streamlit App...")
 
     # Get the path to the run_app.py file
-    app_script_path = Path(__file__).resolve().parent / "src" / "streamlit_app" / "run_app.py"
+    app_script_path = (
+        Path(__file__).resolve().parent / "src" / "streamlit_app" / "run_app.py"
+    )
 
     if not app_script_path.exists():
         print(f"Error: App script not found at {app_script_path}")

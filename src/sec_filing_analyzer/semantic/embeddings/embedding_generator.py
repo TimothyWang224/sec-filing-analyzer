@@ -6,7 +6,7 @@ This module provides functionality for generating vector embeddings using OpenAI
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Union
 
 import numpy as np
 from llama_index.embeddings.openai import OpenAIEmbedding

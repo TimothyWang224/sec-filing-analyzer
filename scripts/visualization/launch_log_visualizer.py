@@ -16,9 +16,13 @@ from pathlib import Path
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Launch SEC Filing Analyzer Log Visualizer")
+    parser = argparse.ArgumentParser(
+        description="Launch SEC Filing Analyzer Log Visualizer"
+    )
     parser.add_argument("--log-file", help="Path to log file")
-    parser.add_argument("--port", type=int, default=8501, help="Port to run Streamlit on")
+    parser.add_argument(
+        "--port", type=int, default=8501, help="Port to run Streamlit on"
+    )
     args = parser.parse_args()
 
     # Find the workflow_visualizer.py script
@@ -54,7 +58,9 @@ def main():
     # Open browser
     webbrowser.open(f"http://localhost:{args.port}")
 
-    print(f"SEC Filing Analyzer Log Visualizer is running at http://localhost:{args.port}")
+    print(
+        f"SEC Filing Analyzer Log Visualizer is running at http://localhost:{args.port}"
+    )
     print("Press Ctrl+C to stop")
 
     try:

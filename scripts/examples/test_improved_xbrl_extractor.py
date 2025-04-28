@@ -12,10 +12,14 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 
-from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
+from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import (
+    ImprovedEdgarXBRLExtractor,
+)
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -69,7 +73,9 @@ def process_filing(ticker: str, accession_number: str, db_path: str):
         console.print(f"[red]Error: {e}[/red]")
 
 
-def process_company(ticker: str, filing_types: list = None, limit: int = None, db_path: str = None):
+def process_company(
+    ticker: str, filing_types: list = None, limit: int = None, db_path: str = None
+):
     """
     Process all filings for a company.
 
@@ -120,22 +126,43 @@ def process_company(ticker: str, filing_types: list = None, limit: int = None, d
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Test the improved Edgar XBRL extractor")
+    parser = argparse.ArgumentParser(
+        description="Test the improved Edgar XBRL extractor"
+    )
     parser.add_argument("--ticker", required=True, help="Company ticker symbol")
-    parser.add_argument("--accession", help="SEC accession number (for processing a single filing)")
-    parser.add_argument("--filing-type", action="append", help="Filing type to process (e.g., 10-K, 10-Q)")
-    parser.add_argument("--limit", type=int, help="Maximum number of filings to process")
-    parser.add_argument("--db", default="data/financial_data_new.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--accession", help="SEC accession number (for processing a single filing)"
+    )
+    parser.add_argument(
+        "--filing-type",
+        action="append",
+        help="Filing type to process (e.g., 10-K, 10-Q)",
+    )
+    parser.add_argument(
+        "--limit", type=int, help="Maximum number of filings to process"
+    )
+    parser.add_argument(
+        "--db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the DuckDB database file",
+    )
 
     args = parser.parse_args()
 
     # Process filings
     if args.accession:
         # Process a single filing
-        process_filing(ticker=args.ticker, accession_number=args.accession, db_path=args.db)
+        process_filing(
+            ticker=args.ticker, accession_number=args.accession, db_path=args.db
+        )
     else:
         # Process all filings for a company
-        process_company(ticker=args.ticker, filing_types=args.filing_type, limit=args.limit, db_path=args.db)
+        process_company(
+            ticker=args.ticker,
+            filing_types=args.filing_type,
+            limit=args.limit,
+            db_path=args.db,
+        )
 
 
 if __name__ == "__main__":

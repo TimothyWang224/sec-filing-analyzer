@@ -23,7 +23,6 @@ import logging
 import os
 import tempfile
 import webbrowser
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
@@ -34,7 +33,9 @@ from neo4j import GraphDatabase
 from sec_filing_analyzer.config import neo4j_config
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -50,8 +51,15 @@ class Neo4jExplorer:
     ):
         """Initialize the Neo4j explorer."""
         # Get Neo4j credentials from parameters or environment variables
-        self.uri = url or os.getenv("NEO4J_URI") or os.getenv("NEO4J_URL") or neo4j_config.url
-        self.user = username or os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME") or neo4j_config.username
+        self.uri = (
+            url or os.getenv("NEO4J_URI") or os.getenv("NEO4J_URL") or neo4j_config.url
+        )
+        self.user = (
+            username
+            or os.getenv("NEO4J_USER")
+            or os.getenv("NEO4J_USERNAME")
+            or neo4j_config.username
+        )
         self.pwd = password or os.getenv("NEO4J_PASSWORD") or neo4j_config.password
         self.db = database or os.getenv("NEO4J_DATABASE") or neo4j_config.database
 
@@ -87,7 +95,9 @@ class Neo4jExplorer:
             # Then count nodes for each label
             counts = {}
             for label in labels:
-                count_result = session.run(f"MATCH (n:{label}) RETURN count(n) as count")
+                count_result = session.run(
+                    f"MATCH (n:{label}) RETURN count(n) as count"
+                )
                 count_record = count_result.single()
                 if count_record:
                     counts[label] = count_record["count"]
@@ -100,13 +110,17 @@ class Neo4jExplorer:
         """Count relationships by type."""
         with self.driver.session(database=self.db) as session:
             # First get all relationship types
-            types_result = session.run("CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType")
+            types_result = session.run(
+                "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+            )
             rel_types = [record["relationshipType"] for record in types_result]
 
             # Then count relationships for each type
             counts = {}
             for rel_type in rel_types:
-                count_result = session.run(f"MATCH ()-[r:{rel_type}]->() RETURN count(r) as count")
+                count_result = session.run(
+                    f"MATCH ()-[r:{rel_type}]->() RETURN count(r) as count"
+                )
                 count_record = count_result.single()
                 if count_record:
                     counts[rel_type] = count_record["count"]
@@ -141,7 +155,9 @@ class Neo4jExplorer:
                 schema[label] = {"properties": properties, "relationships": []}
 
             # Get all relationship types
-            rel_types_result = session.run("CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType")
+            rel_types_result = session.run(
+                "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+            )
             rel_types = [record["relationshipType"] for record in rel_types_result]
 
             # For each relationship type, find the connected node labels
@@ -159,13 +175,21 @@ class Neo4jExplorer:
                     for from_label in from_labels:
                         if from_label in schema:
                             schema[from_label]["relationships"].append(
-                                {"type": rel_type, "direction": "outgoing", "to_labels": to_labels}
+                                {
+                                    "type": rel_type,
+                                    "direction": "outgoing",
+                                    "to_labels": to_labels,
+                                }
                             )
 
                     for to_label in to_labels:
                         if to_label in schema:
                             schema[to_label]["relationships"].append(
-                                {"type": rel_type, "direction": "incoming", "from_labels": from_labels}
+                                {
+                                    "type": rel_type,
+                                    "direction": "incoming",
+                                    "from_labels": from_labels,
+                                }
                             )
 
         return schema
@@ -182,9 +206,14 @@ class Neo4jExplorer:
                 limit=limit,
             )
 
-            return [{"id": record["neo4j_id"], "properties": dict(record["n"])} for record in result]
+            return [
+                {"id": record["neo4j_id"], "properties": dict(record["n"])}
+                for record in result
+            ]
 
-    def get_relationships_by_type(self, rel_type: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_relationships_by_type(
+        self, rel_type: str, limit: int = 10
+    ) -> List[Dict[str, Any]]:
         """Get relationships of a specific type."""
         with self.driver.session(database=self.db) as session:
             result = session.run(
@@ -274,7 +303,9 @@ class Neo4jExplorer:
                 "incoming_relationships": incoming,
             }
 
-    def find_paths(self, from_label: str, to_label: str, max_depth: int = 4, limit: int = 5) -> List[Dict[str, Any]]:
+    def find_paths(
+        self, from_label: str, to_label: str, max_depth: int = 4, limit: int = 5
+    ) -> List[Dict[str, Any]]:
         """Find paths between two node labels."""
         with self.driver.session(database=self.db) as session:
             result = session.run(
@@ -291,14 +322,19 @@ class Neo4jExplorer:
                 path = record["path"]
                 path_data = {
                     "nodes": [dict(node) for node in path.nodes],
-                    "relationships": [{"type": rel.type, "properties": dict(rel)} for rel in path.relationships],
+                    "relationships": [
+                        {"type": rel.type, "properties": dict(rel)}
+                        for rel in path.relationships
+                    ],
                     "length": len(path.relationships),
                 }
                 paths.append(path_data)
 
             return paths
 
-    def visualize_graph(self, limit_nodes: int = 100, output_file: Optional[str] = None) -> str:
+    def visualize_graph(
+        self, limit_nodes: int = 100, output_file: Optional[str] = None
+    ) -> str:
         """Visualize the graph structure."""
         # Create a NetworkX graph
         G = nx.DiGraph()
@@ -366,22 +402,49 @@ class Neo4jExplorer:
 
         # Create a color map for node types
         color_list = list(TABLEAU_COLORS.values())
-        node_colors = {node_type: color_list[i % len(color_list)] for i, node_type in enumerate(node_types)}
+        node_colors = {
+            node_type: color_list[i % len(color_list)]
+            for i, node_type in enumerate(node_types)
+        }
 
         # Draw nodes by type
         for node_type in node_types:
-            node_list = [node for node, data in G.nodes(data=True) if data.get("label") == node_type]
+            node_list = [
+                node
+                for node, data in G.nodes(data=True)
+                if data.get("label") == node_type
+            ]
             nx.draw_networkx_nodes(
-                G, pos, nodelist=node_list, node_color=node_colors[node_type], node_size=500, alpha=0.8, label=node_type
+                G,
+                pos,
+                nodelist=node_list,
+                node_color=node_colors[node_type],
+                node_size=500,
+                alpha=0.8,
+                label=node_type,
             )
 
         # Draw edges by type
         for edge_type in edge_types:
-            edge_list = [(u, v) for u, v, data in G.edges(data=True) if data.get("type") == edge_type]
-            nx.draw_networkx_edges(G, pos, edgelist=edge_list, width=1.5, alpha=0.7, edge_color="gray", label=edge_type)
+            edge_list = [
+                (u, v)
+                for u, v, data in G.edges(data=True)
+                if data.get("type") == edge_type
+            ]
+            nx.draw_networkx_edges(
+                G,
+                pos,
+                edgelist=edge_list,
+                width=1.5,
+                alpha=0.7,
+                edge_color="gray",
+                label=edge_type,
+            )
 
         # Draw node labels
-        labels = {node: data.get("name", str(node)) for node, data in G.nodes(data=True)}
+        labels = {
+            node: data.get("name", str(node)) for node, data in G.nodes(data=True)
+        }
         nx.draw_networkx_labels(G, pos, labels, font_size=10)
 
         # Add a legend
@@ -424,22 +487,40 @@ def main():
     parser.add_argument("--database", help="Neo4j database name")
 
     # Exploration options
-    parser.add_argument("--summary", action="store_true", help="Show a summary of the graph structure")
+    parser.add_argument(
+        "--summary", action="store_true", help="Show a summary of the graph structure"
+    )
     parser.add_argument("--nodes", help="List nodes with a specific label")
     parser.add_argument("--relationships", help="List relationships of a specific type")
-    parser.add_argument("--schema", action="store_true", help="Show the database schema")
+    parser.add_argument(
+        "--schema", action="store_true", help="Show the database schema"
+    )
     parser.add_argument("--sample", help="Show sample nodes of a specific label")
     parser.add_argument("--traverse", help="Traverse the graph starting from a node ID")
-    parser.add_argument("--path", nargs=2, metavar=("FROM", "TO"), help="Find paths between two node labels")
-    parser.add_argument("--visualize", action="store_true", help="Visualize the graph structure")
+    parser.add_argument(
+        "--path",
+        nargs=2,
+        metavar=("FROM", "TO"),
+        help="Find paths between two node labels",
+    )
+    parser.add_argument(
+        "--visualize", action="store_true", help="Visualize the graph structure"
+    )
     parser.add_argument("--output", help="Output file for visualization")
-    parser.add_argument("--limit", type=int, default=10, help="Limit the number of results")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Limit the number of results"
+    )
 
     args = parser.parse_args()
 
     try:
         # Initialize Neo4j explorer
-        explorer = Neo4jExplorer(url=args.url, username=args.username, password=args.password, database=args.database)
+        explorer = Neo4jExplorer(
+            url=args.url,
+            username=args.username,
+            password=args.password,
+            database=args.database,
+        )
 
         # Execute the requested command
         if args.summary:
@@ -457,7 +538,7 @@ def main():
             for node_type, schema_info in summary["schema"].items():
                 print(f"\n  {node_type}:")
                 print(f"    Properties: {', '.join(schema_info['properties'])}")
-                print(f"    Relationships:")
+                print("    Relationships:")
                 for rel in schema_info["relationships"]:
                     if rel["direction"] == "outgoing":
                         print(f"      -[{rel['type']}]-> {rel['to_labels']}")
@@ -470,7 +551,9 @@ def main():
             print_json(nodes)
 
         elif args.relationships:
-            rels = explorer.get_relationships_by_type(args.relationships, limit=args.limit)
+            rels = explorer.get_relationships_by_type(
+                args.relationships, limit=args.limit
+            )
             print(f"\n=== Relationships of Type '{args.relationships}' ===")
             print_json(rels)
 
@@ -501,7 +584,9 @@ def main():
             print("This may take a moment...")
 
             # Generate the visualization
-            viz_file = explorer.visualize_graph(limit_nodes=args.limit, output_file=output_file)
+            viz_file = explorer.visualize_graph(
+                limit_nodes=args.limit, output_file=output_file
+            )
 
             # Open the visualization in the default browser
             print(f"\nVisualization saved to: {viz_file}")
@@ -560,14 +645,18 @@ def main():
             elif choice == "7":
                 limit = input("Enter node limit (default: 50): ")
                 limit = int(limit) if limit.isdigit() else 50
-                output = input("Enter output file path (leave empty for temporary file): ")
+                output = input(
+                    "Enter output file path (leave empty for temporary file): "
+                )
                 output_file = output if output else None
 
                 print("\n=== Visualizing Neo4j Graph ===")
                 print("This may take a moment...")
 
                 # Generate the visualization
-                viz_file = explorer.visualize_graph(limit_nodes=limit, output_file=output_file)
+                viz_file = explorer.visualize_graph(
+                    limit_nodes=limit, output_file=output_file
+                )
 
                 # Open the visualization in the default browser
                 print(f"\nVisualization saved to: {viz_file}")

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 
 class Capability(ABC):
@@ -38,13 +38,23 @@ class Capability(ABC):
         return action
 
     async def process_result(
-        self, agent: Any, context: Dict[str, Any], response: str, action: Dict[str, Any], result: Any
+        self,
+        agent: Any,
+        context: Dict[str, Any],
+        response: str,
+        action: Dict[str, Any],
+        result: Any,
     ) -> Any:
         """Process the result of an action."""
         return result
 
     async def process_new_memories(
-        self, agent: Any, context: Dict[str, Any], response: str, result: Any, memories: list
+        self,
+        agent: Any,
+        context: Dict[str, Any],
+        response: str,
+        result: Any,
+        memories: list,
     ) -> list:
         """Process new memories before they're added."""
         return memories

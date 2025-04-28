@@ -6,8 +6,6 @@ Utility functions for launching the DuckDB UI.
 
 import logging
 import os
-import webbrowser
-from pathlib import Path
 
 import streamlit as st
 

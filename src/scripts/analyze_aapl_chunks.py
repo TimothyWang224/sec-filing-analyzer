@@ -7,7 +7,6 @@ characters, formatting, or other issues that might cause embedding generation to
 
 import json
 import logging
-import os
 import re
 import statistics
 import sys
@@ -21,7 +20,9 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.config import ETLConfig
-from sec_filing_analyzer.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
+from sec_filing_analyzer.embeddings.parallel_embeddings import (
+    ParallelEmbeddingGenerator,
+)
 
 # Load environment variables
 load_dotenv()
@@ -120,7 +121,11 @@ def analyze_text_chunks(chunks: List[str]) -> Dict[str, Any]:
         # If any issues were found, add to problematic chunks
         if issues:
             results["problematic_chunks"].append(
-                {"index": i, "issues": issues, "preview": chunk[:100] + "..." if len(chunk) > 100 else chunk}
+                {
+                    "index": i,
+                    "issues": issues,
+                    "preview": chunk[:100] + "..." if len(chunk) > 100 else chunk,
+                }
             )
 
     # Calculate statistics on chunk lengths

@@ -7,12 +7,10 @@ It preserves all existing data while converting embeddings to a more efficient s
 
 import json
 import logging
-import os
 import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -24,7 +22,9 @@ from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage.optimized_vector_store import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -38,11 +38,15 @@ def backup_existing_store(vector_store_path: Path) -> Path:
         Path to the backup directory
     """
     if not vector_store_path.exists():
-        logger.warning(f"Vector store path {vector_store_path} does not exist, nothing to backup")
+        logger.warning(
+            f"Vector store path {vector_store_path} does not exist, nothing to backup"
+        )
         return vector_store_path
 
     # Create backup directory
-    backup_path = vector_store_path.parent / f"{vector_store_path.name}_backup_{int(time.time())}"
+    backup_path = (
+        vector_store_path.parent / f"{vector_store_path.name}_backup_{int(time.time())}"
+    )
     logger.info(f"Creating backup of vector store at {backup_path}")
 
     # Copy files to backup directory
@@ -64,7 +68,9 @@ def migrate_json_to_numpy(vector_store_path: Path) -> None:
     company_dir = vector_store_path / "by_company"
 
     if not embeddings_dir.exists():
-        logger.warning(f"Embeddings directory {embeddings_dir} does not exist, nothing to migrate")
+        logger.warning(
+            f"Embeddings directory {embeddings_dir} does not exist, nothing to migrate"
+        )
         return
 
     # Create company directory if it doesn't exist
@@ -126,13 +132,14 @@ def migrate_json_to_numpy(vector_store_path: Path) -> None:
     with open(mapping_file, "w", encoding="utf-8") as f:
         json.dump(company_to_docs, f, indent=2)
 
-    logger.info(f"Migration complete. Converted {len(json_files)} embeddings to NumPy format")
+    logger.info(
+        f"Migration complete. Converted {len(json_files)} embeddings to NumPy format"
+    )
     logger.info(f"Created company mapping for {len(company_to_docs)} companies")
 
 
 def main():
     """Main function to migrate the vector store."""
-    import time
 
     # Get vector store path from config
     vector_store_path = Path(StorageConfig().vector_store_path)

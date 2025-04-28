@@ -1,85 +1,132 @@
 #!/usr/bin/env python
 """
-Pre-commit wrapper script that logs all output from pre-commit hooks.
-This script is called by pre-commit as a hook itself.
+Pre-commit log wrapper script.
+
+This script wraps pre-commit hooks and logs their output to a file.
+It's used to capture the output of pre-commit hooks for debugging purposes.
 """
 
 import datetime
 import os
-import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+# Define log directory
+LOG_DIR = Path(".logs/precommit")
 
-def main():
-    # Create logs directory if it doesn't exist
-    # Use a directory outside the git repository to avoid git detecting changes
-    logs_dir = Path(os.path.expanduser("~")) / ".sec_filing_analyzer_logs"
-    logs_dir.mkdir(exist_ok=True)
 
-    # Generate timestamp and log file paths
-    # Use ISO format with timezone information for the log header
-    now = datetime.datetime.now().astimezone()
-    iso_timestamp = now.isoformat(timespec="seconds")
+def ensure_log_dir():
+    """Ensure the log directory exists."""
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    # Use a filename-friendly format for the file name
-    file_timestamp = now.strftime("%Y%m%d_%H%M%S")
-    log_file = logs_dir / f"precommit_{file_timestamp}.log"
-    latest_log = logs_dir / "latest.log"
 
-    # Run pre-commit and capture output
+def get_log_filename():
+    """Generate a log filename based on the current timestamp."""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    return LOG_DIR / f"pre-commit_{timestamp}.log"
+
+
+def run_pre_commit():
+    """Run pre-commit and capture its output."""
+    # Skip the log-wrapper hook to avoid infinite recursion
+    os.environ["SKIP"] = "log-wrapper"
+
+    # Check if we're already in a pre-commit run
+    if os.environ.get("PRE_COMMIT_RUNNING") == "1":
+        print("Already running in pre-commit, skipping log wrapper")
+        return 0
+
     try:
-        # Open the log file
-        with open(log_file, "w") as log:
-            # Write header information
-            log.write(f"Pre-commit run at {iso_timestamp}\n")
-            log.write(f"Working directory: {os.getcwd()}\n")
-            log.write("-" * 80 + "\n\n")
+        # Create log file
+        ensure_log_dir()
+        log_file = get_log_filename()
+
+        # Create a symbolic link to the latest log
+        latest_link = LOG_DIR / "latest.log"
+        if latest_link.exists():
+            try:
+                latest_link.unlink()
+            except Exception as e:
+                print(f"Warning: Could not remove latest.log link: {e}")
+
+        try:
+            # Create the latest.log link
+            if sys.platform != "win32":
+                # On non-Windows platforms, create a symbolic link
+                latest_link.symlink_to(log_file.name)
+            # On Windows, we'll copy the file later
+        except Exception as e:
+            print(f"Warning: Could not create latest.log link: {e}")
+
+        # Open log file
+        with open(log_file, "w", encoding="utf-8") as f:
+            # Write header
+            f.write(f"Pre-commit log - {datetime.datetime.now().isoformat()}\n")
+            f.write("=" * 80 + "\n\n")
 
             # Run pre-commit with all hooks except our wrapper
-            cmd = ["pre-commit", "run", "--hook-stage", "pre-commit", "--all-files"]
-            process = subprocess.run(
+            # Only run on staged files, not all files
+            cmd = ["pre-commit", "run", "--hook-stage", "pre-commit"]
+
+            # Log the command
+            f.write(f"Running command: {' '.join(cmd)}\n\n")
+
+            # Run the command and capture output
+            process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                env={**os.environ, "SKIP": "log-wrapper"},  # Skip our wrapper to avoid infinite recursion
+                encoding="utf-8",
+                errors="replace",
             )
 
-            # Process the output to add hook-specific headers
-            output = process.stdout
+            # Stream output to both console and log file
+            while True:
+                output = process.stdout.readline()
+                if output == "" and process.poll() is not None:
+                    break
+                if output:
+                    sys.stdout.write(output)
+                    f.write(output)
+                    f.flush()
 
-            # Add headers for each hook
-            hook_pattern = re.compile(r"^([a-zA-Z0-9_-]+)\.+([A-Za-z]+)$", re.MULTILINE)
-            processed_output = hook_pattern.sub(r"\n===== \1 (\2) =====\n\1\2", output)
-
-            # Write the processed output to the log file
-            log.write(processed_output)
-
-            # Also print the original output to the console
-            print(output, end="")
+            # Wait for process to complete
+            process.wait()
 
             # Write footer
-            log.write("\n" + "-" * 80 + "\n")
-            log.write(f"Exit code: {process.returncode}\n")
+            f.write("\n" + "=" * 80 + "\n")
+            f.write(f"Exit code: {process.returncode}\n")
 
-        # Create a copy as latest.log (using shutil.copy to ensure proper file rotation on all platforms)
-        shutil.copy(log_file, latest_log)
+            # On Windows, create the "latest.log" by copying
+            if sys.platform == "win32" and not latest_link.exists():
+                try:
+                    import shutil
 
-        # Always return 0 regardless of the process return code
-        # The actual pre-commit hooks will still block commits if they fail
-        # This prevents the log wrapper from reporting that files were modified
-        # We're explicitly ignoring process.returncode here
-        return 0
+                    shutil.copy2(log_file, latest_link)
+                except Exception as e:
+                    print(f"Warning: Could not create latest.log copy: {e}")
+
+            # Return the original process return code
+            # This ensures that if other hooks fail, pre-commit will still fail
+            # But we'll exit with 0 in the main function to avoid the log wrapper itself being reported as failed
+            return process.returncode
+
     except Exception as e:
-        print(f"Error in pre-commit wrapper: {e}")
-        # Return error code if our wrapper fails
+        print(f"Error in pre-commit log wrapper: {e}")
         return 1
 
 
+def main():
+    """Main entry point."""
+    return run_pre_commit()
+
+
 if __name__ == "__main__":
-    # Always exit with code 0 to prevent pre-commit from thinking the hook failed
-    main()
+    # Run the main function to execute pre-commit hooks and log the output
+    result = main()
+
+    # Always exit with code 0 to prevent pre-commit from thinking the log wrapper itself failed
+    # The actual pre-commit hooks will still block commits if they fail through the normal pre-commit mechanism
     sys.exit(0)

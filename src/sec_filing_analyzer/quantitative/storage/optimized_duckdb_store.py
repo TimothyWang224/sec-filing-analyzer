@@ -21,7 +21,12 @@ class OptimizedDuckDBStore:
     An optimized interface to store and query financial data using DuckDB with batch operations.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        batch_size: int = 100,
+        read_only: bool = True,
+    ):
         """Initialize the optimized DuckDB financial store.
 
         Args:
@@ -1575,7 +1580,14 @@ class OptimizedDuckDBStore:
         date_str = str(date_value).strip()
 
         # If empty string or special values, return None
-        if not date_str or date_str in ["<NA>", "nan", "NaT", "None", "null", "decimals"]:
+        if not date_str or date_str in [
+            "<NA>",
+            "nan",
+            "NaT",
+            "None",
+            "null",
+            "decimals",
+        ]:
             return None
 
         # Check if it's just a year (e.g., "2023")

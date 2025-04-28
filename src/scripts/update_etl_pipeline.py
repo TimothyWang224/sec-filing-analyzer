@@ -7,16 +7,16 @@ and ensures that all necessary components are properly initialized.
 
 import json
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from sec_filing_analyzer.config import ETLConfig, StorageConfig
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
+from sec_filing_analyzer.config import StorageConfig
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
 from sec_filing_analyzer.search import CoordinatedSearch
 from sec_filing_analyzer.storage import GraphStore, OptimizedVectorStore
 
@@ -68,8 +68,15 @@ def update_etl_pipeline():
 
     # Save configuration
     config = {
-        "vector_store": {"type": "optimized", "path": str(StorageConfig().vector_store_path), "stats": stats},
-        "graph_store": {"type": "neo4j" if graph_store.use_neo4j else "in-memory", "companies": companies},
+        "vector_store": {
+            "type": "optimized",
+            "path": str(StorageConfig().vector_store_path),
+            "stats": stats,
+        },
+        "graph_store": {
+            "type": "neo4j" if graph_store.use_neo4j else "in-memory",
+            "companies": companies,
+        },
         "etl_pipeline": {"max_workers": 4, "batch_size": 50, "rate_limit": 0.2},
     }
 

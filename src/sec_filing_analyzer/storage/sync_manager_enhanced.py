@@ -5,16 +5,9 @@ This module provides an enhanced version of the StorageSyncManager with better e
 and the ability to continue synchronization even if some parts fail.
 """
 
-import hashlib
-import json
 import logging
-import os
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-
-import duckdb
-import numpy as np
+from typing import Any, Dict
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

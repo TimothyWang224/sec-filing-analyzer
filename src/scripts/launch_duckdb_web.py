@@ -9,10 +9,8 @@ import json
 import os
 import threading
 import time
-import urllib.parse
 import webbrowser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from pathlib import Path
 
 import duckdb
 
@@ -397,7 +395,11 @@ def run_server(port, db_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Launch a web-based DuckDB explorer")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
     parser.add_argument("--port", type=int, default=8000, help="Port to run the web server on")
 
     args = parser.parse_args()

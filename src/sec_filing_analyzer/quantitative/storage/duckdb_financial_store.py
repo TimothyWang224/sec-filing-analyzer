@@ -5,11 +5,8 @@ This module provides a simple interface to store and query financial data
 extracted from SEC filings using DuckDB.
 """
 
-import json
 import logging
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import duckdb
 import pandas as pd
@@ -140,7 +137,13 @@ class DuckDBFinancialStore:
             logger.error(f"Error initializing schema: {e}")
             raise
 
-    def store_company(self, ticker: str, name: Optional[str] = None, cik: Optional[str] = None, **kwargs) -> bool:
+    def store_company(
+        self,
+        ticker: str,
+        name: Optional[str] = None,
+        cik: Optional[str] = None,
+        **kwargs,
+    ) -> bool:
         """Store company information.
 
         Args:
@@ -197,7 +200,11 @@ class DuckDBFinancialStore:
             self.store_company(ticker)
 
             # Prepare data
-            data = {"id": filing_id, "ticker": ticker, "accession_number": accession_number}
+            data = {
+                "id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+            }
 
             # Add additional attributes
             for key, value in kwargs.items():
@@ -284,7 +291,12 @@ class DuckDBFinancialStore:
             return 0
 
     def store_time_series_metrics(
-        self, ticker: str, filing_id: str, fiscal_year: int, fiscal_quarter: int, metrics: Dict[str, Any]
+        self,
+        ticker: str,
+        filing_id: str,
+        fiscal_year: int,
+        fiscal_quarter: int,
+        metrics: Dict[str, Any],
     ) -> int:
         """Store time series metrics.
 
@@ -314,7 +326,14 @@ class DuckDBFinancialStore:
                     (ticker, metric_name, fiscal_year, fiscal_quarter, value, filing_id)
                     VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                    (ticker, metric_name, fiscal_year, fiscal_quarter, value, filing_id),
+                    (
+                        ticker,
+                        metric_name,
+                        fiscal_year,
+                        fiscal_quarter,
+                        value,
+                        filing_id,
+                    ),
                 )
                 count += 1
 
@@ -325,7 +344,12 @@ class DuckDBFinancialStore:
             return 0
 
     def store_financial_ratios(
-        self, ticker: str, filing_id: str, fiscal_year: int, fiscal_quarter: int, ratios: Dict[str, float]
+        self,
+        ticker: str,
+        filing_id: str,
+        fiscal_year: int,
+        fiscal_quarter: int,
+        ratios: Dict[str, float],
     ) -> int:
         """Store financial ratios.
 

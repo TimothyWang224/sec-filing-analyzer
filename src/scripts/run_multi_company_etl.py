@@ -10,12 +10,11 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 # Import from the correct package path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))  # Add root to path
 
-from sec_filing_analyzer.config import ETLConfig, Neo4jConfig, StorageConfig
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from sec_filing_analyzer.storage.graph_store import GraphStore
 
@@ -54,9 +53,15 @@ def parse_args():
 
     # Company tickers argument - either from file or direct list
     ticker_group = parser.add_mutually_exclusive_group(required=True)
-    ticker_group.add_argument("--tickers", nargs="+", help="List of company ticker symbols (e.g., AAPL MSFT NVDA)")
     ticker_group.add_argument(
-        "--tickers-file", type=str, help="Path to a JSON file containing a list of ticker symbols"
+        "--tickers",
+        nargs="+",
+        help="List of company ticker symbols (e.g., AAPL MSFT NVDA)",
+    )
+    ticker_group.add_argument(
+        "--tickers-file",
+        type=str,
+        help="Path to a JSON file containing a list of ticker symbols",
     )
 
     # Date range arguments
@@ -65,11 +70,18 @@ def parse_args():
 
     # Filing types argument
     parser.add_argument(
-        "--filing-types", nargs="+", help="List of filing types to process (e.g., 10-K 10-Q)", default=["10-K", "10-Q"]
+        "--filing-types",
+        nargs="+",
+        help="List of filing types to process (e.g., 10-K 10-Q)",
+        default=["10-K", "10-Q"],
     )
 
     # Neo4j configuration arguments
-    parser.add_argument("--no-neo4j", action="store_true", help="Disable Neo4j and use in-memory graph store instead")
+    parser.add_argument(
+        "--no-neo4j",
+        action="store_true",
+        help="Disable Neo4j and use in-memory graph store instead",
+    )
     parser.add_argument("--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"])
     parser.add_argument("--neo4j-username", help="Neo4j username", default=neo4j_config["username"])
     parser.add_argument("--neo4j-password", help="Neo4j password", default=neo4j_config["password"])
@@ -78,14 +90,36 @@ def parse_args():
     # Parallel processing options
     parser.add_argument("--no-parallel", action="store_true", help="Disable parallel processing")
     parser.add_argument(
-        "--max-workers", type=int, default=4, help="Maximum number of worker threads for parallel processing"
+        "--max-workers",
+        type=int,
+        default=4,
+        help="Maximum number of worker threads for parallel processing",
     )
-    parser.add_argument("--batch-size", type=int, default=100, help="Batch size for embedding generation")
-    parser.add_argument("--rate-limit", type=float, default=0.1, help="Minimum time between API requests in seconds")
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Batch size for embedding generation",
+    )
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=0.1,
+        help="Minimum time between API requests in seconds",
+    )
 
     # Additional options
-    parser.add_argument("--retry-failed", action="store_true", help="Retry failed companies from previous runs")
-    parser.add_argument("--max-retries", type=int, default=3, help="Maximum number of retries for failed companies")
+    parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry failed companies from previous runs",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum number of retries for failed companies",
+    )
     parser.add_argument(
         "--delay-between-companies",
         type=int,
@@ -237,7 +271,10 @@ def main():
 
                 # Process company using the parallel pipeline
                 result = pipeline.process_company(
-                    ticker=ticker, filing_types=args.filing_types, start_date=args.start_date, end_date=args.end_date
+                    ticker=ticker,
+                    filing_types=args.filing_types,
+                    start_date=args.start_date,
+                    end_date=args.end_date,
                 )
 
                 # Check result status

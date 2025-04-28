@@ -2,11 +2,9 @@
 Unit tests for the ToolRegistry class.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 
-from src.contracts import ToolSpec
 from src.tools.base import Tool
 from src.tools.registry import ToolRegistry
 
@@ -14,7 +12,7 @@ from src.tools.registry import ToolRegistry
 class TestTool(Tool):
     """Test tool for testing the registry."""
 
-    async def _execute(self, **kwargs):
+    async def _execute_abstract(self, **kwargs):
         """Execute the test tool."""
         return {"result": "test_result"}
 
@@ -106,7 +104,10 @@ class TestToolRegistry:
         ToolRegistry._register_tool(TestTool, name="test_tool", tags=["test"])
 
         # Mock the SchemaRegistry.get_field_info method
-        with patch("src.tools.registry.SchemaRegistry.get_field_info", return_value={"type": "string"}):
+        with patch(
+            "src.tools.registry.SchemaRegistry.get_field_info",
+            return_value={"type": "string"},
+        ):
             # Validate the schema mappings
             is_valid, errors = ToolRegistry.validate_schema_mappings("test_tool")
 
@@ -127,7 +128,10 @@ class TestToolRegistry:
                 return {"type": "string"}
             return None
 
-        with patch("src.tools.registry.SchemaRegistry.get_field_info", side_effect=mock_get_field_info):
+        with patch(
+            "src.tools.registry.SchemaRegistry.get_field_info",
+            side_effect=mock_get_field_info,
+        ):
             # Validate the schema mappings
             is_valid, errors = ToolRegistry.validate_schema_mappings("test_tool")
 
@@ -145,7 +149,10 @@ class TestToolRegistry:
         ToolRegistry._register_tool(TestTool, name="test_tool2", tags=["test"])
 
         # Mock the SchemaRegistry.get_field_info method
-        with patch("src.tools.registry.SchemaRegistry.get_field_info", return_value={"type": "string"}):
+        with patch(
+            "src.tools.registry.SchemaRegistry.get_field_info",
+            return_value={"type": "string"},
+        ):
             # Validate all schema mappings
             is_valid, all_errors = ToolRegistry.validate_all_schema_mappings()
 

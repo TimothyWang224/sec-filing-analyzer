@@ -5,14 +5,12 @@ A module for working with the improved DuckDB schema for financial data.
 """
 
 import logging
-import os
 
 # Add the project root to the Python path
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import duckdb
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -30,7 +28,12 @@ class ImprovedDuckDBStore:
     An interface to store and query financial data using the improved DuckDB schema.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        batch_size: int = 100,
+        read_only: bool = True,
+    ):
         """Initialize the improved DuckDB financial store.
 
         Args:
@@ -236,7 +239,8 @@ class ImprovedDuckDBStore:
         """
         try:
             result = self.conn.execute(
-                "SELECT filing_id FROM filings WHERE accession_number = ?", [accession_number]
+                "SELECT filing_id FROM filings WHERE accession_number = ?",
+                [accession_number],
             ).fetchone()
             return result[0] if result else None
         except Exception as e:

@@ -7,11 +7,9 @@ versus JSON for storing embedding vectors.
 
 import json
 import logging
-import os
-import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np

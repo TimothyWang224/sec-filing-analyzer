@@ -6,7 +6,7 @@ import json
 import logging
 import re
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Set
 
 
 class DynamicTermination:

@@ -5,7 +5,6 @@ A simplified Streamlit app for exploring DuckDB databases.
 """
 
 import os
-from pathlib import Path
 
 import duckdb
 import pandas as pd
@@ -98,7 +97,10 @@ with tab1:
     # Pagination
     rows_per_page = st.slider("Rows per page", min_value=5, max_value=100, value=10, step=5)
     page = st.number_input(
-        "Page", min_value=1, max_value=max(1, (row_count + rows_per_page - 1) // rows_per_page), value=1
+        "Page",
+        min_value=1,
+        max_value=max(1, (row_count + rows_per_page - 1) // rows_per_page),
+        value=1,
     )
 
     offset = (page - 1) * rows_per_page
@@ -131,7 +133,7 @@ with tab2:
                 {
                     "Column": col,
                     "Potential Referenced Table": col.replace("_id", "")
-                    if not col in ["ticker", "filing_id", "fact_id"]
+                    if col not in ["ticker", "filing_id", "fact_id"]
                     else "companies"
                     if col == "ticker"
                     else "filings"
@@ -196,7 +198,12 @@ with tab3:
             # Export options
             if not result.empty:
                 csv = result.to_csv(index=False).encode("utf-8")
-                st.download_button(label="Download as CSV", data=csv, file_name=f"query_result.csv", mime="text/csv")
+                st.download_button(
+                    label="Download as CSV",
+                    data=csv,
+                    file_name="query_result.csv",
+                    mime="text/csv",
+                )
         except Exception as e:
             st.error(f"Error executing query: {e}")
 

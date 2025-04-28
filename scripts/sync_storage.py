@@ -12,7 +12,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.sec_filing_analyzer.storage.sync_manager import StorageSyncManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -49,7 +51,9 @@ def main():
         logger.info(
             f"Filing paths: Updated {path_results['updated']}, Not found {path_results['not_found']}, Errors {path_results['errors']}"
         )
-        logger.info(f"Processing status: Updated {status_results['updated']}, Errors {status_results['errors']}")
+        logger.info(
+            f"Processing status: Updated {status_results['updated']}, Errors {status_results['errors']}"
+        )
         logger.info(f"Total filings: {summary['total_filings']}")
 
         # Print status counts

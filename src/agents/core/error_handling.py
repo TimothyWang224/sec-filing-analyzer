@@ -5,15 +5,11 @@ This module provides classes and utilities for handling errors in agent tool cal
 including error classification, recovery strategies, and circuit breaker patterns.
 """
 
-import asyncio
 import logging
-import random
 import time
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-from ...tools.registry import ToolRegistry
+from typing import Any, Dict, List, Optional
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -41,7 +37,11 @@ class ToolError:
     """
 
     def __init__(
-        self, error_type: ToolErrorType, message: str, tool_name: str, original_exception: Optional[Exception] = None
+        self,
+        error_type: ToolErrorType,
+        message: str,
+        tool_name: str,
+        original_exception: Optional[Exception] = None,
     ):
         """
         Initialize a tool error.
@@ -134,14 +134,28 @@ class ErrorClassifier:
         # Check for parameter errors
         if any(
             keyword in error_message.lower()
-            for keyword in ["parameter", "argument", "missing", "required", "invalid", "type error"]
+            for keyword in [
+                "parameter",
+                "argument",
+                "missing",
+                "required",
+                "invalid",
+                "type error",
+            ]
         ):
             return ToolError(ToolErrorType.PARAMETER_ERROR, error_message, tool_name, exception)
 
         # Check for network errors
         elif any(
             keyword in error_message.lower()
-            for keyword in ["connection", "timeout", "network", "unreachable", "dns", "socket"]
+            for keyword in [
+                "connection",
+                "timeout",
+                "network",
+                "unreachable",
+                "dns",
+                "socket",
+            ]
         ):
             return ToolError(ToolErrorType.NETWORK_ERROR, error_message, tool_name, exception)
 
@@ -169,7 +183,13 @@ class ErrorClassifier:
         # Check for data errors
         elif any(
             keyword in error_message.lower()
-            for keyword in ["not found", "no data", "empty", "no results", "invalid data"]
+            for keyword in [
+                "not found",
+                "no data",
+                "empty",
+                "no results",
+                "invalid data",
+            ]
         ):
             return ToolError(ToolErrorType.DATA_ERROR, error_message, tool_name, exception)
 
@@ -361,7 +381,11 @@ class ErrorAnalyzer:
                 "Consider upgrading API tier for higher limits",
             ]
         elif error_type == ToolErrorType.AUTH_ERROR:
-            return ["Verify API credentials", "Check if API keys are expired", "Ensure proper permissions are set"]
+            return [
+                "Verify API credentials",
+                "Check if API keys are expired",
+                "Ensure proper permissions are set",
+            ]
         elif error_type == ToolErrorType.DATA_ERROR:
             return [
                 "Verify the requested data exists",
@@ -369,7 +393,11 @@ class ErrorAnalyzer:
                 "Try a different query or parameters",
             ]
         elif error_type == ToolErrorType.SYSTEM_ERROR:
-            return ["Check system logs for details", "Verify system dependencies", "Contact system administrator"]
+            return [
+                "Check system logs for details",
+                "Verify system dependencies",
+                "Contact system administrator",
+            ]
         else:
             return ["No specific suggestions available for this error type"]
 

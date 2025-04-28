@@ -6,9 +6,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
-from ..contracts import Plan, PlanStep, extract_value
+from ..contracts import PlanStep, extract_value
 from ..tools.registry import ToolRegistry
 from ..utils.json_utils import repair_json, safe_parse_json
 
@@ -60,7 +60,7 @@ def _to_object(obj: Any, model_class: Type = None) -> Any:
     return obj
 
 
-from sec_filing_analyzer.llm import BaseLLM, OpenAILLM
+from sec_filing_analyzer.llm import OpenAILLM
 from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
 
 from ..environments.base import Environment
@@ -70,12 +70,9 @@ from ..sec_filing_analyzer.utils.logging_utils import (
     get_standard_log_dir,
     set_current_session_id,
 )
-from ..sec_filing_analyzer.utils.timing import TimingContext, timed_function
+from ..sec_filing_analyzer.utils.timing import timed_function
 from ..tools.llm_parameter_completer import LLMParameterCompleter
-from .core.adaptive_retry import AdaptiveRetryStrategy
 from .core.agent_state import AgentState
-from .core.alternative_tools import AlternativeToolSelector
-from .core.error_handling import ErrorAnalyzer, ErrorClassifier, ToolCircuitBreaker, ToolError, ToolErrorType
 from .core.error_recovery import ErrorRecoveryManager
 from .core.tool_ledger import ToolLedger
 
@@ -409,7 +406,10 @@ class Agent(ABC):
                     if requested_tool:
                         self.logger.info(f"Requesting details for tool: {requested_tool}")
                         tool_details[requested_tool] = await self.environment.execute_action(
-                            {"tool": "tool_details", "args": {"tool_name": requested_tool}}
+                            {
+                                "tool": "tool_details",
+                                "args": {"tool_name": requested_tool},
+                            }
                         )
                 else:
                     # Add to final tool calls
@@ -435,7 +435,7 @@ class Agent(ABC):
                 ```
                 """
 
-                self.logger.info(f"Making second call for detailed tool selection")
+                self.logger.info("Making second call for detailed tool selection")
                 # Generate final tool selection with parameters
                 details_response = await self.llm.generate(
                     prompt=details_prompt,

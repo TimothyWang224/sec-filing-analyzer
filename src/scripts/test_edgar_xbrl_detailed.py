@@ -2,7 +2,6 @@
 Detailed test script for the edgar library's XBRL capabilities.
 """
 
-import json
 import logging
 from pathlib import Path
 
@@ -80,7 +79,7 @@ def test_edgar_xbrl_detailed():
                     try:
                         value = getattr(xbrl_data, attr)
                         if callable(value):
-                            logger.info(f"    Type: Method")
+                            logger.info("    Type: Method")
                         else:
                             logger.info(f"    Type: Attribute, Value: {value}")
                     except Exception as e:
@@ -117,7 +116,11 @@ def test_edgar_xbrl_detailed():
                         logger.error(f"Error querying facts: {e}")
 
             # Try to access financial statements
-            for statement_type in ["balance_sheet", "income_statement", "cash_flow_statement"]:
+            for statement_type in [
+                "balance_sheet",
+                "income_statement",
+                "cash_flow_statement",
+            ]:
                 method_name = f"get_{statement_type}"
                 if hasattr(xbrl_data, method_name):
                     logger.info(f"Trying to get {statement_type}...")

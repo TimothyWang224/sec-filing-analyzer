@@ -7,12 +7,11 @@ and reasoning in a structured and configurable way.
 
 import json
 import logging
-import os
 import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from ..agents.base import Agent
 from ..sec_filing_analyzer.utils.logging_utils import get_standard_log_dir
@@ -60,7 +59,10 @@ class LoggingCapability(Capability):
             max_content_length: Maximum length for content in logs (to avoid huge logs)
             custom_formatters: Custom formatter functions for specific content types
         """
-        super().__init__(name="logging", description="Logs agent activities, decisions, and reasoning")
+        super().__init__(
+            name="logging",
+            description="Logs agent activities, decisions, and reasoning",
+        )
 
         # Set logging configuration
         self.log_dir = log_dir or str(get_standard_log_dir("agents"))
@@ -209,7 +211,12 @@ class LoggingCapability(Capability):
         return action
 
     async def process_result(
-        self, agent: Agent, context: Dict[str, Any], response: str, action: Dict[str, Any], result: Any
+        self,
+        agent: Agent,
+        context: Dict[str, Any],
+        response: str,
+        action: Dict[str, Any],
+        result: Any,
     ) -> Any:
         """
         Process the result of an action.
@@ -388,7 +395,11 @@ class LoggingCapability(Capability):
             # Log to JSON file
             if hasattr(self, "json_log_file"):
                 self._append_to_json_log(
-                    {"type": "memory_update", "timestamp": datetime.now().isoformat(), "memory_item": last_item}
+                    {
+                        "type": "memory_update",
+                        "timestamp": datetime.now().isoformat(),
+                        "memory_item": last_item,
+                    }
                 )
 
     def _log_context(self, context: Dict[str, Any]):
@@ -407,7 +418,13 @@ class LoggingCapability(Capability):
 
         # Log to JSON file
         if hasattr(self, "json_log_file"):
-            self._append_to_json_log({"type": "context", "timestamp": datetime.now().isoformat(), "context": context})
+            self._append_to_json_log(
+                {
+                    "type": "context",
+                    "timestamp": datetime.now().isoformat(),
+                    "context": context,
+                }
+            )
 
     def _format_memory_item(self, item: Dict[str, Any]) -> str:
         """

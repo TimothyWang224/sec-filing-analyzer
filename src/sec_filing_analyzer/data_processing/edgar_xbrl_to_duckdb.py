@@ -7,9 +7,7 @@ using the edgar library's XBRL parsing capabilities and store it in a DuckDB dat
 
 import hashlib
 import logging
-import uuid
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
 import edgar
 import pandas as pd
@@ -29,7 +27,12 @@ class EdgarXBRLToDuckDBExtractor:
     XBRL parsing capabilities and store it in a DuckDB database.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        batch_size: int = 100,
+        read_only: bool = True,
+    ):
         """
         Initialize the XBRL to DuckDB extractor.
 
@@ -206,7 +209,11 @@ class EdgarXBRLToDuckDBExtractor:
         return fiscal_info
 
     def _process_financial_statements(
-        self, financials: Financials, filing_id: str, ticker: str, fiscal_info: Dict[str, Any]
+        self,
+        financials: Financials,
+        filing_id: str,
+        ticker: str,
+        fiscal_info: Dict[str, Any],
     ):
         """
         Process financial statements and store them in the database.
@@ -239,7 +246,12 @@ class EdgarXBRLToDuckDBExtractor:
             logger.warning(f"Error processing financial statements: {e}")
 
     def _process_statement(
-        self, statement, statement_type: str, filing_id: str, ticker: str, fiscal_info: Dict[str, Any]
+        self,
+        statement,
+        statement_type: str,
+        filing_id: str,
+        ticker: str,
+        fiscal_info: Dict[str, Any],
     ):
         """
         Process a financial statement and store its data in the database.
@@ -328,7 +340,13 @@ class EdgarXBRLToDuckDBExtractor:
         except Exception as e:
             logger.warning(f"Error processing {statement_type}: {e}")
 
-    def _process_us_gaap_facts(self, xbrl_data: XBRLData, filing_id: str, ticker: str, fiscal_info: Dict[str, Any]):
+    def _process_us_gaap_facts(
+        self,
+        xbrl_data: XBRLData,
+        filing_id: str,
+        ticker: str,
+        fiscal_info: Dict[str, Any],
+    ):
         """
         Process US-GAAP facts and store them in the database.
 
@@ -340,14 +358,14 @@ class EdgarXBRLToDuckDBExtractor:
         """
         try:
             if not hasattr(xbrl_data, "instance"):
-                logger.warning(f"XBRL data does not have instance attribute")
+                logger.warning("XBRL data does not have instance attribute")
                 return
 
             # Query all US-GAAP facts
             us_gaap_facts = xbrl_data.instance.query_facts(schema="us-gaap")
 
             if us_gaap_facts.empty:
-                logger.warning(f"No US-GAAP facts found")
+                logger.warning("No US-GAAP facts found")
                 return
 
             # Process facts

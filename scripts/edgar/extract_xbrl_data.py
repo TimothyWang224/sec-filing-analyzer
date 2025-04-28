@@ -6,12 +6,9 @@ It can process a single filing or all filings for a company.
 """
 
 import argparse
-import json
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -22,12 +19,17 @@ from sec_filing_analyzer.data_processing.xbrl_extractor import XBRLExtractor
 from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
 def process_filing(
-    ticker: str, accession_number: str, xbrl_extractor: XBRLExtractor, financial_store: FinancialDataStore
+    ticker: str,
+    accession_number: str,
+    xbrl_extractor: XBRLExtractor,
+    financial_store: FinancialDataStore,
 ) -> bool:
     """Process a single filing.
 
@@ -64,7 +66,11 @@ def process_filing(
 
 
 def process_company(
-    ticker: str, filing_type: str, limit: int, xbrl_extractor: XBRLExtractor, financial_store: FinancialDataStore
+    ticker: str,
+    filing_type: str,
+    limit: int,
+    xbrl_extractor: XBRLExtractor,
+    financial_store: FinancialDataStore,
 ) -> int:
     """Process all filings for a company.
 
@@ -120,10 +126,24 @@ def main():
     parser = argparse.ArgumentParser(description="Extract XBRL data from SEC filings")
     parser.add_argument("--ticker", type=str, help="Company ticker symbol")
     parser.add_argument("--accession", type=str, help="SEC accession number")
-    parser.add_argument("--filing-type", type=str, default="10-K", help="Filing type (10-K, 10-Q, etc.)")
-    parser.add_argument("--limit", type=int, default=10, help="Maximum number of filings to process")
-    parser.add_argument("--db-path", type=str, default="data/financial_data.duckdb", help="Path to DuckDB database")
-    parser.add_argument("--cache-dir", type=str, default="data/xbrl_cache", help="Path to XBRL cache directory")
+    parser.add_argument(
+        "--filing-type", type=str, default="10-K", help="Filing type (10-K, 10-Q, etc.)"
+    )
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Maximum number of filings to process"
+    )
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        default="data/financial_data.duckdb",
+        help="Path to DuckDB database",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=str,
+        default="data/xbrl_cache",
+        help="Path to XBRL cache directory",
+    )
 
     args = parser.parse_args()
 

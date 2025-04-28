@@ -41,7 +41,11 @@ def main():
         print("✓ sec_filing_analyzer")
 
         # Check submodules
-        submodules = ["sec_filing_analyzer.config", "sec_filing_analyzer.storage", "sec_filing_analyzer.llm.llm_config"]
+        submodules = [
+            "sec_filing_analyzer.config",
+            "sec_filing_analyzer.storage",
+            "sec_filing_analyzer.llm.llm_config",
+        ]
 
         print("\nSEC Filing Analyzer Submodules:")
         for submodule in submodules:

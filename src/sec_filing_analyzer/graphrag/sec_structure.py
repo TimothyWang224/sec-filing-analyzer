@@ -7,11 +7,10 @@ leveraging edgartools for document processing and maintaining graph-specific fun
 
 import logging
 import re
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 # Import from the installed edgar package
-from edgar import Company, Document, XBRLData
+from edgar import Document, XBRLData
 from edgar.company_reports import EightK, TenK, TenQ
 
 # Setup logging
@@ -116,7 +115,13 @@ class SECStructure:
             Dict containing the parsed structure
         """
         # Initialize structure
-        structure = {"sections": {}, "hierarchy": {}, "metadata": {}, "xbrl_data": {}, "tables": []}
+        structure = {
+            "sections": {},
+            "hierarchy": {},
+            "metadata": {},
+            "xbrl_data": {},
+            "tables": [],
+        }
 
         try:
             # Create document instance

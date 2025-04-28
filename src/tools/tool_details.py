@@ -36,7 +36,11 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {"tool_details": ToolDetailsPara
 # The ToolSpec will be created automatically by the ToolRegistry._register_tool method
 
 
-@tool(name="tool_details", tags=["meta", "tools"], compact_description="Get detailed information about a specific tool")
+@tool(
+    name="tool_details",
+    tags=["meta", "tools"],
+    compact_description="Get detailed information about a specific tool",
+)
 class ToolDetailsTool(Tool):
     """Tool for getting detailed information about other tools."""
 
@@ -73,7 +77,7 @@ class ToolDetailsTool(Tool):
             logger.error(f"Validation error: {str(e)}")
             return False
 
-    async def _execute(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Get detailed information about a specific tool.
 
@@ -119,7 +123,9 @@ class ToolDetailsTool(Tool):
                 params = param_model(**parameters)
             except Exception as e:
                 return self.format_error_response(
-                    query_type=query_type, parameters=parameters, error_message=f"Parameter validation error: {str(e)}"
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Parameter validation error: {str(e)}",
                 )
 
             # Extract parameters
@@ -159,11 +165,15 @@ class ToolDetailsTool(Tool):
             except Exception as e:
                 logger.error(f"Error getting tool details: {str(e)}")
                 return self.format_error_response(
-                    query_type=query_type, parameters=parameters, error_message=f"Error getting tool details: {str(e)}"
+                    query_type=query_type,
+                    parameters=parameters,
+                    error_message=f"Error getting tool details: {str(e)}",
                 )
 
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return self.format_error_response(
-                query_type=query_type, parameters=parameters, error_message=f"Unexpected error: {str(e)}"
+                query_type=query_type,
+                parameters=parameters,
+                error_message=f"Unexpected error: {str(e)}",
             )

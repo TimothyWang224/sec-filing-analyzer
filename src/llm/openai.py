@@ -7,7 +7,6 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Union
 
-import openai
 from openai import OpenAI
 
 from .base import LLM

@@ -5,9 +5,7 @@ This script extracts vector store index parameters from the params.json files
 and updates the unified configuration file.
 """
 
-import glob
 import json
-import os
 import sys
 from pathlib import Path
 

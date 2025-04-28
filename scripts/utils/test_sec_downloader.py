@@ -15,7 +15,9 @@ from sec_filing_analyzer.data_retrieval.sec_downloader import SECFilingsDownload
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -29,7 +31,10 @@ def test_download_filings():
         # Download filings for Microsoft
         logger.info("Downloading filings for Microsoft...")
         filings = sec_downloader.download_company_filings(
-            ticker="MSFT", filing_types=["8-K"], start_date="2022-01-01", end_date="2022-12-31"
+            ticker="MSFT",
+            filing_types=["8-K"],
+            start_date="2022-01-01",
+            end_date="2022-12-31",
         )
 
         logger.info(f"Downloaded {len(filings)} filings")

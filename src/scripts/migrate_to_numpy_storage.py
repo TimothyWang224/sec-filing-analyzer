@@ -7,12 +7,10 @@ It preserves all existing data while converting embeddings to a more efficient s
 
 import json
 import logging
-import os
 import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -132,7 +130,6 @@ def migrate_json_to_numpy(vector_store_path: Path) -> None:
 
 def main():
     """Main function to migrate the vector store."""
-    import time
 
     # Get vector store path from config
     vector_store_path = Path(StorageConfig().vector_store_path)

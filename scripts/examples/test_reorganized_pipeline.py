@@ -8,7 +8,6 @@ semantic and quantitative data processing.
 import argparse
 import logging
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -17,14 +16,18 @@ from sec_filing_analyzer.pipeline.quantitative_pipeline import QuantitativeETLPi
 from sec_filing_analyzer.pipeline.semantic_pipeline import SemanticETLPipeline
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
 
 
-def test_semantic_pipeline(ticker, filing_type, filing_date=None, accession_number=None):
+def test_semantic_pipeline(
+    ticker, filing_type, filing_date=None, accession_number=None
+):
     """
     Test the semantic pipeline.
 
@@ -39,9 +42,14 @@ def test_semantic_pipeline(ticker, filing_type, filing_date=None, accession_numb
         pipeline = SemanticETLPipeline()
 
         # Process a filing
-        logger.info(f"Processing {filing_type} filing for {ticker} using semantic pipeline")
+        logger.info(
+            f"Processing {filing_type} filing for {ticker} using semantic pipeline"
+        )
         result = pipeline.process_filing(
-            ticker=ticker, filing_type=filing_type, filing_date=filing_date, accession_number=accession_number
+            ticker=ticker,
+            filing_type=filing_type,
+            filing_date=filing_date,
+            accession_number=accession_number,
         )
 
         # Print the result
@@ -57,7 +65,9 @@ def test_semantic_pipeline(ticker, filing_type, filing_date=None, accession_numb
         return {"error": str(e)}
 
 
-def test_quantitative_pipeline(ticker, filing_type, filing_date=None, accession_number=None, db_path=None):
+def test_quantitative_pipeline(
+    ticker, filing_type, filing_date=None, accession_number=None, db_path=None
+):
     """
     Test the quantitative pipeline.
 
@@ -73,9 +83,14 @@ def test_quantitative_pipeline(ticker, filing_type, filing_date=None, accession_
         pipeline = QuantitativeETLPipeline(db_path=db_path)
 
         # Process a filing
-        logger.info(f"Processing {filing_type} filing for {ticker} using quantitative pipeline")
+        logger.info(
+            f"Processing {filing_type} filing for {ticker} using quantitative pipeline"
+        )
         result = pipeline.process_filing(
-            ticker=ticker, filing_type=filing_type, filing_date=filing_date, accession_number=accession_number
+            ticker=ticker,
+            filing_type=filing_type,
+            filing_date=filing_date,
+            accession_number=accession_number,
         )
 
         # Print the result
@@ -91,7 +106,9 @@ def test_quantitative_pipeline(ticker, filing_type, filing_date=None, accession_
         return {"error": str(e)}
 
 
-def test_unified_pipeline(ticker, filing_type, filing_date=None, accession_number=None, db_path=None):
+def test_unified_pipeline(
+    ticker, filing_type, filing_date=None, accession_number=None, db_path=None
+):
     """
     Test the unified ETL pipeline.
 
@@ -104,12 +121,19 @@ def test_unified_pipeline(ticker, filing_type, filing_date=None, accession_numbe
     """
     try:
         # Create the unified pipeline
-        pipeline = SECFilingETLPipeline(process_semantic=True, process_quantitative=True, db_path=db_path)
+        pipeline = SECFilingETLPipeline(
+            process_semantic=True, process_quantitative=True, db_path=db_path
+        )
 
         # Process a filing
-        logger.info(f"Processing {filing_type} filing for {ticker} using unified pipeline")
+        logger.info(
+            f"Processing {filing_type} filing for {ticker} using unified pipeline"
+        )
         result = pipeline.process_filing(
-            ticker=ticker, filing_type=filing_type, filing_date=filing_date, accession_number=accession_number
+            ticker=ticker,
+            filing_type=filing_type,
+            filing_date=filing_date,
+            accession_number=accession_number,
         )
 
         # Print the result
@@ -135,7 +159,9 @@ def main():
         help="Test mode: semantic pipeline, quantitative pipeline, or unified pipeline",
     )
     parser.add_argument("--ticker", default="MSFT", help="Company ticker symbol")
-    parser.add_argument("--filing-type", default="10-K", help="Filing type (e.g., 10-K, 10-Q)")
+    parser.add_argument(
+        "--filing-type", default="10-K", help="Filing type (e.g., 10-K, 10-Q)"
+    )
     parser.add_argument("--filing-date", help="Filing date (optional)")
     parser.add_argument("--accession", help="SEC accession number (optional)")
     parser.add_argument("--db-path", help="Path to the DuckDB database file")
@@ -185,6 +211,8 @@ if __name__ == "__main__":
         edgar.set_identity(edgar_identity)
         logger.info(f"Set edgar identity to: {edgar_identity}")
     else:
-        logger.warning("EDGAR_IDENTITY environment variable not set. Set it in your .env file.")
+        logger.warning(
+            "EDGAR_IDENTITY environment variable not set. Set it in your .env file."
+        )
 
     main()

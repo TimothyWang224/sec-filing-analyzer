@@ -2,8 +2,6 @@
 Pytest fixtures for the tools tests.
 """
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from src.tools.registry import ToolRegistry

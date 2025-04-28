@@ -9,7 +9,6 @@ import logging
 import os
 import random
 import time
-import traceback
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -65,7 +64,12 @@ class ParallelEmbeddingGenerator:
         self.max_retries = max_retries
         self.retry_base_delay = retry_base_delay
         self.batch_size = batch_size
-        self.token_usage = {"total_tokens": 0, "requests": 0, "failed_requests": 0, "retried_requests": 0}
+        self.token_usage = {
+            "total_tokens": 0,
+            "requests": 0,
+            "failed_requests": 0,
+            "retried_requests": 0,
+        }
 
         # Set up enhanced logging
         try:
@@ -194,7 +198,10 @@ class ParallelEmbeddingGenerator:
 
             # Handle empty list case
             if not texts:
-                return [[0.0] * self.dimensions], {"all_fallbacks": False, "token_usage": self.token_usage}
+                return [[0.0] * self.dimensions], {
+                    "all_fallbacks": False,
+                    "token_usage": self.token_usage,
+                }
 
             # Ensure all texts are strings
             processed_texts = [str(text) if text is not None else "" for text in texts]

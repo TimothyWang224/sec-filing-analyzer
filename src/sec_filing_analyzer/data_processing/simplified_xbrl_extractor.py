@@ -37,7 +37,11 @@ class SimplifiedXBRLExtractor:
         logger.info(f"Initialized simplified XBRL extractor with cache at {self.cache_dir}")
 
     def extract_financials(
-        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
+        self,
+        ticker: str,
+        filing_id: str,
+        accession_number: str,
+        filing_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Extract financial data from XBRL filings.
 
@@ -181,7 +185,12 @@ class SimplifiedXBRLExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def _get_filing_type_from_url(self, filing_url: str) -> Optional[str]:
         """Extract filing type from filing URL.

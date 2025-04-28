@@ -56,7 +56,11 @@ def parse_pyproject_toml(file_path):
                 existing_deps.add(package_name)
 
     # Check tool.poetry.dependencies
-    if "tool" in doc and "poetry" in doc["tool"] and "dependencies" in doc["tool"]["poetry"]:
+    if (
+        "tool" in doc
+        and "poetry" in doc["tool"]
+        and "dependencies" in doc["tool"]["poetry"]
+    ):
         for dep_name in doc["tool"]["poetry"]["dependencies"]:
             if dep_name != "python":
                 existing_deps.add(dep_name)
@@ -142,19 +146,29 @@ def main():
     req_deps = parse_requirements("requirements.txt")
     tools_deps = parse_requirements("requirements-tools.txt")
 
-    console.print(f"Found [green]{len(req_deps)}[/green] dependencies in requirements.txt")
-    console.print(f"Found [green]{len(tools_deps)}[/green] dependencies in requirements-tools.txt")
+    console.print(
+        f"Found [green]{len(req_deps)}[/green] dependencies in requirements.txt"
+    )
+    console.print(
+        f"Found [green]{len(tools_deps)}[/green] dependencies in requirements-tools.txt"
+    )
 
     # Parse pyproject.toml
     pyproject_path = "pyproject.toml"
     doc, existing_deps = parse_pyproject_toml(pyproject_path)
 
-    console.print(f"Found [green]{len(existing_deps)}[/green] existing dependencies in pyproject.toml")
+    console.print(
+        f"Found [green]{len(existing_deps)}[/green] existing dependencies in pyproject.toml"
+    )
 
     # Identify new dependencies
-    new_main_deps = {name: version for name, version in req_deps.items() if name not in existing_deps}
+    new_main_deps = {
+        name: version for name, version in req_deps.items() if name not in existing_deps
+    }
     new_tools_deps = {
-        name: version for name, version in tools_deps.items() if name not in existing_deps and name not in new_main_deps
+        name: version
+        for name, version in tools_deps.items()
+        if name not in existing_deps and name not in new_main_deps
     }
 
     # Add new dependencies to pyproject.toml
@@ -164,7 +178,9 @@ def main():
     # Create backup of original pyproject.toml
     backup_path = pyproject_path + ".bak"
     Path(pyproject_path).rename(backup_path)
-    console.print(f"Created backup of original pyproject.toml at [blue]{backup_path}[/blue]")
+    console.print(
+        f"Created backup of original pyproject.toml at [blue]{backup_path}[/blue]"
+    )
 
     # Write updated pyproject.toml
     with open(pyproject_path, "w") as f:
@@ -186,11 +202,17 @@ def main():
 
         console.print("\n[bold]Next steps:[/bold]")
         console.print("1. Run [green]poetry lock[/green] to update the lock file")
-        console.print("2. Run [green]poetry install[/green] to install the new dependencies")
+        console.print(
+            "2. Run [green]poetry install[/green] to install the new dependencies"
+        )
         console.print("3. Test your project to ensure everything works correctly")
-        console.print("4. If everything works, you can safely remove requirements.txt and requirements-tools.txt")
+        console.print(
+            "4. If everything works, you can safely remove requirements.txt and requirements-tools.txt"
+        )
     else:
-        console.print("No new dependencies were added. All dependencies are already in pyproject.toml.")
+        console.print(
+            "No new dependencies were added. All dependencies are already in pyproject.toml."
+        )
 
 
 if __name__ == "__main__":

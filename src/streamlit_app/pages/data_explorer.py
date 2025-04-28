@@ -67,7 +67,10 @@ except ImportError as e:
 
 # Set page config
 st.set_page_config(
-    page_title="Data Explorer - SEC Filing Analyzer", page_icon="🔍", layout="wide", initial_sidebar_state="expanded"
+    page_title="Data Explorer - SEC Filing Analyzer",
+    page_icon="🔍",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Initialize configuration
@@ -259,7 +262,8 @@ elif explorer_type == "Graph Explorer":
     st.subheader("Graph Visualization")
 
     st.image(
-        "https://neo4j.com/wp-content/uploads/graph-example.png", caption="Sample Graph Visualization (Placeholder)"
+        "https://neo4j.com/wp-content/uploads/graph-example.png",
+        caption="Sample Graph Visualization (Placeholder)",
     )
 
     # Cypher query

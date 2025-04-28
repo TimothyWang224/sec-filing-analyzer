@@ -9,7 +9,7 @@ import json
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from sec_filing_analyzer.llm import BaseLLM
 
@@ -82,7 +82,12 @@ class LLMParameterCompleter:
         try:
             # Create prompt for parameter completion
             prompt = self._create_parameter_completion_prompt(
-                tool_name, schema, fixed_parameters, user_input, validation_result["errors"], context
+                tool_name,
+                schema,
+                fixed_parameters,
+                user_input,
+                validation_result["errors"],
+                context,
             )
 
             # Generate completed parameters
@@ -229,7 +234,10 @@ Return only the completed parameters as a JSON object.
                 target[key] = value
 
     def _backfill_required_parameters(
-        self, tool_name: str, parameters: Dict[str, Any], context: Optional[Dict[str, Any]] = None
+        self,
+        tool_name: str,
+        parameters: Dict[str, Any],
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Back-fill required parameters from context."""
         if not context:
@@ -270,7 +278,10 @@ Return only the completed parameters as a JSON object.
         return enhanced_params
 
     async def _enhance_sec_graph_query_parameters(
-        self, parameters: Dict[str, Any], user_input: str, context: Optional[Dict[str, Any]] = None
+        self,
+        parameters: Dict[str, Any],
+        user_input: str,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Enhance parameters for the sec_graph_query tool."""
         enhanced_params = parameters.copy()
@@ -306,7 +317,10 @@ Return only the completed parameters as a JSON object.
         return enhanced_params
 
     async def _enhance_sec_financial_data_parameters(
-        self, parameters: Dict[str, Any], user_input: str, context: Optional[Dict[str, Any]] = None
+        self,
+        parameters: Dict[str, Any],
+        user_input: str,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Enhance parameters for the sec_financial_data tool."""
         enhanced_params = parameters.copy()
@@ -337,7 +351,10 @@ Return only the completed parameters as a JSON object.
         return enhanced_params
 
     async def _enhance_sec_semantic_search_parameters(
-        self, parameters: Dict[str, Any], user_input: str, context: Optional[Dict[str, Any]] = None
+        self,
+        parameters: Dict[str, Any],
+        user_input: str,
+        context: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Enhance parameters for the sec_semantic_search tool."""
         enhanced_params = parameters.copy()
@@ -355,7 +372,10 @@ Return only the completed parameters as a JSON object.
         # Extract date range
         date_range = self._extract_date_range(user_input)
         if date_range.get("start_date") and date_range.get("end_date") and "date_range" not in enhanced_params:
-            enhanced_params["date_range"] = [date_range["start_date"], date_range["end_date"]]
+            enhanced_params["date_range"] = [
+                date_range["start_date"],
+                date_range["end_date"],
+            ]
 
         # Extract filing types
         filing_types = self._extract_filing_types(user_input)

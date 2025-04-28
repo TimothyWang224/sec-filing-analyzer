@@ -7,7 +7,7 @@ when a primary tool fails.
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from sec_filing_analyzer.llm import BaseLLM
 

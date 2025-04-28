@@ -6,7 +6,7 @@ This module provides functionality for generating vector embeddings using OpenAI
 
 import logging
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Union
 
 import numpy as np
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -49,7 +49,7 @@ class EmbeddingGenerator:
         else:
             return list(embedding)
 
-    def generate_embeddings(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
+    def generate_embeddings(self, texts: List[str], batch_size: int = 100) -> np.ndarray:
         """Generate vector embeddings for a list of texts.
 
         Args:
@@ -57,12 +57,12 @@ class EmbeddingGenerator:
             batch_size: Number of texts to process in each batch
 
         Returns:
-            List of embedding vectors, where each vector is a list of floats
+            NumPy array of embedding vectors with shape (len(texts), dimensions)
         """
         try:
             # Handle empty list case
             if not texts:
-                return [[0.0] * self.dimensions]
+                return np.zeros((0, self.dimensions))
 
             # Ensure all texts are strings
             processed_texts = [str(text) if text is not None else "" for text in texts]
@@ -78,12 +78,13 @@ class EmbeddingGenerator:
                 for emb in batch_embeddings:
                     all_embeddings.append(self._ensure_list_format(emb))
 
-            return all_embeddings
+            # Convert to numpy array
+            return np.array(all_embeddings)
 
         except Exception as e:
             logger.error(f"Error generating embeddings: {str(e)}")
             # Return zero vectors as fallback
-            return [[0.0] * self.dimensions for _ in range(len(texts))]
+            return np.zeros((len(texts), self.dimensions))
 
     def get_embedding_dimensions(self) -> int:
         """Get the number of dimensions for the current embedding model.

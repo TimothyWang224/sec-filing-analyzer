@@ -53,7 +53,9 @@ class XBRLExtractorFactory:
             return SimplifiedXBRLExtractor(cache_dir=cache_dir)
 
     @staticmethod
-    def get_default_extractor(cache_dir: Optional[str] = None) -> Union[SimplifiedXBRLExtractor, EdgarXBRLExtractor]:
+    def get_default_extractor(
+        cache_dir: Optional[str] = None,
+    ) -> Union[SimplifiedXBRLExtractor, EdgarXBRLExtractor]:
         """
         Get the default XBRL extractor.
 

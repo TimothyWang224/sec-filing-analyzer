@@ -6,8 +6,7 @@ semantic data from SEC filings.
 """
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..data_processing.chunking import FilingChunker
 from ..data_retrieval.sec_downloader import SECFilingsDownloader
@@ -79,7 +78,11 @@ class SemanticETLPipeline:
             # Step 1: Download the filing
             # Get the filing object
             filings = self.downloader.get_filings(
-                ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
+                ticker=ticker,
+                filing_types=[filing_type],
+                start_date=filing_date,
+                end_date=filing_date,
+                limit=1,
             )
 
             if not filings:
@@ -212,7 +215,11 @@ class SemanticETLPipeline:
 
             # Step 1: Get the list of filings
             filings = self.downloader.get_filings(
-                ticker=ticker, filing_types=filing_types, start_date=start_date, end_date=end_date, limit=limit
+                ticker=ticker,
+                filing_types=filing_types,
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
             )
 
             if not filings:
@@ -232,7 +239,12 @@ class SemanticETLPipeline:
 
             logger.info(f"Successfully processed {len(results)} filings for {ticker}")
 
-            return {"status": "success", "ticker": ticker, "num_filings": len(results), "results": results}
+            return {
+                "status": "success",
+                "ticker": ticker,
+                "num_filings": len(results),
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing filings for {ticker}: {e}")
@@ -279,7 +291,11 @@ class SemanticETLPipeline:
 
             logger.info(f"Successfully processed filings for {len(tickers)} companies")
 
-            return {"status": "success", "num_companies": len(tickers), "results": results}
+            return {
+                "status": "success",
+                "num_companies": len(tickers),
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing multiple companies: {e}")

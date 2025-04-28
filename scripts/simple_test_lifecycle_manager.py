@@ -13,7 +13,9 @@ from src.sec_filing_analyzer.config import ConfigProvider, ETLConfig, StorageCon
 from src.sec_filing_analyzer.storage.lifecycle_manager import DataLifecycleManager
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -32,7 +34,9 @@ def test_lifecycle_manager_init():
         # Log configuration values
         logger.info(f"ETL Config - db_path: {etl_config.db_path}")
         logger.info(f"ETL Config - filings_dir: {etl_config.filings_dir}")
-        logger.info(f"Storage Config - vector_store_path: {storage_config.vector_store_path}")
+        logger.info(
+            f"Storage Config - vector_store_path: {storage_config.vector_store_path}"
+        )
 
         # Create lifecycle manager
         logger.info("Creating lifecycle manager...")

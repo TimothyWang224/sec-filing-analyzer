@@ -7,7 +7,7 @@ This module provides utilities for measuring and logging execution times.
 import functools
 import logging
 import time
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,12 @@ class TimingContext:
             timer.add_metadata({"rows": len(results)})
     """
 
-    def __init__(self, operation: str, category: str = "block", logger: Optional[logging.Logger] = None):
+    def __init__(
+        self,
+        operation: str,
+        category: str = "block",
+        logger: Optional[logging.Logger] = None,
+    ):
         """
         Initialize the timing context.
 

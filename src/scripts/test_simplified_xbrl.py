@@ -13,7 +13,9 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import SimplifiedXBRLExtractor
+from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
+    SimplifiedXBRLExtractor,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -83,7 +85,12 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Test the simplified XBRL extractor")
     parser.add_argument("--ticker", type=str, default="AAPL", help="Company ticker symbol")
-    parser.add_argument("--accession", type=str, default="0000320193-23-000077", help="SEC accession number")
+    parser.add_argument(
+        "--accession",
+        type=str,
+        default="0000320193-23-000077",
+        help="SEC accession number",
+    )
 
     args = parser.parse_args()
 

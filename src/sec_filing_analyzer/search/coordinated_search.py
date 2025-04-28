@@ -7,7 +7,7 @@ vector store and graph store for more comprehensive search results.
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..storage import GraphStore, OptimizedVectorStore
 
@@ -21,7 +21,11 @@ class CoordinatedSearch:
     Coordinated search class that combines vector and graph search capabilities.
     """
 
-    def __init__(self, vector_store: Optional[OptimizedVectorStore] = None, graph_store: Optional[GraphStore] = None):
+    def __init__(
+        self,
+        vector_store: Optional[OptimizedVectorStore] = None,
+        graph_store: Optional[GraphStore] = None,
+    ):
         """Initialize the coordinated search.
 
         Args:
@@ -172,7 +176,10 @@ class CoordinatedSearch:
                 # For in-memory graph
                 for node, attrs in self.graph_store.graph.nodes(data=True):
                     if attrs.get("type") == "filing" and node == filing_id:
-                        filing_metadata = {"ticker": attrs.get("ticker"), "filing_type": attrs.get("filing_type")}
+                        filing_metadata = {
+                            "ticker": attrs.get("ticker"),
+                            "filing_type": attrs.get("filing_type"),
+                        }
                         break
         except Exception as e:
             logger.warning(f"Error getting filing metadata: {e}")
@@ -184,7 +191,10 @@ class CoordinatedSearch:
 
         # Search for chunks within this filing
         chunk_results = self.vector_store.search_vectors(
-            query_text=query_text, companies=companies, top_k=top_k, metadata_filter={"original_doc_id": filing_id}
+            query_text=query_text,
+            companies=companies,
+            top_k=top_k,
+            metadata_filter={"original_doc_id": filing_id},
         )
 
         return {

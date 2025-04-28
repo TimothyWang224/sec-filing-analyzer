@@ -4,24 +4,29 @@ Configuration Page
 This page provides a user interface for configuring the SEC Filing Analyzer system.
 """
 
-import json
-import os
 import sys
 from pathlib import Path
 
-import pandas as pd
 import streamlit as st
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
 
 # Import configuration components
-from sec_filing_analyzer.config import AgentConfig, ConfigProvider, ETLConfig, StorageConfig, StreamlitConfig
+from sec_filing_analyzer.config import (
+    ConfigProvider,
+    ETLConfig,
+    StorageConfig,
+    StreamlitConfig,
+)
 from sec_filing_analyzer.llm.llm_config import LLMConfigFactory, get_agent_types
 
 # Set page config
 st.set_page_config(
-    page_title="Configuration - SEC Filing Analyzer", page_icon="⚙️", layout="wide", initial_sidebar_state="expanded"
+    page_title="Configuration - SEC Filing Analyzer",
+    page_icon="⚙️",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Initialize configuration
@@ -41,7 +46,12 @@ Configure the SEC Filing Analyzer system settings, including:
 st.sidebar.header("Configuration Navigation")
 config_type = st.sidebar.radio(
     "Select Configuration Type",
-    ["ETL Configuration", "Agent Configuration", "Storage Configuration", "Streamlit Configuration"],
+    [
+        "ETL Configuration",
+        "Agent Configuration",
+        "Storage Configuration",
+        "Streamlit Configuration",
+    ],
 )
 
 # Main content
@@ -70,7 +80,11 @@ if config_type == "ETL Configuration":
         chunk_overlap = st.number_input("Chunk Overlap", min_value=0, max_value=1024, value=etl_config.chunk_overlap)
         embedding_model = st.selectbox(
             "Embedding Model",
-            ["text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"],
+            [
+                "text-embedding-3-small",
+                "text-embedding-3-large",
+                "text-embedding-ada-002",
+            ],
             index=0
             if etl_config.embedding_model == "text-embedding-3-small"
             else 1
@@ -84,7 +98,11 @@ if config_type == "ETL Configuration":
         max_workers = st.number_input("Max Workers", min_value=1, max_value=16, value=etl_config.max_workers)
         batch_size = st.number_input("Batch Size", min_value=10, max_value=500, value=etl_config.batch_size)
         rate_limit = st.number_input(
-            "Rate Limit (seconds)", min_value=0.0, max_value=2.0, value=etl_config.rate_limit, step=0.1
+            "Rate Limit (seconds)",
+            min_value=0.0,
+            max_value=2.0,
+            value=etl_config.rate_limit,
+            step=0.1,
         )
 
         st.subheader("XBRL Extraction Settings")
@@ -96,7 +114,10 @@ if config_type == "ETL Configuration":
 
         process_semantic = st.checkbox("Process Semantic Data", value=etl_config.process_semantic)
         delay_between_companies = st.number_input(
-            "Delay Between Companies (seconds)", min_value=0, max_value=10, value=etl_config.delay_between_companies
+            "Delay Between Companies (seconds)",
+            min_value=0,
+            max_value=10,
+            value=etl_config.delay_between_companies,
         )
 
         # Submit button
@@ -169,16 +190,30 @@ elif config_type == "Agent Configuration":
 
             # Temperature
             temperature = st.slider(
-                "Temperature", min_value=0.0, max_value=1.0, value=agent_config.get("temperature", 0.7), step=0.1
+                "Temperature",
+                min_value=0.0,
+                max_value=1.0,
+                value=agent_config.get("temperature", 0.7),
+                step=0.1,
             )
 
             # Max tokens
             max_tokens = st.slider(
-                "Max Tokens", min_value=500, max_value=8000, value=agent_config.get("max_tokens", 4000), step=500
+                "Max Tokens",
+                min_value=500,
+                max_value=8000,
+                value=agent_config.get("max_tokens", 4000),
+                step=500,
             )
 
             # Top P
-            top_p = st.slider("Top P", min_value=0.0, max_value=1.0, value=agent_config.get("top_p", 1.0), step=0.1)
+            top_p = st.slider(
+                "Top P",
+                min_value=0.0,
+                max_value=1.0,
+                value=agent_config.get("top_p", 1.0),
+                step=0.1,
+            )
 
             # Frequency penalty
             frequency_penalty = st.slider(
@@ -228,7 +263,10 @@ elif config_type == "Agent Configuration":
             st.markdown("**Iteration Parameters**")
 
             max_iterations = st.number_input(
-                "Max Iterations", min_value=1, max_value=10, value=agent_config.get("max_iterations", 3)
+                "Max Iterations",
+                min_value=1,
+                max_value=10,
+                value=agent_config.get("max_iterations", 3),
             )
 
             max_planning_iterations = st.number_input(
@@ -256,11 +294,17 @@ elif config_type == "Agent Configuration":
             st.markdown("**Tool Execution Parameters**")
 
             max_tool_retries = st.number_input(
-                "Max Tool Retries", min_value=1, max_value=5, value=agent_config.get("max_tool_retries", 2)
+                "Max Tool Retries",
+                min_value=1,
+                max_value=5,
+                value=agent_config.get("max_tool_retries", 2),
             )
 
             tools_per_iteration = st.number_input(
-                "Tools Per Iteration", min_value=1, max_value=5, value=agent_config.get("tools_per_iteration", 1)
+                "Tools Per Iteration",
+                min_value=1,
+                max_value=5,
+                value=agent_config.get("tools_per_iteration", 1),
             )
 
             circuit_breaker_threshold = st.number_input(
@@ -291,7 +335,8 @@ elif config_type == "Agent Configuration":
             st.markdown("**Termination Parameters**")
 
             enable_dynamic_termination = st.checkbox(
-                "Enable Dynamic Termination", value=agent_config.get("enable_dynamic_termination", False)
+                "Enable Dynamic Termination",
+                value=agent_config.get("enable_dynamic_termination", False),
             )
 
             min_confidence_threshold = st.slider(
@@ -390,9 +435,19 @@ elif config_type == "Storage Configuration":
 
             # IVF parameters
             if index_type == "ivf":
-                ivf_nlist = st.number_input("IVF nlist", min_value=1, max_value=1000, value=storage_config.ivf_nlist)
+                ivf_nlist = st.number_input(
+                    "IVF nlist",
+                    min_value=1,
+                    max_value=1000,
+                    value=storage_config.ivf_nlist,
+                )
 
-                ivf_nprobe = st.number_input("IVF nprobe", min_value=1, max_value=100, value=storage_config.ivf_nprobe)
+                ivf_nprobe = st.number_input(
+                    "IVF nprobe",
+                    min_value=1,
+                    max_value=100,
+                    value=storage_config.ivf_nprobe,
+                )
             else:
                 ivf_nlist = storage_config.ivf_nlist
                 ivf_nprobe = storage_config.ivf_nprobe
@@ -402,11 +457,17 @@ elif config_type == "Storage Configuration":
                 hnsw_m = st.number_input("HNSW M", min_value=4, max_value=128, value=storage_config.hnsw_m)
 
                 hnsw_ef_construction = st.number_input(
-                    "HNSW EF Construction", min_value=40, max_value=800, value=storage_config.hnsw_ef_construction
+                    "HNSW EF Construction",
+                    min_value=40,
+                    max_value=800,
+                    value=storage_config.hnsw_ef_construction,
                 )
 
                 hnsw_ef_search = st.number_input(
-                    "HNSW EF Search", min_value=20, max_value=400, value=storage_config.hnsw_ef_search
+                    "HNSW EF Search",
+                    min_value=20,
+                    max_value=400,
+                    value=storage_config.hnsw_ef_search,
                 )
             else:
                 hnsw_m = storage_config.hnsw_m
@@ -494,7 +555,13 @@ elif config_type == "Storage Configuration":
                 st.success("File Storage Configuration saved successfully!")
 
                 # Display the updated configuration
-                st.json({"filings_dir": filings_dir, "cache_dir": cache_dir, "logs_dir": logs_dir})
+                st.json(
+                    {
+                        "filings_dir": filings_dir,
+                        "cache_dir": cache_dir,
+                        "logs_dir": logs_dir,
+                    }
+                )
 
 elif config_type == "Streamlit Configuration":
     st.header("Streamlit Configuration")
@@ -516,7 +583,10 @@ elif config_type == "Streamlit Configuration":
         enable_xsrf_protection = st.checkbox("Enable XSRF Protection", value=streamlit_config.enable_xsrf_protection)
 
         max_upload_size = st.number_input(
-            "Max Upload Size (MB)", min_value=1, max_value=1000, value=streamlit_config.max_upload_size
+            "Max Upload Size (MB)",
+            min_value=1,
+            max_value=1000,
+            value=streamlit_config.max_upload_size,
         )
 
         base_url_path = st.text_input("Base URL Path", value=streamlit_config.base_url_path)
@@ -525,7 +595,9 @@ elif config_type == "Streamlit Configuration":
         st.subheader("UI Settings")
 
         theme_base = st.selectbox(
-            "Theme Base", ["light", "dark"], index=0 if streamlit_config.theme_base == "light" else 1
+            "Theme Base",
+            ["light", "dark"],
+            index=0 if streamlit_config.theme_base == "light" else 1,
         )
 
         hide_top_bar = st.checkbox("Hide Top Bar", value=streamlit_config.hide_top_bar)

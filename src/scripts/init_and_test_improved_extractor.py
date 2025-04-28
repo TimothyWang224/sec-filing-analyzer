@@ -15,11 +15,15 @@ from rich import box
 from rich.console import Console
 from rich.panel import Panel
 
-from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import ImprovedEdgarXBRLExtractor
+from sec_filing_analyzer.data_processing.improved_edgar_xbrl_extractor import (
+    ImprovedEdgarXBRLExtractor,
+)
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", stream=sys.stdout
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
 

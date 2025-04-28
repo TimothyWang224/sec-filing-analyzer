@@ -8,9 +8,8 @@ the edgar library's comprehensive XBRL handling capabilities.
 import json
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
@@ -42,7 +41,11 @@ class EdgarXBRLExtractor:
             os.makedirs(cache_dir, exist_ok=True)
 
     def extract_financials(
-        self, ticker: str, filing_id: str, accession_number: str, filing_url: Optional[str] = None
+        self,
+        ticker: str,
+        filing_id: str,
+        accession_number: str,
+        filing_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Extract financial data from an SEC filing using the edgar library.
@@ -207,7 +210,10 @@ class EdgarXBRLExtractor:
                 # Extract financial statements if available
                 if hasattr(xbrl_data, "statements_dict"):
                     # Get all available statements
-                    for statement_key, statement_def in xbrl_data.statements_dict.items():
+                    for (
+                        statement_key,
+                        statement_def,
+                    ) in xbrl_data.statements_dict.items():
                         # Skip if not a financial statement
                         if not statement_key.startswith("Statement"):
                             continue
@@ -293,7 +299,12 @@ class EdgarXBRLExtractor:
 
         except Exception as e:
             logger.error(f"Error extracting financials for {ticker} {accession_number}: {e}")
-            return {"filing_id": filing_id, "ticker": ticker, "accession_number": accession_number, "error": str(e)}
+            return {
+                "filing_id": filing_id,
+                "ticker": ticker,
+                "accession_number": accession_number,
+                "error": str(e),
+            }
 
     def _statement_to_dict(self, statement) -> Dict[str, Any]:
         """
@@ -328,7 +339,14 @@ class EdgarXBRLExtractor:
             line_items = []
             for item in statement.line_items:
                 line_item = {}
-                for attr in ["concept", "label", "level", "is_abstract", "section_type", "parent_section"]:
+                for attr in [
+                    "concept",
+                    "label",
+                    "level",
+                    "is_abstract",
+                    "section_type",
+                    "parent_section",
+                ]:
                     if hasattr(item, attr):
                         value = getattr(item, attr)
                         if value is not None:
@@ -374,7 +392,7 @@ class EdgarXBRLExtractor:
                 # Try to convert to records
                 data_records = statement.data.reset_index().to_dict(orient="records")
                 result["data"] = data_records
-            except Exception as e:
+            except Exception:
                 # If conversion fails, just store the column and index information
                 result["data_columns"] = list(statement.data.columns)
                 result["data_index"] = list(statement.data.index)

@@ -7,10 +7,7 @@ It shows how to search for documents by company and measure performance.
 
 import logging
 import time
-from pathlib import Path
-from typing import Any, Dict, List
-
-import numpy as np
+from typing import List
 
 from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage import OptimizedVectorStore

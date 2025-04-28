@@ -18,7 +18,9 @@ from sec_filing_analyzer.storage.improved_duckdb_store import ImprovedDuckDBStor
 from sec_filing_analyzer.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -31,13 +33,19 @@ def compare_database_stats(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBS
     old_stats = {}
     try:
         # Count companies
-        old_stats["companies_count"] = old_db.conn.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+        old_stats["companies_count"] = old_db.conn.execute(
+            "SELECT COUNT(*) FROM companies"
+        ).fetchone()[0]
 
         # Count filings
-        old_stats["filings_count"] = old_db.conn.execute("SELECT COUNT(*) FROM filings").fetchone()[0]
+        old_stats["filings_count"] = old_db.conn.execute(
+            "SELECT COUNT(*) FROM filings"
+        ).fetchone()[0]
 
         # Count facts
-        old_stats["facts_count"] = old_db.conn.execute("SELECT COUNT(*) FROM financial_facts").fetchone()[0]
+        old_stats["facts_count"] = old_db.conn.execute(
+            "SELECT COUNT(*) FROM financial_facts"
+        ).fetchone()[0]
 
         # Count metrics
         old_stats["metrics_count"] = old_db.conn.execute(
@@ -45,7 +53,9 @@ def compare_database_stats(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBS
         ).fetchone()[0]
 
         # Get year range
-        year_range = old_db.conn.execute("SELECT MIN(fiscal_year), MAX(fiscal_year) FROM filings").fetchone()
+        year_range = old_db.conn.execute(
+            "SELECT MIN(fiscal_year), MAX(fiscal_year) FROM filings"
+        ).fetchone()
         old_stats["min_year"] = year_range[0]
         old_stats["max_year"] = year_range[1]
     except Exception as e:
@@ -63,11 +73,25 @@ def compare_database_stats(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBS
     table.add_column("New Schema", style="blue")
 
     table.add_row(
-        "Companies", str(old_stats.get("companies_count", "N/A")), str(new_stats.get("companies_count", "N/A"))
+        "Companies",
+        str(old_stats.get("companies_count", "N/A")),
+        str(new_stats.get("companies_count", "N/A")),
     )
-    table.add_row("Filings", str(old_stats.get("filings_count", "N/A")), str(new_stats.get("filings_count", "N/A")))
-    table.add_row("Facts", str(old_stats.get("facts_count", "N/A")), str(new_stats.get("facts_count", "N/A")))
-    table.add_row("Metrics", str(old_stats.get("metrics_count", "N/A")), str(new_stats.get("metrics_count", "N/A")))
+    table.add_row(
+        "Filings",
+        str(old_stats.get("filings_count", "N/A")),
+        str(new_stats.get("filings_count", "N/A")),
+    )
+    table.add_row(
+        "Facts",
+        str(old_stats.get("facts_count", "N/A")),
+        str(new_stats.get("facts_count", "N/A")),
+    )
+    table.add_row(
+        "Metrics",
+        str(old_stats.get("metrics_count", "N/A")),
+        str(new_stats.get("metrics_count", "N/A")),
+    )
     table.add_row(
         "Year Range",
         f"{old_stats.get('min_year', 'N/A')} - {old_stats.get('max_year', 'N/A')}",
@@ -80,7 +104,9 @@ def compare_database_stats(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBS
 def compare_companies(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore):
     """Compare companies in both databases."""
     # Get companies from old database
-    old_companies = old_db.conn.execute("SELECT ticker, name FROM companies ORDER BY ticker").fetchdf()
+    old_companies = old_db.conn.execute(
+        "SELECT ticker, name FROM companies ORDER BY ticker"
+    ).fetchdf()
 
     # Get companies from new database
     new_companies = new_db.get_all_companies()
@@ -107,10 +133,14 @@ def compare_companies(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore)
         only_in_new = new_tickers - old_tickers
 
         if only_in_old:
-            console.print(f"[yellow]Companies in old schema but not in new: {', '.join(only_in_old)}[/yellow]")
+            console.print(
+                f"[yellow]Companies in old schema but not in new: {', '.join(only_in_old)}[/yellow]"
+            )
 
         if only_in_new:
-            console.print(f"[yellow]Companies in new schema but not in old: {', '.join(only_in_new)}[/yellow]")
+            console.print(
+                f"[yellow]Companies in new schema but not in old: {', '.join(only_in_new)}[/yellow]"
+            )
 
     # Show sample of companies
     limit = min(5, max(len(old_companies), len(new_companies)))
@@ -124,7 +154,9 @@ def compare_companies(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore)
         console.print(new_companies.head(limit))
 
 
-def compare_filings(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, ticker: str):
+def compare_filings(
+    old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, ticker: str
+):
     """Compare filings for a company in both databases."""
     # Get filings from old database
     try:
@@ -144,13 +176,17 @@ def compare_filings(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, t
     if not new_filings.empty and "fiscal_quarter" not in new_filings.columns:
         # Map fiscal_period to fiscal_quarter for comparison
         period_to_quarter = {"Q1": 1, "Q2": 2, "Q3": 3, "FY": 4}
-        new_filings["fiscal_quarter"] = new_filings["fiscal_period"].map(period_to_quarter)
+        new_filings["fiscal_quarter"] = new_filings["fiscal_period"].map(
+            period_to_quarter
+        )
 
     # Display comparison
     console.print(f"\n[bold]Filings Comparison for {ticker}:[/bold]")
 
     if old_filings.empty and new_filings.empty:
-        console.print(f"[yellow]No filings found for {ticker} in either database.[/yellow]")
+        console.print(
+            f"[yellow]No filings found for {ticker} in either database.[/yellow]"
+        )
         return
 
     # Compare counts
@@ -166,10 +202,14 @@ def compare_filings(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, t
         only_in_new = new_accessions - old_accessions
 
         if only_in_old:
-            console.print(f"[yellow]Filings in old schema but not in new: {len(only_in_old)}[/yellow]")
+            console.print(
+                f"[yellow]Filings in old schema but not in new: {len(only_in_old)}[/yellow]"
+            )
 
         if only_in_new:
-            console.print(f"[yellow]Filings in new schema but not in old: {len(only_in_new)}[/yellow]")
+            console.print(
+                f"[yellow]Filings in new schema but not in old: {len(only_in_new)}[/yellow]"
+            )
 
     # Show sample of filings
     limit = min(5, max(len(old_filings), len(new_filings)))
@@ -183,7 +223,12 @@ def compare_filings(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, t
         console.print(new_filings.head(limit))
 
 
-def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, ticker: str, accession_number: str):
+def compare_facts(
+    old_db: OptimizedDuckDBStore,
+    new_db: ImprovedDuckDBStore,
+    ticker: str,
+    accession_number: str,
+):
     """Compare facts for a filing in both databases."""
     # Get filing ID from old database
     try:
@@ -195,7 +240,9 @@ def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, tic
         if old_filing_id:
             old_filing_id = old_filing_id[0]
         else:
-            console.print(f"[yellow]Filing {accession_number} not found in old database.[/yellow]")
+            console.print(
+                f"[yellow]Filing {accession_number} not found in old database.[/yellow]"
+            )
             old_filing_id = None
     except Exception as e:
         logger.error(f"Error getting filing ID from old database: {e}")
@@ -205,7 +252,9 @@ def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, tic
     new_filing_id = new_db.get_filing_id(accession_number)
 
     if not old_filing_id and not new_filing_id:
-        console.print(f"[yellow]Filing {accession_number} not found in either database.[/yellow]")
+        console.print(
+            f"[yellow]Filing {accession_number} not found in either database.[/yellow]"
+        )
         return
 
     # Get facts from old database
@@ -229,7 +278,9 @@ def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, tic
         try:
             new_facts = new_db.get_filing_facts(new_filing_id)
             if not new_facts.empty:
-                new_facts = new_facts[["metric_name", "value", "unit_of_measure", "period_type"]]
+                new_facts = new_facts[
+                    ["metric_name", "value", "unit_of_measure", "period_type"]
+                ]
                 new_facts = new_facts.rename(columns={"unit_of_measure": "unit"})
         except Exception as e:
             logger.error(f"Error getting facts from new database: {e}")
@@ -238,7 +289,9 @@ def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, tic
     console.print(f"\n[bold]Facts Comparison for {ticker} {accession_number}:[/bold]")
 
     if old_facts.empty and new_facts.empty:
-        console.print(f"[yellow]No facts found for {accession_number} in either database.[/yellow]")
+        console.print(
+            f"[yellow]No facts found for {accession_number} in either database.[/yellow]"
+        )
         return
 
     # Compare counts
@@ -272,7 +325,9 @@ def compare_facts(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, tic
         console.print(new_facts.head(10))
 
 
-def compare_time_series(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, ticker: str, metric: str):
+def compare_time_series(
+    old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStore, ticker: str, metric: str
+):
     """Compare time series data for a company and metric in both databases."""
     # Get time series data from old database
     try:
@@ -299,7 +354,9 @@ def compare_time_series(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStor
     console.print(f"\n[bold]Time Series Comparison for {ticker} {metric}:[/bold]")
 
     if old_data.empty and new_data.empty:
-        console.print(f"[yellow]No time series data found for {ticker} {metric} in either database.[/yellow]")
+        console.print(
+            f"[yellow]No time series data found for {ticker} {metric} in either database.[/yellow]"
+        )
         return
 
     # Compare counts
@@ -318,11 +375,23 @@ def compare_time_series(old_db: OptimizedDuckDBStore, new_db: ImprovedDuckDBStor
 
 def main():
     parser = argparse.ArgumentParser(description="Compare DuckDB schemas")
-    parser.add_argument("--old-db", default="data/financial_data.duckdb", help="Path to the old DuckDB database")
-    parser.add_argument("--new-db", default="data/financial_data_new.duckdb", help="Path to the new DuckDB database")
-    parser.add_argument("--stats", action="store_true", help="Compare database statistics")
+    parser.add_argument(
+        "--old-db",
+        default="data/financial_data.duckdb",
+        help="Path to the old DuckDB database",
+    )
+    parser.add_argument(
+        "--new-db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the new DuckDB database",
+    )
+    parser.add_argument(
+        "--stats", action="store_true", help="Compare database statistics"
+    )
     parser.add_argument("--companies", action="store_true", help="Compare companies")
-    parser.add_argument("--filings", help="Compare filings for a company (specify ticker)")
+    parser.add_argument(
+        "--filings", help="Compare filings for a company (specify ticker)"
+    )
     parser.add_argument(
         "--facts",
         nargs=2,
@@ -365,10 +434,14 @@ def main():
             compare_facts(old_db, new_db, args.facts[0], args.facts[1])
 
         if args.time_series:
-            compare_time_series(old_db, new_db, args.time_series[0], args.time_series[1])
+            compare_time_series(
+                old_db, new_db, args.time_series[0], args.time_series[1]
+            )
 
         # If no specific comparison is requested, show a menu
-        if not any([args.stats, args.companies, args.filings, args.facts, args.time_series]):
+        if not any(
+            [args.stats, args.companies, args.filings, args.facts, args.time_series]
+        ):
             console.print("\n[bold]Available comparisons:[/bold]")
             console.print("  1. Compare database statistics")
             console.print("  2. Compare companies")

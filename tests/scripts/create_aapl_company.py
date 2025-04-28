@@ -3,21 +3,25 @@ from sec_filing_analyzer.storage.graph_store import GraphStore
 # Initialize Neo4j connection
 gs = GraphStore(use_neo4j=True)
 
-# Create AAPL company node
-result = gs.query("""
-MERGE (c:Company {ticker: 'AAPL'})
-SET c.name = 'APPLE INC'
-RETURN c.ticker as ticker, c.name as name
-""")
-print("Created AAPL company node:", result)
+try:
+    # Create AAPL company node
+    result = gs.query("""
+    MERGE (c:Company {ticker: 'AAPL'})
+    SET c.name = 'APPLE INC'
+    RETURN c.ticker as ticker, c.name as name
+    """)
+    print("Created AAPL company node:", result)
 
-# Find AAPL filings
-result = gs.query("""
-MATCH (f:Filing)
-WHERE f.ticker = 'AAPL'
-RETURN f.id as filing_id, f.filing_date as filing_date
-""")
-print("AAPL filings:", result)
+    # Find AAPL filings
+    result = gs.query("""
+    MATCH (f:Filing)
+    WHERE f.ticker = 'AAPL'
+    RETURN f.id as filing_id, f.filing_date as filing_date
+    """)
+    print("AAPL filings:", result)
+finally:
+    # Ensure the Neo4j driver is closed
+    gs.close()
 
 # Connect AAPL company to its filings
 if result:

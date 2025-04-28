@@ -13,13 +13,17 @@ repos:
         language: python
         entry: python .pre-commit-log-wrapper.py
         pass_filenames: false
-        always_run: true
         stages: [pre-commit]
         verbose: true
         # These options tell pre-commit that this hook doesn't modify files
         # Even though it creates log files, they're in .gitignore
         fail_fast: false
         require_serial: true
+        # This option tells pre-commit that this hook doesn't modify files
+        always_run: true
+        # This option tells pre-commit that this hook doesn't care about file types
+        types: [text]
+        types_or: [python, yaml, toml, markdown]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.7

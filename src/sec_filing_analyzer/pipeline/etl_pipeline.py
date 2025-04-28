@@ -6,10 +6,7 @@ This module provides the main ETL pipeline for processing SEC filings.
 
 import concurrent.futures
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional
-
-from llama_index.embeddings.openai import OpenAIEmbedding
 
 from ..config import ETLConfig, StorageConfig, VectorStoreConfig
 from ..data_processing.chunking import FilingChunker
@@ -17,7 +14,6 @@ from ..data_retrieval import FilingProcessor, SECFilingsDownloader
 from ..data_retrieval.file_storage import FileStorage
 from ..data_retrieval.parallel_filing_processor import ParallelFilingProcessor
 from ..semantic.embeddings.embedding_generator import EmbeddingGenerator
-from ..semantic.embeddings.parallel_embeddings import ParallelEmbeddingGenerator
 from ..semantic.embeddings.robust_embedding_generator import RobustEmbeddingGenerator
 from ..storage import GraphStore, LlamaIndexVectorStore, OptimizedVectorStore
 from .etl_pipeline_extension import ETLPipelineExtension
@@ -106,7 +102,9 @@ class SECFilingETLPipeline:
             )
         else:
             self.filing_processor = filing_processor or FilingProcessor(
-                graph_store=self.graph_store, vector_store=self.vector_store, file_storage=self.file_storage
+                graph_store=self.graph_store,
+                vector_store=self.vector_store,
+                file_storage=self.file_storage,
             )
 
         # Initialize filing chunker
@@ -172,7 +170,12 @@ class SECFilingETLPipeline:
         Returns:
             Dictionary with processing results
         """
-        result = {"ticker": ticker, "status": "failed", "filings_processed": 0, "error": None}
+        result = {
+            "ticker": ticker,
+            "status": "failed",
+            "filings_processed": 0,
+            "error": None,
+        }
 
         try:
             # Download filings
@@ -308,7 +311,11 @@ class SECFilingETLPipeline:
             # Process using the legacy pipeline
             # Step 1: Get the filing object
             filings = self.sec_downloader.get_filings(
-                ticker=ticker, filing_types=[filing_type], start_date=filing_date, end_date=filing_date, limit=1
+                ticker=ticker,
+                filing_types=[filing_type],
+                start_date=filing_date,
+                end_date=filing_date,
+                limit=1,
             )
 
             if not filings:
@@ -373,7 +380,8 @@ class SECFilingETLPipeline:
 
                 # Update filing status in DuckDB
                 self.extension.update_filing_status(
-                    accession_number=accession_number, processing_status="xbrl_processed"
+                    accession_number=accession_number,
+                    processing_status="xbrl_processed",
                 )
 
             # Determine overall status
@@ -383,7 +391,12 @@ class SECFilingETLPipeline:
                     status = "partial"
                     break
 
-            return {"status": status, "ticker": ticker, "filing_type": filing_type, "results": results}
+            return {
+                "status": status,
+                "ticker": ticker,
+                "filing_type": filing_type,
+                "results": results,
+            }
 
         except Exception as e:
             logger.error(f"Error processing {filing_type} filing for {ticker}: {e}")
@@ -520,7 +533,9 @@ class SECFilingETLPipeline:
 
             # Save processed filing to disk
             self.file_storage.save_processed_filing(
-                filing_id=accession_number, processed_data=processed_data, metadata=filing_data
+                filing_id=accession_number,
+                processed_data=processed_data,
+                metadata=filing_data,
             )
 
             # Update filing status in DuckDB
@@ -532,7 +547,8 @@ class SECFilingETLPipeline:
 
             # Cache filing for quick access
             self.file_storage.cache_filing(
-                filing_id=accession_number, filing_data={"metadata": filing_data, "processed_data": processed_data}
+                filing_id=accession_number,
+                filing_data={"metadata": filing_data, "processed_data": processed_data},
             )
 
             return processed_data

@@ -6,14 +6,11 @@ This module provides enhanced logging functionality for the SEC Filing Analyzer.
 
 import json
 import logging
-import os
-import re
 import threading
 import traceback
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, Optional, Set
 
 # Global variable to store the current session ID
 _current_session_id = None

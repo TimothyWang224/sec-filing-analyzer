@@ -13,7 +13,9 @@ import shutil
 from pathlib import Path
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Define old and new directory structures
@@ -73,7 +75,9 @@ def move_files():
                 ):
                     # Extract ticker from path if it exists
                     parts = file_path.parts
-                    if len(parts) > 1 and parts[-2].isupper():  # Assume ticker is uppercase
+                    if (
+                        len(parts) > 1 and parts[-2].isupper()
+                    ):  # Assume ticker is uppercase
                         ticker = parts[-2]
                         ticker_dir = new_path / ticker
                         os.makedirs(ticker_dir, exist_ok=True)
@@ -108,7 +112,9 @@ def move_files():
                             if not target_path.exists():
                                 try:
                                     shutil.copy2(ticker_file, target_path)
-                                    logger.info(f"Copied: {ticker_file} -> {target_path}")
+                                    logger.info(
+                                        f"Copied: {ticker_file} -> {target_path}"
+                                    )
                                 except Exception as e:
                                     logger.error(f"Error copying {ticker_file}: {e}")
 

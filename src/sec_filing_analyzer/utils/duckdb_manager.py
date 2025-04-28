@@ -7,7 +7,6 @@ with support for read-only and read-write modes.
 
 import logging
 import os
-from pathlib import Path
 from typing import Optional
 
 import duckdb

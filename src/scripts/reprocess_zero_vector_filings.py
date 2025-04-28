@@ -7,7 +7,6 @@ embedding generation settings to fix the issue.
 
 import json
 import logging
-import os
 import sys
 import time
 from pathlib import Path
@@ -19,9 +18,13 @@ from dotenv import load_dotenv
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from sec_filing_analyzer.config import ETLConfig
-from sec_filing_analyzer.data_retrieval.file_storage import FileStorage
-from sec_filing_analyzer.pipeline.parallel_etl_pipeline import ParallelSECFilingETLPipeline
-from sec_filing_analyzer.utils.logging_utils import generate_embedding_error_report, setup_logging
+from sec_filing_analyzer.pipeline.parallel_etl_pipeline import (
+    ParallelSECFilingETLPipeline,
+)
+from sec_filing_analyzer.utils.logging_utils import (
+    generate_embedding_error_report,
+    setup_logging,
+)
 
 # Load environment variables
 load_dotenv()
@@ -216,7 +219,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Reprocess filings with zero vectors")
     parser.add_argument("--max", type=int, default=None, help="Maximum number of filings to reprocess")
     parser.add_argument("--batch-size", type=int, default=20, help="Batch size for embedding generation")
-    parser.add_argument("--rate-limit", type=float, default=0.2, help="Rate limit for API requests in seconds")
+    parser.add_argument(
+        "--rate-limit",
+        type=float,
+        default=0.2,
+        help="Rate limit for API requests in seconds",
+    )
 
     args = parser.parse_args()
 

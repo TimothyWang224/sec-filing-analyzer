@@ -6,7 +6,6 @@ This module provides functionality for processing SEC filings in parallel.
 
 import concurrent.futures
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -163,7 +162,7 @@ class ParallelFilingProcessor:
                     # Check if chunk_embeddings is a dict (from embedding_metadata)
                     if isinstance(chunk_embeddings, dict):
                         logger.warning(
-                            f"chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing."
+                            "chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing."
                         )
                         return processed_data
 
@@ -232,7 +231,7 @@ class ParallelFilingProcessor:
             if chunks and chunk_embeddings and chunk_texts:
                 # Check if chunk_embeddings is a dict (from embedding_metadata)
                 if isinstance(chunk_embeddings, dict):
-                    logger.warning(f"chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing.")
+                    logger.warning("chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing.")
                     # Continue without chunk processing
                     pass
                 else:
@@ -327,7 +326,10 @@ class ParallelFilingProcessor:
         return None
 
     def list_filings(
-        self, ticker: Optional[str] = None, year: Optional[str] = None, filing_type: Optional[str] = None
+        self,
+        ticker: Optional[str] = None,
+        year: Optional[str] = None,
+        filing_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         List available filings.

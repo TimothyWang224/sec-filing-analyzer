@@ -4,7 +4,7 @@ Test the edgar library.
 
 import logging
 
-from edgar import Company, Filing, set_identity
+from edgar import Company, set_identity
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")

@@ -112,14 +112,21 @@ def show_metrics(db: ImprovedDuckDBStore, category: str = None):
 
     for _, row in metrics.iterrows():
         table.add_row(
-            row["metric_name"], row["display_name"] or "", row["category"] or "", row["unit_of_measure"] or ""
+            row["metric_name"],
+            row["display_name"] or "",
+            row["category"] or "",
+            row["unit_of_measure"] or "",
         )
 
     console.print(table)
 
 
 def show_time_series(
-    db: ImprovedDuckDBStore, ticker: str, metrics: list = None, start_year: int = None, end_year: int = None
+    db: ImprovedDuckDBStore,
+    ticker: str,
+    metrics: list = None,
+    start_year: int = None,
+    end_year: int = None,
 ):
     """Show time series data for a company."""
     data = db.query_time_series(ticker, metrics, start_year, end_year)
@@ -152,7 +159,11 @@ def show_time_series(
 
 
 def show_company_comparison(
-    db: ImprovedDuckDBStore, tickers: list, metric: str, start_year: int = None, end_year: int = None
+    db: ImprovedDuckDBStore,
+    tickers: list,
+    metric: str,
+    start_year: int = None,
+    end_year: int = None,
 ):
     """Show company comparison data."""
     data = db.query_company_comparison(tickers, metric, start_year, end_year)
@@ -229,14 +240,25 @@ def run_custom_query(db: ImprovedDuckDBStore, query: str):
 
 def main():
     parser = argparse.ArgumentParser(description="Example script for using the improved DuckDB schema")
-    parser.add_argument("--db", default="data/financial_data_new.duckdb", help="Path to the DuckDB database file")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data_new.duckdb",
+        help="Path to the DuckDB database file",
+    )
     parser.add_argument("--stats", action="store_true", help="Show database statistics")
     parser.add_argument("--companies", action="store_true", help="Show all companies")
     parser.add_argument("--filings", help="Show filings for a company (specify ticker)")
-    parser.add_argument("--metrics", nargs="?", const="all", help="Show metrics (optionally specify category)")
+    parser.add_argument(
+        "--metrics",
+        nargs="?",
+        const="all",
+        help="Show metrics (optionally specify category)",
+    )
     parser.add_argument("--time-series", help="Show time series data for a company (specify ticker)")
     parser.add_argument(
-        "--metric", action="append", help="Metric name for time series or comparison (can be used multiple times)"
+        "--metric",
+        action="append",
+        help="Metric name for time series or comparison (can be used multiple times)",
     )
     parser.add_argument("--compare", nargs="+", help="Compare companies (specify tickers)")
     parser.add_argument("--compare-metric", help="Metric to use for company comparison")

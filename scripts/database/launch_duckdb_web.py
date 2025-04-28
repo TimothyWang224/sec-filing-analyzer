@@ -9,10 +9,8 @@ import json
 import os
 import threading
 import time
-import urllib.parse
 import webbrowser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from pathlib import Path
 
 import duckdb
 
@@ -331,7 +329,9 @@ class DuckDBWebHandler(SimpleHTTPRequestHandler):
 
                 schema = {}
                 for table in tables:
-                    columns = self.conn.execute(f"PRAGMA table_info('{table}')").fetchall()
+                    columns = self.conn.execute(
+                        f"PRAGMA table_info('{table}')"
+                    ).fetchall()
                     schema[table] = []
 
                     for col in columns:
@@ -379,7 +379,9 @@ class DuckDBWebHandler(SimpleHTTPRequestHandler):
                             row_dict[col] = str(row[i])
                     rows.append(row_dict)
 
-                self.wfile.write(json.dumps({"columns": columns, "rows": rows}).encode())
+                self.wfile.write(
+                    json.dumps({"columns": columns, "rows": rows}).encode()
+                )
             except Exception as e:
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
@@ -397,8 +399,14 @@ def run_server(port, db_path):
 
 def main():
     parser = argparse.ArgumentParser(description="Launch a web-based DuckDB explorer")
-    parser.add_argument("--db", default="data/financial_data.duckdb", help="Path to the DuckDB database file")
-    parser.add_argument("--port", type=int, default=8000, help="Port to run the web server on")
+    parser.add_argument(
+        "--db",
+        default="data/financial_data.duckdb",
+        help="Path to the DuckDB database file",
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000, help="Port to run the web server on"
+    )
 
     args = parser.parse_args()
 

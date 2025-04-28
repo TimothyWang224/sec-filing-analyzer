@@ -8,7 +8,6 @@ semantic and quantitative data processing.
 import argparse
 import logging
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -41,7 +40,10 @@ def test_semantic_pipeline(ticker, filing_type, filing_date=None, accession_numb
         # Process a filing
         logger.info(f"Processing {filing_type} filing for {ticker} using semantic pipeline")
         result = pipeline.process_filing(
-            ticker=ticker, filing_type=filing_type, filing_date=filing_date, accession_number=accession_number
+            ticker=ticker,
+            filing_type=filing_type,
+            filing_date=filing_date,
+            accession_number=accession_number,
         )
 
         # Print the result
@@ -75,7 +77,10 @@ def test_quantitative_pipeline(ticker, filing_type, filing_date=None, accession_
         # Process a filing
         logger.info(f"Processing {filing_type} filing for {ticker} using quantitative pipeline")
         result = pipeline.process_filing(
-            ticker=ticker, filing_type=filing_type, filing_date=filing_date, accession_number=accession_number
+            ticker=ticker,
+            filing_type=filing_type,
+            filing_date=filing_date,
+            accession_number=accession_number,
         )
 
         # Print the result
@@ -109,7 +114,10 @@ def test_unified_pipeline(ticker, filing_type, filing_date=None, accession_numbe
         # Process a filing
         logger.info(f"Processing {filing_type} filing for {ticker} using unified pipeline")
         result = pipeline.process_filing(
-            ticker=ticker, filing_type=filing_type, filing_date=filing_date, accession_number=accession_number
+            ticker=ticker,
+            filing_type=filing_type,
+            filing_date=filing_date,
+            accession_number=accession_number,
         )
 
         # Print the result

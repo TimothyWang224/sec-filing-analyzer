@@ -7,16 +7,13 @@ using NumPy binary storage and FAISS for efficient similarity search.
 
 import json
 import logging
-import os
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import faiss
 import numpy as np
-from llama_index.core import Document
-from llama_index.core.schema import NodeWithScore, TextNode
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -357,7 +354,11 @@ class OptimizedVectorStore:
             FAISS index
         """
         # Store index parameters for future reference
-        self.index_params = {"type": self.index_type, "dimension": vector_dim, "num_vectors": num_vectors}
+        self.index_params = {
+            "type": self.index_type,
+            "dimension": vector_dim,
+            "num_vectors": num_vectors,
+        }
 
         # Create the appropriate index based on type
         if self.index_type == "flat":
@@ -1307,7 +1308,12 @@ class OptimizedVectorStore:
 
         # Calculate storage size
         total_size = 0
-        for dir_path in [self.metadata_dir, self.text_dir, self.embeddings_dir, self.company_dir]:
+        for dir_path in [
+            self.metadata_dir,
+            self.text_dir,
+            self.embeddings_dir,
+            self.company_dir,
+        ]:
             for file_path in dir_path.glob("**/*"):
                 if file_path.is_file():
                     total_size += file_path.stat().st_size

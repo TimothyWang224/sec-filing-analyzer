@@ -62,7 +62,11 @@ class ToolLedger:
         return entry
 
     def get_entries(
-        self, tool_name: Optional[str] = None, status: Optional[str] = None, limit: int = 10, offset: int = 0
+        self,
+        tool_name: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """
         Get entries from the ledger with optional filtering.

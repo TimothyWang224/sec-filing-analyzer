@@ -6,14 +6,12 @@ extracted from SEC filings using DuckDB with batch operations.
 """
 
 import logging
-import os
 
 # Add the project root to the Python path
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import duckdb
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -31,7 +29,12 @@ class OptimizedDuckDBStore:
     An optimized interface to store and query financial data using DuckDB with batch operations.
     """
 
-    def __init__(self, db_path: Optional[str] = None, batch_size: int = 100, read_only: bool = True):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        batch_size: int = 100,
+        read_only: bool = True,
+    ):
         """Initialize the optimized DuckDB financial store.
 
         Args:

@@ -11,12 +11,12 @@ import sys
 import time
 from pathlib import Path
 
-import pandas as pd
-
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from sec_filing_analyzer.data_processing.parallel_xbrl_extractor import ParallelXBRLExtractor
+from sec_filing_analyzer.data_processing.parallel_xbrl_extractor import (
+    ParallelXBRLExtractor,
+)
 from sec_filing_analyzer.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Configure logging
@@ -186,7 +186,10 @@ def test_batch_extraction(tickers, accession_numbers):
             accession_number = accession_numbers[i]
             filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
 
-            company = {"ticker": ticker, "filings": [{"filing_id": filing_id, "accession_number": accession_number}]}
+            company = {
+                "ticker": ticker,
+                "filings": [{"filing_id": filing_id, "accession_number": accession_number}],
+            }
             companies.append(company)
 
     # Start timer
@@ -200,7 +203,7 @@ def test_batch_extraction(tickers, accession_numbers):
     elapsed = end_time - start_time
 
     # Print results
-    print(f"\n=== Batch XBRL Extraction Results ===")
+    print("\n=== Batch XBRL Extraction Results ===")
     print(f"Processed {len(companies)} companies in {elapsed:.2f} seconds")
 
     for ticker, filings in results.items():
@@ -254,7 +257,7 @@ def store_in_duckdb(financial_data):
     end_time = time.time()
     elapsed = end_time - start_time
 
-    print(f"\n=== Batch Storage Results ===")
+    print("\n=== Batch Storage Results ===")
     print(f"Stored {stored_count} financial data records in {elapsed:.2f} seconds")
 
     # Get database stats after
@@ -275,14 +278,35 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Test improved XBRL extraction")
     parser.add_argument("--ticker", type=str, default="AAPL", help="Company ticker symbol")
-    parser.add_argument("--accession", type=str, default="0000320193-22-000108", help="SEC accession number")
-    parser.add_argument("--mode", type=str, choices=["single", "compare", "batch"], default="single", help="Test mode")
-    parser.add_argument("--batch-tickers", type=str, nargs="+", default=["AAPL", "MSFT", "GOOGL"], help="Batch tickers")
+    parser.add_argument(
+        "--accession",
+        type=str,
+        default="0000320193-22-000108",
+        help="SEC accession number",
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["single", "compare", "batch"],
+        default="single",
+        help="Test mode",
+    )
+    parser.add_argument(
+        "--batch-tickers",
+        type=str,
+        nargs="+",
+        default=["AAPL", "MSFT", "GOOGL"],
+        help="Batch tickers",
+    )
     parser.add_argument(
         "--batch-accessions",
         type=str,
         nargs="+",
-        default=["0000320193-22-000108", "0000789019-22-000072", "0001652044-22-000071"],
+        default=[
+            "0000320193-22-000108",
+            "0000789019-22-000072",
+            "0001652044-22-000071",
+        ],
         help="Batch accession numbers",
     )
 

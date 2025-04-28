@@ -3,7 +3,6 @@ Script to add NVDA to the database and sync its filings.
 """
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -28,7 +27,12 @@ def main():
     print("Adding NVDA to the database...")
 
     # Check if NVDA already exists
-    nvda_exists = sync_manager.conn.execute("SELECT 1 FROM companies WHERE ticker = 'NVDA'").fetchone() is not None
+    nvda_exists = (
+        sync_manager.conn.execute(
+            "SELECT 1 FROM companies WHERE ticker = 'NVDA'"
+        ).fetchone()
+        is not None
+    )
 
     if not nvda_exists:
         # Add NVDA to the companies table
