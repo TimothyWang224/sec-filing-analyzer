@@ -19,6 +19,8 @@ repos:
         # Even though it creates log files, they're in .gitignore
         fail_fast: false
         require_serial: true
+        # This option tells pre-commit that this hook doesn't modify files
+        always_run: true
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.7
