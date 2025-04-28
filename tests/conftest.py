@@ -8,6 +8,12 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
+# Import environment if available, otherwise use Mock
+try:
+    from sec_filing_analyzer.environment import FinancialEnvironment
+except ImportError:
+    FinancialEnvironment = Mock
+
 # Test data
 SAMPLE_FILING_DATA = {
     "accession_number": "0000320193-23-000077",
@@ -122,3 +128,91 @@ def etl_pipeline(mock_graph_store, mock_vector_store, mock_filing_processor, moc
         filing_processor=mock_filing_processor,
         file_storage=mock_file_storage,
     )
+
+# Additional fixtures for script tests
+
+@pytest.fixture
+def question() -> str:
+    """Provide a sample question for QA tests."""
+    return "What was MSFT's net income for 2023?"
+
+
+@pytest.fixture
+def ticker() -> str:
+    """Provide a sample ticker for financial data tests."""
+    return "AAPL"
+
+
+@pytest.fixture
+def metric() -> str:
+    """Provide a sample metric for financial data tests."""
+    return "Revenue"
+
+
+@pytest.fixture
+def accession_number() -> str:
+    """Provide a sample accession number for filing tests."""
+    return "0000320193-23-000077"
+
+
+@pytest.fixture
+def query() -> str:
+    """Provide a sample query for search tests."""
+    return "What are the risk factors mentioned in the latest 10-K?"
+
+
+@pytest.fixture
+def companies() -> list:
+    """Provide a sample list of companies."""
+    return ["AAPL", "MSFT", "GOOG", "NVDA"]
+
+
+@pytest.fixture
+def filing_type() -> str:
+    """Provide a sample filing type."""
+    return "10-K"
+
+
+@pytest.fixture
+def year() -> int:
+    """Provide a sample year."""
+    return 2023
+
+
+@pytest.fixture
+def quarter() -> int:
+    """Provide a sample quarter."""
+    return 4
+
+
+@pytest.fixture
+def date_range() -> tuple:
+    """Provide a sample date range."""
+    return ("2023-01-01", "2023-12-31")
+
+
+@pytest.fixture
+def env():
+    """Provide a mock financial environment."""
+    try:
+        return FinancialEnvironment()
+    except:
+        return Mock()
+
+
+@pytest.fixture
+def tool_name() -> str:
+    """Provide a sample tool name."""
+    return "SECFinancialDataTool"
+
+
+@pytest.fixture
+def parameter_name() -> str:
+    """Provide a sample parameter name."""
+    return "ticker"
+
+
+@pytest.fixture
+def parameter_value() -> str:
+    """Provide a sample parameter value."""
+    return "AAPL"

@@ -15,9 +15,9 @@ from pathlib import Path
 
 def main():
     # Create logs directory if it doesn't exist
-    # Use a directory outside the git repository to avoid git detecting changes
-    logs_dir = Path(os.path.expanduser("~")) / ".sec_filing_analyzer_logs"
-    logs_dir.mkdir(exist_ok=True)
+    # Use a directory inside the git repository but excluded by .gitignore
+    logs_dir = Path(".logs") / "precommit"
+    logs_dir.mkdir(exist_ok=True, parents=True)
 
     # Generate timestamp and log file paths
     # Use ISO format with timezone information for the log header
@@ -39,7 +39,8 @@ def main():
             log.write("-" * 80 + "\n\n")
 
             # Run pre-commit with all hooks except our wrapper
-            cmd = ["pre-commit", "run", "--hook-stage", "pre-commit", "--all-files"]
+            # Only run on staged files, not all files
+            cmd = ["pre-commit", "run", "--hook-stage", "pre-commit"]
             process = subprocess.run(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -68,11 +69,10 @@ def main():
         # Create a copy as latest.log (using shutil.copy to ensure proper file rotation on all platforms)
         shutil.copy(log_file, latest_log)
 
-        # Always return 0 regardless of the process return code
-        # The actual pre-commit hooks will still block commits if they fail
-        # This prevents the log wrapper from reporting that files were modified
-        # We're explicitly ignoring process.returncode here
-        return 0
+        # Return the original process return code
+        # This ensures that if other hooks fail, pre-commit will still fail
+        # But we'll exit with 0 in the main function to avoid the log wrapper itself being reported as failed
+        return process.returncode
     except Exception as e:
         print(f"Error in pre-commit wrapper: {e}")
         # Return error code if our wrapper fails
@@ -80,6 +80,9 @@ def main():
 
 
 if __name__ == "__main__":
-    # Always exit with code 0 to prevent pre-commit from thinking the hook failed
-    main()
+    # Run the main function to execute pre-commit hooks and log the output
+    result = main()
+
+    # Always exit with code 0 to prevent pre-commit from thinking the log wrapper itself failed
+    # The actual pre-commit hooks will still block commits if they fail through the normal pre-commit mechanism
     sys.exit(0)

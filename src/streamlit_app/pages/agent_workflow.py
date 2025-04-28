@@ -6,6 +6,7 @@ This page provides a user interface for interacting with the agent workflow.
 
 import asyncio
 import sys
+import time
 import uuid
 from pathlib import Path
 
@@ -139,6 +140,10 @@ with st.sidebar.expander("Advanced Settings"):
 # Initialize agent
 if st.sidebar.button("Initialize Agent"):
     with st.spinner("Initializing agent..."):
+        # Create a progress bar
+        progress_bar = st.progress(0)
+        start_time = time.time()
+
         if not imports_successful:
             st.error("Cannot initialize agent: Required components are not available.")
             st.info("Please make sure the SEC Filing Analyzer package is installed correctly using 'poetry install'.")
@@ -146,6 +151,7 @@ if st.sidebar.button("Initialize Agent"):
         else:
             try:
                 # Get recommended configuration
+                progress_bar.progress(10, text="Getting configuration...")
                 try:
                     config = LLMConfigFactory.get_recommended_config(
                         agent_type=agent_type, task_complexity=task_complexity
@@ -171,9 +177,13 @@ if st.sidebar.button("Initialize Agent"):
                 )
 
                 # Initialize environment
+                progress_bar.progress(20, text="Initializing environment...")
+                env_start_time = time.time()
                 environment = None
                 try:
                     environment = FinancialEnvironment()
+                    env_time = time.time() - env_start_time
+                    st.sidebar.info(f"Environment initialized in {env_time:.2f} seconds")
                 except Exception as env_error:
                     st.error(f"Error initializing environment: {env_error}")
                     st.session_state.agent_initialized = False
@@ -185,6 +195,7 @@ if st.sidebar.button("Initialize Agent"):
                     st.session_state.agent_initialized = False
                 else:
                     # Initialize capabilities
+                    progress_bar.progress(60, text="Initializing capabilities...")
                     try:
                         capabilities = [TimeAwarenessCapability(), LoggingCapability()]
                     except Exception as cap_error:
@@ -192,6 +203,8 @@ if st.sidebar.button("Initialize Agent"):
                         capabilities = []
 
                     # Initialize agent based on type
+                    progress_bar.progress(80, text=f"Creating {agent_type} agent...")
+                    agent_start_time = time.time()
                     try:
                         if agent_type == "coordinator":
                             st.session_state.agent = FinancialDiligenceCoordinator(
@@ -210,8 +223,13 @@ if st.sidebar.button("Initialize Agent"):
                                 environment=environment, capabilities=capabilities, **config
                             )
 
+                        agent_time = time.time() - agent_start_time
+                        total_time = time.time() - start_time
+
+                        progress_bar.progress(100, text="Agent initialized!")
                         st.session_state.agent_initialized = True
-                        st.success(f"{agent_type.title()} agent initialized successfully!")
+                        st.success(f"{agent_type.title()} agent initialized successfully in {total_time:.2f} seconds!")
+                        st.sidebar.info(f"Agent creation: {agent_time:.2f}s, Total: {total_time:.2f}s")
 
                         # Clear chat history when initializing a new agent
                         st.session_state.messages = []

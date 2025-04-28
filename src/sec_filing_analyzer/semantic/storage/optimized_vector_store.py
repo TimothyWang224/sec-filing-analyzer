@@ -18,6 +18,9 @@ import numpy as np
 from llama_index.core import Document
 from llama_index.core.schema import NodeWithScore, TextNode
 
+# Import cache utilities
+from sec_filing_analyzer.storage.cache_utils import get_metadata, load_cached_mapping
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -104,21 +107,76 @@ class OptimizedVectorStore:
         Returns:
             Dictionary mapping document IDs to metadata
         """
+        start_time = time.time()
+
+        # Check if we have a consolidated metadata cache
+        cache_dir = self.store_path / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        consolidated_path = cache_dir / "consolidated_metadata.json"
+
+        if consolidated_path.exists():
+            try:
+                # Try to use orjson for faster parsing if available
+                try:
+                    import orjson
+
+                    with open(consolidated_path, "rb") as f:
+                        metadata_store = orjson.loads(f.read())
+                except ImportError:
+                    with open(consolidated_path, "r", encoding="utf-8") as f:
+                        metadata_store = json.load(f)
+
+                logger.info(
+                    f"Loaded consolidated metadata for {len(metadata_store)} documents in {time.time() - start_time:.2f} seconds"
+                )
+                return metadata_store
+            except Exception as e:
+                logger.warning(f"Error loading consolidated metadata: {e}, falling back to individual files")
+
+        # If no consolidated file exists or loading failed, load from individual files
         metadata_store = {}
 
         if not self.metadata_dir.exists():
             return metadata_store
 
+        # Try to use orjson for faster parsing if available
+        try:
+            import orjson
+
+            use_orjson = True
+        except ImportError:
+            use_orjson = False
+
         for metadata_file in self.metadata_dir.glob("*.json"):
             try:
                 doc_id = metadata_file.stem
-                with open(metadata_file, "r", encoding="utf-8") as f:
-                    metadata = json.load(f)
+                if use_orjson:
+                    with open(metadata_file, "rb") as f:
+                        metadata = orjson.loads(f.read())
+                else:
+                    with open(metadata_file, "r", encoding="utf-8") as f:
+                        metadata = json.load(f)
                 metadata_store[doc_id] = metadata
             except Exception as e:
                 logger.warning(f"Error loading metadata from {metadata_file}: {e}")
 
-        logger.info(f"Loaded metadata for {len(metadata_store)} documents")
+        # Save consolidated metadata for next time
+        try:
+            # Try to use orjson for faster serialization if available
+            try:
+                import orjson
+
+                with open(consolidated_path, "wb") as f:
+                    f.write(orjson.dumps(metadata_store))
+            except ImportError:
+                with open(consolidated_path, "w", encoding="utf-8") as f:
+                    json.dump(metadata_store, f)
+
+            logger.info(f"Created consolidated metadata cache with {len(metadata_store)} documents")
+        except Exception as e:
+            logger.warning(f"Error creating consolidated metadata cache: {e}")
+
+        logger.info(f"Loaded metadata for {len(metadata_store)} documents in {time.time() - start_time:.2f} seconds")
         return metadata_store
 
     def _build_company_to_docs_mapping(self) -> Dict[str, Set[str]]:
@@ -127,24 +185,36 @@ class OptimizedVectorStore:
         Returns:
             Dictionary mapping company tickers to sets of document IDs
         """
-        company_to_docs = defaultdict(set)
+        start_time = time.time()
 
-        for doc_id, metadata in self.metadata_store.items():
-            ticker = metadata.get("ticker", "unknown")
-            company_to_docs[ticker].add(doc_id)
+        # Define the rebuild function
+        def rebuild_mapping():
+            company_to_docs = defaultdict(set)
 
-            # Also add to "all" category for queries that don't specify a company
-            company_to_docs["all"].add(doc_id)
+            for doc_id, metadata in self.metadata_store.items():
+                ticker = metadata.get("ticker", "unknown")
+                company_to_docs[ticker].add(doc_id)
 
-        # Save the mapping to disk for future reference
-        mapping_file = self.store_path / "company_doc_mapping.json"
-        serializable_mapping = {k: list(v) for k, v in company_to_docs.items()}
+                # Also add to "all" category for queries that don't specify a company
+                company_to_docs["all"].add(doc_id)
 
-        with open(mapping_file, "w", encoding="utf-8") as f:
-            json.dump(serializable_mapping, f, indent=2)
+            # Save the mapping to disk for future reference (legacy format)
+            mapping_file = self.store_path / "company_doc_mapping.json"
+            serializable_mapping = {k: list(v) for k, v in company_to_docs.items()}
 
-        logger.info(f"Built company-to-documents mapping for {len(company_to_docs)} companies")
-        return company_to_docs
+            with open(mapping_file, "w", encoding="utf-8") as f:
+                json.dump(serializable_mapping, f, indent=2)
+
+            logger.info(
+                f"Built company-to-documents mapping for {len(company_to_docs)} companies in {time.time() - start_time:.2f} seconds"
+            )
+            return company_to_docs
+
+        # Use the cached mapping loader
+        cache_file = self.store_path / "cache" / "company_doc_mapping.json"
+        return load_cached_mapping(
+            cache_file=cache_file, metadata_dir=self.metadata_dir, rebuild_func=rebuild_mapping, force_rebuild=False
+        )
 
     def _save_metadata(self, doc_id: str, metadata: Dict[str, Any]) -> None:
         """Save metadata to disk.
@@ -1189,7 +1259,18 @@ class OptimizedVectorStore:
         Returns:
             Metadata dictionary or None if not found
         """
-        return self.metadata_store.get(doc_id)
+        # Check in-memory cache first
+        if doc_id in self.metadata_store:
+            return self.metadata_store[doc_id]
+
+        # Use the cached metadata getter
+        metadata = get_metadata(self.metadata_dir, doc_id)
+
+        # Update in-memory store if found
+        if metadata:
+            self.metadata_store[doc_id] = metadata
+
+        return metadata
 
     def get_document_text(self, doc_id: str) -> Optional[str]:
         """Get text for a document.

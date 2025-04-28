@@ -13,10 +13,16 @@ from pathlib import Path
 
 
 def main():
+    # Get the repository root (assuming the script is in the scripts directory)
+    repo_root = Path(__file__).parent.parent
+
     # Create logs directory if it doesn't exist
     # Use a directory inside the git repository but excluded by .gitignore
-    logs_dir = Path(os.getcwd()) / ".logs" / "pytest"
+    logs_dir = repo_root / ".logs" / "pytest"
     logs_dir.mkdir(exist_ok=True, parents=True)
+
+    # Print the log directory for debugging
+    print(f"Pytest logs will be saved to: {logs_dir.absolute()}")
 
     # Generate timestamp and log file paths
     # Use ISO format with timezone information for the log header
@@ -45,7 +51,9 @@ def main():
         with open(log_file, "w") as log:
             # Write header information
             log.write(f"Pytest run at {iso_timestamp}\n")
+            log.write(f"Script directory: {Path(__file__).parent.absolute()}\n")
             log.write(f"Working directory: {os.getcwd()}\n")
+            log.write(f"Repository root: {repo_root.absolute()}\n")
             log.write(f"Command: {' '.join(cmd)}\n")
             log.write("-" * 80 + "\n\n")
 

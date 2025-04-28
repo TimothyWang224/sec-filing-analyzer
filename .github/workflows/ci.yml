@@ -60,6 +60,13 @@ jobs:
         name: coverage-xml
         path: coverage.xml
 
+    - name: Generate HTML test report
+      if: always()
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      with:
+        junit_files: .logs/pytest/latest.xml
+        check_name: "Test Results"
+
     - name: Upload logs
       uses: actions/upload-artifact@v4
       with:
