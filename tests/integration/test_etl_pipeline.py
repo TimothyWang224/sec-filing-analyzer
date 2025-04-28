@@ -187,7 +187,7 @@ class TestETLPipeline:
         # The test is expected to return a dict with either a status or an error
         assert isinstance(result, dict)
 
-    @patch("sec_filing_analyzer.pipeline.etl_pipeline.OpenAIEmbedding")
+    @patch("llama_index.embeddings.openai.OpenAIEmbedding")
     def test_generate_embeddings(
         self, mock_openai_embedding, etl_pipeline, sample_filing_data
     ):

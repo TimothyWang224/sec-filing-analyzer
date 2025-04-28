@@ -69,7 +69,7 @@ def mock_edgar():
 def mock_openai_embedding():
     """Create a mock OpenAI embedding model."""
     with patch(
-        "sec_filing_analyzer.pipeline.etl_pipeline.OpenAIEmbedding"
+        "llama_index.embeddings.openai.OpenAIEmbedding"
     ) as mock_embedding:
         mock_model = Mock()
         mock_model.get_text_embedding.return_value = SAMPLE_EMBEDDING

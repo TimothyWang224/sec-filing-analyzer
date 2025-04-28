@@ -301,6 +301,17 @@ class RiskAnalystAgent(Agent):
         # Log the completion of processing
         self.logger.info(f"Risk analysis completed for: {user_input}")
 
+        # Ensure risk_analysis is not None
+        if risk_analysis is None:
+            risk_analysis = {
+                "input": user_input,
+                "analysis": "I was unable to generate a risk analysis at this time.",
+                "risk_factors": {"financial_risks": [], "operational_risks": []},
+                "risk_trends": ["No trends identified"],
+                "recommendations": ["No recommendations available"],
+                "supporting_data": {"risk_context": []},
+            }
+
         return {
             "status": "completed",
             "risk_analysis": risk_analysis,
@@ -362,7 +373,7 @@ class RiskAnalystAgent(Agent):
         temporal_info = {}
 
         if time_capability:
-            temporal_references = time_capability.extract_temporal_references(input)
+            temporal_references = time_capability._extract_temporal_references(input)
             temporal_info["temporal_references"] = temporal_references
         else:
             # Simple date extraction

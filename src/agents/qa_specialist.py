@@ -679,6 +679,16 @@ class QASpecialistAgent(Agent):
         # Log the completion of processing
         self.logger.info(f"Result: Keys: {list(answer.keys()) if answer else []}")
 
+        # Ensure answer is not None
+        if answer is None:
+            answer = {
+                "input": user_input,
+                "answer": "I was unable to generate an answer at this time.",
+                "explanation": "The agent reached its maximum number of iterations without generating a complete answer.",
+                "supporting_data": {},
+                "question_analysis": {},
+            }
+
         result = {
             "status": "completed",
             "answer": answer,

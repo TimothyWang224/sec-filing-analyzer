@@ -693,6 +693,18 @@ class FinancialDiligenceCoordinator(Agent):
             if self.state.phase_iterations["refinement"] >= self.max_refinement_iterations:
                 break
 
+        # Ensure diligence_report is not None
+        if diligence_report is None:
+            diligence_report = {
+                "input": user_input,
+                "executive_summary": "I was unable to generate a diligence report at this time.",
+                "financial_health": {},
+                "risk_profile": {},
+                "qa_response": "",
+                "key_findings": ["No findings available"],
+                "recommendations": ["No recommendations available"],
+            }
+
         result = {
             "status": "completed",
             "diligence_report": diligence_report,

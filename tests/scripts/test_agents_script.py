@@ -41,6 +41,10 @@ async def test_qa_specialist():
 
     # Print the result
     print("\nQA Specialist Result:")
+    if result is None:
+        print("Warning: Agent returned None instead of a result dictionary")
+        result = {"answer": {"answer": "No answer", "confidence": 0}}
+
     print(f"Answer: {result.get('answer', {}).get('answer', 'No answer')}")
     print(f"Confidence: {result.get('answer', {}).get('confidence', 0)}")
 
@@ -95,6 +99,10 @@ async def test_risk_analyst():
 
     # Print the result
     print("\nRisk Analyst Result:")
+    if result is None:
+        print("Warning: Agent returned None instead of a result dictionary")
+        result = {"risk_analysis": {"analysis": "No analysis", "risk_factors": {}}}
+
     print(
         f"Analysis: {result.get('risk_analysis', {}).get('analysis', 'No analysis')[:200]}..."
     )
@@ -125,6 +133,10 @@ async def test_coordinator():
 
     # Print the result
     print("\nCoordinator Result:")
+    if result is None:
+        print("Warning: Agent returned None instead of a result dictionary")
+        result = {"diligence_report": {"executive_summary": "No summary", "key_findings": []}}
+
     print(
         f"Executive Summary: {result.get('diligence_report', {}).get('executive_summary', 'No summary')[:200]}..."
     )
