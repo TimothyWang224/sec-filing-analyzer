@@ -162,15 +162,26 @@ For more detailed instructions, see [RUNNING.md](RUNNING.md).
 
 The project is organized as follows:
 
-- **Root Directory**: Contains only essential files like `run_app.py` and `run_app.bat`
+- **Root Directory**: Contains only essential files like README.md, run_app.py, and configuration files
 - **src/**: Contains the main source code for the application
 - **scripts/**: Contains utility scripts and tools
-  - **scripts/tools/**: Utility tools like the DuckDB Explorer
-  - **scripts/tests/**: Test scripts for various components
+  - **scripts/demo/**: Demo scripts for showcasing the project's capabilities
+  - **scripts/utils/**: Utility scripts for checking data, monitoring logs, etc.
+  - **scripts/data/**: Scripts for data management and manipulation
+  - **scripts/maintenance/**: Scripts for project maintenance
+  - **scripts/etl/**: Scripts for running the ETL pipeline
+  - **scripts/analysis/**: Scripts for analyzing data
+  - **scripts/visualization/**: Scripts for visualizing data
 - **tests/**: Contains unit and integration tests
 - **data/**: Contains data files and databases
+  - **data/db_backup/**: Database backup files
+  - **data/filings/**: SEC filing data
+  - **data/vector_store/**: Vector embeddings and metadata
+  - **data/logs/**: Log files
 - **docs/**: Contains documentation
 - **archive/**: Contains archived files that are no longer needed but kept for reference
+
+For a detailed overview of the directory structure, see [DIRECTORY_STRUCTURE.md](docs/DIRECTORY_STRUCTURE.md).
 
 ## Usage
 
