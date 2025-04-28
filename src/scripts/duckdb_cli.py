@@ -40,9 +40,7 @@ def describe_table(conn, table_name):
         schema = conn.execute(f"PRAGMA table_info('{table_name}')").fetchall()
 
         if not schema:
-            console.print(
-                f"[yellow]Table '{table_name}' exists but has no columns.[/yellow]"
-            )
+            console.print(f"[yellow]Table '{table_name}' exists but has no columns.[/yellow]")
             return
 
         table = Table(title=f"Schema for '{table_name}'", box=box.ROUNDED)
@@ -183,9 +181,7 @@ export "SELECT * FROM companies" companies.csv
             elif command.lower().startswith("export "):
                 parts = command[7:].strip().split(" ", 1)
                 if len(parts) < 2:
-                    console.print(
-                        "[red]Error: export requires a query and filename[/red]"
-                    )
+                    console.print("[red]Error: export requires a query and filename[/red]")
                     continue
 
                 query = parts[0]
@@ -194,9 +190,7 @@ export "SELECT * FROM companies" companies.csv
                 try:
                     df = conn.execute(query).fetchdf()
                     df.to_csv(filename, index=False)
-                    console.print(
-                        f"[green]Exported {len(df)} rows to {filename}[/green]"
-                    )
+                    console.print(f"[green]Exported {len(df)} rows to {filename}[/green]")
                 except Exception as e:
                     console.print(f"[red]Error exporting data: {e}[/red]")
             else:
@@ -214,18 +208,12 @@ def main():
         default="data/financial_data.duckdb",
         help="Path to the DuckDB database file",
     )
-    parser.add_argument(
-        "--list-tables", action="store_true", help="List all tables in the database"
-    )
+    parser.add_argument("--list-tables", action="store_true", help="List all tables in the database")
     parser.add_argument("--describe", help="Describe a specific table")
     parser.add_argument("--sample", help="Show a sample of rows from a table")
-    parser.add_argument(
-        "--limit", type=int, default=10, help="Limit for sample rows (default: 10)"
-    )
+    parser.add_argument("--limit", type=int, default=10, help="Limit for sample rows (default: 10)")
     parser.add_argument("--query", help="Run a custom SQL query")
-    parser.add_argument(
-        "--interactive", action="store_true", help="Start interactive mode"
-    )
+    parser.add_argument("--interactive", action="store_true", help="Start interactive mode")
 
     args = parser.parse_args()
 
@@ -237,9 +225,7 @@ def main():
             return 1
 
         conn = duckdb.connect(db_path)
-        console.print(
-            Panel(f"Connected to DuckDB database: [bold cyan]{db_path}[/bold cyan]")
-        )
+        console.print(Panel(f"Connected to DuckDB database: [bold cyan]{db_path}[/bold cyan]"))
 
         # Execute the requested command
         if args.list_tables:

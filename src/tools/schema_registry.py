@@ -49,15 +49,11 @@ class SchemaRegistry:
             logger.info(f"Loaded schema '{schema_name}' from {schema_file}")
             return True
         except Exception as e:
-            logger.error(
-                f"Error loading schema '{schema_name}' from {schema_file}: {str(e)}"
-            )
+            logger.error(f"Error loading schema '{schema_name}' from {schema_file}: {str(e)}")
             return False
 
     @classmethod
-    def register_field_mapping(
-        cls, schema_name: str, param_name: str, field_name: str
-    ) -> None:
+    def register_field_mapping(cls, schema_name: str, param_name: str, field_name: str) -> None:
         """
         Register a mapping between a tool parameter and a database field.
 
@@ -83,9 +79,7 @@ class SchemaRegistry:
 
         # Register the mapping
         cls._field_mappings[schema_name][param_name] = field_name
-        logger.info(
-            f"Registered field mapping: {schema_name}.{param_name} -> {field_name}"
-        )
+        logger.info(f"Registered field mapping: {schema_name}.{param_name} -> {field_name}")
 
     @classmethod
     def get_schema(cls, schema_name: str) -> Optional[Dict[str, Any]]:
@@ -118,9 +112,7 @@ class SchemaRegistry:
         return cls._field_mappings[schema_name].get(param_name)
 
     @classmethod
-    def resolve_field(
-        cls, schema_name: str, param_name: str, default: Optional[str] = None
-    ) -> str:
+    def resolve_field(cls, schema_name: str, param_name: str, default: Optional[str] = None) -> str:
         """
         Resolve a parameter name to a database field name.
 
@@ -165,15 +157,11 @@ class SchemaRegistry:
         fields = schema.get("fields", {})
         for field_name, field_def in fields.items():
             if not isinstance(field_def, dict):
-                errors.append(
-                    f"Field '{field_name}' in schema '{schema_name}' has invalid definition"
-                )
+                errors.append(f"Field '{field_name}' in schema '{schema_name}' has invalid definition")
                 continue
 
             if "type" not in field_def:
-                errors.append(
-                    f"Field '{field_name}' in schema '{schema_name}' is missing 'type' definition"
-                )
+                errors.append(f"Field '{field_name}' in schema '{schema_name}' is missing 'type' definition")
 
         # Check field mappings
         if schema_name in cls._field_mappings:
@@ -220,9 +208,7 @@ class SchemaRegistry:
         return success
 
     @classmethod
-    def get_field_info(
-        cls, schema_name: str, field_name: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_field_info(cls, schema_name: str, field_name: str) -> Optional[Dict[str, Any]]:
         """
         Get information about a specific field in a schema.
 

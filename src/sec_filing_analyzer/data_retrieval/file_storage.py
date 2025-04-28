@@ -91,9 +91,7 @@ class FileStorage:
         logger.info(f"Saved raw filing {filing_id} to {file_path}")
         return file_path
 
-    def save_html_filing(
-        self, filing_id: str, html_content: str, metadata: Dict[str, Any]
-    ) -> Path:
+    def save_html_filing(self, filing_id: str, html_content: str, metadata: Dict[str, Any]) -> Path:
         """
         Save HTML filing content to disk.
 
@@ -129,9 +127,7 @@ class FileStorage:
         logger.info(f"Saved HTML filing {filing_id} to {file_path}")
         return file_path
 
-    def save_xml_filing(
-        self, filing_id: str, xml_content: str, metadata: Dict[str, Any]
-    ) -> Path:
+    def save_xml_filing(self, filing_id: str, xml_content: str, metadata: Dict[str, Any]) -> Path:
         """
         Save XML filing content to disk.
 
@@ -167,9 +163,7 @@ class FileStorage:
         logger.info(f"Saved XML filing {filing_id} to {file_path}")
         return file_path
 
-    def save_processed_filing(
-        self, filing_id: str, processed_data: Dict[str, Any], metadata: Dict[str, Any]
-    ) -> Path:
+    def save_processed_filing(self, filing_id: str, processed_data: Dict[str, Any], metadata: Dict[str, Any]) -> Path:
         """
         Save processed filing data to disk.
 
@@ -436,9 +430,7 @@ class FileStorage:
 
         # If ticker and year are provided, check directly
         if ticker and year:
-            file_path = (
-                self.processed_dir / ticker / year / f"{filing_id}_processed.json"
-            )
+            file_path = self.processed_dir / ticker / year / f"{filing_id}_processed.json"
             if file_path.exists():
                 return file_path
 
@@ -708,9 +700,7 @@ class FileStorage:
 
         # Copy HTML filing if available
         html_path = self.html_dir / ticker / year / f"{filing_id}.html"
-        html_metadata_path = (
-            self.html_dir / ticker / year / f"{filing_id}_metadata.json"
-        )
+        html_metadata_path = self.html_dir / ticker / year / f"{filing_id}_metadata.json"
 
         if html_path.exists():
             shutil.copy2(html_path, export_dir / "filing.html")
@@ -729,9 +719,7 @@ class FileStorage:
             shutil.copy2(xml_metadata_path, export_dir / "xml_metadata.json")
 
         # Copy processed filing
-        processed_path = (
-            self.processed_dir / ticker / year / f"{filing_id}_processed.json"
-        )
+        processed_path = self.processed_dir / ticker / year / f"{filing_id}_processed.json"
 
         if processed_path.exists():
             shutil.copy2(processed_path, export_dir / "processed.json")

@@ -67,9 +67,7 @@ def launch_duckdb_ui(db_path="data/db_backup/improved_financial_data.duckdb"):
         # Check if the GUI method exists (available in DuckDB 0.9.0+)
         if hasattr(conn, "gui") and callable(conn.gui):
             # Show a message about launching the UI
-            st.info(
-                "Launching DuckDB Web Interface. This will open in a new browser tab."
-            )
+            st.info("Launching DuckDB Web Interface. This will open in a new browser tab.")
 
             # Launch the GUI in a separate thread
             import threading
@@ -86,27 +84,19 @@ def launch_duckdb_ui(db_path="data/db_backup/improved_financial_data.duckdb"):
 
             # Start the thread
             web_thread = threading.Thread(target=run_duckdb_web)
-            web_thread.daemon = (
-                True  # Make thread a daemon so it exits when the main program exits
-            )
+            web_thread.daemon = True  # Make thread a daemon so it exits when the main program exits
             web_thread.start()
 
             # Show success message
-            st.success(
-                "DuckDB Web Interface launched. Check your browser for a new tab."
-            )
+            st.success("DuckDB Web Interface launched. Check your browser for a new tab.")
             duckdb_ui_logger.info("DuckDB Web Interface launched successfully")
             return True
         else:
             # GUI method not available, show alternative options
             conn.close()
-            duckdb_ui_logger.warning(
-                f"DuckDB GUI method not available in version {duckdb_version}"
-            )
+            duckdb_ui_logger.warning(f"DuckDB GUI method not available in version {duckdb_version}")
 
-            st.warning(
-                f"The native DuckDB GUI is not available in your DuckDB version ({duckdb_version})."
-            )
+            st.warning(f"The native DuckDB GUI is not available in your DuckDB version ({duckdb_version}).")
             st.info(
                 "To use the native GUI feature, please upgrade to DuckDB 0.9.0 or later with: `pip install --upgrade duckdb`"
             )

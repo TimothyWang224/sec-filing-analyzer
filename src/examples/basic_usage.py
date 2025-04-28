@@ -14,9 +14,7 @@ async def main():
     print(f"\nPerforming comprehensive diligence for {ticker}...")
     diligence_results = await analyzer.perform_diligence(ticker)
     print("\nDiligence Results:")
-    print(
-        f"Executive Summary: {diligence_results['diligence_report']['executive_summary']}"
-    )
+    print(f"Executive Summary: {diligence_results['diligence_report']['executive_summary']}")
     print("\nKey Findings:")
     for finding in diligence_results["diligence_report"]["key_findings"]:
         print(f"- {finding}")

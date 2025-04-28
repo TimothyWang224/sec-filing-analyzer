@@ -43,13 +43,9 @@ class DuckDBManager:
         self.default_db_path = default_db_path or "data/db_backup/financial_data.duckdb"
         self._active_connections = {}
         self._initialized = True
-        logger.info(
-            f"Initialized DuckDB manager with default path: {self.default_db_path}"
-        )
+        logger.info(f"Initialized DuckDB manager with default path: {self.default_db_path}")
 
-    def get_connection(
-        self, db_path: Optional[str] = None, read_only: bool = True
-    ) -> duckdb.DuckDBPyConnection:
+    def get_connection(self, db_path: Optional[str] = None, read_only: bool = True) -> duckdb.DuckDBPyConnection:
         """Get a DuckDB connection.
 
         Args:
@@ -77,9 +73,7 @@ class DuckDBManager:
 
         # If we have a read-only connection and are requesting read-write, close it first
         if not read_only and read_only_key in self._active_connections:
-            logger.info(
-                f"Closing existing read-only connection to {db_path} before creating read-write connection"
-            )
+            logger.info(f"Closing existing read-only connection to {db_path} before creating read-write connection")
             self._active_connections[read_only_key].close()
             del self._active_connections[read_only_key]
 
@@ -102,22 +96,16 @@ class DuckDBManager:
             # If we failed to create a read-only connection, try with read-write as a fallback
             if read_only:
                 try:
-                    logger.info(
-                        f"Attempting to connect to {db_path} in read-write mode as fallback"
-                    )
+                    logger.info(f"Attempting to connect to {db_path} in read-write mode as fallback")
                     conn = duckdb.connect(db_path, read_only=False)
                     self._active_connections[f"{db_path}:False"] = conn
-                    logger.info(
-                        f"Connected to DuckDB at {db_path} in read-write mode (fallback)"
-                    )
+                    logger.info(f"Connected to DuckDB at {db_path} in read-write mode (fallback)")
                     return conn
                 except Exception as inner_e:
                     logger.error(f"Fallback connection also failed: {inner_e}")
             raise
 
-    def get_read_only_connection(
-        self, db_path: Optional[str] = None
-    ) -> duckdb.DuckDBPyConnection:
+    def get_read_only_connection(self, db_path: Optional[str] = None) -> duckdb.DuckDBPyConnection:
         """Get a read-only DuckDB connection.
 
         Args:
@@ -128,9 +116,7 @@ class DuckDBManager:
         """
         return self.get_connection(db_path, read_only=True)
 
-    def get_read_write_connection(
-        self, db_path: Optional[str] = None
-    ) -> duckdb.DuckDBPyConnection:
+    def get_read_write_connection(self, db_path: Optional[str] = None) -> duckdb.DuckDBPyConnection:
         """Get a read-write DuckDB connection.
 
         Args:
@@ -141,9 +127,7 @@ class DuckDBManager:
         """
         return self.get_connection(db_path, read_only=False)
 
-    def close_connection(
-        self, db_path: Optional[str] = None, read_only: Optional[bool] = None
-    ):
+    def close_connection(self, db_path: Optional[str] = None, read_only: Optional[bool] = None):
         """Close a specific DuckDB connection.
 
         Args:
@@ -251,9 +235,7 @@ class DuckDBManager:
         result = {
             "path": db_path,
             "exists": os.path.exists(db_path),
-            "size_mb": round(os.path.getsize(db_path) / (1024 * 1024), 2)
-            if os.path.exists(db_path)
-            else 0,
+            "size_mb": round(os.path.getsize(db_path) / (1024 * 1024), 2) if os.path.exists(db_path) else 0,
             "tables": [],
             "row_counts": {},
             "version": None,
@@ -279,9 +261,7 @@ class DuckDBManager:
                     # Try to connect with read-only access first
                     conn = duckdb.connect(db_path, read_only=True)
                 except Exception as e:
-                    logger.warning(
-                        f"Attempt {attempt + 1}/{max_attempts} to connect to {db_path} failed: {e}"
-                    )
+                    logger.warning(f"Attempt {attempt + 1}/{max_attempts} to connect to {db_path} failed: {e}")
                     attempt += 1
                     if attempt < max_attempts:
                         # Wait before retrying
@@ -293,13 +273,9 @@ class DuckDBManager:
                 # If we still can't connect, try with read-write as a last resort
                 try:
                     conn = duckdb.connect(db_path, read_only=False)
-                    logger.info(
-                        f"Connected to {db_path} in read-write mode as fallback"
-                    )
+                    logger.info(f"Connected to {db_path} in read-write mode as fallback")
                 except Exception as e:
-                    result["error"] = (
-                        f"Failed to connect to database after {max_attempts} attempts: {e}"
-                    )
+                    result["error"] = f"Failed to connect to database after {max_attempts} attempts: {e}"
                     return result
 
             # Get DuckDB version

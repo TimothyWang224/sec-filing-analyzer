@@ -50,9 +50,7 @@ def setup_custom_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     streamlit_handler.setLevel(level)
 
     # Create a formatter
-    formatter = logging.Formatter(
-        "[%(asctime)s] %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # Add formatter to handlers
     console_handler.setFormatter(formatter)

@@ -72,9 +72,7 @@ class LLMParameterCompleter:
             error_message = context["last_error"]
 
         # Back-fill required parameters from context if possible
-        fixed_parameters = self._backfill_required_parameters(
-            tool_name, fixed_parameters, context
-        )
+        fixed_parameters = self._backfill_required_parameters(tool_name, fixed_parameters, context)
 
         # If there are no errors and no error message, return the fixed parameters
         if not validation_result["errors"] and not error_message:
@@ -106,22 +104,16 @@ Return only the completed parameters as a JSON object.
             )
 
             # Parse completed parameters from response
-            completed_parameters = await self._parse_parameters(
-                response, fixed_parameters
-            )
+            completed_parameters = await self._parse_parameters(response, fixed_parameters)
 
             # Apply special handling for specific tools
             if tool_name == "sec_financial_data":
-                completed_parameters = (
-                    await self._enhance_sec_financial_data_parameters(
-                        completed_parameters, user_input, context
-                    )
+                completed_parameters = await self._enhance_sec_financial_data_parameters(
+                    completed_parameters, user_input, context
                 )
             elif tool_name == "sec_semantic_search":
-                completed_parameters = (
-                    await self._enhance_sec_semantic_search_parameters(
-                        completed_parameters, user_input, context
-                    )
+                completed_parameters = await self._enhance_sec_semantic_search_parameters(
+                    completed_parameters, user_input, context
                 )
             elif tool_name == "sec_graph_query":
                 completed_parameters = await self._enhance_sec_graph_query_parameters(
@@ -212,22 +204,16 @@ For metrics, identify specific financial metrics mentioned.
 Return only the completed parameters as a JSON object.
 """
 
-    async def _parse_parameters(
-        self, response: str, default_parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _parse_parameters(self, response: str, default_parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Parse parameters from LLM response."""
         try:
             # First try to parse using the safe_parse_json utility
-            completed_parameters = safe_parse_json(
-                response, default_value={}, expected_type="object"
-            )
+            completed_parameters = safe_parse_json(response, default_value={}, expected_type="object")
 
             # If parsing failed and we have an LLM instance, try to repair
             if not completed_parameters and hasattr(self, "llm"):
                 logger.info("Attempting to repair JSON parameters")
-                completed_parameters = await repair_json(
-                    response, self.llm, default_value={}, expected_type="object"
-                )
+                completed_parameters = await repair_json(response, self.llm, default_value={}, expected_type="object")
 
             # Merge with default parameters
             merged_parameters = default_parameters.copy()
@@ -242,11 +228,7 @@ Return only the completed parameters as a JSON object.
     def _deep_update(self, target: Dict[str, Any], source: Dict[str, Any]) -> None:
         """Deep update a nested dictionary."""
         for key, value in source.items():
-            if (
-                key in target
-                and isinstance(target[key], dict)
-                and isinstance(value, dict)
-            ):
+            if key in target and isinstance(target[key], dict) and isinstance(value, dict):
                 self._deep_update(target[key], value)
             else:
                 target[key] = value
@@ -279,32 +261,18 @@ Return only the completed parameters as a JSON object.
                 # If ticker is missing, try to get it from context
                 if "ticker" not in enhanced_params["parameters"]:
                     # Check if we have company info in context
-                    if (
-                        "company_info" in context
-                        and "ticker" in context["company_info"]
-                    ):
-                        enhanced_params["parameters"]["ticker"] = context[
-                            "company_info"
-                        ]["ticker"]
+                    if "company_info" in context and "ticker" in context["company_info"]:
+                        enhanced_params["parameters"]["ticker"] = context["company_info"]["ticker"]
                     # Check if we have tool results with companies
                     elif "tool_results" in context:
                         for result in context["tool_results"]:
-                            if result.get(
-                                "tool"
-                            ) == "sec_financial_data" and result.get("success", False):
+                            if result.get("tool") == "sec_financial_data" and result.get("success", False):
                                 # Look for companies query result
-                                if (
-                                    result.get("result", {}).get("query_type")
-                                    == "companies"
-                                ):
-                                    companies = result.get("result", {}).get(
-                                        "results", []
-                                    )
+                                if result.get("result", {}).get("query_type") == "companies":
+                                    companies = result.get("result", {}).get("results", [])
                                     if companies and len(companies) > 0:
                                         # Use the first company ticker
-                                        enhanced_params["parameters"]["ticker"] = (
-                                            companies[0].get("ticker")
-                                        )
+                                        enhanced_params["parameters"]["ticker"] = companies[0].get("ticker")
                                         break
 
         return enhanced_params
@@ -333,27 +301,17 @@ Return only the completed parameters as a JSON object.
         query_type = enhanced_params.get("query_type")
         if query_type:
             # For related_companies, ensure we have a ticker
-            if (
-                query_type == "related_companies"
-                and "ticker" not in enhanced_params["parameters"]
-            ):
+            if query_type == "related_companies" and "ticker" not in enhanced_params["parameters"]:
                 # If we still don't have a ticker, try to get it from previous tool results
                 if context and "tool_results" in context:
                     for result in context["tool_results"]:
-                        if result.get("tool") == "sec_financial_data" and result.get(
-                            "success", False
-                        ):
+                        if result.get("tool") == "sec_financial_data" and result.get("success", False):
                             # Look for companies query result
-                            if (
-                                result.get("result", {}).get("query_type")
-                                == "companies"
-                            ):
+                            if result.get("result", {}).get("query_type") == "companies":
                                 companies = result.get("result", {}).get("results", [])
                                 if companies and len(companies) > 0:
                                     # Use the first company ticker
-                                    enhanced_params["parameters"]["ticker"] = companies[
-                                        0
-                                    ].get("ticker")
+                                    enhanced_params["parameters"]["ticker"] = companies[0].get("ticker")
                                     break
 
         return enhanced_params
@@ -380,21 +338,13 @@ Return only the completed parameters as a JSON object.
 
         # Extract date range
         date_range = self._extract_date_range(user_input)
-        if (
-            date_range.get("start_date")
-            and "start_date" not in enhanced_params["parameters"]
-        ):
+        if date_range.get("start_date") and "start_date" not in enhanced_params["parameters"]:
             enhanced_params["parameters"]["start_date"] = date_range["start_date"]
-        if (
-            date_range.get("end_date")
-            and "end_date" not in enhanced_params["parameters"]
-        ):
+        if date_range.get("end_date") and "end_date" not in enhanced_params["parameters"]:
             enhanced_params["parameters"]["end_date"] = date_range["end_date"]
 
         # Extract metrics
-        metrics = await self._extract_financial_metrics(
-            user_input, enhanced_params.get("query_type", "")
-        )
+        metrics = await self._extract_financial_metrics(user_input, enhanced_params.get("query_type", ""))
         if metrics and "metrics" not in enhanced_params["parameters"]:
             enhanced_params["parameters"]["metrics"] = metrics
 
@@ -412,9 +362,7 @@ Return only the completed parameters as a JSON object.
         # Ensure query parameter is always provided
         if "query" not in enhanced_params:
             enhanced_params["query"] = user_input
-            logger.info(
-                f"Added missing query parameter to sec_semantic_search tool: {user_input}"
-            )
+            logger.info(f"Added missing query parameter to sec_semantic_search tool: {user_input}")
 
         # Extract company information
         company_info = await self._extract_company_info(user_input, context)
@@ -423,11 +371,7 @@ Return only the completed parameters as a JSON object.
 
         # Extract date range
         date_range = self._extract_date_range(user_input)
-        if (
-            date_range.get("start_date")
-            and date_range.get("end_date")
-            and "date_range" not in enhanced_params
-        ):
+        if date_range.get("start_date") and date_range.get("end_date") and "date_range" not in enhanced_params:
             enhanced_params["date_range"] = [
                 date_range["start_date"],
                 date_range["end_date"],
@@ -444,9 +388,7 @@ Return only the completed parameters as a JSON object.
 
         return enhanced_params
 
-    async def _extract_company_info(
-        self, text: str, context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _extract_company_info(self, text: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Extract company information from text."""
         # Check if we already have company information in the context
         if context and "company_info" in context:
@@ -480,22 +422,16 @@ Return only the extracted information as a JSON object.
 
         try:
             # Parse the JSON using our safe_parse_json utility
-            company_info = safe_parse_json(
-                response, default_value={}, expected_type="object"
-            )
+            company_info = safe_parse_json(response, default_value={}, expected_type="object")
 
             # If parsing failed and we have an LLM instance, try to repair
             if not company_info:
                 logger.info("Attempting to repair JSON company info")
-                company_info = await repair_json(
-                    response, self.llm, default_value={}, expected_type="object"
-                )
+                company_info = await repair_json(response, self.llm, default_value={}, expected_type="object")
 
             # If we have a company name but no ticker, try to resolve the ticker
             if company_info.get("company_name") and not company_info.get("ticker"):
-                company_info["ticker"] = await self._resolve_ticker(
-                    company_info["company_name"]
-                )
+                company_info["ticker"] = await self._resolve_ticker(company_info["company_name"])
 
             return company_info
         except Exception as e:
@@ -601,9 +537,7 @@ Return only the ticker symbol as a string.
         result = {}
 
         # Try to extract specific dates
-        date_pattern = (
-            r"(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4}|\d{1,2}/\d{1,2}/\d{2})"
-        )
+        date_pattern = r"(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4}|\d{1,2}/\d{1,2}/\d{2})"
         dates = re.findall(date_pattern, text)
 
         # Normalize dates to YYYY-MM-DD format
@@ -620,9 +554,7 @@ Return only the ticker symbol as a string.
                         month, day, year = parts
                         if len(year) == 2:
                             year = "20" + year  # Assume 20xx for 2-digit years
-                        normalized_dates.append(
-                            f"{year}-{month.zfill(2)}-{day.zfill(2)}"
-                        )
+                        normalized_dates.append(f"{year}-{month.zfill(2)}-{day.zfill(2)}")
             except Exception:
                 pass
 
@@ -685,9 +617,7 @@ Return only the ticker symbol as a string.
         if re.search(r"\b10-K\b|\bannual\b|\bannual\s+report\b", text, re.IGNORECASE):
             filing_types.append("10-K")
 
-        if re.search(
-            r"\b10-Q\b|\bquarterly\b|\bquarterly\s+report\b", text, re.IGNORECASE
-        ):
+        if re.search(r"\b10-Q\b|\bquarterly\b|\bquarterly\s+report\b", text, re.IGNORECASE):
             filing_types.append("10-Q")
 
         if re.search(r"\b8-K\b|\bcurrent\b|\bcurrent\s+report\b", text, re.IGNORECASE):
@@ -759,16 +689,12 @@ Return only the extracted metrics as a JSON array.
 
             try:
                 # Parse the JSON using our safe_parse_json utility
-                metrics = safe_parse_json(
-                    response, default_value=[], expected_type="array"
-                )
+                metrics = safe_parse_json(response, default_value=[], expected_type="array")
 
                 # If parsing failed, try to repair
                 if not metrics:
                     logger.info("Attempting to repair JSON metrics")
-                    metrics = await repair_json(
-                        response, self.llm, default_value=[], expected_type="array"
-                    )
+                    metrics = await repair_json(response, self.llm, default_value=[], expected_type="array")
             except Exception as e:
                 logger.error(f"Error extracting financial metrics: {str(e)}")
                 # Default to Revenue and NetIncome if extraction fails

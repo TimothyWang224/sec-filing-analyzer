@@ -17,9 +17,7 @@ try:
     HAS_CONFIG_PROVIDER = True
 except ImportError:
     HAS_CONFIG_PROVIDER = False
-    logger.warning(
-        "Could not import ConfigProvider. Tool schemas will be loaded from registry only."
-    )
+    logger.warning("Could not import ConfigProvider. Tool schemas will be loaded from registry only.")
 
 # Re-export the register_tool decorator from ToolRegistry
 register_tool = ToolRegistry.register
@@ -49,15 +47,9 @@ class Tool(ABC):
     # Class variables for tool metadata
     _tool_name: ClassVar[Optional[str]] = None
     _tool_tags: ClassVar[Optional[list]] = None
-    _compact_description: ClassVar[Optional[str]] = (
-        None  # New class variable for compact description
-    )
-    _db_schema: ClassVar[Optional[str]] = (
-        None  # Database schema name for parameter resolution
-    )
-    _parameter_mappings: ClassVar[Optional[Dict[str, str]]] = (
-        None  # Parameter to field mappings
-    )
+    _compact_description: ClassVar[Optional[str]] = None  # New class variable for compact description
+    _db_schema: ClassVar[Optional[str]] = None  # Database schema name for parameter resolution
+    _parameter_mappings: ClassVar[Optional[Dict[str, str]]] = None  # Parameter to field mappings
 
     def __init__(self) -> None:
         """Initialize a tool."""
@@ -76,9 +68,7 @@ class Tool(ABC):
         )
 
         # Get compact description or generate one from the full description
-        self.compact_description = getattr(
-            self.__class__, "_compact_description", self.description.split(".")[0]
-        )
+        self.compact_description = getattr(self.__class__, "_compact_description", self.description.split(".")[0])
 
         # Get tags from class if registered
         self.tags = getattr(self.__class__, "_tool_tags", [])
@@ -169,13 +159,9 @@ class Tool(ABC):
                     mappings = schema_registry.get_field_mappings(db_schema)
                     if mappings:
                         param_mappings = mappings
-                        logger.debug(
-                            f"Using parameter mappings from ConfigProvider for {db_schema}"
-                        )
+                        logger.debug(f"Using parameter mappings from ConfigProvider for {db_schema}")
             except Exception as e:
-                logger.warning(
-                    f"Error getting parameter mappings from ConfigProvider: {str(e)}"
-                )
+                logger.warning(f"Error getting parameter mappings from ConfigProvider: {str(e)}")
 
         # Fall back to class attribute if no mappings were found
         if not param_mappings:
@@ -301,9 +287,7 @@ class Tool(ABC):
 
         # Log the parameter resolution if there were changes
         if resolved_params != kwargs:
-            logger.info(
-                f"Resolved parameters for {self.name}: {kwargs} -> {resolved_params}"
-            )
+            logger.info(f"Resolved parameters for {self.name}: {kwargs} -> {resolved_params}")
 
         # Execute the tool with resolved parameters
         result = await self._execute_abstract(**resolved_params)

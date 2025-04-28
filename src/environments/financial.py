@@ -40,22 +40,16 @@ class FinancialEnvironment(Environment):
                     store_path = tool.vector_store.store_path
 
                     # Create a new vector store with DuckDB enabled
-                    tool.vector_store = OptimizedVectorStore(
-                        store_path=store_path, use_duckdb=True
-                    )
+                    tool.vector_store = OptimizedVectorStore(store_path=store_path, use_duckdb=True)
 
-                    print(
-                        "Updated SECSemanticSearchTool to use DuckDB for metadata storage"
-                    )
+                    print("Updated SECSemanticSearchTool to use DuckDB for metadata storage")
             except Exception as e:
                 print(f"Error updating SECSemanticSearchTool to use DuckDB: {e}")
 
         # Print available tools
         print(f"Available tools: {list(self.tools.keys()) if self.tools else 'None'}")
 
-    async def execute_action(
-        self, action: Dict[str, Any] = None, agent: Any = None
-    ) -> Dict[str, Any]:
+    async def execute_action(self, action: Dict[str, Any] = None, agent: Any = None) -> Dict[str, Any]:
         """
         Execute an action in the financial environment.
 
@@ -73,9 +67,7 @@ class FinancialEnvironment(Environment):
 
         # Debug: Print tool lookup
         print(f"Looking for tool: {tool_name}")
-        print(
-            f"Available tools in context: {[k for k in self.context.keys() if k.startswith('tool_')]}"
-        )
+        print(f"Available tools in context: {[k for k in self.context.keys() if k.startswith('tool_')]}")
 
         tool = self.get_tool(tool_name)
         print(f"Tool found: {tool is not None}")

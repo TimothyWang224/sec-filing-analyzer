@@ -34,9 +34,7 @@ class SimplifiedXBRLExtractor:
         """
         self.cache_dir = Path(cache_dir) if cache_dir else Path("data/xbrl_cache")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(
-            f"Initialized simplified XBRL extractor with cache at {self.cache_dir}"
-        )
+        logger.info(f"Initialized simplified XBRL extractor with cache at {self.cache_dir}")
 
     def extract_financials(
         self,
@@ -58,13 +56,9 @@ class SimplifiedXBRLExtractor:
         """
         try:
             # Check cache first
-            cache_file = (
-                self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
-            )
+            cache_file = self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
             if cache_file.exists():
-                logger.info(
-                    f"Loading XBRL data from cache for {ticker} {accession_number}"
-                )
+                logger.info(f"Loading XBRL data from cache for {ticker} {accession_number}")
                 with open(cache_file, "r") as f:
                     return json.load(f)
 
@@ -73,44 +67,30 @@ class SimplifiedXBRLExtractor:
             if not filing_url:
                 try:
                     # Use standardized utility to get filing by accession number
-                    filing_obj = edgar_utils.get_filing_by_accession(
-                        ticker, accession_number
-                    )
+                    filing_obj = edgar_utils.get_filing_by_accession(ticker, accession_number)
 
                     if filing_obj:
                         # Use the filing URL from the filing object
                         filing_url = filing_obj.filing_url
                     else:
-                        raise ValueError(
-                            f"Filing with accession number {accession_number} not found"
-                        )
+                        raise ValueError(f"Filing with accession number {accession_number} not found")
                 except Exception as e:
                     logger.error(f"Error getting filing by accession number: {e}")
-                    raise ValueError(
-                        f"Failed to get filing by accession number: {str(e)}"
-                    )
+                    raise ValueError(f"Failed to get filing by accession number: {str(e)}")
 
-            logger.info(
-                f"Extracting XBRL data for {ticker} {accession_number} from {filing_url}"
-            )
+            logger.info(f"Extracting XBRL data for {ticker} {accession_number} from {filing_url}")
 
             # If we don't have a filing object yet, get it now
             if not filing_obj:
                 try:
                     # Use standardized utility to get filing by accession number
-                    filing_obj = edgar_utils.get_filing_by_accession(
-                        ticker, accession_number
-                    )
+                    filing_obj = edgar_utils.get_filing_by_accession(ticker, accession_number)
 
                     if not filing_obj:
-                        raise ValueError(
-                            f"Filing with accession number {accession_number} not found"
-                        )
+                        raise ValueError(f"Filing with accession number {accession_number} not found")
                 except Exception as e:
                     logger.error(f"Error getting filing by accession number: {e}")
-                    raise ValueError(
-                        f"Failed to get filing by accession number: {str(e)}"
-                    )
+                    raise ValueError(f"Failed to get filing by accession number: {str(e)}")
 
             # Check if the filing has XBRL data
             if not filing_obj.is_xbrl:
@@ -121,9 +101,7 @@ class SimplifiedXBRLExtractor:
                 xbrl_data = filing_obj.xbrl
 
                 if not xbrl_data:
-                    raise ValueError(
-                        f"Failed to extract XBRL data from filing {accession_number}"
-                    )
+                    raise ValueError(f"Failed to extract XBRL data from filing {accession_number}")
             except Exception as e:
                 logger.error(f"Error loading XBRL data: {e}")
                 return {
@@ -134,20 +112,12 @@ class SimplifiedXBRLExtractor:
                 }
 
             # Extract filing metadata
-            filing_date = (
-                str(filing_obj.filing_date) if filing_obj.filing_date else None
-            )
+            filing_date = str(filing_obj.filing_date) if filing_obj.filing_date else None
             filing_type = filing_obj.form
-            report_date = (
-                str(filing_obj.report_date) if filing_obj.report_date else None
-            )
+            report_date = str(filing_obj.report_date) if filing_obj.report_date else None
 
             # Determine fiscal year and quarter
-            fiscal_year = (
-                int(report_date.split("-")[0])
-                if report_date and "-" in report_date
-                else None
-            )
+            fiscal_year = int(report_date.split("-")[0]) if report_date and "-" in report_date else None
             fiscal_quarter = self._determine_fiscal_quarter(report_date, filing_type)
 
             # Initialize financials dictionary
@@ -190,19 +160,13 @@ class SimplifiedXBRLExtractor:
                                     continue
 
                                 # Add statement to financials
-                                financials["statements"][statement_name] = df.to_dict(
-                                    orient="records"
-                                )
+                                financials["statements"][statement_name] = df.to_dict(orient="records")
 
                                 # Process statement data
-                                self._process_statement_data(
-                                    df, statement_name, financials
-                                )
+                                self._process_statement_data(df, statement_name, financials)
 
                             except Exception as e:
-                                logger.warning(
-                                    f"Error processing statement {statement_name}: {e}"
-                                )
+                                logger.warning(f"Error processing statement {statement_name}: {e}")
                 else:
                     # Try to extract data from the filing text
                     self._extract_data_from_text(filing_obj, financials)
@@ -216,15 +180,11 @@ class SimplifiedXBRLExtractor:
             with open(cache_file, "w") as f:
                 json.dump(financials, f, indent=2)
 
-            logger.info(
-                f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}"
-            )
+            logger.info(f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}")
             return financials
 
         except Exception as e:
-            logger.error(
-                f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}"
-            )
+            logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
             return {
                 "filing_id": filing_id,
                 "ticker": ticker,
@@ -261,9 +221,7 @@ class SimplifiedXBRLExtractor:
             logger.warning(f"Error extracting filing type: {e}")
             return None
 
-    def _determine_fiscal_quarter(
-        self, filing_date: Optional[str], filing_type: Optional[str]
-    ) -> Optional[int]:
+    def _determine_fiscal_quarter(self, filing_date: Optional[str], filing_type: Optional[str]) -> Optional[int]:
         """Determine fiscal quarter from filing date and type.
 
         Args:
@@ -292,9 +250,7 @@ class SimplifiedXBRLExtractor:
             logger.warning(f"Error determining fiscal quarter: {e}")
             return None
 
-    def _process_statement_data(
-        self, df: pd.DataFrame, statement_name: str, financials: Dict[str, Any]
-    ) -> None:
+    def _process_statement_data(self, df: pd.DataFrame, statement_name: str, financials: Dict[str, Any]) -> None:
         """Process statement data.
 
         Args:
@@ -386,28 +342,18 @@ class SimplifiedXBRLExtractor:
         """
         statement_name_lower = statement_name.lower()
 
-        if any(
-            term in statement_name_lower
-            for term in ["income", "operations", "earnings"]
-        ):
+        if any(term in statement_name_lower for term in ["income", "operations", "earnings"]):
             return "income_statement"
-        elif any(
-            term in statement_name_lower for term in ["balance", "financial position"]
-        ):
+        elif any(term in statement_name_lower for term in ["balance", "financial position"]):
             return "balance_sheet"
         elif any(term in statement_name_lower for term in ["cash flow", "cash flows"]):
             return "cash_flow"
-        elif any(
-            term in statement_name_lower
-            for term in ["equity", "stockholders", "shareholders"]
-        ):
+        elif any(term in statement_name_lower for term in ["equity", "stockholders", "shareholders"]):
             return "equity"
         else:
             return "other"
 
-    def _extract_data_from_text(
-        self, filing_obj: Any, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_data_from_text(self, filing_obj: Any, financials: Dict[str, Any]) -> None:
         """Extract financial data from filing text.
 
         Args:

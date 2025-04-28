@@ -27,9 +27,7 @@ def set_edgar_identity():
         edgar_identity = f"{name} {email}"
 
         # Suggest adding to .env file
-        print(
-            "\nConsider adding the following line to a .env file in the project root:"
-        )
+        print("\nConsider adding the following line to a .env file in the project root:")
         print(f'EDGAR_IDENTITY="{edgar_identity}"')
 
     # Set the identity in the edgar package

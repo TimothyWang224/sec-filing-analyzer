@@ -57,9 +57,7 @@ def main():
             if port:
                 print(f"Found available port: {port}")
             else:
-                print(
-                    "Could not find an available port. Using the configured port anyway."
-                )
+                print("Could not find an available port. Using the configured port anyway.")
                 port = initial_port
         else:
             port = initial_port

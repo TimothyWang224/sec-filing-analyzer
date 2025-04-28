@@ -44,9 +44,7 @@ SUPPORTED_QUERIES: Dict[str, Type[BaseModel]] = {"tool_details": ToolDetailsPara
 class ToolDetailsTool(Tool):
     """Tool for getting detailed information about other tools."""
 
-    def validate_args(
-        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
         """
         Validate the tool arguments.
 
@@ -60,9 +58,7 @@ class ToolDetailsTool(Tool):
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
-                logger.error(
-                    f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}"
-                )
+                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
                 return False
 
             # Validate parameters using the appropriate model
@@ -81,9 +77,7 @@ class ToolDetailsTool(Tool):
             logger.error(f"Validation error: {str(e)}")
             return False
 
-    async def _execute_abstract(
-        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Get detailed information about a specific tool.
 
@@ -155,14 +149,10 @@ class ToolDetailsTool(Tool):
                     return response
 
                 # Get formatted documentation
-                detailed_docs = ToolRegistry.get_tool_documentation(
-                    name=tool_name, format="text"
-                )
+                detailed_docs = ToolRegistry.get_tool_documentation(name=tool_name, format="text")
 
                 # Create a custom result with additional fields
-                result = self.format_success_response(
-                    query_type=query_type, parameters=parameters, results={}
-                )
+                result = self.format_success_response(query_type=query_type, parameters=parameters, results={})
 
                 # Add fields directly to the result
                 result["tool_name"] = tool_name

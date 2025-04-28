@@ -14,15 +14,11 @@ from sec_filing_analyzer.search import CoordinatedSearch
 from sec_filing_analyzer.storage import GraphStore, OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def test_faiss_index_types(
-    store_path: str, query: str = "revenue growth and profitability"
-):
+def test_faiss_index_types(store_path: str, query: str = "revenue growth and profitability"):
     """Test different FAISS index types.
 
     Args:
@@ -41,15 +37,11 @@ def test_faiss_index_types(
         logger.info(f"Testing {index_type} index")
 
         # Initialize vector store with specific index type
-        vector_store = OptimizedVectorStore(
-            store_path=store_path, index_type=index_type
-        )
+        vector_store = OptimizedVectorStore(store_path=store_path, index_type=index_type)
 
         # Perform search and measure time
         start_time = time.time()
-        search_results = vector_store.search_vectors(
-            query_text=query, companies=companies, top_k=5
-        )
+        search_results = vector_store.search_vectors(query_text=query, companies=companies, top_k=5)
         search_time = time.time() - start_time
 
         # Store results
@@ -66,18 +58,14 @@ def test_faiss_index_types(
 
         # Print top result
         if search_results:
-            logger.info(
-                f"  Top result: {search_results[0]['id']} (score: {search_results[0]['score']:.4f})"
-            )
+            logger.info(f"  Top result: {search_results[0]['id']} (score: {search_results[0]['score']:.4f})")
 
         logger.info("")
 
     # Print summary
     logger.info("Summary of FAISS index types:")
     for index_type, data in results.items():
-        logger.info(
-            f"  {index_type}: {data['time']:.4f} seconds, {data['count']} results"
-        )
+        logger.info(f"  {index_type}: {data['time']:.4f} seconds, {data['count']} results")
 
 
 def test_advanced_filtering(store_path: str):
@@ -120,9 +108,7 @@ def test_advanced_filtering(store_path: str):
         logger.info(f"  {filing_type} results: {len(results)}")
         if results:
             for i, result in enumerate(results[:2]):  # Show top 2
-                logger.info(
-                    f"    Result {i + 1}: {result['id']} - {result['metadata'].get('form', 'Unknown')}"
-                )
+                logger.info(f"    Result {i + 1}: {result['id']} - {result['metadata'].get('form', 'Unknown')}")
 
     # 2. Test date range filtering
     logger.info("\n2. Testing date range filtering")
@@ -140,9 +126,7 @@ def test_advanced_filtering(store_path: str):
         logger.info(f"  Date range {date_range} results: {len(results)}")
         if results:
             for i, result in enumerate(results[:2]):  # Show top 2
-                logger.info(
-                    f"    Result {i + 1}: {result['id']} - {result['metadata'].get('filing_date', 'Unknown')}"
-                )
+                logger.info(f"    Result {i + 1}: {result['id']} - {result['metadata'].get('filing_date', 'Unknown')}")
 
     # 3. Test keyword filtering
     logger.info("\n3. Testing keyword filtering")
@@ -234,15 +218,9 @@ def test_coordinated_search(store_path: str):
         date_range=("2022-01-01", "2023-12-31"),
     )
 
-    logger.info(
-        f"Found {len(results['results'])} results in {results['performance']['total_time']:.4f} seconds"
-    )
-    logger.info(
-        f"Vector search time: {results['performance']['vector_search_time']:.4f} seconds"
-    )
-    logger.info(
-        f"Graph search time: {results['performance']['graph_search_time']:.4f} seconds"
-    )
+    logger.info(f"Found {len(results['results'])} results in {results['performance']['total_time']:.4f} seconds")
+    logger.info(f"Vector search time: {results['performance']['vector_search_time']:.4f} seconds")
+    logger.info(f"Graph search time: {results['performance']['graph_search_time']:.4f} seconds")
 
     for i, result in enumerate(results["results"]):
         logger.info(f"Result {i + 1}:")
@@ -256,9 +234,7 @@ def test_coordinated_search(store_path: str):
         # Print related documents
         if "related_documents" in result and result["related_documents"]:
             logger.info(f"  Related documents: {len(result['related_documents'])}")
-            for j, related in enumerate(
-                result["related_documents"][:3]
-            ):  # Show first 3
+            for j, related in enumerate(result["related_documents"][:3]):  # Show first 3
                 logger.info(
                     f"    Related {j + 1}: {related.get('type', 'Unknown')} - {related.get('to_id', 'Unknown')}"
                 )

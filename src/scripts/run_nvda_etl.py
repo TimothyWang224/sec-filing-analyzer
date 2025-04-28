@@ -12,9 +12,7 @@ from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from sec_filing_analyzer.storage.graph_store import GraphStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -23,9 +21,7 @@ def get_neo4j_config():
     config = Neo4jConfig()
     return {
         "url": os.getenv("NEO4J_URL") or os.getenv("NEO4J_URI") or config.url,
-        "username": os.getenv("NEO4J_USERNAME")
-        or os.getenv("NEO4J_USER")
-        or config.username,
+        "username": os.getenv("NEO4J_USERNAME") or os.getenv("NEO4J_USER") or config.username,
         "password": os.getenv("NEO4J_PASSWORD") or config.password,
         "database": os.getenv("NEO4J_DATABASE") or config.database,
     }
@@ -48,23 +44,13 @@ def parse_args():
         action="store_true",
         help="Disable Neo4j and use in-memory graph store instead",
     )
-    parser.add_argument(
-        "--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"]
-    )
-    parser.add_argument(
-        "--neo4j-username", help="Neo4j username", default=neo4j_config["username"]
-    )
-    parser.add_argument(
-        "--neo4j-password", help="Neo4j password", default=neo4j_config["password"]
-    )
-    parser.add_argument(
-        "--neo4j-database", help="Neo4j database name", default=neo4j_config["database"]
-    )
+    parser.add_argument("--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"])
+    parser.add_argument("--neo4j-username", help="Neo4j username", default=neo4j_config["username"])
+    parser.add_argument("--neo4j-password", help="Neo4j password", default=neo4j_config["password"])
+    parser.add_argument("--neo4j-database", help="Neo4j database name", default=neo4j_config["database"])
 
     # Parallel processing options
-    parser.add_argument(
-        "--no-parallel", action="store_true", help="Disable parallel processing"
-    )
+    parser.add_argument("--no-parallel", action="store_true", help="Disable parallel processing")
     parser.add_argument(
         "--max-workers",
         type=int,
@@ -157,13 +143,9 @@ def main():
 
         # Check result status
         if result["status"] == "no_filings":
-            logger.warning(
-                f"No filings found for {args.ticker} in the specified date range and filing types"
-            )
+            logger.warning(f"No filings found for {args.ticker} in the specified date range and filing types")
         elif result["status"] == "completed":
-            logger.info(
-                f"Successfully processed {result['filings_processed']} filings for {args.ticker}"
-            )
+            logger.info(f"Successfully processed {result['filings_processed']} filings for {args.ticker}")
         else:
             # Failed processing
             error_msg = result.get("error", "Unknown error")

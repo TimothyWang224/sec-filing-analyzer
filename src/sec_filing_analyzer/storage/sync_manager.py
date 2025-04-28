@@ -16,7 +16,6 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
@@ -112,9 +111,7 @@ class StorageSyncManager:
         if "mismatches" in mismatch_results:
             for category in mismatch_results["mismatches"]:
                 for subcategory in mismatch_results["mismatches"][category]:
-                    detected += len(
-                        mismatch_results["mismatches"][category][subcategory]
-                    )
+                    detected += len(mismatch_results["mismatches"][category][subcategory])
 
         # Count fixed mismatches
         fixed = 0
@@ -148,9 +145,7 @@ class StorageSyncManager:
         try:
             # Check if vector store exists
             if not self.vector_store_path.exists():
-                logger.warning(
-                    f"Vector store path {self.vector_store_path} does not exist"
-                )
+                logger.warning(f"Vector store path {self.vector_store_path} does not exist")
                 return results
 
             # Check if embeddings directory exists
@@ -183,12 +178,8 @@ class StorageSyncManager:
                 accession_numbers = set()
 
                 # Get all embedding files for this company from the embeddings directory
-                company_embedding_files = [
-                    f for f in embedding_files if f.stem.startswith(f"{ticker}_")
-                ]
-                logger.info(
-                    f"Found {len(company_embedding_files)} embedding files for {ticker}"
-                )
+                company_embedding_files = [f for f in embedding_files if f.stem.startswith(f"{ticker}_")]
+                logger.info(f"Found {len(company_embedding_files)} embedding files for {ticker}")
 
                 # Process each embedding file
                 for emb_file in company_embedding_files:
@@ -204,14 +195,8 @@ class StorageSyncManager:
                         parts = filename.split("_", 1)
                         if len(parts) > 1:
                             # Skip test files or files that don't match the expected format
-                            if parts[
-                                0
-                            ].lower() == "test" or not self._is_valid_accession_number(
-                                parts[1]
-                            ):
-                                logger.info(
-                                    f"Skipping test or invalid file: {filename}"
-                                )
+                            if parts[0].lower() == "test" or not self._is_valid_accession_number(parts[1]):
+                                logger.info(f"Skipping test or invalid file: {filename}")
                                 continue
 
                             accession_number = parts[1]
@@ -238,20 +223,14 @@ class StorageSyncManager:
                                     results["updated"] += 1
                             else:
                                 # Try to get metadata from vector store
-                                metadata_path = (
-                                    self.vector_store_path
-                                    / "metadata"
-                                    / f"{filename}.json"
-                                )
+                                metadata_path = self.vector_store_path / "metadata" / f"{filename}.json"
                                 if metadata_path.exists():
                                     with open(metadata_path, "r") as f:
                                         metadata = json.load(f)
 
                                     # Extract filing information
                                     filing_type = metadata.get("filing_type", "unknown")
-                                    filing_date = metadata.get(
-                                        "filing_date", "2000-01-01"
-                                    )
+                                    filing_date = metadata.get("filing_date", "2000-01-01")
 
                                     # Generate a filing ID
                                     filing_id = f"{ticker}_{accession_number}"
@@ -361,14 +340,10 @@ class StorageSyncManager:
                         # Process each year
                         for year in years:
                             year_path = company_path / year
-                            self._process_filing_directory(
-                                ticker, year_path, results, subdir
-                            )
+                            self._process_filing_directory(ticker, year_path, results, subdir)
                     else:
                         # Process company directory directly
-                        self._process_filing_directory(
-                            ticker, company_path, results, subdir
-                        )
+                        self._process_filing_directory(ticker, company_path, results, subdir)
 
             return results
 
@@ -377,9 +352,7 @@ class StorageSyncManager:
             results["errors"] += 1
             return results
 
-    def _process_filing_directory(
-        self, ticker: str, directory: Path, results: Dict[str, int], file_type: str
-    ):
+    def _process_filing_directory(self, ticker: str, directory: Path, results: Dict[str, int], file_type: str):
         """
         Process a directory containing filings.
 
@@ -430,17 +403,13 @@ class StorageSyncManager:
                                 results["updated"] += 1
                         else:
                             # Try to extract filing type and date from filename or path
-                            filing_type, filing_date = self._extract_filing_info(
-                                file_path, ticker
-                            )
+                            filing_type, filing_date = self._extract_filing_info(file_path, ticker)
 
                             # Get company_id
                             company_id = self._get_company_id(ticker)
 
                             # Generate a filing ID
-                            max_id = self.conn.execute(
-                                "SELECT MAX(filing_id) FROM filings"
-                            ).fetchone()[0]
+                            max_id = self.conn.execute("SELECT MAX(filing_id) FROM filings").fetchone()[0]
                             filing_id = 1 if max_id is None else max_id + 1
 
                             # Add to DuckDB
@@ -489,12 +458,7 @@ class StorageSyncManager:
         # Check if the string is in the format 0000XXXXXX-YY-NNNNNN
         if "-" in accession_number and len(accession_number) >= 18:
             parts = accession_number.split("-")
-            if (
-                len(parts) == 3
-                and parts[0].isdigit()
-                and parts[1].isdigit()
-                and parts[2].isdigit()
-            ):
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit() and parts[2].isdigit():
                 return True
         return False
 
@@ -511,12 +475,7 @@ class StorageSyncManager:
         # Check if filename is already an accession number format (0000XXXXXX-YY-NNNNNN)
         if "-" in filename and len(filename) >= 18:
             parts = filename.split("-")
-            if (
-                len(parts) == 3
-                and parts[0].isdigit()
-                and parts[1].isdigit()
-                and parts[2].isdigit()
-            ):
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit() and parts[2].isdigit():
                 return filename
 
         # Try to extract from common formats
@@ -525,12 +484,7 @@ class StorageSyncManager:
             for part in parts:
                 if "-" in part and len(part) >= 18:
                     subparts = part.split("-")
-                    if (
-                        len(subparts) == 3
-                        and subparts[0].isdigit()
-                        and subparts[1].isdigit()
-                        and subparts[2].isdigit()
-                    ):
+                    if len(subparts) == 3 and subparts[0].isdigit() and subparts[1].isdigit() and subparts[2].isdigit():
                         return part
 
         # No accession number found
@@ -577,12 +531,7 @@ class StorageSyncManager:
         # Check if filename is an accession number
         if "-" in filename and len(filename) >= 18:
             parts = filename.split("-")
-            if (
-                len(parts) == 3
-                and parts[0].isdigit()
-                and parts[1].isdigit()
-                and parts[2].isdigit()
-            ):
+            if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit() and parts[2].isdigit():
                 # This is an accession number, try to extract year from it
                 # Format: 0000XXXXXX-YY-NNNNNN
                 year = "20" + parts[1]  # Assuming all filings are from 2000 onwards
@@ -638,9 +587,7 @@ class StorageSyncManager:
             Company ID
         """
         # Check if company exists
-        existing = self.conn.execute(
-            "SELECT company_id FROM companies WHERE ticker = ?", [ticker]
-        ).fetchone()
+        existing = self.conn.execute("SELECT company_id FROM companies WHERE ticker = ?", [ticker]).fetchone()
 
         if existing:
             return existing[0]
@@ -648,9 +595,7 @@ class StorageSyncManager:
             # Add company
             try:
                 # Get the next available company_id
-                max_id = self.conn.execute(
-                    "SELECT MAX(company_id) FROM companies"
-                ).fetchone()[0]
+                max_id = self.conn.execute("SELECT MAX(company_id) FROM companies").fetchone()[0]
                 company_id = 1 if max_id is None else max_id + 1
 
                 self.conn.execute(
@@ -667,9 +612,7 @@ class StorageSyncManager:
                 try:
                     self.conn.execute("PRAGMA foreign_keys = OFF")
                     # Get the next available company_id
-                    max_id = self.conn.execute(
-                        "SELECT MAX(company_id) FROM companies"
-                    ).fetchone()[0]
+                    max_id = self.conn.execute("SELECT MAX(company_id) FROM companies").fetchone()[0]
                     company_id = 1 if max_id is None else max_id + 1
 
                     self.conn.execute(
@@ -679,14 +622,10 @@ class StorageSyncManager:
                         [company_id, ticker, ticker],
                     )
                     self.conn.execute("PRAGMA foreign_keys = ON")
-                    logger.info(
-                        f"Added company {ticker} (ID: {company_id}) to database with foreign keys disabled"
-                    )
+                    logger.info(f"Added company {ticker} (ID: {company_id}) to database with foreign keys disabled")
                     return company_id
                 except Exception as e2:
-                    logger.error(
-                        f"Error adding company {ticker} to database with foreign keys disabled: {e2}"
-                    )
+                    logger.error(f"Error adding company {ticker} to database with foreign keys disabled: {e2}")
                     # Return a default ID as a last resort
                     return 999999
 
@@ -853,9 +792,7 @@ class StorageSyncManager:
                 ).fetchone()
 
                 if not company_info:
-                    logger.warning(
-                        f"Could not find company for filing {filing['filing_id']}"
-                    )
+                    logger.warning(f"Could not find company for filing {filing['filing_id']}")
                     continue
 
                 ticker = company_info[0]
@@ -912,9 +849,7 @@ class StorageSyncManager:
             return "missing"
 
         # Check if embedding exists
-        embedding_path = (
-            self.vector_store_path / "embeddings" / f"{ticker}_{accession_number}.npy"
-        )
+        embedding_path = self.vector_store_path / "embeddings" / f"{ticker}_{accession_number}.npy"
         if embedding_path.exists():
             return "embedded"
 
@@ -924,9 +859,7 @@ class StorageSyncManager:
             return "xbrl_processed"
 
         # Check if processed data exists
-        processed_path = (
-            self.filings_dir / "processed" / ticker / f"{accession_number}.json"
-        )
+        processed_path = self.filings_dir / "processed" / ticker / f"{accession_number}.json"
         if processed_path.exists():
             return "processed"
 
@@ -966,9 +899,7 @@ class StorageSyncManager:
             for _, row in status_counts.iterrows():
                 fiscal_period = row["fiscal_period"]
                 status_name = status_map.get(fiscal_period, "unknown")
-                status_counts_records.append(
-                    {"processing_status": status_name, "count": row["count"]}
-                )
+                status_counts_records.append({"processing_status": status_name, "count": row["count"]})
 
             # Get counts by company
             company_counts = self.conn.execute("""
@@ -1043,9 +974,7 @@ class StorageSyncManager:
             db_companies = self.conn.execute("""
                 SELECT ticker FROM companies
             """).fetchdf()
-            db_company_tickers = set(
-                db_companies["ticker"].tolist() if not db_companies.empty else []
-            )
+            db_company_tickers = set(db_companies["ticker"].tolist() if not db_companies.empty else [])
 
             # 2. Get companies from the file system
             file_company_tickers = set()
@@ -1053,9 +982,7 @@ class StorageSyncManager:
             # Check raw filings directory
             raw_dir = self.filings_dir / "raw"
             if raw_dir.exists():
-                file_company_tickers.update(
-                    [d.name for d in raw_dir.iterdir() if d.is_dir()]
-                )
+                file_company_tickers.update([d.name for d in raw_dir.iterdir() if d.is_dir()])
 
             # Check vector store embeddings directory
             embeddings_dir = self.vector_store_path / "embeddings"
@@ -1071,12 +998,8 @@ class StorageSyncManager:
             companies_in_files_not_in_db = file_company_tickers - db_company_tickers
             companies_in_db_not_in_files = db_company_tickers - file_company_tickers
 
-            results["mismatches"]["companies"]["in_files_not_in_db"] = list(
-                companies_in_files_not_in_db
-            )
-            results["mismatches"]["companies"]["in_db_not_in_files"] = list(
-                companies_in_db_not_in_files
-            )
+            results["mismatches"]["companies"]["in_files_not_in_db"] = list(companies_in_files_not_in_db)
+            results["mismatches"]["companies"]["in_db_not_in_files"] = list(companies_in_db_not_in_files)
 
             # 4. Auto-fix: Add missing companies to the database
             if auto_fix and companies_in_files_not_in_db:
@@ -1085,9 +1008,7 @@ class StorageSyncManager:
                         company_id = self._get_company_id(ticker)
                         results["fixes"]["companies_added"].append(ticker)
                     except Exception as e:
-                        results["fixes"]["errors"].append(
-                            f"Error adding company {ticker}: {str(e)}"
-                        )
+                        results["fixes"]["errors"].append(f"Error adding company {ticker}: {str(e)}")
 
             # 5. Get filings from the database
             db_filings = self.conn.execute("""
@@ -1120,9 +1041,7 @@ class StorageSyncManager:
                         for file_path in ticker_dir.glob("**/*.*"):
                             if file_path.is_file():
                                 # Extract accession number from filename
-                                accession_number = self._extract_accession_number(
-                                    file_path.stem
-                                )
+                                accession_number = self._extract_accession_number(file_path.stem)
                                 if accession_number:
                                     file_filings_dict[ticker].add(accession_number)
 
@@ -1148,25 +1067,19 @@ class StorageSyncManager:
                             embedding_filings_dict[ticker].add(accession_number)
 
             # 8. Find mismatches in filings
-            for ticker in set(
-                list(file_filings_dict.keys()) + list(db_filings_dict.keys())
-            ):
+            for ticker in set(list(file_filings_dict.keys()) + list(db_filings_dict.keys())):
                 db_filings_for_ticker = db_filings_dict.get(ticker, set())
                 file_filings_for_ticker = file_filings_dict.get(ticker, set())
 
                 # Filings in files but not in DB
-                filings_in_files_not_in_db = (
-                    file_filings_for_ticker - db_filings_for_ticker
-                )
+                filings_in_files_not_in_db = file_filings_for_ticker - db_filings_for_ticker
                 for accession_number in filings_in_files_not_in_db:
                     results["mismatches"]["filings"]["in_files_not_in_db"].append(
                         {"ticker": ticker, "accession_number": accession_number}
                     )
 
                 # Filings in DB but not in files
-                filings_in_db_not_in_files = (
-                    db_filings_for_ticker - file_filings_for_ticker
-                )
+                filings_in_db_not_in_files = db_filings_for_ticker - file_filings_for_ticker
                 for accession_number in filings_in_db_not_in_files:
                     results["mismatches"]["filings"]["in_db_not_in_files"].append(
                         {"ticker": ticker, "accession_number": accession_number}
@@ -1194,16 +1107,12 @@ class StorageSyncManager:
                         )
 
                         if not is_embedded:
-                            results["mismatches"]["embeddings"][
-                                "exist_but_not_tracked"
-                            ].append(
+                            results["mismatches"]["embeddings"]["exist_but_not_tracked"].append(
                                 {"ticker": ticker, "accession_number": accession_number}
                             )
                     else:
                         # Embedding exists but filing is not in DB
-                        results["mismatches"]["embeddings"][
-                            "exist_but_not_tracked"
-                        ].append(
+                        results["mismatches"]["embeddings"]["exist_but_not_tracked"].append(
                             {"ticker": ticker, "accession_number": accession_number}
                         )
 
@@ -1216,14 +1125,10 @@ class StorageSyncManager:
                             company_id = self._get_company_id(ticker)
                             results["fixes"]["companies_added"].append(ticker)
                         except Exception as e:
-                            results["fixes"]["errors"].append(
-                                f"Error adding company {ticker}: {str(e)}"
-                            )
+                            results["fixes"]["errors"].append(f"Error adding company {ticker}: {str(e)}")
 
                 # Add missing filings
-                for filing_info in results["mismatches"]["filings"][
-                    "in_files_not_in_db"
-                ]:
+                for filing_info in results["mismatches"]["filings"]["in_files_not_in_db"]:
                     ticker = filing_info["ticker"]
                     accession_number = filing_info["accession_number"]
 
@@ -1233,23 +1138,17 @@ class StorageSyncManager:
 
                         if file_path:
                             # Extract filing type and date
-                            filing_type, filing_date = self._extract_filing_info(
-                                file_path, ticker
-                            )
+                            filing_type, filing_date = self._extract_filing_info(file_path, ticker)
 
                             # Get company_id
                             company_id = self._get_company_id(ticker)
 
                             # Generate a filing ID
-                            max_id = self.conn.execute(
-                                "SELECT MAX(filing_id) FROM filings"
-                            ).fetchone()[0]
+                            max_id = self.conn.execute("SELECT MAX(filing_id) FROM filings").fetchone()[0]
                             filing_id = 1 if max_id is None else max_id + 1
 
                             # Determine processing status
-                            status = self._determine_processing_status(
-                                ticker, accession_number
-                            )
+                            status = self._determine_processing_status(ticker, accession_number)
 
                             # Map status to fiscal period
                             status_map = {
@@ -1286,14 +1185,10 @@ class StorageSyncManager:
                                 {"ticker": ticker, "accession_number": accession_number}
                             )
                     except Exception as e:
-                        results["fixes"]["errors"].append(
-                            f"Error adding filing {ticker}/{accession_number}: {str(e)}"
-                        )
+                        results["fixes"]["errors"].append(f"Error adding filing {ticker}/{accession_number}: {str(e)}")
 
                 # Update filings with embeddings that aren't tracked
-                for filing_info in results["mismatches"]["embeddings"][
-                    "exist_but_not_tracked"
-                ]:
+                for filing_info in results["mismatches"]["embeddings"]["exist_but_not_tracked"]:
                     ticker = filing_info["ticker"]
                     accession_number = filing_info["accession_number"]
 
@@ -1329,9 +1224,7 @@ class StorageSyncManager:
                             company_id = self._get_company_id(ticker)
 
                             # Generate a filing ID
-                            max_id = self.conn.execute(
-                                "SELECT MAX(filing_id) FROM filings"
-                            ).fetchone()[0]
+                            max_id = self.conn.execute("SELECT MAX(filing_id) FROM filings").fetchone()[0]
                             filing_id = 1 if max_id is None else max_id + 1
 
                             # Add to DuckDB with minimal information
@@ -1375,12 +1268,8 @@ if __name__ == "__main__":
         default="data/financial_data.duckdb",
         help="Path to DuckDB database",
     )
-    parser.add_argument(
-        "--vector-store-path", default="data/vector_store", help="Path to vector store"
-    )
-    parser.add_argument(
-        "--filings-dir", default="data/filings", help="Path to filings directory"
-    )
+    parser.add_argument("--vector-store-path", default="data/vector_store", help="Path to vector store")
+    parser.add_argument("--filings-dir", default="data/filings", help="Path to filings directory")
     parser.add_argument(
         "--graph-store-dir",
         default="data/graph_store",

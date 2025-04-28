@@ -46,9 +46,7 @@ class XBRLExtractorFactory:
                 logger.info("Using EdgarXBRLExtractor")
                 return EdgarXBRLExtractor(cache_dir=cache_dir)
             except ImportError:
-                logger.warning(
-                    "Edgar library not available, falling back to SimplifiedXBRLExtractor"
-                )
+                logger.warning("Edgar library not available, falling back to SimplifiedXBRLExtractor")
                 return SimplifiedXBRLExtractor(cache_dir=cache_dir)
         else:
             logger.info("Using SimplifiedXBRLExtractor")
@@ -77,7 +75,5 @@ class XBRLExtractorFactory:
             logger.info("Using EdgarXBRLExtractor as default")
             return EdgarXBRLExtractor(cache_dir=cache_dir)
         except ImportError:
-            logger.warning(
-                "Edgar library not available, using SimplifiedXBRLExtractor as default"
-            )
+            logger.warning("Edgar library not available, using SimplifiedXBRLExtractor as default")
             return SimplifiedXBRLExtractor(cache_dir=cache_dir)

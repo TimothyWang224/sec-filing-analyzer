@@ -183,9 +183,7 @@ class DuckDBFinancialStore:
             logger.error(f"Error storing company {ticker}: {e}")
             return False
 
-    def store_filing(
-        self, filing_id: str, ticker: str, accession_number: str, **kwargs
-    ) -> bool:
+    def store_filing(self, filing_id: str, ticker: str, accession_number: str, **kwargs) -> bool:
         """Store filing information.
 
         Args:
@@ -339,9 +337,7 @@ class DuckDBFinancialStore:
                 )
                 count += 1
 
-            logger.info(
-                f"Stored {count} time series metrics for {ticker} {fiscal_year}Q{fiscal_quarter}"
-            )
+            logger.info(f"Stored {count} time series metrics for {ticker} {fiscal_year}Q{fiscal_quarter}")
             return count
         except Exception as e:
             logger.error(f"Error storing time series metrics: {e}")
@@ -387,9 +383,7 @@ class DuckDBFinancialStore:
                 )
                 count += 1
 
-            logger.info(
-                f"Stored {count} financial ratios for {ticker} {fiscal_year}Q{fiscal_quarter}"
-            )
+            logger.info(f"Stored {count} financial ratios for {ticker} {fiscal_year}Q{fiscal_quarter}")
             return count
         except Exception as e:
             logger.error(f"Error storing financial ratios: {e}")
@@ -460,9 +454,7 @@ class DuckDBFinancialStore:
                 ratios=ratios,
             )
 
-            logger.info(
-                f"Successfully stored financial data for {ticker} {accession_number}"
-            )
+            logger.info(f"Successfully stored financial data for {ticker} {accession_number}")
             return True
         except Exception as e:
             logger.error(f"Error storing financial data: {e}")
@@ -529,20 +521,12 @@ class DuckDBFinancialStore:
 
             # Pivot the result for easier analysis
             if not result.empty:
-                result["period"] = result.apply(
-                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index="period", columns="metric_name", values="value"
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
+                pivoted = result.pivot(index="period", columns="metric_name", values="value").reset_index()
 
                 # Add year and quarter columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(
-                    lambda x: int(x.split("Q")[0])
-                )
-                pivoted["fiscal_quarter"] = pivoted["period"].apply(
-                    lambda x: int(x.split("Q")[1])
-                )
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
 
                 # Sort by year and quarter
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
@@ -610,20 +594,12 @@ class DuckDBFinancialStore:
 
             # Pivot the result for easier comparison
             if not result.empty:
-                result["period"] = result.apply(
-                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index="period", columns="ticker", values="value"
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
+                pivoted = result.pivot(index="period", columns="ticker", values="value").reset_index()
 
                 # Add year and quarter columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(
-                    lambda x: int(x.split("Q")[0])
-                )
-                pivoted["fiscal_quarter"] = pivoted["period"].apply(
-                    lambda x: int(x.split("Q")[1])
-                )
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
 
                 # Sort by year and quarter
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
@@ -696,20 +672,12 @@ class DuckDBFinancialStore:
 
             # Pivot the result for easier analysis
             if not result.empty:
-                result["period"] = result.apply(
-                    lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1
-                )
-                pivoted = result.pivot(
-                    index="period", columns="ratio_name", values="value"
-                ).reset_index()
+                result["period"] = result.apply(lambda x: f"{x['fiscal_year']}Q{x['fiscal_quarter']}", axis=1)
+                pivoted = result.pivot(index="period", columns="ratio_name", values="value").reset_index()
 
                 # Add year and quarter columns
-                pivoted["fiscal_year"] = pivoted["period"].apply(
-                    lambda x: int(x.split("Q")[0])
-                )
-                pivoted["fiscal_quarter"] = pivoted["period"].apply(
-                    lambda x: int(x.split("Q")[1])
-                )
+                pivoted["fiscal_year"] = pivoted["period"].apply(lambda x: int(x.split("Q")[0]))
+                pivoted["fiscal_quarter"] = pivoted["period"].apply(lambda x: int(x.split("Q")[1]))
 
                 # Sort by year and quarter
                 pivoted = pivoted.sort_values(["fiscal_year", "fiscal_quarter"])
@@ -731,19 +699,13 @@ class DuckDBFinancialStore:
             stats = {}
 
             # Get company count
-            stats["company_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM companies"
-            ).fetchone()[0]
+            stats["company_count"] = self.conn.execute("SELECT COUNT(*) as count FROM companies").fetchone()[0]
 
             # Get filing count
-            stats["filing_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM filings"
-            ).fetchone()[0]
+            stats["filing_count"] = self.conn.execute("SELECT COUNT(*) as count FROM filings").fetchone()[0]
 
             # Get fact count
-            stats["fact_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM financial_facts"
-            ).fetchone()[0]
+            stats["fact_count"] = self.conn.execute("SELECT COUNT(*) as count FROM financial_facts").fetchone()[0]
 
             # Get time series count
             stats["time_series_count"] = self.conn.execute(
@@ -751,22 +713,16 @@ class DuckDBFinancialStore:
             ).fetchone()[0]
 
             # Get ratio count
-            stats["ratio_count"] = self.conn.execute(
-                "SELECT COUNT(*) as count FROM financial_ratios"
-            ).fetchone()[0]
+            stats["ratio_count"] = self.conn.execute("SELECT COUNT(*) as count FROM financial_ratios").fetchone()[0]
 
             # Get companies
             stats["companies"] = (
-                self.conn.execute("SELECT ticker FROM companies ORDER BY ticker")
-                .fetchdf()["ticker"]
-                .tolist()
+                self.conn.execute("SELECT ticker FROM companies ORDER BY ticker").fetchdf()["ticker"].tolist()
             )
 
             # Get filing types
             stats["filing_types"] = (
-                self.conn.execute(
-                    "SELECT DISTINCT filing_type FROM filings ORDER BY filing_type"
-                )
+                self.conn.execute("SELECT DISTINCT filing_type FROM filings ORDER BY filing_type")
                 .fetchdf()["filing_type"]
                 .tolist()
             )

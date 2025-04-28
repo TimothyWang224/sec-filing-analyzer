@@ -38,9 +38,7 @@ class ParallelFilingProcessor:
 
         logger.info(f"Initialized parallel filing processor with {max_workers} workers")
 
-    def _ensure_list_format(
-        self, embedding: Union[np.ndarray, List[float], Any]
-    ) -> List[float]:
+    def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
         """Ensure embedding is in list format.
 
         Args:
@@ -60,9 +58,7 @@ class ParallelFilingProcessor:
             # Check if this is a list of lists
             if len(embedding) > 0 and isinstance(embedding[0], list):
                 # This is a list of lists, use the first embedding
-                logger.warning(
-                    "Embedding is a list of lists, using the first embedding"
-                )
+                logger.warning("Embedding is a list of lists, using the first embedding")
                 return embedding[0]
             return embedding
         else:
@@ -73,9 +69,7 @@ class ParallelFilingProcessor:
                 # Return a zero vector as fallback
                 return [0.0] * 1536
 
-    def process_filings_parallel(
-        self, filings_data: List[Dict[str, Any]]
-    ) -> Dict[str, List[str]]:
+    def process_filings_parallel(self, filings_data: List[Dict[str, Any]]) -> Dict[str, List[str]]:
         """
         Process multiple filings in parallel.
 
@@ -92,15 +86,10 @@ class ParallelFilingProcessor:
 
         logger.info(f"Processing {len(filings_data)} filings in parallel")
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=min(self.max_workers, len(filings_data))
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(filings_data))) as executor:
             # Submit tasks
             future_to_filing = {
-                executor.submit(self.process_filing, filing): filing.get(
-                    "id", "unknown"
-                )
-                for filing in filings_data
+                executor.submit(self.process_filing, filing): filing.get("id", "unknown") for filing in filings_data
             }
 
             # Process results as they complete
@@ -242,9 +231,7 @@ class ParallelFilingProcessor:
             if chunks and chunk_embeddings and chunk_texts:
                 # Check if chunk_embeddings is a dict (from embedding_metadata)
                 if isinstance(chunk_embeddings, dict):
-                    logger.warning(
-                        "chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing."
-                    )
+                    logger.warning("chunk_embeddings is a dict, not a list of embeddings. Skipping chunk processing.")
                     # Continue without chunk processing
                     pass
                 else:
@@ -303,9 +290,7 @@ class ParallelFilingProcessor:
                 "chunk_texts": chunk_texts,
             }
 
-            self.file_storage.cache_filing(
-                filing_id, {"metadata": filing_data, "processed_data": processed_data}
-            )
+            self.file_storage.cache_filing(filing_id, {"metadata": filing_data, "processed_data": processed_data})
 
             return processed_data
 
@@ -357,6 +342,4 @@ class ParallelFilingProcessor:
         Returns:
             List of filing metadata
         """
-        return self.file_storage.list_filings(
-            ticker=ticker, year=year, filing_type=filing_type
-        )
+        return self.file_storage.list_filings(ticker=ticker, year=year, filing_type=filing_type)

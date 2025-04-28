@@ -15,15 +15,11 @@ from sec_filing_analyzer.config import StorageConfig
 from sec_filing_analyzer.storage import OptimizedVectorStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
-def test_index_persistence(
-    store_path: str, companies: List[str], index_type: str = "flat"
-):
+def test_index_persistence(store_path: str, companies: List[str], index_type: str = "flat"):
     """Test FAISS index persistence.
 
     Args:
@@ -31,9 +27,7 @@ def test_index_persistence(
         companies: List of company tickers to test with
         index_type: Type of FAISS index to use
     """
-    logger.info(
-        f"Testing FAISS index persistence with {index_type} index for companies: {companies}"
-    )
+    logger.info(f"Testing FAISS index persistence with {index_type} index for companies: {companies}")
 
     # Initialize vector store with specific index type
     vector_store = OptimizedVectorStore(store_path=store_path, index_type=index_type)
@@ -62,9 +56,7 @@ def test_index_persistence(
     start_time = time.time()
 
     # Perform a search to trigger index creation
-    results = vector_store.search_vectors(
-        query_text="revenue growth", companies=companies, top_k=5
-    )
+    results = vector_store.search_vectors(query_text="revenue growth", companies=companies, top_k=5)
 
     creation_time = time.time() - start_time
 
@@ -88,17 +80,13 @@ def test_index_persistence(
     logger.info("\nTest 2: Loading existing index")
 
     # Create a new vector store instance
-    new_vector_store = OptimizedVectorStore(
-        store_path=store_path, index_type=index_type
-    )
+    new_vector_store = OptimizedVectorStore(store_path=store_path, index_type=index_type)
 
     # Measure time to load index
     start_time = time.time()
 
     # Perform a search to trigger index loading
-    results = new_vector_store.search_vectors(
-        query_text="revenue growth", companies=companies, top_k=5
-    )
+    results = new_vector_store.search_vectors(query_text="revenue growth", companies=companies, top_k=5)
 
     load_time = time.time() - start_time
 
@@ -156,14 +144,10 @@ def main():
 
     for index_type in index_types:
         # Test with a single company
-        test_index_persistence(
-            store_path=store_path, companies=["AAPL"], index_type=index_type
-        )
+        test_index_persistence(store_path=store_path, companies=["AAPL"], index_type=index_type)
 
         # Test with multiple companies
-        test_index_persistence(
-            store_path=store_path, companies=["AAPL", "NVDA"], index_type=index_type
-        )
+        test_index_persistence(store_path=store_path, companies=["AAPL", "NVDA"], index_type=index_type)
 
 
 if __name__ == "__main__":

@@ -13,17 +13,13 @@ from pathlib import Path
 from typing import List
 
 # Import from the correct package path
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-)  # Add root to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))  # Add root to path
 
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from sec_filing_analyzer.storage.graph_store import GraphStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -53,9 +49,7 @@ def validate_dates(start_date: str, end_date: str) -> bool:
 
 def parse_args():
     neo4j_config = get_neo4j_config()
-    parser = argparse.ArgumentParser(
-        description="Process SEC filings for multiple companies"
-    )
+    parser = argparse.ArgumentParser(description="Process SEC filings for multiple companies")
 
     # Company tickers argument - either from file or direct list
     ticker_group = parser.add_mutually_exclusive_group(required=True)
@@ -88,23 +82,13 @@ def parse_args():
         action="store_true",
         help="Disable Neo4j and use in-memory graph store instead",
     )
-    parser.add_argument(
-        "--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"]
-    )
-    parser.add_argument(
-        "--neo4j-username", help="Neo4j username", default=neo4j_config["username"]
-    )
-    parser.add_argument(
-        "--neo4j-password", help="Neo4j password", default=neo4j_config["password"]
-    )
-    parser.add_argument(
-        "--neo4j-database", help="Neo4j database name", default=neo4j_config["database"]
-    )
+    parser.add_argument("--neo4j-url", help="Neo4j server URL", default=neo4j_config["url"])
+    parser.add_argument("--neo4j-username", help="Neo4j username", default=neo4j_config["username"])
+    parser.add_argument("--neo4j-password", help="Neo4j password", default=neo4j_config["password"])
+    parser.add_argument("--neo4j-database", help="Neo4j database name", default=neo4j_config["database"])
 
     # Parallel processing options
-    parser.add_argument(
-        "--no-parallel", action="store_true", help="Disable parallel processing"
-    )
+    parser.add_argument("--no-parallel", action="store_true", help="Disable parallel processing")
     parser.add_argument(
         "--max-workers",
         type=int,
@@ -164,9 +148,7 @@ def get_tickers_from_file(file_path: str) -> List[str]:
         sys.exit(1)
 
 
-def save_progress(
-    completed: List[str], failed: List[str], no_filings: List[str], errors: dict
-):
+def save_progress(completed: List[str], failed: List[str], no_filings: List[str], errors: dict):
     """Save progress to a file."""
     progress = {
         "timestamp": datetime.now().isoformat(),
@@ -267,9 +249,7 @@ def main():
     if args.retry_failed:
         progress = load_latest_progress()
         if progress:
-            logger.info(
-                f"Loaded previous progress with {len(progress['failed'])} failed companies"
-            )
+            logger.info(f"Loaded previous progress with {len(progress['failed'])} failed companies")
             # Only process previously failed companies
             tickers = progress["failed"]
             # Keep track of previously completed companies
@@ -287,9 +267,7 @@ def main():
 
         while retries <= args.max_retries and not success:
             try:
-                logger.info(
-                    f"Processing company {ticker} (attempt {retries + 1}/{args.max_retries + 1})"
-                )
+                logger.info(f"Processing company {ticker} (attempt {retries + 1}/{args.max_retries + 1})")
 
                 # Process company using the parallel pipeline
                 result = pipeline.process_company(
@@ -301,17 +279,11 @@ def main():
 
                 # Check result status
                 if result["status"] == "no_filings":
-                    logger.warning(
-                        f"No filings found for {ticker} in the specified date range and filing types"
-                    )
+                    logger.warning(f"No filings found for {ticker} in the specified date range and filing types")
                     no_filings_tickers.append(ticker)
-                    success = (
-                        True  # Mark as success since there's no error, just no filings
-                    )
+                    success = True  # Mark as success since there's no error, just no filings
                 elif result["status"] == "completed":
-                    logger.info(
-                        f"Successfully processed {result['filings_processed']} filings for {ticker}"
-                    )
+                    logger.info(f"Successfully processed {result['filings_processed']} filings for {ticker}")
                     completed_tickers.append(ticker)
                     success = True
                 else:
@@ -332,16 +304,12 @@ def main():
                     time.sleep(5)  # Wait before retrying
 
         if not success:
-            logger.error(
-                f"Failed to process company {ticker} after {args.max_retries + 1} attempts"
-            )
+            logger.error(f"Failed to process company {ticker} after {args.max_retries + 1} attempts")
             failed_tickers.append(ticker)
 
         # Add delay between companies to avoid rate limiting
         if args.delay_between_companies > 0 and ticker != tickers[-1]:
-            logger.info(
-                f"Waiting {args.delay_between_companies} seconds before processing next company..."
-            )
+            logger.info(f"Waiting {args.delay_between_companies} seconds before processing next company...")
             time.sleep(args.delay_between_companies)
 
     # Save progress
@@ -355,9 +323,7 @@ def main():
 
     if no_filings_tickers:
         logger.info(f"Companies with no filings: {', '.join(no_filings_tickers)}")
-        logger.info(
-            "Consider using a different date range or filing types for these companies"
-        )
+        logger.info("Consider using a different date range or filing types for these companies")
 
     if failed_tickers:
         logger.info(f"Failed companies: {', '.join(failed_tickers)}")

@@ -35,9 +35,7 @@ class AlternativeToolSelector:
         """
         self.llm = llm
 
-    async def find_alternative_tool(
-        self, failed_tool: str, original_purpose: str
-    ) -> Optional[str]:
+    async def find_alternative_tool(self, failed_tool: str, original_purpose: str) -> Optional[str]:
         """
         Find an alternative tool that can achieve the same purpose.
 
@@ -67,9 +65,7 @@ Please suggest an alternative tool that can achieve the same purpose.
 If there is no suitable alternative, return "none".
 """
 
-        response = await self.llm.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=0.2
-        )
+        response = await self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.2)
 
         # Extract the tool name from the response
         alternative = self._extract_tool_name(response)
@@ -121,17 +117,13 @@ Please map the parameters from the source tool to the target tool.
 Return only the mapped parameters as a JSON object.
 """
 
-        response = await self.llm.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=0.2
-        )
+        response = await self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.2)
 
         # Extract JSON from response
         mapped_params = self._extract_json(response)
 
         if not mapped_params:
-            logger.warning(
-                f"Failed to map parameters from {source_tool} to {target_tool}"
-            )
+            logger.warning(f"Failed to map parameters from {source_tool} to {target_tool}")
             return {}
 
         return mapped_params

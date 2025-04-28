@@ -85,9 +85,7 @@ class GraphStoreInterface(ABC):
     """Interface for graph storage."""
 
     @abstractmethod
-    def add_node(
-        self, node_id: str, properties: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def add_node(self, node_id: str, properties: Optional[Dict[str, Any]] = None) -> bool:
         """
         Add a node to the graph.
 
@@ -136,9 +134,7 @@ class GraphStoreInterface(ABC):
         pass
 
     @abstractmethod
-    def get_relations(
-        self, node_id: str, relation_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_relations(self, node_id: str, relation_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get relations for a node.
 
@@ -156,9 +152,7 @@ class GraphStoreInterface(ABC):
         pass
 
     @abstractmethod
-    def query(
-        self, query: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+    def query(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         Execute a query on the graph.
 

@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 from typing import Any, Dict
 
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -124,9 +123,7 @@ class EnhancedStorageSyncManager:
         # Set overall status
         if results["failed_components"]:
             results["overall_status"] = "partial_success"
-            logger.warning(
-                f"Sync completed with some failures: {results['failed_components']}"
-            )
+            logger.warning(f"Sync completed with some failures: {results['failed_components']}")
         else:
             logger.info("Sync completed successfully")
 

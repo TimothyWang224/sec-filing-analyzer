@@ -86,9 +86,7 @@ Return a JSON array of tool calls, where each tool call includes the tool name a
 
         return tool_calls
 
-    async def execute_tool_calls(
-        self, tool_calls: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    async def execute_tool_calls(self, tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Execute a list of tool calls.
 
@@ -121,15 +119,11 @@ Return a JSON array of tool calls, where each tool call includes the tool name a
 
                 # Try to fix the tool call
                 try:
-                    fixed_args = await self._fix_tool_call(
-                        tool_name, tool_args, error_message
-                    )
+                    fixed_args = await self._fix_tool_call(tool_name, tool_args, error_message)
 
                     # Execute the tool with fixed arguments
                     try:
-                        result = await self.environment.execute_tool(
-                            tool_name, fixed_args
-                        )
+                        result = await self.environment.execute_tool(tool_name, fixed_args)
                         results.append(
                             {
                                 "tool": tool_name,
@@ -140,9 +134,7 @@ Return a JSON array of tool calls, where each tool call includes the tool name a
                             }
                         )
                     except Exception as e2:
-                        logger.error(
-                            f"Error executing tool {tool_name} with fixed arguments: {str(e2)}"
-                        )
+                        logger.error(f"Error executing tool {tool_name} with fixed arguments: {str(e2)}")
                         results.append(
                             {
                                 "tool": tool_name,
@@ -171,17 +163,13 @@ Return a JSON array of tool calls, where each tool call includes the tool name a
         # First try to parse using the safe_parse_json utility
         try:
             # Use safe_parse_json with expected type "array"
-            tool_calls = safe_parse_json(
-                response, default_value=[], expected_type="array"
-            )
+            tool_calls = safe_parse_json(response, default_value=[], expected_type="array")
 
             # If parsing failed and we have an LLM instance, try to repair
             if not tool_calls and hasattr(self, "llm"):
                 # Create a repair function that uses the LLM
                 logger.info("Attempting to repair JSON tool calls")
-                tool_calls = await repair_json(
-                    response, self.llm, default_value=[], expected_type="array"
-                )
+                tool_calls = await repair_json(response, self.llm, default_value=[], expected_type="array")
 
             # Validate tool calls
             validated_calls = []
@@ -196,9 +184,7 @@ Return a JSON array of tool calls, where each tool call includes the tool name a
             logger.error(f"Response: {response}")
             return []
 
-    async def _fix_tool_call(
-        self, tool_name: str, tool_args: Dict[str, Any], error_message: str
-    ) -> Dict[str, Any]:
+    async def _fix_tool_call(self, tool_name: str, tool_args: Dict[str, Any], error_message: str) -> Dict[str, Any]:
         """
         Use the LLM to fix a failed tool call.
 
@@ -243,16 +229,12 @@ Return only the fixed arguments as a JSON object.
         # Parse fixed arguments from response
         try:
             # Parse the JSON using our safe_parse_json utility
-            fixed_args = safe_parse_json(
-                response, default_value={}, expected_type="object"
-            )
+            fixed_args = safe_parse_json(response, default_value={}, expected_type="object")
 
             # If parsing failed, try to repair
             if not fixed_args:
                 logger.info("Attempting to repair JSON fixed arguments")
-                fixed_args = await repair_json(
-                    response, self.llm, default_value={}, expected_type="object"
-                )
+                fixed_args = await repair_json(response, self.llm, default_value={}, expected_type="object")
 
             return fixed_args
         except Exception as e:

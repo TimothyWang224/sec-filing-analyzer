@@ -18,9 +18,7 @@ from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
 )
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -38,9 +36,7 @@ def test_simplified_xbrl_extractor(ticker: str, accession_number: str):
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
 
     # Extract financials
-    financials = extractor.extract_financials(
-        ticker=ticker, filing_id=filing_id, accession_number=accession_number
-    )
+    financials = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
     # Check for errors
     if "error" in financials:
@@ -88,9 +84,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Test the simplified XBRL extractor")
-    parser.add_argument(
-        "--ticker", type=str, default="AAPL", help="Company ticker symbol"
-    )
+    parser.add_argument("--ticker", type=str, default="AAPL", help="Company ticker symbol")
     parser.add_argument(
         "--accession",
         type=str,

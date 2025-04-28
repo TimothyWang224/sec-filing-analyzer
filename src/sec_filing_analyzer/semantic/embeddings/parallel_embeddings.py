@@ -53,9 +53,7 @@ class ParallelEmbeddingGenerator:
         """
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError(
-                "OPENAI_API_KEY environment variable not set. Please set it in your .env file."
-            )
+            raise ValueError("OPENAI_API_KEY environment variable not set. Please set it in your .env file.")
 
         self.embed_model = OpenAIEmbedding(model=model, api_key=api_key)
         self.dimensions = 1536  # text-embedding-3-small has 1536 dimensions
@@ -79,13 +77,9 @@ class ParallelEmbeddingGenerator:
         except Exception as e:
             logger.warning(f"Failed to set up enhanced logging: {e}")
 
-        logger.info(
-            f"Initialized Parallel OpenAI embedding generator with model: {model}, workers: {max_workers}"
-        )
+        logger.info(f"Initialized Parallel OpenAI embedding generator with model: {model}, workers: {max_workers}")
 
-    def _ensure_list_format(
-        self, embedding: Union[np.ndarray, List[float], Any]
-    ) -> List[float]:
+    def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
         """Ensure embedding is in list format.
 
         Args:
@@ -150,23 +144,17 @@ class ParallelEmbeddingGenerator:
                 # Get embeddings
                 # Ensure batch is properly formatted for the OpenAI API
                 # The API expects a list of strings, not None or other types
-                sanitized_batch = [
-                    str(text) if text is not None else "" for text in batch
-                ]
+                sanitized_batch = [str(text) if text is not None else "" for text in batch]
 
                 # Use the LlamaIndex embedding model to get embeddings
-                batch_embeddings = self.embed_model.get_text_embedding_batch(
-                    sanitized_batch
-                )
+                batch_embeddings = self.embed_model.get_text_embedding_batch(sanitized_batch)
 
                 # Update token usage stats
                 self.token_usage["total_tokens"] += estimated_tokens
                 self.token_usage["requests"] += 1
 
                 # Convert to list format
-                return [
-                    self._ensure_list_format(emb) for emb in batch_embeddings
-                ], False
+                return [self._ensure_list_format(emb) for emb in batch_embeddings], False
 
             except Exception as e:
                 retries += 1
@@ -175,9 +163,7 @@ class ParallelEmbeddingGenerator:
                 if retries <= self.max_retries:
                     self.token_usage["retried_requests"] += 1
                     # Exponential backoff with jitter
-                    delay = self.retry_base_delay * (
-                        2 ** (retries - 1)
-                    ) + random.uniform(0, 0.5)
+                    delay = self.retry_base_delay * (2 ** (retries - 1)) + random.uniform(0, 0.5)
 
                     error_msg = f"Error generating embeddings (attempt {retries}/{self.max_retries}): {str(e)}. Retrying in {delay:.2f}s"
                     logger.warning(error_msg)
@@ -191,9 +177,7 @@ class ParallelEmbeddingGenerator:
                         batch_idx = getattr(self, "_current_batch_idx", None)
                         log_embedding_error(
                             error=e,
-                            filing_id=self.filing_metadata.get(
-                                "accession_number", "unknown"
-                            ),
+                            filing_id=self.filing_metadata.get("accession_number", "unknown"),
                             company=self.filing_metadata.get("ticker", "unknown"),
                             filing_type=self.filing_metadata.get("form", "unknown"),
                             batch_index=batch_idx,
@@ -236,22 +220,17 @@ class ParallelEmbeddingGenerator:
             for i in range(0, len(processed_texts), batch_size):
                 batches.append(processed_texts[i : i + batch_size])
 
-            logger.info(
-                f"Processing {len(processed_texts)} texts in {len(batches)} batches with size {batch_size}"
-            )
+            logger.info(f"Processing {len(processed_texts)} texts in {len(batches)} batches with size {batch_size}")
 
             # Track which chunks used fallback embeddings
             fallback_flags = [False] * len(processed_texts)
 
             # Process batches in parallel
             all_embeddings = []
-            with concurrent.futures.ThreadPoolExecutor(
-                max_workers=min(self.max_workers, len(batches))
-            ) as executor:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(batches))) as executor:
                 # Submit batch tasks
                 future_to_batch_idx = {
-                    executor.submit(self._process_batch, batch): i
-                    for i, batch in enumerate(batches)
+                    executor.submit(self._process_batch, batch): i for i, batch in enumerate(batches)
                 }
 
                 # Collect results
@@ -285,22 +264,15 @@ class ParallelEmbeddingGenerator:
                         if self.filing_metadata:
                             log_embedding_error(
                                 error=e,
-                                filing_id=self.filing_metadata.get(
-                                    "accession_number", "unknown"
-                                ),
+                                filing_id=self.filing_metadata.get("accession_number", "unknown"),
                                 company=self.filing_metadata.get("ticker", "unknown"),
                                 filing_type=self.filing_metadata.get("form", "unknown"),
                                 batch_index=batch_idx,
-                                chunk_count=len(batches[batch_idx])
-                                if batch_idx < len(batches)
-                                else 0,
+                                chunk_count=len(batches[batch_idx]) if batch_idx < len(batches) else 0,
                             )
 
                         # Use zero vectors as fallback
-                        batch_results[batch_idx] = [
-                            [0.0] * self.dimensions
-                            for _ in range(len(batches[batch_idx]))
-                        ]
+                        batch_results[batch_idx] = [[0.0] * self.dimensions for _ in range(len(batches[batch_idx]))]
                         batch_fallbacks[batch_idx] = True
 
                         # Update fallback flags for this batch

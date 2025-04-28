@@ -35,9 +35,7 @@ def main():
     env["STREAMLIT_ONBOARDING_DISABLED"] = "true"  # Disable onboarding
 
     # Launch Streamlit
-    streamlit_script = os.path.join(
-        os.path.dirname(__file__), "streamlit_duckdb_explorer.py"
-    )
+    streamlit_script = os.path.join(os.path.dirname(__file__), "streamlit_duckdb_explorer.py")
     cmd = ["streamlit", "run", streamlit_script, "--", "--db", db_path]
 
     print(f"Launching DuckDB Explorer for database: {db_path}")

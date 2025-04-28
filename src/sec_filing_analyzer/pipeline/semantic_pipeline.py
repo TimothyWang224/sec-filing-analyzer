@@ -45,9 +45,7 @@ class SemanticETLPipeline:
             chunk_overlap: Overlap between chunks
         """
         self.downloader = downloader or SECFilingsDownloader()
-        self.chunker = chunker or FilingChunker(
-            max_chunk_size=chunk_size, chunk_overlap=chunk_overlap
-        )
+        self.chunker = chunker or FilingChunker(max_chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self.embedding_generator = embedding_generator or RobustEmbeddingGenerator()
         self.vector_store = vector_store or VectorStore()
 
@@ -99,9 +97,7 @@ class SemanticETLPipeline:
 
             if not filing_data:
                 logger.error(f"Failed to download {filing_type} filing for {ticker}")
-                return {
-                    "error": f"Failed to download {filing_type} filing for {ticker}"
-                }
+                return {"error": f"Failed to download {filing_type} filing for {ticker}"}
 
             filing_id = filing_data.get("id")
             filing_text = filing_data.get("text", "")
@@ -128,9 +124,7 @@ class SemanticETLPipeline:
                     continue
 
             # Generate embeddings with the robust generator
-            embeddings, embedding_metadata = (
-                self.embedding_generator.generate_embeddings(chunk_texts)
-            )
+            embeddings, embedding_metadata = self.embedding_generator.generate_embeddings(chunk_texts)
 
             # Log any fallbacks
             if embedding_metadata.get("any_fallbacks", False):
@@ -139,12 +133,8 @@ class SemanticETLPipeline:
                 )
 
             if not embeddings:
-                logger.error(
-                    f"Failed to generate embeddings for {filing_type} filing for {ticker}"
-                )
-                return {
-                    "error": f"Failed to generate embeddings for {filing_type} filing for {ticker}"
-                }
+                logger.error(f"Failed to generate embeddings for {filing_type} filing for {ticker}")
+                return {"error": f"Failed to generate embeddings for {filing_type} filing for {ticker}"}
 
             # Step 4: Store in vector store
             metadata_list = []
@@ -162,9 +152,7 @@ class SemanticETLPipeline:
                     section = chunk.metadata.get("section", "")
                     page = chunk.metadata.get("page", 0)
                 else:
-                    logger.warning(
-                        f"Skipping chunk with unexpected format: {type(chunk)}"
-                    )
+                    logger.warning(f"Skipping chunk with unexpected format: {type(chunk)}")
                     continue
 
                 metadata = {

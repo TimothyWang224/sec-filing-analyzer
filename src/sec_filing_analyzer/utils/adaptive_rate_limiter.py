@@ -33,9 +33,7 @@ class AdaptiveRateLimiter:
         backoff_factor: float = 2.0,  # How much to slow down on failure
         success_factor: float = 0.95,  # How much to speed up on success
         success_threshold: int = 10,  # How many successes before speeding up
-        shared_state: Optional[
-            Dict[str, Any]
-        ] = None,  # For sharing state across instances
+        shared_state: Optional[Dict[str, Any]] = None,  # For sharing state across instances
     ):
         """Initialize the adaptive rate limiter.
 
@@ -78,9 +76,7 @@ class AdaptiveRateLimiter:
 
             if time_since_last < self.state["rate_limit"]:
                 wait_time = self.state["rate_limit"] - time_since_last
-                logger.debug(
-                    f"Rate limiting: waiting {wait_time:.2f}s (current rate: {self.state['rate_limit']:.2f}s)"
-                )
+                logger.debug(f"Rate limiting: waiting {wait_time:.2f}s (current rate: {self.state['rate_limit']:.2f}s)")
                 time.sleep(wait_time)
 
             self.state["last_request_time"] = time.time()
@@ -96,14 +92,10 @@ class AdaptiveRateLimiter:
             # If we've had enough consecutive successes, speed up
             if self.state["consecutive_successes"] >= self.success_threshold:
                 old_rate = self.state["rate_limit"]
-                self.state["rate_limit"] = max(
-                    self.min_rate_limit, self.state["rate_limit"] * self.success_factor
-                )
+                self.state["rate_limit"] = max(self.min_rate_limit, self.state["rate_limit"] * self.success_factor)
 
                 if old_rate != self.state["rate_limit"]:
-                    logger.info(
-                        f"Increasing API throughput: {old_rate:.2f}s → {self.state['rate_limit']:.2f}s"
-                    )
+                    logger.info(f"Increasing API throughput: {old_rate:.2f}s → {self.state['rate_limit']:.2f}s")
 
                 # Reset success counter
                 self.state["consecutive_successes"] = 0
@@ -127,9 +119,7 @@ class AdaptiveRateLimiter:
                 backoff = self.backoff_factor
 
             old_rate = self.state["rate_limit"]
-            self.state["rate_limit"] = min(
-                self.max_rate_limit, self.state["rate_limit"] * backoff
-            )
+            self.state["rate_limit"] = min(self.max_rate_limit, self.state["rate_limit"] * backoff)
 
             logger.warning(
                 f"API call failed{f' with status {status_code}' if status_code else ''}, "

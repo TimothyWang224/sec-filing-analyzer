@@ -11,7 +11,6 @@ import sys
 import time
 from pathlib import Path
 
-
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -21,9 +20,7 @@ from sec_filing_analyzer.data_processing.parallel_xbrl_extractor import (
 from sec_filing_analyzer.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -35,9 +32,7 @@ def test_xbrl_extraction(ticker, accession_number):
         accession_number: SEC accession number
     """
     # Initialize the extractor
-    extractor = ParallelXBRLExtractor(
-        cache_dir="data/xbrl_cache", max_workers=1, rate_limit=0.2
-    )
+    extractor = ParallelXBRLExtractor(cache_dir="data/xbrl_cache", max_workers=1, rate_limit=0.2)
 
     # Generate a filing ID
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
@@ -46,9 +41,7 @@ def test_xbrl_extraction(ticker, accession_number):
     start_time = time.time()
 
     # Extract financials
-    financials = extractor.extract_financials(
-        ticker=ticker, filing_id=filing_id, accession_number=accession_number
-    )
+    financials = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
     # End timer
     end_time = time.time()
@@ -140,9 +133,7 @@ def compare_extraction_methods(ticker, accession_number):
         accession_number: SEC accession number
     """
     # Initialize extractors
-    parallel_extractor = ParallelXBRLExtractor(
-        cache_dir="data/xbrl_cache_parallel", max_workers=1, rate_limit=0.2
-    )
+    parallel_extractor = ParallelXBRLExtractor(cache_dir="data/xbrl_cache_parallel", max_workers=1, rate_limit=0.2)
 
     # Generate a filing ID
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
@@ -186,9 +177,7 @@ def test_batch_extraction(tickers, accession_numbers):
         accession_numbers: List of SEC accession numbers
     """
     # Initialize the extractor
-    extractor = ParallelXBRLExtractor(
-        cache_dir="data/xbrl_cache", max_workers=4, rate_limit=0.2
-    )
+    extractor = ParallelXBRLExtractor(cache_dir="data/xbrl_cache", max_workers=4, rate_limit=0.2)
 
     # Prepare companies data
     companies = []
@@ -199,9 +188,7 @@ def test_batch_extraction(tickers, accession_numbers):
 
             company = {
                 "ticker": ticker,
-                "filings": [
-                    {"filing_id": filing_id, "accession_number": accession_number}
-                ],
+                "filings": [{"filing_id": filing_id, "accession_number": accession_number}],
             }
             companies.append(company)
 
@@ -290,9 +277,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Test improved XBRL extraction")
-    parser.add_argument(
-        "--ticker", type=str, default="AAPL", help="Company ticker symbol"
-    )
+    parser.add_argument("--ticker", type=str, default="AAPL", help="Company ticker symbol")
     parser.add_argument(
         "--accession",
         type=str,
@@ -336,9 +321,7 @@ if __name__ == "__main__":
         financials = test_xbrl_extraction(args.ticker, args.accession)
 
         # Save results to file
-        output_file = (
-            f"data/{args.ticker}_{args.accession.replace('-', '_')}_improved.json"
-        )
+        output_file = f"data/{args.ticker}_{args.accession.replace('-', '_')}_improved.json"
         with open(output_file, "w") as f:
             json.dump(financials, f, indent=2)
 

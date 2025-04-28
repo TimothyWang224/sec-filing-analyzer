@@ -33,9 +33,7 @@ class FilingProcessor:
         self.vector_store = vector_store or LlamaIndexVectorStore()
         self.file_storage = file_storage or FileStorage()
 
-    def _ensure_list_format(
-        self, embedding: Union[np.ndarray, List[float], Any]
-    ) -> List[float]:
+    def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
         """Ensure embedding is in list format.
 
         Args:
@@ -131,9 +129,7 @@ class FilingProcessor:
                             {
                                 "chunk_id": i,
                                 "parent_filing": filing_id,
-                                "chunk_metadata": chunk
-                                if isinstance(chunk, dict)
-                                else {},
+                                "chunk_metadata": chunk if isinstance(chunk, dict) else {},
                             }
                         )
 
@@ -143,14 +139,10 @@ class FilingProcessor:
                                 {
                                     "is_split_chunk": True,
                                     "original_chunk_order": original_order,
-                                    "split_chunk_index": chunk.get(
-                                        "split_chunk_index", 0
-                                    )
+                                    "split_chunk_index": chunk.get("split_chunk_index", 0)
                                     if isinstance(chunk, dict)
                                     else 0,
-                                    "split_chunk_count": chunk.get(
-                                        "split_chunk_count", 1
-                                    )
+                                    "split_chunk_count": chunk.get("split_chunk_count", 1)
                                     if isinstance(chunk, dict)
                                     else 1,
                                     "prev_chunk_id": f"{filing_id}_chunk_{original_order}_split_{chunk.get('split_chunk_index', 0) - 1}"
@@ -207,9 +199,7 @@ class FilingProcessor:
                 chunk_texts_to_store = []
                 chunk_embeddings_to_store = []
 
-                for i, (chunk, chunk_text, chunk_embedding) in enumerate(
-                    zip(chunks, chunk_texts, chunk_embeddings)
-                ):
+                for i, (chunk, chunk_text, chunk_embedding) in enumerate(zip(chunks, chunk_texts, chunk_embeddings)):
                     # Check if this is a split chunk
                     is_split_chunk = False
                     original_order = None
@@ -287,9 +277,7 @@ class FilingProcessor:
                 "chunk_texts": chunk_texts,
             }
 
-            self.file_storage.cache_filing(
-                filing_id, {"metadata": filing_data, "processed_data": processed_data}
-            )
+            self.file_storage.cache_filing(filing_id, {"metadata": filing_data, "processed_data": processed_data})
 
             return processed_data
 
@@ -341,6 +329,4 @@ class FilingProcessor:
         Returns:
             List of filing metadata
         """
-        return self.file_storage.list_filings(
-            ticker=ticker, year=year, filing_type=filing_type
-        )
+        return self.file_storage.list_filings(ticker=ticker, year=year, filing_type=filing_type)

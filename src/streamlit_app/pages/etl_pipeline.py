@@ -73,17 +73,13 @@ use_parallel = st.sidebar.checkbox("Use Parallel Processing", value=True)
 if use_parallel:
     max_workers = st.sidebar.slider("Max Workers", min_value=1, max_value=16, value=4)
     batch_size = st.sidebar.slider("Batch Size", min_value=10, max_value=500, value=100)
-    rate_limit = st.sidebar.slider(
-        "Rate Limit (seconds)", min_value=0.0, max_value=1.0, value=0.1, step=0.1
-    )
+    rate_limit = st.sidebar.slider("Rate Limit (seconds)", min_value=0.0, max_value=1.0, value=0.1, step=0.1)
 
 # Advanced options
 with st.sidebar.expander("Advanced Options"):
     db_path = st.text_input("DuckDB Path", value="data/financial_data.duckdb")
     force_download = st.checkbox("Force Download", value=False)
-    limit_per_company = st.number_input(
-        "Limit Per Company", min_value=1, max_value=100, value=10
-    )
+    limit_per_company = st.number_input("Limit Per Company", min_value=1, max_value=100, value=10)
 
 # Main content
 tab1, tab2, tab3 = st.tabs(["Configuration", "Execution", "Results"])
@@ -170,9 +166,7 @@ with tab2:
                     st.session_state.pipeline_initialized = False
 
         # Run pipeline
-        if st.button("Run Pipeline") and st.session_state.get(
-            "pipeline_initialized", False
-        ):
+        if st.button("Run Pipeline") and st.session_state.get("pipeline_initialized", False):
             with st.spinner("Running pipeline..."):
                 try:
                     # Create progress bar
@@ -199,9 +193,7 @@ with tab2:
                         # Update progress
                         progress = (i + 1) / len(tickers)
                         progress_bar.progress(progress)
-                        status_text.text(
-                            f"Processed {i + 1} of {len(tickers)} companies"
-                        )
+                        status_text.text(f"Processed {i + 1} of {len(tickers)} companies")
 
                     # Store results in session state
                     st.session_state.etl_results = results
@@ -249,9 +241,7 @@ with tab3:
         # Detailed results
         st.subheader("Detailed Results")
 
-        selected_ticker = st.selectbox(
-            "Select Ticker", list(st.session_state.etl_results.keys())
-        )
+        selected_ticker = st.selectbox("Select Ticker", list(st.session_state.etl_results.keys()))
 
         if selected_ticker:
             result = st.session_state.etl_results[selected_ticker]
@@ -270,13 +260,9 @@ with tab3:
                             {
                                 "Filing Type": filing.get("filing_type", "Unknown"),
                                 "Filing Date": filing.get("filing_date", "Unknown"),
-                                "Accession Number": filing.get(
-                                    "accession_number", "Unknown"
-                                ),
+                                "Accession Number": filing.get("accession_number", "Unknown"),
                                 "Status": filing.get("status", "Unknown"),
-                                "Semantic Processing": "Yes"
-                                if filing.get("semantic_processed", False)
-                                else "No",
+                                "Semantic Processing": "Yes" if filing.get("semantic_processed", False) else "No",
                                 "Quantitative Processing": "Yes"
                                 if filing.get("quantitative_processed", False)
                                 else "No",

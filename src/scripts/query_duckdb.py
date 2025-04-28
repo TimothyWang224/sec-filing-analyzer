@@ -73,9 +73,7 @@ def run_query(conn, query, output_format="table", output_file=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run SQL queries against a DuckDB database"
-    )
+    parser = argparse.ArgumentParser(description="Run SQL queries against a DuckDB database")
     parser.add_argument(
         "--db",
         default="data/financial_data.duckdb",
@@ -96,9 +94,7 @@ def main():
     try:
         # Connect to the database
         conn = duckdb.connect(args.db)
-        console.print(
-            Panel(f"Connected to DuckDB database: [bold cyan]{args.db}[/bold cyan]")
-        )
+        console.print(Panel(f"Connected to DuckDB database: [bold cyan]{args.db}[/bold cyan]"))
 
         # Get the query
         query = None

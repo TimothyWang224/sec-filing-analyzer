@@ -204,9 +204,7 @@ class OptimizedParallelProcessor:
             return 1
 
         # Calculate total complexity
-        total_complexity = sum(
-            self._estimate_filing_complexity(filing) for filing in filings
-        )
+        total_complexity = sum(self._estimate_filing_complexity(filing) for filing in filings)
 
         # Allocate workers based on complexity and filing count
         filing_count = len(filings)
@@ -282,9 +280,7 @@ class OptimizedParallelProcessor:
             for filing in filings:
                 # Check if filing has already been processed
                 filing_id = filing.get("id", "unknown")
-                if not force_reprocess and self.filing_processor.is_filing_processed(
-                    filing_id
-                ):
+                if not force_reprocess and self.filing_processor.is_filing_processed(filing_id):
                     logger.info(f"Skipping already processed filing: {filing_id}")
                     results["skipped"].append(filing_id)
                     self.stats.skipped_filings += 1
@@ -329,9 +325,7 @@ class OptimizedParallelProcessor:
                         results["failed"].append(filing_id)
                         self.stats.failed_filings += 1
                         error_msg = result.get("error", "Unknown error")
-                        logger.error(
-                            f"Failed to process filing {filing_id}: {error_msg}"
-                        )
+                        logger.error(f"Failed to process filing {filing_id}: {error_msg}")
 
                         # Log filing failed
                         log_filing_processing(
@@ -401,9 +395,7 @@ class OptimizedParallelProcessor:
                         with self.rate_limiter:
                             api_start = time.time()
                             try:
-                                content = self.sec_downloader.download_filing_content(
-                                    filing
-                                )
+                                content = self.sec_downloader.download_filing_content(filing)
                                 api_time = time.time() - api_start
                                 log_api_call(run_id, "SEC_API", True, api_time)
 
@@ -554,12 +546,8 @@ class OptimizedParallelProcessor:
 
         if not filings:
             logger.warning(f"No filings found for {ticker}")
-            log_company_processing(
-                run_id=run_id, ticker=ticker, status="completed", filings_processed=0
-            )
-            log_etl_end(
-                run_id, status="completed", error=f"No filings found for {ticker}"
-            )
+            log_company_processing(run_id=run_id, ticker=ticker, status="completed", filings_processed=0)
+            log_etl_end(run_id, status="completed", error=f"No filings found for {ticker}")
             return {
                 "status": "no_filings",
                 "stats": self.stats.to_dict(),
@@ -625,9 +613,7 @@ class OptimizedParallelProcessor:
             # Default to a reasonable number based on max_workers
             max_companies_in_parallel = max(1, min(len(tickers), self.max_workers // 2))
 
-        logger.info(
-            f"Processing {len(tickers)} companies with up to {max_companies_in_parallel} in parallel"
-        )
+        logger.info(f"Processing {len(tickers)} companies with up to {max_companies_in_parallel} in parallel")
 
         # Log ETL start for multiple companies
         parameters = {
@@ -639,17 +625,13 @@ class OptimizedParallelProcessor:
             "force_reprocess": force_reprocess,
             "max_companies_in_parallel": max_companies_in_parallel,
         }
-        log_etl_start(
-            run_id, parameters, f"Processing filings for {len(tickers)} companies"
-        )
+        log_etl_start(run_id, parameters, f"Processing filings for {len(tickers)} companies")
 
         # Process companies in parallel
         results = {"companies": {}, "stats": {}, "run_id": run_id}
         overall_stats = ProcessingStats()
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max_companies_in_parallel
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_companies_in_parallel) as executor:
             # Submit tasks
             future_to_ticker = {
                 executor.submit(
@@ -676,15 +658,9 @@ class OptimizedParallelProcessor:
                     # Update overall stats
                     company_stats = result.get("stats", {})
                     overall_stats.total_filings += company_stats.get("total_filings", 0)
-                    overall_stats.processed_filings += company_stats.get(
-                        "processed_filings", 0
-                    )
-                    overall_stats.failed_filings += company_stats.get(
-                        "failed_filings", 0
-                    )
-                    overall_stats.skipped_filings += company_stats.get(
-                        "skipped_filings", 0
-                    )
+                    overall_stats.processed_filings += company_stats.get("processed_filings", 0)
+                    overall_stats.failed_filings += company_stats.get("failed_filings", 0)
+                    overall_stats.skipped_filings += company_stats.get("skipped_filings", 0)
 
                     logger.info(f"Completed processing for {ticker}")
 
@@ -697,9 +673,7 @@ class OptimizedParallelProcessor:
                     }
 
                     # Log company processing error
-                    log_company_processing(
-                        run_id=run_id, ticker=ticker, status="failed", error=error_msg
-                    )
+                    log_company_processing(run_id=run_id, ticker=ticker, status="failed", error=error_msg)
 
         # Update overall stats
         overall_stats.end_time = time.time()

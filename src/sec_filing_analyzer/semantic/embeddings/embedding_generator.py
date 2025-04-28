@@ -27,19 +27,13 @@ class EmbeddingGenerator:
         """
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError(
-                "OPENAI_API_KEY environment variable not set. Please set it in your .env file."
-            )
+            raise ValueError("OPENAI_API_KEY environment variable not set. Please set it in your .env file.")
 
         self.embed_model = OpenAIEmbedding(model=model, api_key=api_key)
         self.dimensions = 1536  # text-embedding-3-small has 1536 dimensions
-        logger.info(
-            f"Initialized LlamaIndex OpenAI embedding generator with model: {model}"
-        )
+        logger.info(f"Initialized LlamaIndex OpenAI embedding generator with model: {model}")
 
-    def _ensure_list_format(
-        self, embedding: Union[np.ndarray, List[float], Any]
-    ) -> List[float]:
+    def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
         """Ensure embedding is in list format.
 
         Args:
@@ -55,9 +49,7 @@ class EmbeddingGenerator:
         else:
             return list(embedding)
 
-    def generate_embeddings(
-        self, texts: List[str], batch_size: int = 100
-    ) -> List[List[float]]:
+    def generate_embeddings(self, texts: List[str], batch_size: int = 100) -> List[List[float]]:
         """Generate vector embeddings for a list of texts.
 
         Args:
@@ -81,12 +73,8 @@ class EmbeddingGenerator:
             for i in range(0, len(processed_texts), batch_size):
                 batch = processed_texts[i : i + batch_size]
                 # Ensure batch is properly formatted for the OpenAI API
-                sanitized_batch = [
-                    str(text) if text is not None else "" for text in batch
-                ]
-                batch_embeddings = self.embed_model.get_text_embedding_batch(
-                    sanitized_batch
-                )
+                sanitized_batch = [str(text) if text is not None else "" for text in batch]
+                batch_embeddings = self.embed_model.get_text_embedding_batch(sanitized_batch)
 
                 # Convert all embeddings to list format
                 for emb in batch_embeddings:

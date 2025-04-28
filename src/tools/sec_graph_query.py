@@ -125,9 +125,7 @@ class SECGraphQueryTool(Tool):
             database=database,
         )
 
-    async def _execute_abstract(
-        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute a graph query on the SEC filing database.
 
@@ -267,9 +265,7 @@ class SECGraphQueryTool(Tool):
             """
 
             # Execute query
-            results = self.graph_store.query(
-                query, {"ticker": ticker, "filing_types": filing_types, "limit": limit}
-            )
+            results = self.graph_store.query(query, {"ticker": ticker, "filing_types": filing_types, "limit": limit})
 
             if not results:
                 return self.format_error_response(
@@ -279,9 +275,7 @@ class SECGraphQueryTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(
-                query_type="company_filings", parameters=parameters, results=results
-            )
+            return self.format_success_response(query_type="company_filings", parameters=parameters, results=results)
         except Exception as e:
             logger.error(f"Error querying company filings: {str(e)}")
             return self.format_error_response(
@@ -338,9 +332,7 @@ class SECGraphQueryTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(
-                query_type="filing_sections", parameters=parameters, results=results
-            )
+            return self.format_success_response(query_type="filing_sections", parameters=parameters, results=results)
         except Exception as e:
             logger.error(f"Error querying filing sections: {str(e)}")
             return self.format_error_response(
@@ -387,9 +379,7 @@ class SECGraphQueryTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(
-                query_type="related_companies", parameters=parameters, results=results
-            )
+            return self.format_success_response(query_type="related_companies", parameters=parameters, results=results)
         except Exception as e:
             logger.error(f"Error querying related companies: {str(e)}")
             return self.format_error_response(
@@ -425,9 +415,7 @@ class SECGraphQueryTool(Tool):
             """
 
             # Execute query
-            results = self.graph_store.query(
-                query, {"ticker": ticker, "filing_type": filing_type, "limit": limit}
-            )
+            results = self.graph_store.query(query, {"ticker": ticker, "filing_type": filing_type, "limit": limit})
 
             if not results:
                 return self.format_error_response(
@@ -437,9 +425,7 @@ class SECGraphQueryTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(
-                query_type="filing_timeline", parameters=parameters, results=results
-            )
+            return self.format_success_response(query_type="filing_timeline", parameters=parameters, results=results)
         except Exception as e:
             logger.error(f"Error querying filing timeline: {str(e)}")
             return self.format_error_response(
@@ -471,9 +457,7 @@ class SECGraphQueryTool(Tool):
                     error_type="warning",
                 )
 
-            return self.format_success_response(
-                query_type="section_types", parameters=parameters, results=results
-            )
+            return self.format_success_response(query_type="section_types", parameters=parameters, results=results)
         except Exception as e:
             logger.error(f"Error querying section types: {str(e)}")
             return self.format_error_response(
@@ -508,9 +492,7 @@ class SECGraphQueryTool(Tool):
 
             return self.format_success_response(
                 query_type="custom_cypher",
-                parameters={
-                    "cypher_query": cypher_query
-                },  # Don't return potentially sensitive query_params
+                parameters={"cypher_query": cypher_query},  # Don't return potentially sensitive query_params
                 results=results,
             )
         except Exception as e:
@@ -521,9 +503,7 @@ class SECGraphQueryTool(Tool):
                 error_message=f"Error executing custom Cypher query: {str(e)}",
             )
 
-    def validate_args(
-        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
         """
         Validate the tool arguments.
 
@@ -537,9 +517,7 @@ class SECGraphQueryTool(Tool):
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
-                logger.error(
-                    f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}"
-                )
+                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
                 return False
 
             # Validate parameters using the appropriate model

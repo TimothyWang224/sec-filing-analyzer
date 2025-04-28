@@ -81,19 +81,13 @@ class OptimizedVectorStore:
         if self.use_duckdb:
             # Initialize DuckDB metadata store
             try:
-                self.db_store = DuckDBMetadataStore(
-                    self.db_path, read_only=True, create_if_missing=False
-                )
+                self.db_store = DuckDBMetadataStore(self.db_path, read_only=True, create_if_missing=False)
                 logger.info(f"Using DuckDB for metadata storage at {self.db_path}")
             except FileNotFoundError:
-                logger.warning(
-                    f"DuckDB metadata store not found at {self.db_path}, falling back to file-based storage"
-                )
+                logger.warning(f"DuckDB metadata store not found at {self.db_path}, falling back to file-based storage")
                 self.use_duckdb = False
             except Exception as e:
-                logger.warning(
-                    f"Error initializing DuckDB metadata store: {e}, falling back to file-based storage"
-                )
+                logger.warning(f"Error initializing DuckDB metadata store: {e}, falling back to file-based storage")
                 self.use_duckdb = False
 
         # Initialize in-memory storage for metadata
@@ -135,9 +129,7 @@ class OptimizedVectorStore:
         # If using DuckDB, we don't need to load all metadata into memory
         # We'll just return an empty dictionary and load metadata on-demand
         if self.use_duckdb and self.db_store:
-            logger.info(
-                "Using DuckDB for metadata storage, skipping full metadata load"
-            )
+            logger.info("Using DuckDB for metadata storage, skipping full metadata load")
             # Return an empty dictionary - metadata will be loaded on-demand
             return {}
 
@@ -163,9 +155,7 @@ class OptimizedVectorStore:
                 )
                 return metadata_store
             except Exception as e:
-                logger.warning(
-                    f"Error loading consolidated metadata: {e}, falling back to individual files"
-                )
+                logger.warning(f"Error loading consolidated metadata: {e}, falling back to individual files")
 
         # If no consolidated file exists or loading failed, load from individual files
         metadata_store = {}
@@ -206,15 +196,11 @@ class OptimizedVectorStore:
                 with open(consolidated_path, "w", encoding="utf-8") as f:
                     json.dump(metadata_store, f)
 
-            logger.info(
-                f"Created consolidated metadata cache with {len(metadata_store)} documents"
-            )
+            logger.info(f"Created consolidated metadata cache with {len(metadata_store)} documents")
         except Exception as e:
             logger.warning(f"Error creating consolidated metadata cache: {e}")
 
-        logger.info(
-            f"Loaded metadata for {len(metadata_store)} documents in {time.time() - start_time:.2f} seconds"
-        )
+        logger.info(f"Loaded metadata for {len(metadata_store)} documents in {time.time() - start_time:.2f} seconds")
         return metadata_store
 
     def _build_company_to_docs_mapping(self) -> Dict[str, Set[str]]:
@@ -542,9 +528,7 @@ class OptimizedVectorStore:
             )
         else:
             # Default to flat index if unknown type
-            logger.warning(
-                f"Unknown index type '{self.index_type}', defaulting to flat index"
-            )
+            logger.warning(f"Unknown index type '{self.index_type}', defaulting to flat index")
             index = faiss.IndexFlatL2(vector_dim)
             self.index_params["description"] = "Flat L2 index (exact search)"
 
@@ -643,9 +627,7 @@ class OptimizedVectorStore:
                 json.dump(self.index_params, f)
 
             index_type = "delta" if is_delta else "main"
-            logger.info(
-                f"Saved FAISS {index_type} index for companies {companies} to {index_path}"
-            )
+            logger.info(f"Saved FAISS {index_type} index for companies {companies} to {index_path}")
             return True
         except Exception as e:
             logger.error(f"Error saving FAISS index: {e}")
@@ -671,9 +653,7 @@ class OptimizedVectorStore:
 
             if not index_path.exists() or not mapping_path.exists():
                 index_type = "delta" if is_delta else "main"
-                logger.info(
-                    f"No saved {index_type} index found for companies {companies}"
-                )
+                logger.info(f"No saved {index_type} index found for companies {companies}")
                 return False
 
             # Load the index
@@ -702,9 +682,7 @@ class OptimizedVectorStore:
                     self.index_params = json.load(f)
 
             index_type = "delta" if is_delta else "main"
-            logger.info(
-                f"Loaded FAISS {index_type} index for companies {companies} from {index_path}"
-            )
+            logger.info(f"Loaded FAISS {index_type} index for companies {companies} from {index_path}")
             return True
         except Exception as e:
             logger.error(f"Error loading FAISS index: {e}")
@@ -713,9 +691,7 @@ class OptimizedVectorStore:
             logger.error(traceback.format_exc())
             return False
 
-    def _load_faiss_index_for_companies(
-        self, companies: List[str], force_rebuild: bool = False
-    ) -> None:
+    def _load_faiss_index_for_companies(self, companies: List[str], force_rebuild: bool = False) -> None:
         """Load embeddings for specified companies into a FAISS index.
 
         Args:
@@ -727,10 +703,7 @@ class OptimizedVectorStore:
             companies = ["all"]
 
         # Check if we already have these companies loaded
-        if (
-            set(companies).issubset(self.loaded_companies)
-            and self.faiss_index is not None
-        ):
+        if set(companies).issubset(self.loaded_companies) and self.faiss_index is not None:
             logger.info(f"Companies {companies} already loaded in FAISS index")
             return
 
@@ -745,9 +718,7 @@ class OptimizedVectorStore:
         for company in companies:
             doc_ids.update(self.company_to_docs.get(company, set()))
 
-        logger.info(
-            f"Loading {len(doc_ids)} documents for companies {companies} into FAISS index"
-        )
+        logger.info(f"Loading {len(doc_ids)} documents for companies {companies} into FAISS index")
 
         # Load embeddings for these documents
         vectors = []
@@ -788,24 +759,18 @@ class OptimizedVectorStore:
         # Update loaded companies
         self.loaded_companies = set(companies)
 
-        logger.info(
-            f"Created {self.index_type} FAISS index with {len(vectors)} vectors of dimension {vector_dim}"
-        )
+        logger.info(f"Created {self.index_type} FAISS index with {len(vectors)} vectors of dimension {vector_dim}")
 
         # Save the index to disk
         self._save_faiss_index(companies)
 
         # Clear any delta index for these companies
-        if self.delta_index is not None and self.delta_companies.intersection(
-            set(companies)
-        ):
+        if self.delta_index is not None and self.delta_companies.intersection(set(companies)):
             self.delta_index = None
             self.delta_id_map = {}
             self.delta_companies = set()
 
-    def _save_document(
-        self, doc_id: str, text: str, metadata: Dict[str, Any], embedding: np.ndarray
-    ) -> None:
+    def _save_document(self, doc_id: str, text: str, metadata: Dict[str, Any], embedding: np.ndarray) -> None:
         """Save a document to disk.
 
         Args:
@@ -840,9 +805,7 @@ class OptimizedVectorStore:
         # Update metadata store
         self.metadata_store[doc_id] = metadata
 
-    def add_documents_to_index(
-        self, documents: List[Dict[str, Any]], companies: Optional[List[str]] = None
-    ) -> bool:
+    def add_documents_to_index(self, documents: List[Dict[str, Any]], companies: Optional[List[str]] = None) -> bool:
         """Add new documents to the delta index.
 
         Args:
@@ -889,9 +852,7 @@ class OptimizedVectorStore:
                 doc_ids.append(doc_id)
 
                 # Save the document data
-                self._save_document(
-                    doc_id, doc.get("text", ""), doc.get("metadata", {}), embedding
-                )
+                self._save_document(doc_id, doc.get("text", ""), doc.get("metadata", {}), embedding)
 
                 # Update company-to-docs mapping
                 ticker = doc.get("metadata", {}).get("ticker")
@@ -939,9 +900,7 @@ class OptimizedVectorStore:
             # Save delta index
             self._save_faiss_index(list(self.delta_companies), is_delta=True)
 
-            logger.info(
-                f"Added {len(vectors)} vectors to delta index for companies {companies}"
-            )
+            logger.info(f"Added {len(vectors)} vectors to delta index for companies {companies}")
             return True
         except Exception as e:
             logger.error(f"Error adding documents to index: {e}")
@@ -1022,9 +981,7 @@ class OptimizedVectorStore:
             if delta_mapping_path.exists():
                 delta_mapping_path.unlink()
 
-            logger.info(
-                f"Successfully merged delta index into main index. New size: {self.faiss_index.ntotal} vectors"
-            )
+            logger.info(f"Successfully merged delta index into main index. New size: {self.faiss_index.ntotal} vectors")
             return True
         except Exception as e:
             logger.error(f"Error merging delta index: {e}")
@@ -1058,9 +1015,7 @@ class OptimizedVectorStore:
             self._load_faiss_index_for_companies(companies, force_rebuild=True)
             elapsed_time = time.time() - start_time
 
-            logger.info(
-                f"Rebuilt index for {len(companies)} companies in {elapsed_time:.2f} seconds"
-            )
+            logger.info(f"Rebuilt index for {len(companies)} companies in {elapsed_time:.2f} seconds")
             return True
         except Exception as e:
             logger.error(f"Error rebuilding index: {e}")
@@ -1115,12 +1070,8 @@ class OptimizedVectorStore:
             self._load_faiss_index_for_companies(companies, force_rebuild=force_rebuild)
 
             # Check if we have any indexes to search
-            main_index_available = (
-                self.faiss_index is not None and self.faiss_index.ntotal > 0
-            )
-            delta_index_available = (
-                self.delta_index is not None and self.delta_index.ntotal > 0
-            )
+            main_index_available = self.faiss_index is not None and self.faiss_index.ntotal > 0
+            delta_index_available = self.delta_index is not None and self.delta_index.ntotal > 0
 
             if not main_index_available and not delta_index_available:
                 logger.warning("No vectors available for search")
@@ -1159,9 +1110,7 @@ class OptimizedVectorStore:
             candidates = []
 
             # Process all search results
-            for distances, indices, id_map in zip(
-                all_distances, all_indices, all_id_maps
-            ):
+            for distances, indices, id_map in zip(all_distances, all_indices, all_id_maps):
                 for distance, idx in zip(distances, indices):
                     if idx < 0 or idx not in id_map:
                         continue  # Skip invalid indices
@@ -1170,9 +1119,7 @@ class OptimizedVectorStore:
                     metadata = self.metadata_store.get(doc_id, {})
 
                     # Apply basic metadata filter if provided
-                    if metadata_filter and not self._matches_filter(
-                        metadata, metadata_filter
-                    ):
+                    if metadata_filter and not self._matches_filter(metadata, metadata_filter):
                         continue
 
                     # Apply filing type filter
@@ -1180,9 +1127,7 @@ class OptimizedVectorStore:
                         continue
 
                     # Apply date range filter
-                    if date_range and not self._in_date_range(
-                        metadata.get("filing_date"), date_range
-                    ):
+                    if date_range and not self._in_date_range(metadata.get("filing_date"), date_range):
                         continue
 
                     # Apply section filter
@@ -1195,23 +1140,17 @@ class OptimizedVectorStore:
                         continue
 
                     # Calculate vector similarity score
-                    vector_score = float(
-                        1.0 / (1.0 + distance)
-                    )  # Convert distance to similarity score
+                    vector_score = float(1.0 / (1.0 + distance))  # Convert distance to similarity score
 
                     # Calculate keyword match score if keywords provided
                     keyword_score = 0.0
                     if keywords:
-                        keyword_score = self._calculate_keyword_score(
-                            text, keywords, keyword_match_type
-                        )
+                        keyword_score = self._calculate_keyword_score(text, keywords, keyword_match_type)
 
                     # Calculate hybrid score
                     if keywords and hybrid_search_weight > 0:
                         # Combine vector and keyword scores based on weight
-                        score = (
-                            1 - hybrid_search_weight
-                        ) * vector_score + hybrid_search_weight * keyword_score
+                        score = (1 - hybrid_search_weight) * vector_score + hybrid_search_weight * keyword_score
                     else:
                         score = vector_score
 
@@ -1228,19 +1167,9 @@ class OptimizedVectorStore:
                     )
 
             # Sort results based on sort_by parameter
-            if (
-                sort_by == "date"
-                and candidates
-                and "filing_date" in candidates[0]["metadata"]
-            ):
-                candidates.sort(
-                    key=lambda x: x["metadata"].get("filing_date", ""), reverse=True
-                )
-            elif (
-                sort_by == "company"
-                and candidates
-                and "ticker" in candidates[0]["metadata"]
-            ):
+            if sort_by == "date" and candidates and "filing_date" in candidates[0]["metadata"]:
+                candidates.sort(key=lambda x: x["metadata"].get("filing_date", ""), reverse=True)
+            elif sort_by == "company" and candidates and "ticker" in candidates[0]["metadata"]:
                 candidates.sort(key=lambda x: x["metadata"].get("ticker", ""))
             else:  # Default to relevance
                 candidates.sort(key=lambda x: x["score"], reverse=True)
@@ -1258,9 +1187,7 @@ class OptimizedVectorStore:
             logger.error(traceback.format_exc())
             return []
 
-    def _matches_filter(
-        self, metadata: Dict[str, Any], filter_dict: Dict[str, Any]
-    ) -> bool:
+    def _matches_filter(self, metadata: Dict[str, Any], filter_dict: Dict[str, Any]) -> bool:
         """Check if metadata matches the filter.
 
         Args:
@@ -1278,9 +1205,7 @@ class OptimizedVectorStore:
             if isinstance(value, list):
                 if not isinstance(metadata[key], list) and metadata[key] not in value:
                     return False
-                elif isinstance(metadata[key], list) and not any(
-                    v in value for v in metadata[key]
-                ):
+                elif isinstance(metadata[key], list) and not any(v in value for v in metadata[key]):
                     return False
             # Handle exact match
             elif metadata[key] != value:
@@ -1288,9 +1213,7 @@ class OptimizedVectorStore:
 
         return True
 
-    def _in_date_range(
-        self, date_str: Optional[str], date_range: Tuple[str, str]
-    ) -> bool:
+    def _in_date_range(self, date_str: Optional[str], date_range: Tuple[str, str]) -> bool:
         """Check if a date is within a specified range.
 
         Args:
@@ -1327,9 +1250,7 @@ class OptimizedVectorStore:
             logger.warning(f"Error parsing date: {e}")
             return False
 
-    def _calculate_keyword_score(
-        self, text: str, keywords: List[str], match_type: str
-    ) -> float:
+    def _calculate_keyword_score(self, text: str, keywords: List[str], match_type: str) -> float:
         """Calculate keyword match score for text.
 
         Args:
@@ -1525,9 +1446,7 @@ class OptimizedVectorStore:
             "total_documents": doc_count,
             "total_companies": company_count,
             "documents_by_company": {
-                company: len(docs)
-                for company, docs in self.company_to_docs.items()
-                if company != "all"
+                company: len(docs) for company, docs in self.company_to_docs.items() if company != "all"
             },
             "storage_size_mb": 0,
             "using_duckdb": self.use_duckdb and self.db_store is not None,

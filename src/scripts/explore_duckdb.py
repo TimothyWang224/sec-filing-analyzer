@@ -38,9 +38,7 @@ def describe_table(conn, table_name):
         schema = conn.execute(f"PRAGMA table_info('{table_name}')").fetchall()
 
         if not schema:
-            console.print(
-                f"[yellow]Table '{table_name}' exists but has no columns.[/yellow]"
-            )
+            console.print(f"[yellow]Table '{table_name}' exists but has no columns.[/yellow]")
             return
 
         table = Table(title=f"Schema for '{table_name}'", box=box.ROUNDED)
@@ -196,27 +194,19 @@ def main():
         default="data/financial_data.duckdb",
         help="Path to the DuckDB database file",
     )
-    parser.add_argument(
-        "--list-tables", action="store_true", help="List all tables in the database"
-    )
+    parser.add_argument("--list-tables", action="store_true", help="List all tables in the database")
     parser.add_argument("--describe", help="Describe a specific table")
     parser.add_argument("--sample", help="Show a sample of rows from a table")
-    parser.add_argument(
-        "--limit", type=int, default=10, help="Limit for sample rows (default: 10)"
-    )
+    parser.add_argument("--limit", type=int, default=10, help="Limit for sample rows (default: 10)")
     parser.add_argument("--query", help="Run a custom SQL query")
-    parser.add_argument(
-        "--relationships", action="store_true", help="Show table relationships"
-    )
+    parser.add_argument("--relationships", action="store_true", help="Show table relationships")
 
     args = parser.parse_args()
 
     try:
         # Connect to the database
         conn = duckdb.connect(args.db)
-        console.print(
-            Panel(f"Connected to DuckDB database: [bold cyan]{args.db}[/bold cyan]")
-        )
+        console.print(Panel(f"Connected to DuckDB database: [bold cyan]{args.db}[/bold cyan]"))
 
         # Execute the requested command
         if args.list_tables:

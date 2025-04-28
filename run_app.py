@@ -17,15 +17,11 @@ def main():
     print("Launching SEC Filing Analyzer Streamlit App...")
 
     # Get the path to the run_app.py script
-    run_app_path = (
-        Path(__file__).resolve().parent / "src" / "streamlit_app" / "run_app.py"
-    )
+    run_app_path = Path(__file__).resolve().parent / "src" / "streamlit_app" / "run_app.py"
 
     if not run_app_path.exists():
         print(f"Error: App launcher not found at {run_app_path}")
-        print(
-            "Please make sure you're running this script from the project root directory."
-        )
+        print("Please make sure you're running this script from the project root directory.")
         sys.exit(1)
 
     # Check if we're running in a Poetry environment
@@ -47,9 +43,7 @@ def main():
         sys.exit(1)
     except FileNotFoundError:
         if not in_poetry:
-            print(
-                "Error: Poetry not found. Please install Poetry or activate your virtual environment."
-            )
+            print("Error: Poetry not found. Please install Poetry or activate your virtual environment.")
         else:
             print("Error: Python not found. Please check your environment.")
         sys.exit(1)

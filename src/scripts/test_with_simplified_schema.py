@@ -12,9 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Set up console
@@ -284,9 +282,7 @@ def test_extractor(ticker, accession_number, db_path):
             # Get facts for the filing
             facts = extractor.db.get_filing_facts(filing_id)
 
-            console.print(
-                f"\n[bold]Facts for Filing (showing first 5 of {len(facts)}):[/bold]"
-            )
+            console.print(f"\n[bold]Facts for Filing (showing first 5 of {len(facts)}):[/bold]")
             if not facts.empty:
                 console.print(facts.head(5))
             else:

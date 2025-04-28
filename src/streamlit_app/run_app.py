@@ -103,9 +103,7 @@ def main():
     env["STREAMLIT_SERVER_HEADLESS"] = str(streamlit_config.headless).lower()
     env["STREAMLIT_THEME_BASE"] = streamlit_config.theme_base
     env["STREAMLIT_SERVER_PORT"] = str(port)
-    env["STREAMLIT_SERVER_ENABLE_CORS"] = str(
-        getattr(streamlit_config, "enable_cors", True)
-    ).lower()
+    env["STREAMLIT_SERVER_ENABLE_CORS"] = str(getattr(streamlit_config, "enable_cors", True)).lower()
     env["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = str(
         getattr(streamlit_config, "enable_xsrf_protection", False)
     ).lower()

@@ -37,9 +37,7 @@ class DocumentChunker:
         self.tokenizer = tiktoken.get_encoding("cl100k_base")  # OpenAI's encoding
 
         # Initialize token splitter
-        self.token_splitter = TokenTextSplitter(
-            chunk_size=chunk_size, chunk_overlap=chunk_overlap
-        )
+        self.token_splitter = TokenTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
 
     def chunk_document(self, text: str) -> List[Dict[str, Any]]:
         """

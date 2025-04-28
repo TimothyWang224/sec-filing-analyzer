@@ -137,40 +137,22 @@ selected_model_index = st.sidebar.selectbox(
 selected_model = model_options[selected_model_index]
 
 # Temperature setting
-temperature = st.sidebar.slider(
-    "Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1
-)
+temperature = st.sidebar.slider("Temperature", min_value=0.0, max_value=1.0, value=0.7, step=0.1)
 
 # Max tokens setting
-max_tokens = st.sidebar.slider(
-    "Max Tokens", min_value=500, max_value=8000, value=4000, step=500
-)
+max_tokens = st.sidebar.slider("Max Tokens", min_value=500, max_value=8000, value=4000, step=500)
 
 # Task complexity
-task_complexity = st.sidebar.radio(
-    "Task Complexity", ["low", "medium", "high"], index=1
-)
+task_complexity = st.sidebar.radio("Task Complexity", ["low", "medium", "high"], index=1)
 
 # Advanced agent settings
 with st.sidebar.expander("Advanced Settings"):
-    max_iterations = st.number_input(
-        "Max Iterations", min_value=1, max_value=10, value=3
-    )
-    max_planning_iterations = st.number_input(
-        "Max Planning Iterations", min_value=1, max_value=5, value=2
-    )
-    max_execution_iterations = st.number_input(
-        "Max Execution Iterations", min_value=1, max_value=5, value=3
-    )
-    max_refinement_iterations = st.number_input(
-        "Max Refinement Iterations", min_value=1, max_value=5, value=1
-    )
-    max_tool_retries = st.number_input(
-        "Max Tool Retries", min_value=1, max_value=5, value=2
-    )
-    max_duration_seconds = st.number_input(
-        "Max Duration (seconds)", min_value=30, max_value=600, value=180
-    )
+    max_iterations = st.number_input("Max Iterations", min_value=1, max_value=10, value=3)
+    max_planning_iterations = st.number_input("Max Planning Iterations", min_value=1, max_value=5, value=2)
+    max_execution_iterations = st.number_input("Max Execution Iterations", min_value=1, max_value=5, value=3)
+    max_refinement_iterations = st.number_input("Max Refinement Iterations", min_value=1, max_value=5, value=1)
+    max_tool_retries = st.number_input("Max Tool Retries", min_value=1, max_value=5, value=2)
+    max_duration_seconds = st.number_input("Max Duration (seconds)", min_value=30, max_value=600, value=180)
 
 # Storage settings
 with st.sidebar.expander("Storage Settings"):
@@ -179,9 +161,7 @@ with st.sidebar.expander("Storage Settings"):
         value=False,
         help="Enables faster metadata access using DuckDB. Requires a pre-built metadata.duckdb file.",
     )
-    st.info(
-        "DuckDB provides faster metadata access but requires running the migration script first."
-    )
+    st.info("DuckDB provides faster metadata access but requires running the migration script first.")
     if use_duckdb:
         st.success("DuckDB will be used for metadata storage if available.")
 
@@ -194,9 +174,7 @@ if st.sidebar.button("Initialize Agent"):
 
         if not imports_successful:
             st.error("Cannot initialize agent: Required components are not available.")
-            st.info(
-                "Please make sure the SEC Filing Analyzer package is installed correctly using 'poetry install'."
-            )
+            st.info("Please make sure the SEC Filing Analyzer package is installed correctly using 'poetry install'.")
             st.session_state.agent_initialized = False
         else:
             try:
@@ -241,13 +219,9 @@ if st.sidebar.button("Initialize Agent"):
 
                     # Show appropriate message based on DuckDB usage
                     if use_duckdb:
-                        st.sidebar.success(
-                            f"Environment initialized with DuckDB in {env_time:.2f} seconds"
-                        )
+                        st.sidebar.success(f"Environment initialized with DuckDB in {env_time:.2f} seconds")
                     else:
-                        st.sidebar.info(
-                            f"Environment initialized in {env_time:.2f} seconds"
-                        )
+                        st.sidebar.info(f"Environment initialized in {env_time:.2f} seconds")
                 except Exception as env_error:
                     st.error(f"Error initializing environment: {env_error}")
                     st.session_state.agent_initialized = False
@@ -300,12 +274,8 @@ if st.sidebar.button("Initialize Agent"):
 
                         progress_bar.progress(100, text="Agent initialized!")
                         st.session_state.agent_initialized = True
-                        st.success(
-                            f"{agent_type.title()} agent initialized successfully in {total_time:.2f} seconds!"
-                        )
-                        st.sidebar.info(
-                            f"Agent creation: {agent_time:.2f}s, Total: {total_time:.2f}s"
-                        )
+                        st.success(f"{agent_type.title()} agent initialized successfully in {total_time:.2f} seconds!")
+                        st.sidebar.info(f"Agent creation: {agent_time:.2f}s, Total: {total_time:.2f}s")
 
                         # Clear chat history when initializing a new agent
                         st.session_state.messages = []
@@ -356,16 +326,12 @@ if st.session_state.agent_initialized:
                 message_placeholder.markdown(agent_response)
 
                 # Add assistant message to chat
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": agent_response}
-                )
+                st.session_state.messages.append({"role": "assistant", "content": agent_response})
 
             except Exception as e:
                 error_message = f"Error: {str(e)}"
                 message_placeholder.markdown(error_message)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_message}
-                )
+                st.session_state.messages.append({"role": "assistant", "content": error_message})
 else:
     st.info("Please initialize an agent to start the conversation.")
 

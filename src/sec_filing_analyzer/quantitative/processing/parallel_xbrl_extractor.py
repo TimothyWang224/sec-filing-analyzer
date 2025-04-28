@@ -71,9 +71,7 @@ class ParallelXBRLExtractor:
             ),
         }
 
-        logger.info(
-            f"Initialized parallel XBRL extractor with cache at {self.cache_dir} and {max_workers} workers"
-        )
+        logger.info(f"Initialized parallel XBRL extractor with cache at {self.cache_dir} and {max_workers} workers")
 
     def _apply_rate_limit(self):
         """Apply rate limiting to API requests."""
@@ -105,13 +103,9 @@ class ParallelXBRLExtractor:
         """
         try:
             # Check cache first
-            cache_file = (
-                self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
-            )
+            cache_file = self.cache_dir / f"{ticker}_{accession_number.replace('-', '_')}.json"
             if cache_file.exists():
-                logger.info(
-                    f"Loading XBRL data from cache for {ticker} {accession_number}"
-                )
+                logger.info(f"Loading XBRL data from cache for {ticker} {accession_number}")
                 with open(cache_file, "r") as f:
                     return json.load(f)
 
@@ -134,28 +128,16 @@ class ParallelXBRLExtractor:
                         break
 
                 if not filing_obj:
-                    raise ValueError(
-                        f"Filing with accession number {accession_number} not found"
-                    )
+                    raise ValueError(f"Filing with accession number {accession_number} not found")
 
                 # Extract filing metadata
-                filing_date = (
-                    str(filing_obj.filing_date) if filing_obj.filing_date else None
-                )
+                filing_date = str(filing_obj.filing_date) if filing_obj.filing_date else None
                 filing_type = filing_obj.form
-                report_date = (
-                    str(filing_obj.report_date) if filing_obj.report_date else None
-                )
+                report_date = str(filing_obj.report_date) if filing_obj.report_date else None
 
                 # Determine fiscal year and quarter
-                fiscal_year = (
-                    int(report_date.split("-")[0])
-                    if report_date and "-" in report_date
-                    else None
-                )
-                fiscal_quarter = self._determine_fiscal_quarter(
-                    report_date, filing_type
-                )
+                fiscal_year = int(report_date.split("-")[0]) if report_date and "-" in report_date else None
+                fiscal_quarter = self._determine_fiscal_quarter(report_date, filing_type)
 
                 # Initialize financials dictionary
                 financials = {
@@ -184,9 +166,7 @@ class ParallelXBRLExtractor:
                 with open(cache_file, "w") as f:
                     json.dump(financials, f, indent=2)
 
-                logger.info(
-                    f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}"
-                )
+                logger.info(f"Extracted {len(financials['facts'])} facts for {ticker} {accession_number}")
                 return financials
 
             except Exception as e:
@@ -199,9 +179,7 @@ class ParallelXBRLExtractor:
                 }
 
         except Exception as e:
-            logger.error(
-                f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}"
-            )
+            logger.error(f"Error extracting XBRL data for {ticker} {accession_number}: {str(e)}")
             return {
                 "filing_id": filing_id,
                 "ticker": ticker,
@@ -209,9 +187,7 @@ class ParallelXBRLExtractor:
                 "error": str(e),
             }
 
-    def extract_financials_batch(
-        self, batch: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+    def extract_financials_batch(self, batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Extract financial data for a batch of filings.
 
         Args:
@@ -243,9 +219,7 @@ class ParallelXBRLExtractor:
 
         return results
 
-    def extract_financials_for_companies(
-        self, companies: List[Dict[str, Any]]
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    def extract_financials_for_companies(self, companies: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
         """Extract financial data for multiple companies in parallel.
 
         Args:
@@ -271,20 +245,14 @@ class ParallelXBRLExtractor:
                 all_filings.append(filing)
 
         # Process filings in parallel
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.max_workers
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Split into batches to avoid overwhelming the executor
             batch_size = 10
-            batches = [
-                all_filings[i : i + batch_size]
-                for i in range(0, len(all_filings), batch_size)
-            ]
+            batches = [all_filings[i : i + batch_size] for i in range(0, len(all_filings), batch_size)]
 
             # Submit batch tasks
             future_to_batch = {
-                executor.submit(self.extract_financials_batch, batch): i
-                for i, batch in enumerate(batches)
+                executor.submit(self.extract_financials_batch, batch): i for i, batch in enumerate(batches)
             }
 
             # Process results
@@ -302,9 +270,7 @@ class ParallelXBRLExtractor:
 
         return results
 
-    def _determine_fiscal_quarter(
-        self, filing_date: Optional[str], filing_type: Optional[str]
-    ) -> Optional[int]:
+    def _determine_fiscal_quarter(self, filing_date: Optional[str], filing_type: Optional[str]) -> Optional[int]:
         """Determine fiscal quarter from filing date and type.
 
         Args:
@@ -333,9 +299,7 @@ class ParallelXBRLExtractor:
             logger.warning(f"Error determining fiscal quarter: {e}")
             return None
 
-    def _extract_financial_data(
-        self, filing_obj: Any, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_financial_data(self, filing_obj: Any, financials: Dict[str, Any]) -> None:
         """Extract financial data from filing.
 
         Args:
@@ -386,17 +350,13 @@ class ParallelXBRLExtractor:
                                 continue
 
                             # Add statement to financials
-                            financials["statements"][statement_name] = df.to_dict(
-                                orient="records"
-                            )
+                            financials["statements"][statement_name] = df.to_dict(orient="records")
 
                             # Process statement data
                             self._process_statement_data(df, statement_name, financials)
 
                         except Exception as e:
-                            logger.warning(
-                                f"Error processing statement {statement_name}: {e}"
-                            )
+                            logger.warning(f"Error processing statement {statement_name}: {e}")
         except Exception as e:
             logger.warning(f"Error extracting statements: {e}")
 
@@ -429,9 +389,7 @@ class ParallelXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error extracting XBRL facts: {e}")
 
-    def _extract_facts_from_xbrl(
-        self, xbrl_data: Any, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_facts_from_xbrl(self, xbrl_data: Any, financials: Dict[str, Any]) -> None:
         """Extract facts directly from XBRL data.
 
         Args:
@@ -486,9 +444,7 @@ class ParallelXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error extracting facts from XBRL: {e}")
 
-    def _extract_data_from_calculations(
-        self, calculations: Any, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_data_from_calculations(self, calculations: Any, financials: Dict[str, Any]) -> None:
         """Extract data from XBRL calculations.
 
         Args:
@@ -513,9 +469,7 @@ class ParallelXBRLExtractor:
                                 # Get component details
                                 if hasattr(component, "concept") and component.concept:
                                     component_id = component.concept
-                                    component_name = self._normalize_fact_name(
-                                        component_id
-                                    )
+                                    component_name = self._normalize_fact_name(component_id)
 
                                     # Add relationship to financials
                                     if "relationships" not in financials:
@@ -525,24 +479,18 @@ class ParallelXBRLExtractor:
                                         "source": component_name,
                                         "target": target_name,
                                         "type": "calculation",
-                                        "weight": component.weight
-                                        if hasattr(component, "weight")
-                                        else 1.0,
+                                        "weight": component.weight if hasattr(component, "weight") else 1.0,
                                     }
 
                                     financials["relationships"].append(relationship)
                             except Exception as e:
-                                logger.debug(
-                                    f"Error processing calculation component: {e}"
-                                )
+                                logger.debug(f"Error processing calculation component: {e}")
                 except Exception as e:
                     logger.debug(f"Error processing calculation {calc_id}: {e}")
         except Exception as e:
             logger.warning(f"Error extracting data from calculations: {e}")
 
-    def _extract_data_from_statements(
-        self, statements: Any, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_data_from_statements(self, statements: Any, financials: Dict[str, Any]) -> None:
         """Extract data from XBRL statements.
 
         Args:
@@ -591,9 +539,7 @@ class ParallelXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error extracting data from statements: {e}")
 
-    def _extract_data_from_text(
-        self, filing_obj: Any, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_data_from_text(self, filing_obj: Any, financials: Dict[str, Any]) -> None:
         """Extract financial data from filing text using edgar's capabilities.
 
         Args:
@@ -658,9 +604,7 @@ class ParallelXBRLExtractor:
         """
         try:
             # Try to extract tables from the document
-            if hasattr(document, "extract_tables") and callable(
-                document.extract_tables
-            ):
+            if hasattr(document, "extract_tables") and callable(document.extract_tables):
                 tables = document.extract_tables()
 
                 if not tables:
@@ -717,19 +661,13 @@ class ParallelXBRLExtractor:
         ]
 
         # Check first row and first column for financial keywords
-        header_text = " ".join(
-            str(x).lower() for x in df.iloc[0].values if x is not None
-        )
-        col_text = " ".join(
-            str(x).lower() for x in df.iloc[:, 0].values if x is not None
-        )
+        header_text = " ".join(str(x).lower() for x in df.iloc[0].values if x is not None)
+        col_text = " ".join(str(x).lower() for x in df.iloc[:, 0].values if x is not None)
         combined_text = header_text + " " + col_text
 
         return any(keyword in combined_text for keyword in financial_keywords)
 
-    def _process_financial_table(
-        self, df: pd.DataFrame, table_name: str, financials: Dict[str, Any]
-    ) -> None:
+    def _process_financial_table(self, df: pd.DataFrame, table_name: str, financials: Dict[str, Any]) -> None:
         """Process a financial table.
 
         Args:
@@ -743,10 +681,7 @@ class ParallelXBRLExtractor:
             header_col = 0
 
             # Use the first row as headers
-            df.columns = [
-                str(x) if x is not None else f"col_{i}"
-                for i, x in enumerate(df.iloc[header_row])
-            ]
+            df.columns = [str(x) if x is not None else f"col_{i}" for i, x in enumerate(df.iloc[header_row])]
 
             # Use the first column as index
             df = df.iloc[header_row + 1 :].set_index(df.columns[header_col])
@@ -762,9 +697,7 @@ class ParallelXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error processing financial table: {e}")
 
-    def _extract_metrics_from_table(
-        self, df: pd.DataFrame, financials: Dict[str, Any]
-    ) -> None:
+    def _extract_metrics_from_table(self, df: pd.DataFrame, financials: Dict[str, Any]) -> None:
         """Extract metrics from a financial table.
 
         Args:
@@ -814,9 +747,7 @@ class ParallelXBRLExtractor:
         except Exception as e:
             logger.warning(f"Error extracting metrics from table: {e}")
 
-    def _process_statement_data(
-        self, df: pd.DataFrame, statement_name: str, financials: Dict[str, Any]
-    ) -> None:
+    def _process_statement_data(self, df: pd.DataFrame, statement_name: str, financials: Dict[str, Any]) -> None:
         """Process statement data.
 
         Args:
@@ -1079,16 +1010,10 @@ class ParallelXBRLExtractor:
         """
         # Primary facts are typically duration facts for income statement
         # and instant facts for balance sheet
-        if (
-            period_type == "duration"
-            and self._get_fact_category(fact_id) == "income_statement"
-        ):
+        if period_type == "duration" and self._get_fact_category(fact_id) == "income_statement":
             return True
 
-        if (
-            period_type == "instant"
-            and self._get_fact_category(fact_id) == "balance_sheet"
-        ):
+        if period_type == "instant" and self._get_fact_category(fact_id) == "balance_sheet":
             return True
 
         # Check for common primary facts
@@ -1120,21 +1045,13 @@ class ParallelXBRLExtractor:
         """
         statement_name_lower = statement_name.lower()
 
-        if any(
-            term in statement_name_lower
-            for term in ["income", "operations", "earnings"]
-        ):
+        if any(term in statement_name_lower for term in ["income", "operations", "earnings"]):
             return "income_statement"
-        elif any(
-            term in statement_name_lower for term in ["balance", "financial position"]
-        ):
+        elif any(term in statement_name_lower for term in ["balance", "financial position"]):
             return "balance_sheet"
         elif any(term in statement_name_lower for term in ["cash flow", "cash flows"]):
             return "cash_flow"
-        elif any(
-            term in statement_name_lower
-            for term in ["equity", "stockholders", "shareholders"]
-        ):
+        elif any(term in statement_name_lower for term in ["equity", "stockholders", "shareholders"]):
             return "equity"
         else:
             return "other"

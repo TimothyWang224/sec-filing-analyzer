@@ -2,9 +2,7 @@ import duckdb
 
 # Connect to the database
 try:
-    conn = duckdb.connect(
-        "data/db_backup/improved_financial_data.duckdb", read_only=True
-    )
+    conn = duckdb.connect("data/db_backup/improved_financial_data.duckdb", read_only=True)
     print("Successfully connected to improved_financial_data.duckdb")
 except Exception as e:
     print(f"Error connecting to improved_financial_data.duckdb: {e}")
@@ -45,16 +43,8 @@ except Exception as e:
     print(f"Error querying companies: {e}")
 
 # Check if company_id exists in filings table
-company_id_exists = (
-    "company_id" in filings_schema["column_name"].values
-    if "filings_schema" in locals()
-    else False
-)
-ticker_exists = (
-    "ticker" in filings_schema["column_name"].values
-    if "filings_schema" in locals()
-    else False
-)
+company_id_exists = "company_id" in filings_schema["column_name"].values if "filings_schema" in locals() else False
+ticker_exists = "ticker" in filings_schema["column_name"].values if "filings_schema" in locals() else False
 
 # Check filings for each company
 tickers = ["NVDA", "GOOGL", "AAPL", "MSFT"]
@@ -64,9 +54,7 @@ for ticker in tickers:
         # Adjust query based on schema
         if company_id_exists:
             # First get company_id for the ticker
-            company_id_query = (
-                f"SELECT company_id FROM companies WHERE ticker = '{ticker}'"
-            )
+            company_id_query = f"SELECT company_id FROM companies WHERE ticker = '{ticker}'"
             company_id_result = conn.execute(company_id_query).fetchone()
 
             if company_id_result:
@@ -90,9 +78,7 @@ for ticker in tickers:
         if len(filings) > 0:
             # Group by fiscal year to see how many filings per year
             if "fiscal_year" in filings.columns:
-                filings_by_year = (
-                    filings.groupby("fiscal_year").size().reset_index(name="count")
-                )
+                filings_by_year = filings.groupby("fiscal_year").size().reset_index(name="count")
                 print(f"Filings by year for {ticker}:")
                 print(filings_by_year)
 
@@ -148,9 +134,7 @@ for ticker in tickers:
             print(f"No metrics found for {ticker} in time_series_view")
 
             # Try metrics table as fallback
-            metrics_query = (
-                f"SELECT DISTINCT name FROM metrics WHERE ticker = '{ticker}'"
-            )
+            metrics_query = f"SELECT DISTINCT name FROM metrics WHERE ticker = '{ticker}'"
             metrics = conn.execute(metrics_query).fetchdf()
 
             if len(metrics) > 0:

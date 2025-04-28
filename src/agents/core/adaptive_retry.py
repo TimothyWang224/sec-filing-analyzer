@@ -78,9 +78,7 @@ class AdaptiveRetryStrategy:
 
                 # Check if this is a repeated identical error
                 if previous_errors and str(error) == str(previous_errors[-1]):
-                    logger.warning(
-                        "Detected identical error on consecutive attempts - likely parameter issue"
-                    )
+                    logger.warning("Detected identical error on consecutive attempts - likely parameter issue")
                     # If we've seen this exact error before, it's likely that retrying won't help
                     # Return with a special flag indicating identical errors
                     return {

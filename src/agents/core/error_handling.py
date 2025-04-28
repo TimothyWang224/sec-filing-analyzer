@@ -11,7 +11,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -144,9 +143,7 @@ class ErrorClassifier:
                 "type error",
             ]
         ):
-            return ToolError(
-                ToolErrorType.PARAMETER_ERROR, error_message, tool_name, exception
-            )
+            return ToolError(ToolErrorType.PARAMETER_ERROR, error_message, tool_name, exception)
 
         # Check for network errors
         elif any(
@@ -160,9 +157,7 @@ class ErrorClassifier:
                 "socket",
             ]
         ):
-            return ToolError(
-                ToolErrorType.NETWORK_ERROR, error_message, tool_name, exception
-            )
+            return ToolError(ToolErrorType.NETWORK_ERROR, error_message, tool_name, exception)
 
         # Check for authentication errors
         elif any(
@@ -177,18 +172,13 @@ class ErrorClassifier:
                 "credentials",
             ]
         ):
-            return ToolError(
-                ToolErrorType.AUTH_ERROR, error_message, tool_name, exception
-            )
+            return ToolError(ToolErrorType.AUTH_ERROR, error_message, tool_name, exception)
 
         # Check for rate limit errors
         elif any(
-            keyword in error_message.lower()
-            for keyword in ["rate limit", "quota", "too many requests", "throttle"]
+            keyword in error_message.lower() for keyword in ["rate limit", "quota", "too many requests", "throttle"]
         ):
-            return ToolError(
-                ToolErrorType.RATE_LIMIT_ERROR, error_message, tool_name, exception
-            )
+            return ToolError(ToolErrorType.RATE_LIMIT_ERROR, error_message, tool_name, exception)
 
         # Check for data errors
         elif any(
@@ -201,24 +191,15 @@ class ErrorClassifier:
                 "invalid data",
             ]
         ):
-            return ToolError(
-                ToolErrorType.DATA_ERROR, error_message, tool_name, exception
-            )
+            return ToolError(ToolErrorType.DATA_ERROR, error_message, tool_name, exception)
 
         # Check for system errors
-        elif any(
-            keyword in error_message.lower()
-            for keyword in ["internal", "server error", "system", "unexpected"]
-        ):
-            return ToolError(
-                ToolErrorType.SYSTEM_ERROR, error_message, tool_name, exception
-            )
+        elif any(keyword in error_message.lower() for keyword in ["internal", "server error", "system", "unexpected"]):
+            return ToolError(ToolErrorType.SYSTEM_ERROR, error_message, tool_name, exception)
 
         # Default to unknown error
         else:
-            return ToolError(
-                ToolErrorType.UNKNOWN_ERROR, error_message, tool_name, exception
-            )
+            return ToolError(ToolErrorType.UNKNOWN_ERROR, error_message, tool_name, exception)
 
 
 class ToolCircuitBreaker:
@@ -261,9 +242,7 @@ class ToolCircuitBreaker:
         # Check if we should open the circuit
         if self.failure_counts[tool_name] >= self.failure_threshold:
             self.circuit_status[tool_name]["status"] = "open"
-            logger.warning(
-                f"Circuit opened for tool {tool_name} after {self.failure_threshold} consecutive failures"
-            )
+            logger.warning(f"Circuit opened for tool {tool_name} after {self.failure_threshold} consecutive failures")
 
     def record_success(self, tool_name: str) -> None:
         """
@@ -372,9 +351,7 @@ class ErrorAnalyzer:
 
         return [{"type": e[0].value, "count": e[1]} for e in sorted_errors[:limit]]
 
-    def get_error_suggestions(
-        self, tool_name: str, error_type: ToolErrorType
-    ) -> List[str]:
+    def get_error_suggestions(self, tool_name: str, error_type: ToolErrorType) -> List[str]:
         """
         Get suggestions for fixing common errors.
 
@@ -443,6 +420,8 @@ class ErrorAnalyzer:
         elif error.error_type == ToolErrorType.RATE_LIMIT_ERROR:
             return "I've reached the limit for data requests. Please try again in a few minutes."
         elif error.error_type == ToolErrorType.AUTH_ERROR:
-            return "I don't have the necessary permissions to access this data. Please check your authentication settings."
+            return (
+                "I don't have the necessary permissions to access this data. Please check your authentication settings."
+            )
         else:
             return f"I encountered an error while processing your request: {error.message}. Please try again or rephrase your question."

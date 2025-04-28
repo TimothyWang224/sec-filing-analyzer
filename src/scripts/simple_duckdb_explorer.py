@@ -95,9 +95,7 @@ with tab1:
     st.subheader("Sample Data")
 
     # Pagination
-    rows_per_page = st.slider(
-        "Rows per page", min_value=5, max_value=100, value=10, step=5
-    )
+    rows_per_page = st.slider("Rows per page", min_value=5, max_value=100, value=10, step=5)
     page = st.number_input(
         "Page",
         min_value=1,
@@ -110,9 +108,7 @@ with tab1:
     # Get sample data
     @st.cache_data
     def get_sample_data(conn, table, limit, offset):
-        data = conn.execute(
-            f"SELECT * FROM {table} LIMIT {limit} OFFSET {offset}"
-        ).fetchdf()
+        data = conn.execute(f"SELECT * FROM {table} LIMIT {limit} OFFSET {offset}").fetchdf()
         return data
 
     sample_data = get_sample_data(conn, selected_table, rows_per_page, offset)

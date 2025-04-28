@@ -11,7 +11,6 @@ import os
 import sys
 from pathlib import Path
 
-
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -19,9 +18,7 @@ from sec_filing_analyzer.data_processing.xbrl_extractor import XBRLExtractor
 from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -37,9 +34,7 @@ def test_xbrl_extraction(ticker: str, accession_number: str) -> None:
 
     # Extract XBRL data
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
-    xbrl_data = xbrl_extractor.extract_financials(
-        ticker=ticker, filing_id=filing_id, accession_number=accession_number
-    )
+    xbrl_data = xbrl_extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
     # Print results
     if "error" in xbrl_data:
@@ -84,9 +79,7 @@ def test_financial_storage(ticker: str, accession_number: str) -> None:
 
     # Extract XBRL data
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
-    xbrl_data = xbrl_extractor.extract_financials(
-        ticker=ticker, filing_id=filing_id, accession_number=accession_number
-    )
+    xbrl_data = xbrl_extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
     # Store XBRL data
     success = financial_store.store_xbrl_data(xbrl_data)
@@ -115,18 +108,10 @@ def test_financial_storage(ticker: str, accession_number: str) -> None:
 
 def main():
     """Main function."""
-    parser = argparse.ArgumentParser(
-        description="Test XBRL extraction and financial data storage"
-    )
-    parser.add_argument(
-        "--ticker", type=str, required=True, help="Company ticker symbol"
-    )
-    parser.add_argument(
-        "--accession", type=str, required=True, help="SEC accession number"
-    )
-    parser.add_argument(
-        "--extract-only", action="store_true", help="Only test extraction, not storage"
-    )
+    parser = argparse.ArgumentParser(description="Test XBRL extraction and financial data storage")
+    parser.add_argument("--ticker", type=str, required=True, help="Company ticker symbol")
+    parser.add_argument("--accession", type=str, required=True, help="SEC accession number")
+    parser.add_argument("--extract-only", action="store_true", help="Only test extraction, not storage")
 
     args = parser.parse_args()
 

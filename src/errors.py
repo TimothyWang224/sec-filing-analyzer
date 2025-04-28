@@ -67,9 +67,7 @@ class QueryTypeUnsupported(ToolError):
 class StorageUnavailable(ToolError):
     """Error raised when a storage system is unavailable."""
 
-    def __init__(
-        self, storage_type: str, message: str, details: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, storage_type: str, message: str, details: Optional[Dict[str, Any]] = None):
         self.storage_type = storage_type
 
         full_message = f"{storage_type} storage is unavailable: {message}"
@@ -92,9 +90,7 @@ class DataNotFound(ToolError):
         self.data_type = data_type
         self.query_params = query_params
 
-        default_message = (
-            f"Could not find {data_type} data matching the query parameters."
-        )
+        default_message = f"Could not find {data_type} data matching the query parameters."
         super().__init__(
             message or default_message,
             {"data_type": data_type, "query_params": query_params},

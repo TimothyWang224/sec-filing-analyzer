@@ -10,9 +10,7 @@ import logging
 from dotenv import load_dotenv
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Load environment variables
@@ -34,9 +32,7 @@ def test_semantic_imports():
         embedding_generator = EmbeddingGenerator()
         vector_store = VectorStore()
 
-        logger.info(
-            "Successfully imported and instantiated classes from the semantic module"
-        )
+        logger.info("Successfully imported and instantiated classes from the semantic module")
         return True
     except Exception as e:
         logger.error(f"Error importing classes from the semantic module: {e}")
@@ -59,9 +55,7 @@ def test_quantitative_imports():
         duckdb_store = OptimizedDuckDBStore(db_path=db_path)
         xbrl_extractor = EdgarXBRLToDuckDBExtractor(db_path=db_path)
 
-        logger.info(
-            "Successfully imported and instantiated classes from the quantitative module"
-        )
+        logger.info("Successfully imported and instantiated classes from the quantitative module")
         return True
     except Exception as e:
         logger.error(f"Error importing classes from the quantitative module: {e}")
@@ -83,9 +77,7 @@ def test_pipeline_imports():
         quantitative_pipeline = QuantitativeETLPipeline()
         etl_pipeline = SECFilingETLPipeline()
 
-        logger.info(
-            "Successfully imported and instantiated classes from the pipeline module"
-        )
+        logger.info("Successfully imported and instantiated classes from the pipeline module")
         return True
     except Exception as e:
         logger.error(f"Error importing classes from the pipeline module: {e}")
@@ -108,9 +100,7 @@ def main():
     # Print summary
     logger.info("Test results:")
     logger.info(f"  Semantic imports: {'Success' if semantic_result else 'Failure'}")
-    logger.info(
-        f"  Quantitative imports: {'Success' if quantitative_result else 'Failure'}"
-    )
+    logger.info(f"  Quantitative imports: {'Success' if quantitative_result else 'Failure'}")
     logger.info(f"  Pipeline imports: {'Success' if pipeline_result else 'Failure'}")
 
     # Overall result

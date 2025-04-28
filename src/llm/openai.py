@@ -38,9 +38,7 @@ class OpenAILLM(LLM):
         # Use provided API key or get from environment
         api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError(
-                "OpenAI API key not provided and OPENAI_API_KEY environment variable not set"
-            )
+            raise ValueError("OpenAI API key not provided and OPENAI_API_KEY environment variable not set")
 
         self.client = OpenAI(api_key=api_key)
 
@@ -123,11 +121,15 @@ class OpenAILLM(LLM):
             Generated JSON object
         """
         # Add JSON instructions to the prompt
-        json_prompt = f"{prompt}\n\nRespond with a JSON object that matches this schema:\n{json.dumps(output_schema, indent=2)}"
+        json_prompt = (
+            f"{prompt}\n\nRespond with a JSON object that matches this schema:\n{json.dumps(output_schema, indent=2)}"
+        )
 
         # Add JSON instructions to the system prompt
         if system_prompt:
-            system_prompt = f"{system_prompt}\nYou must respond with a valid JSON object that matches the specified schema."
+            system_prompt = (
+                f"{system_prompt}\nYou must respond with a valid JSON object that matches the specified schema."
+            )
         else:
             system_prompt = "You must respond with a valid JSON object that matches the specified schema."
 
@@ -163,6 +165,4 @@ class OpenAILLM(LLM):
                     pass
 
             # If all extraction attempts fail, raise an error
-            raise ValueError(
-                f"Failed to extract valid JSON from LLM response: {response_text}"
-            )
+            raise ValueError(f"Failed to extract valid JSON from LLM response: {response_text}")

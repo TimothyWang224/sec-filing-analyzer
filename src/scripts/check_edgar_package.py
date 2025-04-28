@@ -11,9 +11,7 @@ import sys
 try:
     import edgar
 
-    print(
-        f"Edgar package version: {edgar.__version__ if hasattr(edgar, '__version__') else 'Unknown'}"
-    )
+    print(f"Edgar package version: {edgar.__version__ if hasattr(edgar, '__version__') else 'Unknown'}")
     print(f"Edgar package path: {edgar.__file__}")
 
     # Print all modules and attributes

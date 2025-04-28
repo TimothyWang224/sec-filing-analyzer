@@ -106,9 +106,7 @@ class EdgarXBRLExtractor:
                 xbrl_data = filing.xbrl()
 
                 if not xbrl_data:
-                    logger.warning(
-                        f"No XBRL data found for {ticker} {accession_number}"
-                    )
+                    logger.warning(f"No XBRL data found for {ticker} {accession_number}")
                     return self._extract_data_from_text(filing, financials)
 
                 # Extract basic metadata from XBRL
@@ -130,9 +128,7 @@ class EdgarXBRLExtractor:
                 statements = {}
 
                 # Process facts from the instance
-                if hasattr(xbrl_data, "instance") and hasattr(
-                    xbrl_data.instance, "facts"
-                ):
+                if hasattr(xbrl_data, "instance") and hasattr(xbrl_data.instance, "facts"):
                     # Get all facts
                     all_facts = xbrl_data.instance.facts
 
@@ -168,9 +164,7 @@ class EdgarXBRLExtractor:
                             fact_entry = {
                                 "xbrl_tag": concept,
                                 "metric_name": self._normalize_concept_name(concept),
-                                "value": numeric_value
-                                if numeric_value is not None
-                                else value,
+                                "value": numeric_value if numeric_value is not None else value,
                                 "units": base_value.get("units"),
                                 "decimals": base_value.get("decimals"),
                                 "period": period,
@@ -202,10 +196,7 @@ class EdgarXBRLExtractor:
                                     else:
                                         # Complex tuple of (dimension, member) pairs
                                         for item in dim_key:
-                                            if (
-                                                isinstance(item, tuple)
-                                                and len(item) == 2
-                                            ):
+                                            if isinstance(item, tuple) and len(item) == 2:
                                                 dimensions[item[0]] = item[1]
 
                             if dimensions:
@@ -233,17 +224,11 @@ class EdgarXBRLExtractor:
                         # Map to standard statement names
                         if "income" in statement_name or "operations" in statement_name:
                             statement_type = "income_statement"
-                        elif (
-                            "balance" in statement_name
-                            or "financial position" in statement_name
-                        ):
+                        elif "balance" in statement_name or "financial position" in statement_name:
                             statement_type = "balance_sheet"
                         elif "cash" in statement_name:
                             statement_type = "cash_flow"
-                        elif (
-                            "equity" in statement_name
-                            or "stockholder" in statement_name
-                        ):
+                        elif "equity" in statement_name or "stockholder" in statement_name:
                             statement_type = "equity"
                         elif "comprehensive" in statement_name:
                             statement_type = "comprehensive_income"
@@ -254,42 +239,28 @@ class EdgarXBRLExtractor:
                         try:
                             statement = xbrl_data.get_statement(statement_key)
                             if statement:
-                                statements[statement_type] = self._statement_to_dict(
-                                    statement
-                                )
+                                statements[statement_type] = self._statement_to_dict(statement)
                         except Exception as e:
-                            logger.warning(
-                                f"Error getting statement {statement_key}: {e}"
-                            )
+                            logger.warning(f"Error getting statement {statement_key}: {e}")
 
                 # Try direct statement methods as fallback
-                if "balance_sheet" not in statements and hasattr(
-                    xbrl_data, "get_balance_sheet"
-                ):
+                if "balance_sheet" not in statements and hasattr(xbrl_data, "get_balance_sheet"):
                     try:
                         balance_sheet = xbrl_data.get_balance_sheet()
                         if balance_sheet:
-                            statements["balance_sheet"] = self._statement_to_dict(
-                                balance_sheet
-                            )
+                            statements["balance_sheet"] = self._statement_to_dict(balance_sheet)
                     except Exception as e:
                         logger.warning(f"Error getting balance sheet: {e}")
 
-                if "income_statement" not in statements and hasattr(
-                    xbrl_data, "get_income_statement"
-                ):
+                if "income_statement" not in statements and hasattr(xbrl_data, "get_income_statement"):
                     try:
                         income_statement = xbrl_data.get_income_statement()
                         if income_statement:
-                            statements["income_statement"] = self._statement_to_dict(
-                                income_statement
-                            )
+                            statements["income_statement"] = self._statement_to_dict(income_statement)
                     except Exception as e:
                         logger.warning(f"Error getting income statement: {e}")
 
-                if "cash_flow" not in statements and hasattr(
-                    xbrl_data, "get_cash_flow_statement"
-                ):
+                if "cash_flow" not in statements and hasattr(xbrl_data, "get_cash_flow_statement"):
                     try:
                         cash_flow = xbrl_data.get_cash_flow_statement()
                         if cash_flow:
@@ -297,9 +268,7 @@ class EdgarXBRLExtractor:
                     except Exception as e:
                         logger.warning(f"Error getting cash flow statement: {e}")
 
-                if "equity" not in statements and hasattr(
-                    xbrl_data, "get_statement_of_changes_in_equity"
-                ):
+                if "equity" not in statements and hasattr(xbrl_data, "get_statement_of_changes_in_equity"):
                     try:
                         equity = xbrl_data.get_statement_of_changes_in_equity()
                         if equity:
@@ -329,9 +298,7 @@ class EdgarXBRLExtractor:
             return financials
 
         except Exception as e:
-            logger.error(
-                f"Error extracting financials for {ticker} {accession_number}: {e}"
-            )
+            logger.error(f"Error extracting financials for {ticker} {accession_number}: {e}")
             return {
                 "filing_id": filing_id,
                 "ticker": ticker,
@@ -400,11 +367,7 @@ class EdgarXBRLExtractor:
                             # Handle tuple of dimension-member pairs
                             elif isinstance(dim_key, tuple):
                                 # Handle different tuple formats
-                                if (
-                                    len(dim_key) == 2
-                                    and isinstance(dim_key[0], str)
-                                    and isinstance(dim_key[1], str)
-                                ):
+                                if len(dim_key) == 2 and isinstance(dim_key[0], str) and isinstance(dim_key[1], str):
                                     # Simple (dimension, member) tuple
                                     dim_name = f"{dim_key[0]}:{dim_key[1]}"
                                     period_dict[dim_name] = dim_value.get("value")
@@ -436,9 +399,7 @@ class EdgarXBRLExtractor:
 
         return result
 
-    def _extract_data_from_text(
-        self, filing, financials: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _extract_data_from_text(self, filing, financials: Dict[str, Any]) -> Dict[str, Any]:
         """
         Extract financial data from filing text when XBRL is not available.
 

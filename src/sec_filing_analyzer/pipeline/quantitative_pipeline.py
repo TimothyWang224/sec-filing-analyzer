@@ -39,9 +39,7 @@ class QuantitativeETLPipeline:
         """
         self.downloader = downloader or SECFilingsDownloader()
         # Pass read_only parameter to the XBRL extractor
-        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(
-            db_path=db_path, read_only=read_only
-        )
+        self.xbrl_extractor = xbrl_extractor or EdgarXBRLToDuckDBExtractor(db_path=db_path, read_only=read_only)
 
         logger.info("Initialized quantitative ETL pipeline")
 
@@ -82,9 +80,7 @@ class QuantitativeETLPipeline:
 
                 if not filings:
                     logger.error(f"Failed to find {filing_type} filing for {ticker}")
-                    return {
-                        "error": f"Failed to find {filing_type} filing for {ticker}"
-                    }
+                    return {"error": f"Failed to find {filing_type} filing for {ticker}"}
 
                 # Get the first filing
                 filing = filings[0]
@@ -93,24 +89,16 @@ class QuantitativeETLPipeline:
                 filing_data = self.downloader.download_filing(filing, ticker)
 
                 if not filing_data:
-                    logger.error(
-                        f"Failed to download {filing_type} filing for {ticker}"
-                    )
-                    return {
-                        "error": f"Failed to download {filing_type} filing for {ticker}"
-                    }
+                    logger.error(f"Failed to download {filing_type} filing for {ticker}")
+                    return {"error": f"Failed to download {filing_type} filing for {ticker}"}
 
                 accession_number = filing_data.get("accession_number")
 
             # Step 2: Extract XBRL data and store in DuckDB
-            result = self.xbrl_extractor.process_filing(
-                ticker=ticker, accession_number=accession_number
-            )
+            result = self.xbrl_extractor.process_filing(ticker=ticker, accession_number=accession_number)
 
             if "error" in result:
-                logger.error(
-                    f"Failed to extract XBRL data for {filing_type} filing for {ticker}: {result['error']}"
-                )
+                logger.error(f"Failed to extract XBRL data for {filing_type} filing for {ticker}: {result['error']}")
                 return {"error": result["error"]}
 
             logger.info(f"Successfully processed {filing_type} filing for {ticker}")

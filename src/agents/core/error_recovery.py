@@ -141,9 +141,7 @@ class ErrorRecoveryManager:
 
         # Check if we had identical errors during retry attempts
         if result.get("identical_errors", False):
-            logger.warning(
-                "Skipping parameter fixing due to identical errors in consecutive attempts"
-            )
+            logger.warning("Skipping parameter fixing due to identical errors in consecutive attempts")
             # Create enhanced context with schema information
             enhanced_context = context.copy() if context else {}
             enhanced_context["last_error"] = str(error)
@@ -166,9 +164,7 @@ class ErrorRecoveryManager:
             return recovery_result
 
         # If all recovery strategies failed, return error with suggestions
-        suggestions = self.error_analyzer.get_error_suggestions(
-            tool_name, error.error_type
-        )
+        suggestions = self.error_analyzer.get_error_suggestions(tool_name, error.error_type)
         user_message = self.error_analyzer.format_error_for_user(error)
 
         return {
@@ -255,17 +251,13 @@ class ErrorRecoveryManager:
             tool_purpose = self._get_tool_purpose(tool_name, tool_args)
 
             # Find an alternative tool
-            alternative_tool = await self.alternative_selector.find_alternative_tool(
-                tool_name, tool_purpose
-            )
+            alternative_tool = await self.alternative_selector.find_alternative_tool(tool_name, tool_purpose)
 
             if alternative_tool:
                 logger.info(f"Trying alternative tool: {alternative_tool}")
 
                 # Map parameters to the alternative tool
-                mapped_args = await self.alternative_selector.map_parameters(
-                    tool_name, alternative_tool, tool_args
-                )
+                mapped_args = await self.alternative_selector.map_parameters(tool_name, alternative_tool, tool_args)
 
                 # Execute the alternative tool
                 async def execute_alternative():
@@ -315,9 +307,7 @@ class ErrorRecoveryManager:
 
         # Add key arguments if available
         if tool_args:
-            arg_str = ", ".join(
-                [f"{k}={v}" for k, v in tool_args.items() if k != "parameters"]
-            )
+            arg_str = ", ".join([f"{k}={v}" for k, v in tool_args.items() if k != "parameters"])
             purpose += f" with {arg_str}"
 
         return purpose

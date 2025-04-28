@@ -329,9 +329,7 @@ class DuckDBWebHandler(SimpleHTTPRequestHandler):
 
                 schema = {}
                 for table in tables:
-                    columns = self.conn.execute(
-                        f"PRAGMA table_info('{table}')"
-                    ).fetchall()
+                    columns = self.conn.execute(f"PRAGMA table_info('{table}')").fetchall()
                     schema[table] = []
 
                     for col in columns:
@@ -379,9 +377,7 @@ class DuckDBWebHandler(SimpleHTTPRequestHandler):
                             row_dict[col] = str(row[i])
                     rows.append(row_dict)
 
-                self.wfile.write(
-                    json.dumps({"columns": columns, "rows": rows}).encode()
-                )
+                self.wfile.write(json.dumps({"columns": columns, "rows": rows}).encode())
             except Exception as e:
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
         else:
@@ -404,9 +400,7 @@ def main():
         default="data/financial_data.duckdb",
         help="Path to the DuckDB database file",
     )
-    parser.add_argument(
-        "--port", type=int, default=8000, help="Port to run the web server on"
-    )
+    parser.add_argument("--port", type=int, default=8000, help="Port to run the web server on")
 
     args = parser.parse_args()
 

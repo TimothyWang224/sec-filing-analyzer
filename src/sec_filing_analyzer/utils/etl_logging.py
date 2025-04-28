@@ -76,9 +76,7 @@ def setup_etl_logging(log_level: int = logging.INFO) -> None:
     file_handler.setLevel(log_level)
 
     # Create a formatter
-    formatter = ETLLogFormatter(
-        "%(iso_timestamp)s - [%(run_id)s] - %(levelname)s - %(message)s"
-    )
+    formatter = ETLLogFormatter("%(iso_timestamp)s - [%(run_id)s] - %(levelname)s - %(message)s")
     file_handler.setFormatter(formatter)
 
     # Add the handler to the logger
@@ -113,9 +111,7 @@ def generate_run_id() -> str:
     return f"etl_{timestamp}"
 
 
-def log_etl_start(
-    run_id: str, parameters: Dict[str, Any], description: Optional[str] = None
-) -> None:
+def log_etl_start(run_id: str, parameters: Dict[str, Any], description: Optional[str] = None) -> None:
     """Log the start of an ETL process.
 
     Args:
@@ -157,9 +153,7 @@ def log_etl_start(
 
     # Log start message
     extra = {"run_id": run_id}
-    etl_logger.info(
-        f"Starting ETL process with parameters: {json.dumps(parameters)}", extra=extra
-    )
+    etl_logger.info(f"Starting ETL process with parameters: {json.dumps(parameters)}", extra=extra)
 
     # Add to summary file
     log_dir = get_etl_log_dir()
@@ -188,9 +182,7 @@ def log_etl_start(
         json.dump(summary, f, indent=2)
 
 
-def log_etl_end(
-    run_id: str, status: str = "completed", error: Optional[str] = None
-) -> None:
+def log_etl_end(run_id: str, status: str = "completed", error: Optional[str] = None) -> None:
     """Log the end of an ETL process.
 
     Args:
@@ -206,9 +198,7 @@ def log_etl_end(
             _run_stats[run_id]["end_time"] = end_time
             _run_stats[run_id]["status"] = status
             if error:
-                _run_stats[run_id]["errors"].append(
-                    {"timestamp": datetime.now().isoformat(), "message": error}
-                )
+                _run_stats[run_id]["errors"].append({"timestamp": datetime.now().isoformat(), "message": error})
 
             # Calculate duration
             start_time = _run_stats[run_id]["start_time"]
@@ -333,9 +323,7 @@ def log_filing_processing(
             extra=extra,
         )
     elif status == "skipped":
-        etl_logger.info(
-            f"Skipped filing {filing_id} ({company} {filing_type})", extra=extra
-        )
+        etl_logger.info(f"Skipped filing {filing_id} ({company} {filing_type})", extra=extra)
     else:
         etl_logger.error(
             f"Failed to process filing {filing_id} ({company} {filing_type}): {error}",
@@ -381,9 +369,7 @@ def log_api_call(
     # Log message
     extra = {"run_id": run_id}
     if success:
-        etl_logger.debug(
-            f"API call to {api_name} succeeded in {response_time:.2f}s", extra=extra
-        )
+        etl_logger.debug(f"API call to {api_name} succeeded in {response_time:.2f}s", extra=extra)
     else:
         etl_logger.warning(
             f"API call to {api_name} failed in {response_time:.2f}s: {error}",
@@ -391,9 +377,7 @@ def log_api_call(
         )
 
 
-def log_rate_limit_adjustment(
-    run_id: str, old_rate: float, new_rate: float, reason: str
-) -> None:
+def log_rate_limit_adjustment(run_id: str, old_rate: float, new_rate: float, reason: str) -> None:
     """Log rate limit adjustment.
 
     Args:
@@ -422,9 +406,7 @@ def log_rate_limit_adjustment(
     )
 
 
-def log_embedding_stats(
-    run_id: str, tokens_used: int, chunks_processed: int, fallback_count: int
-) -> None:
+def log_embedding_stats(run_id: str, tokens_used: int, chunks_processed: int, fallback_count: int) -> None:
     """Log embedding generation statistics.
 
     Args:
@@ -483,9 +465,7 @@ def log_phase_timing(run_id: str, phase_name: str):
                     }
                 )
 
-        etl_logger.info(
-            f"Completed phase: {phase_name} in {duration:.2f}s", extra=extra
-        )
+        etl_logger.info(f"Completed phase: {phase_name} in {duration:.2f}s", extra=extra)
 
 
 def get_etl_run_stats(run_id: str) -> Dict[str, Any]:
@@ -625,9 +605,7 @@ def generate_etl_report(run_id: str) -> str:
         for phase, timings in phase_timings.items():
             total_duration = sum(t.get("duration", 0) for t in timings)
             avg_duration = total_duration / len(timings) if timings else 0
-            report += (
-                f"  {phase}: {total_duration:.2f}s total, {avg_duration:.2f}s avg\n"
-            )
+            report += f"  {phase}: {total_duration:.2f}s total, {avg_duration:.2f}s avg\n"
         report += "\n"
 
     # Rate limit history

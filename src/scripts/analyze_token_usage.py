@@ -24,9 +24,7 @@ from sec_filing_analyzer.config import ETLConfig
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # OpenAI API limits for text-embedding-3-small
@@ -185,9 +183,7 @@ def estimate_api_usage(stats: Dict[str, Any], batch_size: int = 50) -> Dict[str,
     # Estimate optimal batch size
     # If we're token-limited, larger batches are better
     # If we're request-limited, smaller batches are better
-    token_to_request_ratio = (
-        OPENAI_LIMITS["tokens_per_minute"] / OPENAI_LIMITS["requests_per_minute"]
-    )
+    token_to_request_ratio = OPENAI_LIMITS["tokens_per_minute"] / OPENAI_LIMITS["requests_per_minute"]
     optimal_batch_size = token_to_request_ratio
 
     return {
@@ -197,15 +193,11 @@ def estimate_api_usage(stats: Dict[str, Any], batch_size: int = 50) -> Dict[str,
         "hours_to_process": minutes_to_process / 60,
         "daily_filing_capacity": daily_filing_capacity,
         "optimal_batch_size": optimal_batch_size,
-        "limiting_factor": "tokens"
-        if daily_token_limit_filings < daily_request_limit_filings
-        else "requests",
+        "limiting_factor": "tokens" if daily_token_limit_filings < daily_request_limit_filings else "requests",
     }
 
 
-def generate_token_usage_report(
-    stats: Dict[str, Any], api_usage: Dict[str, Any]
-) -> str:
+def generate_token_usage_report(stats: Dict[str, Any], api_usage: Dict[str, Any]) -> str:
     """Generate a report of token usage and API limits.
 
     Args:
@@ -230,15 +222,9 @@ def generate_token_usage_report(
     # API usage estimates
     report += "API Usage Estimates:\n"
     report += f"  Total API requests: {api_usage['total_api_requests']:.2f}\n"
-    report += (
-        f"  Average requests per filing: {api_usage['avg_requests_per_filing']:.2f}\n"
-    )
-    report += (
-        f"  Time to process all filings: {api_usage['hours_to_process']:.2f} hours\n"
-    )
-    report += (
-        f"  Daily filing capacity: {api_usage['daily_filing_capacity']:.2f} filings\n"
-    )
+    report += f"  Average requests per filing: {api_usage['avg_requests_per_filing']:.2f}\n"
+    report += f"  Time to process all filings: {api_usage['hours_to_process']:.2f} hours\n"
+    report += f"  Daily filing capacity: {api_usage['daily_filing_capacity']:.2f} filings\n"
     report += f"  Optimal batch size: {api_usage['optimal_batch_size']:.2f} tokens\n"
     report += f"  Limiting factor: {api_usage['limiting_factor']}\n\n"
 
@@ -250,18 +236,14 @@ def generate_token_usage_report(
 
     # Top companies by token usage
     report += "Top Companies by Token Usage:\n"
-    top_companies = sorted(
-        stats["company_tokens"].items(), key=lambda x: x[1], reverse=True
-    )[:10]
+    top_companies = sorted(stats["company_tokens"].items(), key=lambda x: x[1], reverse=True)[:10]
     for company, tokens in top_companies:
         report += f"  {company}: {tokens:,} tokens\n"
     report += "\n"
 
     # Top forms by token usage
     report += "Top Forms by Token Usage:\n"
-    top_forms = sorted(stats["form_tokens"].items(), key=lambda x: x[1], reverse=True)[
-        :5
-    ]
+    top_forms = sorted(stats["form_tokens"].items(), key=lambda x: x[1], reverse=True)[:5]
     for form, tokens in top_forms:
         report += f"  {form}: {tokens:,} tokens\n"
 
@@ -291,9 +273,7 @@ def plot_token_distribution(stats: Dict[str, Any], output_dir: Path):
 
     # Plot company token usage
     plt.figure(figsize=(12, 8))
-    top_companies = sorted(
-        stats["company_tokens"].items(), key=lambda x: x[1], reverse=True
-    )[:15]
+    top_companies = sorted(stats["company_tokens"].items(), key=lambda x: x[1], reverse=True)[:15]
     companies = [c[0] for c in top_companies]
     tokens = [c[1] for c in top_companies]
 
@@ -331,9 +311,7 @@ def main():
         logger.error("No token usage statistics available.")
         return
 
-    logger.info(
-        f"Analyzed {stats['total_filings']} filings with {stats['total_tokens']:,} tokens"
-    )
+    logger.info(f"Analyzed {stats['total_filings']} filings with {stats['total_tokens']:,} tokens")
 
     # Estimate API usage
     api_usage = estimate_api_usage(stats, batch_size=50)

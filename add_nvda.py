@@ -9,9 +9,7 @@ conn = duckdb.connect("data/db_backup/financial_data.duckdb", read_only=False)
 # Add NVDA to companies table if it doesn't exist
 try:
     # Check if NVDA already exists
-    nvda_exists = conn.execute(
-        "SELECT COUNT(*) FROM companies WHERE ticker = 'NVDA'"
-    ).fetchone()[0]
+    nvda_exists = conn.execute("SELECT COUNT(*) FROM companies WHERE ticker = 'NVDA'").fetchone()[0]
 
     if nvda_exists == 0:
         conn.execute(
@@ -69,11 +67,7 @@ print("\nVerifying NVDA filing:")
 print(conn.execute("SELECT * FROM filings WHERE ticker = 'NVDA'").fetchdf())
 
 print("\nVerifying NVDA revenue data:")
-print(
-    conn.execute(
-        "SELECT * FROM time_series_metrics WHERE ticker = 'NVDA' AND metric_name = 'Revenue'"
-    ).fetchdf()
-)
+print(conn.execute("SELECT * FROM time_series_metrics WHERE ticker = 'NVDA' AND metric_name = 'Revenue'").fetchdf())
 
 # Close the connection
 conn.close()

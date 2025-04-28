@@ -19,9 +19,7 @@ from sec_filing_analyzer.data_processing.parallel_xbrl_extractor import (
 from sec_filing_analyzer.storage.optimized_duckdb_store import OptimizedDuckDBStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -34,9 +32,7 @@ def test_parallel_extraction(tickers, accession_numbers, max_workers=4):
         max_workers: Maximum number of worker threads
     """
     # Initialize the extractor
-    extractor = ParallelXBRLExtractor(
-        cache_dir="data/xbrl_cache", max_workers=max_workers, rate_limit=0.2
-    )
+    extractor = ParallelXBRLExtractor(cache_dir="data/xbrl_cache", max_workers=max_workers, rate_limit=0.2)
 
     # Prepare companies data
     companies = []
@@ -47,9 +43,7 @@ def test_parallel_extraction(tickers, accession_numbers, max_workers=4):
 
             company = {
                 "ticker": ticker,
-                "filings": [
-                    {"filing_id": filing_id, "accession_number": accession_number}
-                ],
+                "filings": [{"filing_id": filing_id, "accession_number": accession_number}],
             }
             companies.append(company)
 
@@ -151,9 +145,7 @@ def test_optimized_duckdb_store(financial_data):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Test parallel XBRL extractor and optimized DuckDB store"
-    )
+    parser = argparse.ArgumentParser(description="Test parallel XBRL extractor and optimized DuckDB store")
     parser.add_argument(
         "--tickers",
         type=str,
@@ -168,9 +160,7 @@ if __name__ == "__main__":
         default=["0000320193-23-000077", "0000789019-23-001517"],
         help="SEC accession numbers",
     )
-    parser.add_argument(
-        "--workers", type=int, default=4, help="Maximum number of worker threads"
-    )
+    parser.add_argument("--workers", type=int, default=4, help="Maximum number of worker threads")
 
     args = parser.parse_args()
 

@@ -247,9 +247,7 @@ def get_tool_parameter_schema(tool_name: str) -> Dict[str, Any]:
     return TOOL_PARAMETER_SCHEMAS.get(tool_name, {})
 
 
-def validate_tool_parameters(
-    tool_name: str, parameters: Dict[str, Any]
-) -> Dict[str, Any]:
+def validate_tool_parameters(tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
     """
     Validate and fix tool parameters.
 
@@ -302,9 +300,7 @@ def _validate_test_financial_data_parameters(
     valid_query_types = ["revenue", "profit", "metrics"]
 
     if query_type not in valid_query_types:
-        errors.append(
-            f"Invalid query_type: {query_type}. Must be one of {valid_query_types}"
-        )
+        errors.append(f"Invalid query_type: {query_type}. Must be one of {valid_query_types}")
         # Default to revenue
         fixed_parameters["query_type"] = "revenue"
 
@@ -363,9 +359,7 @@ def _validate_sec_financial_data_parameters(
     elif query_type == "financial_metrics":
         fixed_parameters["query_type"] = "metrics"
     elif query_type not in valid_query_types:
-        errors.append(
-            f"Invalid query_type: {query_type}. Must be one of {valid_query_types}"
-        )
+        errors.append(f"Invalid query_type: {query_type}. Must be one of {valid_query_types}")
         fixed_parameters["query_type"] = "financial_facts"  # Default to financial_facts
 
     # Ensure parameters is a dictionary
@@ -423,12 +417,8 @@ def generate_tool_parameter_prompt(tool_name: str) -> str:
         prompt += "  Valid values: revenue, profit, metrics\n\n"
         prompt += "parameters (object): Parameters for the query\n"
         prompt += "  - ticker (required): Company ticker symbol\n"
-        prompt += (
-            "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
-        )
-        prompt += (
-            "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n\n"
-        )
+        prompt += "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
+        prompt += "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n\n"
 
         prompt += "Example:\n"
         prompt += "{\n"
@@ -442,25 +432,23 @@ def generate_tool_parameter_prompt(tool_name: str) -> str:
     # Special handling for sec_financial_data
     elif tool_name == "sec_financial_data":
         prompt += "query_type (required): Type of financial data query to execute\n"
-        prompt += "  Valid values: financial_facts, company_info, metrics, time_series, financial_ratios, custom_sql\n\n"
+        prompt += (
+            "  Valid values: financial_facts, company_info, metrics, time_series, financial_ratios, custom_sql\n\n"
+        )
         prompt += "parameters (object): Parameters for the query\n"
 
         # Add details for each query type
         prompt += "For query_type = 'financial_facts':\n"
         prompt += "  - ticker (required): Company ticker symbol\n"
         prompt += "  - metrics (optional): List of metrics to retrieve\n"
-        prompt += (
-            "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
-        )
+        prompt += "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
         prompt += "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n"
         prompt += "  - filing_type (optional): Type of SEC filing (10-K, 10-Q, 8-K)\n\n"
 
         prompt += "For query_type = 'time_series':\n"
         prompt += "  - ticker (required): Company ticker symbol\n"
         prompt += "  - metric (required): Specific metric for time series data\n"
-        prompt += (
-            "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
-        )
+        prompt += "  - start_date (optional): Start date for data retrieval (YYYY-MM-DD)\n"
         prompt += "  - end_date (optional): End date for data retrieval (YYYY-MM-DD)\n"
         prompt += "  - period (optional): Time period for data aggregation (annual, quarterly)\n\n"
 
@@ -478,9 +466,7 @@ def generate_tool_parameter_prompt(tool_name: str) -> str:
         # Generic parameter prompt for other tools
         for param_name, param_schema in schema.items():
             required = "required" if param_schema.get("required", False) else "optional"
-            prompt += (
-                f"{param_name} ({required}): {param_schema.get('description', '')}\n"
-            )
+            prompt += f"{param_name} ({required}): {param_schema.get('description', '')}\n"
 
             if "enum" in param_schema:
                 prompt += f"  Valid values: {', '.join(param_schema['enum'])}\n"

@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-
 from ..config import ConfigProvider, ETLConfig, StorageConfig
 from ..storage.sync_manager import StorageSyncManager
 
@@ -45,11 +44,7 @@ class ETLPipelineExtension:
         # Get DuckDB path from ETLConfig, not StorageConfig
         etl_config = ConfigProvider.get_config(ETLConfig)
         self.db_path = db_path or etl_config.db_path or "data/financial_data.duckdb"
-        self.vector_store_path = (
-            vector_store_path
-            or StorageConfig().vector_store_path
-            or "data/vector_store"
-        )
+        self.vector_store_path = vector_store_path or StorageConfig().vector_store_path or "data/vector_store"
         self.filings_dir = filings_dir or ETLConfig().filings_dir or "data/filings"
         self.read_only = read_only
 
@@ -97,9 +92,7 @@ class ETLPipelineExtension:
             filing_id = f"{ticker}_{accession_number}"
 
             # Check if filing exists
-            existing = conn.execute(
-                "SELECT id FROM filings WHERE accession_number = ?", [accession_number]
-            ).fetchone()
+            existing = conn.execute("SELECT id FROM filings WHERE accession_number = ?", [accession_number]).fetchone()
 
             if existing:
                 # Update filing
@@ -177,9 +170,7 @@ class ETLPipelineExtension:
             conn = duckdb_manager.get_read_write_connection(self.db_path)
 
             # Check if filing exists
-            existing = conn.execute(
-                "SELECT id FROM filings WHERE accession_number = ?", [accession_number]
-            ).fetchone()
+            existing = conn.execute("SELECT id FROM filings WHERE accession_number = ?", [accession_number]).fetchone()
 
             if existing:
                 # Update filing
@@ -202,9 +193,7 @@ class ETLPipelineExtension:
                         [processing_status, accession_number],
                     )
 
-                logger.info(
-                    f"Updated filing {existing[0]} status to {processing_status}"
-                )
+                logger.info(f"Updated filing {existing[0]} status to {processing_status}")
                 result = {"status": "updated", "filing_id": existing[0]}
             else:
                 logger.warning(f"Filing {accession_number} not found in database")

@@ -10,9 +10,7 @@ async def fetch_specific_filing():
     Fetch a specific Microsoft filing using the edgar package.
     Accession number: 0000789019-22-000001
     """
-    print(
-        "Fetching Microsoft (MSFT) filing with accession number 0000789019-22-000001..."
-    )
+    print("Fetching Microsoft (MSFT) filing with accession number 0000789019-22-000001...")
 
     # Create output directory
     output_dir = Path("data/msft_filings")
@@ -37,9 +35,7 @@ async def fetch_specific_filing():
                 break
 
         if found_filing:
-            print(
-                f"Found filing: {found_filing.form} filed on {found_filing.filing_date}"
-            )
+            print(f"Found filing: {found_filing.form} filed on {found_filing.filing_date}")
             print(f"Filing URL: {found_filing.filing_url}")
 
             # Get the filing details
@@ -80,9 +76,7 @@ async def fetch_specific_filing():
             print("\nFirst few filings from 2022:")
             for filing in filings:
                 if "2022" in str(filing.filing_date):
-                    print(
-                        f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing.filing_date}"
-                    )
+                    print(f"Accession: {filing.accession_number}, Form: {filing.form}, Date: {filing.filing_date}")
                     if len(filing.accession_number) > 20:  # Just show a few
                         break
 

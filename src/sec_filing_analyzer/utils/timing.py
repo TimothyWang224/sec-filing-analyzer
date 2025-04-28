@@ -57,9 +57,7 @@ def timed_function(category: str = "function"):
                 duration = time.time() - start_time
 
                 # Log error
-                log.error(
-                    f"TIMING: {category}:{func_name} failed after {duration:.3f}s: {str(e)}"
-                )
+                log.error(f"TIMING: {category}:{func_name} failed after {duration:.3f}s: {str(e)}")
 
                 # Re-raise the exception
                 raise
@@ -97,9 +95,7 @@ def timed_function(category: str = "function"):
                 duration = time.time() - start_time
 
                 # Log error
-                log.error(
-                    f"TIMING: {category}:{func_name} failed after {duration:.3f}s: {str(e)}"
-                )
+                log.error(f"TIMING: {category}:{func_name} failed after {duration:.3f}s: {str(e)}")
 
                 # Re-raise the exception
                 raise
@@ -175,9 +171,7 @@ class TimingContext:
 
         if exc_type is None:
             # No exception occurred
-            self.logger.info(
-                f"TIMING: {self.category}:{self.operation} completed in {duration:.3f}s{metadata_str}"
-            )
+            self.logger.info(f"TIMING: {self.category}:{self.operation} completed in {duration:.3f}s{metadata_str}")
         else:
             # An exception occurred
             self.logger.error(

@@ -37,9 +37,7 @@ class EdgarXBRLExtractorSimple:
         if cache_dir:
             os.makedirs(cache_dir, exist_ok=True)
 
-    def extract_financials(
-        self, ticker: str, filing_id: str, accession_number: str
-    ) -> Dict[str, Any]:
+    def extract_financials(self, ticker: str, filing_id: str, accession_number: str) -> Dict[str, Any]:
         """
         Extract financial data from an SEC filing using the edgar library.
 
@@ -113,9 +111,7 @@ class EdgarXBRLExtractorSimple:
                 xbrl_data = filing.xbrl()
 
                 if not xbrl_data:
-                    logger.warning(
-                        f"No XBRL data found for {ticker} {accession_number}"
-                    )
+                    logger.warning(f"No XBRL data found for {ticker} {accession_number}")
                     return financials
 
                 logger.info(f"XBRL data type: {type(xbrl_data)}")
@@ -131,9 +127,7 @@ class EdgarXBRLExtractorSimple:
 
                 # Check if statements_dict is available
                 if hasattr(xbrl_data, "statements_dict"):
-                    logger.info(
-                        f"Found statements_dict with {len(xbrl_data.statements_dict)} statements"
-                    )
+                    logger.info(f"Found statements_dict with {len(xbrl_data.statements_dict)} statements")
 
                     # Log all statement keys
                     for key in xbrl_data.statements_dict.keys():
@@ -166,12 +160,8 @@ class EdgarXBRLExtractorSimple:
                                 # Get the statement
                                 statement = xbrl_data.get_statement(statement_key)
                                 if statement:
-                                    logger.info(
-                                        f"Successfully extracted {statement_type}"
-                                    )
-                                    statements[statement_type] = (
-                                        self._extract_statement_data(statement)
-                                    )
+                                    logger.info(f"Successfully extracted {statement_type}")
+                                    statements[statement_type] = self._extract_statement_data(statement)
                         except Exception as e:
                             logger.warning(f"Error extracting {statement_type}: {e}")
                 else:
@@ -188,16 +178,10 @@ class EdgarXBRLExtractorSimple:
                                 logger.info(f"Trying {method_name}...")
                                 statement = getattr(xbrl_data, method_name)()
                                 if statement:
-                                    logger.info(
-                                        f"Successfully extracted {statement_type} using {method_name}"
-                                    )
-                                    statements[statement_type] = (
-                                        self._extract_statement_data(statement)
-                                    )
+                                    logger.info(f"Successfully extracted {statement_type} using {method_name}")
+                                    statements[statement_type] = self._extract_statement_data(statement)
                         except Exception as e:
-                            logger.warning(
-                                f"Error extracting {statement_type} using {method_name}: {e}"
-                            )
+                            logger.warning(f"Error extracting {statement_type} using {method_name}: {e}")
 
                 # Add statements to financials
                 financials["statements"] = statements
@@ -208,9 +192,7 @@ class EdgarXBRLExtractorSimple:
 
                 # Cache the results if cache_dir is provided
                 if self.cache_dir:
-                    cache_file = (
-                        Path(self.cache_dir) / f"{ticker}_{accession_number}.json"
-                    )
+                    cache_file = Path(self.cache_dir) / f"{ticker}_{accession_number}.json"
                     with open(cache_file, "w") as f:
                         json.dump(financials, f, indent=2, default=str)
 
@@ -221,9 +203,7 @@ class EdgarXBRLExtractorSimple:
                 return financials
 
         except Exception as e:
-            logger.error(
-                f"Error extracting financials for {ticker} {accession_number}: {e}"
-            )
+            logger.error(f"Error extracting financials for {ticker} {accession_number}: {e}")
             return {
                 "filing_id": filing_id,
                 "ticker": ticker,
@@ -333,23 +313,13 @@ class EdgarXBRLExtractorSimple:
                                 metrics["total_assets"] = value
                             elif "Liabilities" in concept and "Total" in concept:
                                 metrics["total_liabilities"] = value
-                            elif (
-                                "Equity" in concept or "Stockholders" in concept
-                            ) and "Total" in concept:
+                            elif ("Equity" in concept or "Stockholders" in concept) and "Total" in concept:
                                 metrics["total_equity"] = value
                             elif "Cash" in concept and "Equivalent" in concept:
                                 metrics["cash_and_equivalents"] = value
-                            elif (
-                                "Assets" in concept
-                                and "Current" in concept
-                                and "Total" in concept
-                            ):
+                            elif "Assets" in concept and "Current" in concept and "Total" in concept:
                                 metrics["current_assets"] = value
-                            elif (
-                                "Liabilities" in concept
-                                and "Current" in concept
-                                and "Total" in concept
-                            ):
+                            elif "Liabilities" in concept and "Current" in concept and "Total" in concept:
                                 metrics["current_liabilities"] = value
 
         # Extract metrics from income statement
@@ -419,23 +389,11 @@ class EdgarXBRLExtractorSimple:
                                 pass
 
                             # Map common cash flow concepts
-                            if (
-                                "Cash" in concept
-                                and "Operating" in concept
-                                and "Net" in concept
-                            ):
+                            if "Cash" in concept and "Operating" in concept and "Net" in concept:
                                 metrics["operating_cash_flow"] = value
-                            elif (
-                                "Cash" in concept
-                                and "Investing" in concept
-                                and "Net" in concept
-                            ):
+                            elif "Cash" in concept and "Investing" in concept and "Net" in concept:
                                 metrics["investing_cash_flow"] = value
-                            elif (
-                                "Cash" in concept
-                                and "Financing" in concept
-                                and "Net" in concept
-                            ):
+                            elif "Cash" in concept and "Financing" in concept and "Net" in concept:
                                 metrics["financing_cash_flow"] = value
                             elif "Capital" in concept and "Expenditure" in concept:
                                 metrics["capital_expenditures"] = value

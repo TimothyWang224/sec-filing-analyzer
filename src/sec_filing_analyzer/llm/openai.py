@@ -101,29 +101,17 @@ class OpenAILLM(BaseLLM):
             response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
-        completion_tokens = (
-            response.usage.completion_tokens
-            if hasattr(response, "usage")
-            else "unknown"
-        )
-        prompt_tokens = (
-            response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
-        )
-        total_tokens = (
-            response.usage.total_tokens if hasattr(response, "usage") else "unknown"
-        )
+        completion_tokens = response.usage.completion_tokens if hasattr(response, "usage") else "unknown"
+        prompt_tokens = response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
+        total_tokens = response.usage.total_tokens if hasattr(response, "usage") else "unknown"
 
-        logger.info(
-            f"LLM Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})"
-        )
+        logger.info(f"LLM Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})")
 
         # Extract usage information
         usage = {
             "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
-            "completion_tokens": completion_tokens
-            if isinstance(completion_tokens, int)
-            else 0,
+            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
         }
 
         # Return based on return_usage parameter
@@ -250,9 +238,7 @@ class OpenAILLM(BaseLLM):
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
-            "tools": [
-                {"type": "function", "function": function} for function in functions
-            ],
+            "tools": [{"type": "function", "function": function} for function in functions],
             **kwargs,
         }
 
@@ -271,17 +257,9 @@ class OpenAILLM(BaseLLM):
             response = self.client.chat.completions.create(**api_params)
 
         # Log completion info
-        completion_tokens = (
-            response.usage.completion_tokens
-            if hasattr(response, "usage")
-            else "unknown"
-        )
-        prompt_tokens = (
-            response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
-        )
-        total_tokens = (
-            response.usage.total_tokens if hasattr(response, "usage") else "unknown"
-        )
+        completion_tokens = response.usage.completion_tokens if hasattr(response, "usage") else "unknown"
+        prompt_tokens = response.usage.prompt_tokens if hasattr(response, "usage") else "unknown"
+        total_tokens = response.usage.total_tokens if hasattr(response, "usage") else "unknown"
 
         logger.info(
             f"LLM Function Call Response: tokens={total_tokens} (prompt={prompt_tokens}, completion={completion_tokens})"
@@ -291,9 +269,7 @@ class OpenAILLM(BaseLLM):
         usage = {
             "total_tokens": total_tokens if isinstance(total_tokens, int) else 0,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else 0,
-            "completion_tokens": completion_tokens
-            if isinstance(completion_tokens, int)
-            else 0,
+            "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else 0,
         }
 
         # Extract response content and function call information

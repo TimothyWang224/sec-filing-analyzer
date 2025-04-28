@@ -204,9 +204,7 @@ class DuckDBMetadataStore:
                         logger.info(f"Imported {count} documents...")
 
                 except Exception as e:
-                    logger.warning(
-                        f"Error importing metadata from {metadata_file}: {e}"
-                    )
+                    logger.warning(f"Error importing metadata from {metadata_file}: {e}")
 
             # Commit transaction
             self.conn.execute("COMMIT")
@@ -340,9 +338,7 @@ class DuckDBMetadataStore:
             logger.warning(f"Error getting company count: {e}")
             return 0
 
-    def get_documents_by_query(
-        self, query: str, params: Tuple = ()
-    ) -> List[Dict[str, Any]]:
+    def get_documents_by_query(self, query: str, params: Tuple = ()) -> List[Dict[str, Any]]:
         """Get documents matching a custom SQL query.
 
         Args:

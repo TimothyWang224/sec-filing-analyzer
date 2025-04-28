@@ -125,9 +125,7 @@ def load_cached_mapping(
             # Check if cache is still valid
             current_digest = calculate_directory_digest(metadata_dir)
             if cached_digest == current_digest:
-                logger.info(
-                    f"Cache hit! Loaded mapping from {cache_file} in {time.time() - start_time:.2f} seconds"
-                )
+                logger.info(f"Cache hit! Loaded mapping from {cache_file} in {time.time() - start_time:.2f} seconds")
                 return mapping
             else:
                 logger.info("Cache digest mismatch, rebuilding...")

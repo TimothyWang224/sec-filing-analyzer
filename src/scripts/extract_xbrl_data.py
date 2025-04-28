@@ -19,9 +19,7 @@ from sec_filing_analyzer.data_processing.xbrl_extractor import XBRLExtractor
 from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -126,12 +124,8 @@ def main():
     parser = argparse.ArgumentParser(description="Extract XBRL data from SEC filings")
     parser.add_argument("--ticker", type=str, help="Company ticker symbol")
     parser.add_argument("--accession", type=str, help="SEC accession number")
-    parser.add_argument(
-        "--filing-type", type=str, default="10-K", help="Filing type (10-K, 10-Q, etc.)"
-    )
-    parser.add_argument(
-        "--limit", type=int, default=10, help="Maximum number of filings to process"
-    )
+    parser.add_argument("--filing-type", type=str, default="10-K", help="Filing type (10-K, 10-Q, etc.)")
+    parser.add_argument("--limit", type=int, default=10, help="Maximum number of filings to process")
     parser.add_argument(
         "--db-path",
         type=str,

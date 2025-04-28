@@ -69,13 +69,8 @@ class DynamicTermination:
         latest_result = self.memory[-1].get("content", {})
 
         # Check confidence threshold
-        if (
-            self.enable_confidence_check
-            and latest_result.get("confidence", 0) >= self.confidence_threshold
-        ):
-            self.log.info(
-                f"Terminating: Confidence threshold reached ({latest_result['confidence']})."
-            )
+        if self.enable_confidence_check and latest_result.get("confidence", 0) >= self.confidence_threshold:
+            self.log.info(f"Terminating: Confidence threshold reached ({latest_result['confidence']}).")
             return True
 
         # Check for LLM termination signal
@@ -102,9 +97,7 @@ class DynamicTermination:
         # Continue iterations
         return False
 
-    def _answers_similar(
-        self, answer1: Dict[str, Any], answer2: Dict[str, Any]
-    ) -> bool:
+    def _answers_similar(self, answer1: Dict[str, Any], answer2: Dict[str, Any]) -> bool:
         """
         Check if two answers are similar enough to consider converged.
 
@@ -192,9 +185,7 @@ class DynamicTermination:
             )
 
             # Find JSON pattern in the response
-            json_match = re.search(
-                r"({.*})", assessment_response.replace("\n", " "), re.DOTALL
-            )
+            json_match = re.search(r"({.*})", assessment_response.replace("\n", " "), re.DOTALL)
             if json_match:
                 assessment_json = json.loads(json_match.group(1))
                 return assessment_json

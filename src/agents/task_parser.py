@@ -69,9 +69,7 @@ class TaskParser:
         If the request is simple and contains only one task, return it as a single item in the array.
         Make sure each task is specific, actionable, and focused on a single objective."""
 
-        response = await self.llm.generate(
-            prompt=prompt, system_prompt=system_prompt, temperature=0.2
-        )
+        response = await self.llm.generate(prompt=prompt, system_prompt=system_prompt, temperature=0.2)
 
         # Parse the response to extract tasks
         try:

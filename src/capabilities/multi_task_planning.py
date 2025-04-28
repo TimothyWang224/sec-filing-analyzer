@@ -121,11 +121,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
             context["planning"]["task_queue"] = self.task_queue
 
         # If we have a task queue but no current task, select the next task
-        if (
-            self.task_queue
-            and not self.task_queue.has_current_task()
-            and self.task_queue.has_pending_tasks()
-        ):
+        if self.task_queue and not self.task_queue.has_current_task() and self.task_queue.has_pending_tasks():
             self.task_queue._select_next_task()
 
             # Reset plan state for the new task
@@ -137,11 +133,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
             self.last_reflection_at = None
 
         # If we have a current task but no plan, create one
-        if (
-            self.task_queue
-            and self.task_queue.has_current_task()
-            and not self.current_plan
-        ):
+        if self.task_queue and self.task_queue.has_current_task() and not self.current_plan:
             current_task = self.task_queue.get_current_task()
 
             # Mark the task as started
@@ -158,9 +150,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
             context["planning"] = {
                 "has_plan": True,
                 "plan": self.current_plan,
-                "current_step": self.current_plan["steps"][0]
-                if self.current_plan["steps"]
-                else None,
+                "current_step": self.current_plan["steps"][0] if self.current_plan["steps"] else None,
                 "completed_steps": [],
                 "plan_status": "in_progress",
                 "task_queue": self.task_queue,
@@ -168,9 +158,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
             }
 
             # Log the plan
-            logger.info(
-                f"Created plan for task {current_task.task_id} with {len(self.current_plan['steps'])} steps"
-            )
+            logger.info(f"Created plan for task {current_task.task_id} with {len(self.current_plan['steps'])} steps")
             logger.info(f"Plan: {json.dumps(self.current_plan, indent=2)}")
 
             # Add plan to agent memory
@@ -183,9 +171,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
             )
 
         # If we have a plan, update the current step
-        if self.current_plan and self.current_step_index < len(
-            self.current_plan["steps"]
-        ):
+        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
             current_step = self.current_plan["steps"][self.current_step_index]
             context["planning"]["current_step"] = current_step
 
@@ -196,9 +182,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
 
         return True
 
-    async def process_action(
-        self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action to align with the current plan step.
 
@@ -224,9 +208,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
             }
 
         # If we have a plan and a current step, enhance the action
-        if self.current_plan and self.current_step_index < len(
-            self.current_plan["steps"]
-        ):
+        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
             current_step = self.current_plan["steps"][self.current_step_index]
 
             # If the current step recommends a specific tool, suggest it
@@ -243,9 +225,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
                 if tool_name:
                     validation_result = validate_tool_parameters(tool_name, parameters)
                     if validation_result["errors"]:
-                        logger.warning(
-                            f"Parameter validation errors for {tool_name}: {validation_result['errors']}"
-                        )
+                        logger.warning(f"Parameter validation errors for {tool_name}: {validation_result['errors']}")
                     action["args"] = validation_result["parameters"]
                 else:
                     action["args"] = parameters
@@ -261,9 +241,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
 
         return action
 
-    async def process_prompt(
-        self, agent: Agent, context: Dict[str, Any], prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the prompt to include planning information.
 
@@ -293,13 +271,13 @@ class MultiTaskPlanningCapability(PlanningCapability):
             enhanced_prompt = f"{prompt}\n\nCurrent Task: {current_task.input_text}\n"
 
             # If we have a plan and a current step, add step information to the prompt
-            if self.current_plan and self.current_step_index < len(
-                self.current_plan["steps"]
-            ):
+            if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
                 current_step = self.current_plan["steps"][self.current_step_index]
 
                 # Add planning context to the prompt
-                enhanced_prompt += f"\nCurrent Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
+                enhanced_prompt += (
+                    f"\nCurrent Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
+                )
                 enhanced_prompt += f"- Description: {current_step['description']}\n"
 
                 if "tool" in current_step:
@@ -310,9 +288,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
 
                 if "dependencies" in current_step and current_step["dependencies"]:
                     enhanced_prompt += (
-                        "- Dependencies: "
-                        + ", ".join([str(dep) for dep in current_step["dependencies"]])
-                        + "\n"
+                        "- Dependencies: " + ", ".join([str(dep) for dep in current_step["dependencies"]]) + "\n"
                     )
 
                 return enhanced_prompt
@@ -320,13 +296,13 @@ class MultiTaskPlanningCapability(PlanningCapability):
             return enhanced_prompt
 
         # If we have a plan but no task queue, fall back to the original behavior
-        if self.current_plan and self.current_step_index < len(
-            self.current_plan["steps"]
-        ):
+        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
             current_step = self.current_plan["steps"][self.current_step_index]
 
             # Add planning context to the prompt
-            enhanced_prompt = f"{prompt}\n\nCurrent Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
+            enhanced_prompt = (
+                f"{prompt}\n\nCurrent Plan Step ({self.current_step_index + 1}/{len(self.current_plan['steps'])}):\n"
+            )
             enhanced_prompt += f"- Description: {current_step['description']}\n"
 
             if "tool" in current_step:
@@ -337,9 +313,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
 
             if "dependencies" in current_step and current_step["dependencies"]:
                 enhanced_prompt += (
-                    "- Dependencies: "
-                    + ", ".join([str(dep) for dep in current_step["dependencies"]])
-                    + "\n"
+                    "- Dependencies: " + ", ".join([str(dep) for dep in current_step["dependencies"]]) + "\n"
                 )
 
             return enhanced_prompt
@@ -373,20 +347,15 @@ class MultiTaskPlanningCapability(PlanningCapability):
                 "has_plan": bool(self.current_plan),
                 "plan": self.current_plan,
                 "current_step": self.current_plan["steps"][self.current_step_index]
-                if self.current_plan
-                and self.current_step_index < len(self.current_plan["steps"])
+                if self.current_plan and self.current_step_index < len(self.current_plan["steps"])
                 else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan["status"]
-                if self.current_plan
-                else "not_started",
+                "plan_status": self.current_plan["status"] if self.current_plan else "not_started",
                 "task_queue": self.task_queue,
             }
 
         # If we have a plan and a current step, update the plan status
-        if self.current_plan and self.current_step_index < len(
-            self.current_plan["steps"]
-        ):
+        if self.current_plan and self.current_step_index < len(self.current_plan["steps"]):
             current_step = self.current_plan["steps"][self.current_step_index]
 
             # Mark the current step as completed
@@ -411,8 +380,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
                 and len(self.completed_steps) >= self.min_steps_before_reflection
                 and (
                     not self.last_reflection_at
-                    or len(self.completed_steps) - self.last_reflection_at
-                    >= self.min_steps_before_reflection
+                    or len(self.completed_steps) - self.last_reflection_at >= self.min_steps_before_reflection
                 )
             ):
                 # Reflect on the plan and potentially update it
@@ -438,9 +406,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
                             current_task.plan = self.current_plan
 
                         # Add updated plan to agent memory
-                        agent.add_to_memory(
-                            {"type": "updated_plan", "content": self.current_plan}
-                        )
+                        agent.add_to_memory({"type": "updated_plan", "content": self.current_plan})
 
                 # Update last reflection time
                 self.last_reflection_at = len(self.completed_steps)
@@ -469,8 +435,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
                         for item in memory_items:
                             if (
                                 item.get("type") == "task_completed"
-                                and item.get("content", {}).get("task_id")
-                                == current_task.task_id
+                                and item.get("content", {}).get("task_id") == current_task.task_id
                             ):
                                 task_already_in_memory = True
                                 break
@@ -492,9 +457,9 @@ class MultiTaskPlanningCapability(PlanningCapability):
                 plan_already_in_memory = False
 
                 for item in memory_items:
-                    if item.get("type") == "plan_completed" and item.get(
-                        "content", {}
-                    ).get("plan", {}).get("goal") == self.current_plan.get("goal"):
+                    if item.get("type") == "plan_completed" and item.get("content", {}).get("plan", {}).get(
+                        "goal"
+                    ) == self.current_plan.get("goal"):
                         plan_already_in_memory = True
                         break
 
@@ -505,9 +470,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
                             "content": {
                                 "plan": self.current_plan,
                                 "results": self.step_results,
-                                "task_id": current_task.task_id
-                                if current_task
-                                else None,
+                                "task_id": current_task.task_id if current_task else None,
                             },
                         }
                     )
@@ -521,21 +484,15 @@ class MultiTaskPlanningCapability(PlanningCapability):
                 self.last_reflection_at = None
             else:
                 # Update current step in context
-                context["planning"]["current_step"] = self.current_plan["steps"][
-                    self.current_step_index
-                ]
+                context["planning"]["current_step"] = self.current_plan["steps"][self.current_step_index]
 
         # Add plan information to the result
         if isinstance(result, dict):
             result["plan_status"] = {
                 "current_step": self.current_step_index + 1 if self.current_plan else 0,
-                "total_steps": len(self.current_plan["steps"])
-                if self.current_plan
-                else 0,
+                "total_steps": len(self.current_plan["steps"]) if self.current_plan else 0,
                 "completed_steps": len(self.completed_steps),
-                "plan_status": self.current_plan["status"]
-                if self.current_plan
-                else "not_started",
+                "plan_status": self.current_plan["status"] if self.current_plan else "not_started",
             }
 
             # Add task queue information if available
@@ -552,9 +509,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
 
         return result
 
-    async def should_terminate(
-        self, agent: Agent, context: Dict[str, Any], response: str
-    ) -> bool:
+    async def should_terminate(self, agent: Agent, context: Dict[str, Any], response: str) -> bool:
         """
         Determine if the agent should terminate based on task and plan completion.
 
@@ -581,10 +536,7 @@ class MultiTaskPlanningCapability(PlanningCapability):
 
         # If we have a task queue, check if all tasks are completed
         if self.task_queue:
-            if (
-                not self.task_queue.has_pending_tasks()
-                and not self.task_queue.has_current_task()
-            ):
+            if not self.task_queue.has_pending_tasks() and not self.task_queue.has_current_task():
                 logger.info("Suggesting termination: All tasks completed")
                 return True
 

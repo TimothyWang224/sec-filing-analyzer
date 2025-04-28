@@ -15,9 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -62,9 +60,7 @@ def measure_storage_size(embedding: np.ndarray) -> Tuple[int, int]:
     return numpy_size, json_size
 
 
-def measure_load_time(
-    embedding: np.ndarray, iterations: int = 100
-) -> Tuple[float, float]:
+def measure_load_time(embedding: np.ndarray, iterations: int = 100) -> Tuple[float, float]:
     """Measure time to load an embedding from NumPy and JSON formats.
 
     Args:
@@ -191,12 +187,8 @@ def main():
         logger.error(f"Error creating plot: {e}")
 
     # Print summary
-    avg_size_ratio = sum(j / n for j, n in zip(json_sizes, numpy_sizes)) / len(
-        dimensions
-    )
-    avg_time_ratio = sum(j / n for j, n in zip(json_times, numpy_times)) / len(
-        dimensions
-    )
+    avg_size_ratio = sum(j / n for j, n in zip(json_sizes, numpy_sizes)) / len(dimensions)
+    avg_time_ratio = sum(j / n for j, n in zip(json_times, numpy_times)) / len(dimensions)
 
     logger.info("\nSummary:")
     logger.info(f"Average size ratio (JSON/NumPy): {avg_size_ratio:.2f}x")
@@ -206,9 +198,7 @@ def main():
     logger.info("\nEstimated storage for 50 companies with 100 filings each:")
     total_vectors = 50 * 100 * 50  # 50 companies, 100 filings, 50 chunks per filing
 
-    json_total = (json_sizes[-2] * total_vectors) / (
-        1024 * 1024
-    )  # Use 1536 dimension result
+    json_total = (json_sizes[-2] * total_vectors) / (1024 * 1024)  # Use 1536 dimension result
     numpy_total = (numpy_sizes[-2] * total_vectors) / (1024 * 1024)
 
     logger.info(f"  JSON storage: {json_total:.2f} MB")

@@ -109,9 +109,7 @@ class ToolRegistry:
             field_info = {}
 
             # Add description
-            field_info["description"] = param_info.get(
-                "description", f"Parameter {param_name}"
-            )
+            field_info["description"] = param_info.get("description", f"Parameter {param_name}")
 
             # Add default if present
             if "default" in param_info and param_info["default"] is not None:
@@ -204,9 +202,7 @@ class ToolRegistry:
         docstring = execute_method.__doc__ or ""
 
         # Try to find Args section in docstring
-        args_match = re.search(
-            r"Args:(.*?)(?:Returns:|Raises:|$)", docstring, re.DOTALL
-        )
+        args_match = re.search(r"Args:(.*?)(?:Returns:|Raises:|$)", docstring, re.DOTALL)
         if args_match:
             args_section = args_match.group(1).strip()
 
@@ -262,9 +258,7 @@ class ToolRegistry:
         # If the tool is not found, attempt a lazy import
         if tool is None:
             try:
-                logger.info(
-                    f"Tool '{name}' not found in registry. Attempting lazy import."
-                )
+                logger.info(f"Tool '{name}' not found in registry. Attempting lazy import.")
 
                 # Try to import the tool module
                 import importlib
@@ -272,9 +266,7 @@ class ToolRegistry:
                 try:
                     # First try to import from sec_filing_analyzer.tools
                     importlib.import_module(f"sec_filing_analyzer.tools.{name}")
-                    logger.info(
-                        f"Successfully imported sec_filing_analyzer.tools.{name}"
-                    )
+                    logger.info(f"Successfully imported sec_filing_analyzer.tools.{name}")
                 except ImportError:
                     # Then try to import from src.tools
                     importlib.import_module(f"src.tools.{name}")
@@ -283,13 +275,9 @@ class ToolRegistry:
                 # Check if the tool is now registered
                 tool = cls._tools.get(name)
                 if tool:
-                    logger.info(
-                        f"Tool '{name}' successfully registered via lazy import."
-                    )
+                    logger.info(f"Tool '{name}' successfully registered via lazy import.")
                 else:
-                    logger.warning(
-                        f"Tool '{name}' module was imported but tool was not registered."
-                    )
+                    logger.warning(f"Tool '{name}' module was imported but tool was not registered.")
             except Exception as e:
                 logger.warning(f"Failed to lazy import tool '{name}': {str(e)}")
 
@@ -340,9 +328,7 @@ class ToolRegistry:
                     field_info = {}
 
                     # Add description
-                    field_info["description"] = param_info.get(
-                        "description", f"Parameter {param_name}"
-                    )
+                    field_info["description"] = param_info.get("description", f"Parameter {param_name}")
 
                     # Add default if present
                     if "default" in param_info and param_info["default"] is not None:
@@ -448,9 +434,7 @@ class ToolRegistry:
         return all_valid, all_errors
 
     @classmethod
-    def get_tool_documentation(
-        cls, name: Optional[str] = None, format: str = "text"
-    ) -> str:
+    def get_tool_documentation(cls, name: Optional[str] = None, format: str = "text") -> str:
         """
         Get formatted documentation for tools.
 
@@ -551,11 +535,7 @@ class ToolRegistry:
             if parameters:
                 doc += "### Parameters\n\n"
                 for param_name, param_info in parameters.items():
-                    required = (
-                        "**Required**"
-                        if param_info.get("required", False)
-                        else "Optional"
-                    )
+                    required = "**Required**" if param_info.get("required", False) else "Optional"
                     param_type = param_info.get("type", "any")
                     doc += f"- `{param_name}` ({param_type}) - {param_info.get('description', '')}"
                     doc += f" {required}.\n"
@@ -577,9 +557,7 @@ class ToolRegistry:
             if parameters:
                 doc += "PARAMETERS:\n"
                 for param_name, param_info in parameters.items():
-                    required = (
-                        "Required" if param_info.get("required", False) else "Optional"
-                    )
+                    required = "Required" if param_info.get("required", False) else "Optional"
                     param_type = param_info.get("type", "any")
                     doc += f"  {param_name} ({param_type}): {param_info.get('description', '')}"
                     doc += f" {required}.\n"

@@ -37,9 +37,7 @@ async def repair_json(
         Repaired JSON object or default value if repair fails
     """
     # Create a repair prompt
-    type_hint = (
-        f"The result should be a valid JSON {expected_type}." if expected_type else ""
-    )
+    type_hint = f"The result should be a valid JSON {expected_type}." if expected_type else ""
 
     prompt = f"""
     The text below is almost-valid JSON but does not parse.

@@ -28,9 +28,7 @@ from sec_filing_analyzer.utils.logging_utils import (
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -67,9 +65,7 @@ def reprocess_aapl_filing():
         # Extract metadata
         metadata = filing_data["metadata"]
 
-        logger.info(
-            f"Reprocessing AAPL filing: {metadata.get('form')} from {metadata.get('filing_date')}"
-        )
+        logger.info(f"Reprocessing AAPL filing: {metadata.get('form')} from {metadata.get('filing_date')}")
 
         # Process the filing
         processed_data = pipeline.process_filing_data(metadata)

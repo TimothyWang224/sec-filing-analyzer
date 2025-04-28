@@ -7,9 +7,7 @@ from ..tools.registry import ToolRegistry
 class Environment:
     """Unified environment for agent interactions with tools and context."""
 
-    def __init__(
-        self, tool_filter: Optional[Callable[[str, Dict[str, Any]], bool]] = None
-    ):
+    def __init__(self, tool_filter: Optional[Callable[[str, Dict[str, Any]], bool]] = None):
         """
         Initialize the environment.
 

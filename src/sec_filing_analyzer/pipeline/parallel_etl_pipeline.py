@@ -38,9 +38,7 @@ class ParallelSECFilingETLPipeline:
     def __init__(
         self,
         graph_store: Optional[GraphStore] = None,
-        vector_store: Optional[
-            Union[LlamaIndexVectorStore, OptimizedVectorStore]
-        ] = None,
+        vector_store: Optional[Union[LlamaIndexVectorStore, OptimizedVectorStore]] = None,
         filing_processor: Optional[ParallelFilingProcessor] = None,
         file_storage: Optional[FileStorage] = None,
         sec_downloader: Optional[SECFilingsDownloader] = None,
@@ -58,9 +56,7 @@ class ParallelSECFilingETLPipeline:
         # Use optimized vector store by default
         if vector_store is None:
             if use_optimized_vector_store:
-                self.vector_store = OptimizedVectorStore(
-                    store_path=StorageConfig().vector_store_path
-                )
+                self.vector_store = OptimizedVectorStore(store_path=StorageConfig().vector_store_path)
             else:
                 self.vector_store = LlamaIndexVectorStore(
                     store_path=StorageConfig().vector_store_path,
@@ -68,18 +64,14 @@ class ParallelSECFilingETLPipeline:
                 )
         else:
             self.vector_store = vector_store
-        self.file_storage = file_storage or FileStorage(
-            base_dir=ETLConfig().filings_dir
-        )
+        self.file_storage = file_storage or FileStorage(base_dir=ETLConfig().filings_dir)
         self.filing_processor = filing_processor or ParallelFilingProcessor(
             graph_store=self.graph_store,
             vector_store=self.vector_store,
             file_storage=self.file_storage,
             max_workers=max_workers,
         )
-        self.sec_downloader = sec_downloader or SECFilingsDownloader(
-            file_storage=self.file_storage
-        )
+        self.sec_downloader = sec_downloader or SECFilingsDownloader(file_storage=self.file_storage)
 
         # Initialize filing chunker and parallel embedding generator
         self.filing_chunker = FilingChunker(
@@ -110,9 +102,7 @@ class ParallelSECFilingETLPipeline:
 
         # Initialize quantitative pipeline if needed
         if self.process_quantitative:
-            self.quantitative_pipeline = QuantitativeETLPipeline(
-                downloader=self.sec_downloader, db_path=self.db_path
-            )
+            self.quantitative_pipeline = QuantitativeETLPipeline(downloader=self.sec_downloader, db_path=self.db_path)
 
         logger.info(f"Initialized parallel ETL pipeline with {max_workers} workers")
 
@@ -142,14 +132,10 @@ class ParallelSECFilingETLPipeline:
 
         logger.info(f"Processing {len(tickers)} companies in parallel")
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=min(self.max_workers, len(tickers))
-        ) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_workers, len(tickers))) as executor:
             # Submit tasks
             future_to_ticker = {
-                executor.submit(
-                    self.process_company, ticker, filing_types, start_date, end_date
-                ): ticker
+                executor.submit(self.process_company, ticker, filing_types, start_date, end_date): ticker
                 for ticker in tickers
             }
 
@@ -160,9 +146,7 @@ class ParallelSECFilingETLPipeline:
                     result = future.result()
                     if result["status"] == "completed":
                         results["completed"].append(ticker)
-                        logger.info(
-                            f"Successfully processed {ticker} with {result['filings_processed']} filings"
-                        )
+                        logger.info(f"Successfully processed {ticker} with {result['filings_processed']} filings")
                     elif result["status"] == "no_filings":
                         results["no_filings"].append(ticker)
                         logger.info(f"No filings found for {ticker}")
@@ -216,9 +200,7 @@ class ParallelSECFilingETLPipeline:
             )
 
             if not downloaded_filings:
-                logger.warning(
-                    f"No filings found for {ticker} in the specified date range and filing types"
-                )
+                logger.warning(f"No filings found for {ticker} in the specified date range and filing types")
                 result["status"] = "no_filings"
                 return result
 
@@ -227,9 +209,7 @@ class ParallelSECFilingETLPipeline:
             # If using optimized vector store, load or rebuild the index
             if hasattr(self.vector_store, "_load_faiss_index_for_companies"):
                 # This is an OptimizedVectorStore
-                self.vector_store._load_faiss_index_for_companies(
-                    [ticker], force_rebuild=force_rebuild_index
-                )
+                self.vector_store._load_faiss_index_for_companies([ticker], force_rebuild=force_rebuild_index)
 
             # Process filings in parallel
             processed_filings = []
@@ -239,9 +219,7 @@ class ParallelSECFilingETLPipeline:
                 for filing_data in downloaded_filings:
                     try:
                         # Add accession_number if missing but id is present
-                        if "id" in filing_data and not filing_data.get(
-                            "accession_number"
-                        ):
+                        if "id" in filing_data and not filing_data.get("accession_number"):
                             filing_data["accession_number"] = filing_data["id"]
 
                         processed_filing = self.process_filing_data(filing_data)
@@ -258,20 +236,12 @@ class ParallelSECFilingETLPipeline:
                 for filing_data in downloaded_filings:
                     try:
                         # Ensure both id and accession_number fields are present
-                        if "id" in filing_data and not filing_data.get(
-                            "accession_number"
-                        ):
+                        if "id" in filing_data and not filing_data.get("accession_number"):
                             filing_data["accession_number"] = filing_data["id"]
-                            logger.info(
-                                f"Using id as accession_number: {filing_data['id']}"
-                            )
-                        elif "accession_number" in filing_data and not filing_data.get(
-                            "id"
-                        ):
+                            logger.info(f"Using id as accession_number: {filing_data['id']}")
+                        elif "accession_number" in filing_data and not filing_data.get("id"):
                             filing_data["id"] = filing_data["accession_number"]
-                            logger.info(
-                                f"Using accession_number as id: {filing_data['accession_number']}"
-                            )
+                            logger.info(f"Using accession_number as id: {filing_data['accession_number']}")
 
                         accession_number = filing_data.get("accession_number")
 
@@ -281,9 +251,7 @@ class ParallelSECFilingETLPipeline:
                         elif "form" not in filing_data and "filing_type" in filing_data:
                             filing_data["form"] = filing_data["filing_type"]
 
-                        filing_type = filing_data.get("filing_type") or filing_data.get(
-                            "form"
-                        )
+                        filing_type = filing_data.get("filing_type") or filing_data.get("form")
                         filing_date = filing_data.get("filing_date")
 
                         if accession_number and filing_type:
@@ -295,14 +263,8 @@ class ParallelSECFilingETLPipeline:
                             )
                     except Exception as e:
                         # Get a reliable identifier for the filing
-                        filing_id = (
-                            filing_data.get("accession_number")
-                            or filing_data.get("id")
-                            or "unknown"
-                        )
-                        logger.error(
-                            f"Error processing XBRL data for filing {filing_id}: {e}"
-                        )
+                        filing_id = filing_data.get("accession_number") or filing_data.get("id") or "unknown"
+                        logger.error(f"Error processing XBRL data for filing {filing_id}: {e}")
 
             result["status"] = "completed"
             result["filings_processed"] = len(processed_filings)
@@ -314,9 +276,7 @@ class ParallelSECFilingETLPipeline:
             result["error"] = error_msg
             return result
 
-    def process_filing_data(
-        self, filing_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    def process_filing_data(self, filing_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Process filing data.
 
@@ -341,9 +301,7 @@ class ParallelSECFilingETLPipeline:
                 logger.info(f"Using accession_number as id: {accession_number}")
 
             if not accession_number:
-                logger.error(
-                    f"Missing both accession_number and id in filing data: {filing_data}"
-                )
+                logger.error(f"Missing both accession_number and id in filing data: {filing_data}")
                 return None
 
             # Get filing content
@@ -357,18 +315,12 @@ class ParallelSECFilingETLPipeline:
                 try:
                     html_data = self.file_storage.load_html_filing(accession_number)
                     if html_data:
-                        filing_content["html_content"] = html_data.get(
-                            "html_content", ""
-                        )
+                        filing_content["html_content"] = html_data.get("html_content", "")
                 except Exception as e:
-                    logger.warning(
-                        f"Could not load HTML content for filing {accession_number}: {e}"
-                    )
+                    logger.warning(f"Could not load HTML content for filing {accession_number}: {e}")
 
             # Process filing with chunker
-            processed_data = self.filing_chunker.process_filing(
-                filing_data, filing_content
-            )
+            processed_data = self.filing_chunker.process_filing(filing_data, filing_content)
 
             # Extract chunk texts
             chunk_texts = processed_data.get("chunk_texts", [])
@@ -390,10 +342,7 @@ class ParallelSECFilingETLPipeline:
             )
 
             # Handle both tuple return (embeddings, metadata) and direct embeddings return
-            if (
-                isinstance(chunk_embeddings_result, tuple)
-                and len(chunk_embeddings_result) == 2
-            ):
+            if isinstance(chunk_embeddings_result, tuple) and len(chunk_embeddings_result) == 2:
                 chunk_embeddings, embedding_metadata = chunk_embeddings_result
             else:
                 chunk_embeddings = chunk_embeddings_result
@@ -414,18 +363,11 @@ class ParallelSECFilingETLPipeline:
                 # Check if text is small enough for embedding
                 token_count = self.filing_chunker._count_tokens(text)
                 if token_count <= 8000:  # Safe limit for embedding models
-                    logger.info(
-                        f"Generating embedding for full text ({token_count} tokens)"
-                    )
-                    full_text_result = filing_embedding_generator.generate_embeddings(
-                        [text]
-                    )
+                    logger.info(f"Generating embedding for full text ({token_count} tokens)")
+                    full_text_result = filing_embedding_generator.generate_embeddings([text])
 
                     # Handle both tuple return (embeddings, metadata) and direct embeddings return
-                    if (
-                        isinstance(full_text_result, tuple)
-                        and len(full_text_result) == 2
-                    ):
+                    if isinstance(full_text_result, tuple) and len(full_text_result) == 2:
                         full_text_embedding, full_text_metadata = full_text_result
                     else:
                         full_text_embedding = full_text_result
@@ -436,57 +378,39 @@ class ParallelSECFilingETLPipeline:
                     processed_data["embedding"] = full_text_embedding[0]
 
                     # Add full text embedding metadata
-                    processed_data["embedding_metadata"][
-                        "full_text_embedding_stats"
-                    ] = full_text_metadata
-                    processed_data["embedding_metadata"]["full_text_has_fallback"] = (
-                        full_text_metadata.get("any_fallbacks", False)
+                    processed_data["embedding_metadata"]["full_text_embedding_stats"] = full_text_metadata
+                    processed_data["embedding_metadata"]["full_text_has_fallback"] = full_text_metadata.get(
+                        "any_fallbacks", False
                     )
                 else:
-                    logger.info(
-                        f"Skipping full text embedding due to token count ({token_count} tokens)"
-                    )
+                    logger.info(f"Skipping full text embedding due to token count ({token_count} tokens)")
                     # Use the average of chunk embeddings as a fallback
                     if chunk_embeddings:
                         import numpy as np
 
                         # Filter out fallback (zero) vectors if possible
-                        if "fallback_flags" in embedding_metadata and not all(
-                            embedding_metadata["fallback_flags"]
-                        ):
+                        if "fallback_flags" in embedding_metadata and not all(embedding_metadata["fallback_flags"]):
                             # Get indices of non-fallback chunks
                             valid_indices = [
                                 i
-                                for i, is_fallback in enumerate(
-                                    embedding_metadata["fallback_flags"]
-                                )
+                                for i, is_fallback in enumerate(embedding_metadata["fallback_flags"])
                                 if not is_fallback
                             ]
                             if valid_indices:  # If we have any valid embeddings
-                                valid_embeddings = [
-                                    chunk_embeddings[i] for i in valid_indices
-                                ]
-                                avg_embedding = np.mean(
-                                    valid_embeddings, axis=0
-                                ).tolist()
+                                valid_embeddings = [chunk_embeddings[i] for i in valid_indices]
+                                avg_embedding = np.mean(valid_embeddings, axis=0).tolist()
                                 processed_data["embedding"] = avg_embedding
                                 logger.info(
                                     f"Using average of {len(valid_indices)} valid chunk embeddings for document embedding"
                                 )
-                                processed_data["embedding_metadata"][
-                                    "full_text_has_fallback"
-                                ] = False
+                                processed_data["embedding_metadata"]["full_text_has_fallback"] = False
                                 return
 
                         # If all chunks are fallbacks or we couldn't filter, use all chunks
                         avg_embedding = np.mean(chunk_embeddings, axis=0).tolist()
                         processed_data["embedding"] = avg_embedding
-                        logger.info(
-                            "Using average of all chunk embeddings for document embedding"
-                        )
-                        processed_data["embedding_metadata"][
-                            "full_text_has_fallback"
-                        ] = True
+                        logger.info("Using average of all chunk embeddings for document embedding")
+                        processed_data["embedding_metadata"]["full_text_has_fallback"] = True
             except Exception as e:
                 logger.warning(f"Error generating full text embedding: {e}")
                 # Continue without full text embedding

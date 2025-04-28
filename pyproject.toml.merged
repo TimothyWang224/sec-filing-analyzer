@@ -1,0 +1,188 @@
+[project]
+name = "sec-filing-analyzer"
+version = "0.1.0"
+description = "A multi-agent LLM system for analyzing SEC filings and providing financial insights"
+authors = [
+    {name = "Timothy Wang", email = "timothy.yi.wang@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "edgartools (>=3.14.4,<4.0.0)",
+    "spacy (>=3.8.5,<4.0.0)",
+    "llama-index (>=0.12.28,<0.13.0)",
+    "llama-index-graph-stores-neo4j (>=0.4.6,<0.5.0)",
+    "faiss-cpu (>=1.10.0,<2.0.0)",
+    "matplotlib (>=3.9.0,<4.0.0)",
+    "streamlit (>=1.30.0,<2.0.0)",
+    "plotly (>=5.15.0,<6.0.0)",
+    "networkx (>=3.4.2,<4.0.0)",
+    "pydantic (>=2.6.0,<3.0.0)",
+    "h11 (>=0.16.0,<0.17.0)"
+]
+
+[tool.poetry]
+packages = [{include = "sec_filing_analyzer", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+openai = "^1.12.0"
+python-dotenv = "^1.0.1"
+pydantic = ">=2.6.0,<3.0.0"
+orjson = "^3.9.1"  # Fast JSON parser
+duckdb = "^1.2.2"  # SQL database for metadata storage
+# Core dependencies
+llama-index-core = "^0.10.0"
+llama-index-llms-openai = "^0.1.0"
+llama-index-embeddings-openai = "^0.3.0"
+# Vector databases
+llama-index-vector-stores-chroma = "^0.1.0"
+chromadb = "^0.4.0"
+# Graph database
+neo4j = "^5.0.0"
+# SEC data retrieval
+sec-api = "^1.0.0"
+sec-edgar-downloader = "^5.0.0"
+edgar = "^7.0.0"  # edgartools
+beautifulsoup4 = "^4.11.0"
+# Utilities
+rich = "^13.0.0"
+numpy = "^1.22.0"
+tqdm = "^4.66.0"
+# NLP
+aiohttp = "^3.8.0"
+lxml = "^4.9.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^4.1.0"
+mypy = "^1.10.0"
+ruff = "^0.4.3"
+bandit = "^1.7.7"
+pre-commit = "^3.7.0"
+
+[tool.poetry.group.tools.dependencies]
+pandas = "^2.0.0"
+jupyter = "^1.0.0"
+notebook = "^6.5.0"
+ipywidgets = "^8.0.0"
+
+[tool.poetry.scripts]
+pytest-log = "scripts.pytest_log_wrapper:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+exclude = ["archive/.*", "scripts/.*", "src/streamlit_app/utils/__init__.py"]
+# Disable various error codes to make mypy more lenient
+disable_error_codes = [
+    "attr-defined",
+    "no-untyped-def",
+    "no-any-return",
+    "assignment",
+    "arg-type",
+    "union-attr",
+    "var-annotated",
+    "list-item",
+    "index",
+    "operator",
+    "call-arg",
+    "return-value",
+    "name-defined",
+    "has-type",
+    "override",
+    "return",
+    "abstract",
+    "import-untyped",
+    "misc",
+    "no-redef",
+    "dict-item",
+    "call-overload"
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+# Skip directories that don't need linting
+extend-exclude = [
+    "archive/*",
+    "scripts/*",
+    "tests/*",
+    "chat_app/*",
+    "external_libs/*",
+    "notebooks/*",
+    "docs/*",
+    ".github/*",
+    ".logs/*"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "S", "B"]
+ignore = [
+    "E501",  # Line too long (handled by formatter)
+    "S101",  # Use of assert detected (common in tests)
+    "S105",  # Possible hardcoded password
+    "S106",  # Possible hardcoded password
+    "S108",  # Insecure usage of temp file
+    "S603",  # subprocess call - check for execution of untrusted input
+    "S605",  # Starting a process with a shell
+    "S607",  # Starting a process with a partial executable path
+    "S608",  # Possible SQL injection vector
+    "S110",  # try-except-pass detected
+    "S113",  # Probable use of requests call without timeout
+    "S311",  # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "S324",  # Probable use of insecure hash functions
+    "S307",  # Use of possibly insecure function
+    "F401",  # Unused import
+    "F403",  # Import * used
+    "F811",  # Redefinition of unused name
+    "F821",  # Undefined name
+    "F841",  # Local variable is assigned to but never used
+    "F541",  # f-string without any placeholders
+    "F601",  # Dictionary key literal repeated
+    "B905",  # zip() without an explicit strict parameter
+    "B904",  # Within an except clause, raise exceptions with raise ... from err
+    "B007",  # Loop control variable not used within loop body
+    "B006",  # Do not use mutable data structures for argument defaults
+    "B011",  # Do not assert False
+    "B027",  # Empty method in abstract base class
+    "E713",  # Test for membership should be 'not in'
+    "E402",  # Module level import not at top of file
+    "E722",  # Do not use bare except
+    "E731",  # Do not assign a lambda expression, use a def
+    "E999",  # SyntaxError
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "F401", "F811", "E501"]
+"scripts/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608"]
+"archive/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608"]
+"src/scripts/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608"]
+"src/streamlit_app/*" = ["S101", "F401", "F811", "E501", "S603", "S607", "S608", "S605"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "--color=yes --verbose"
+asyncio_mode = "auto"
+norecursedirs = ["scripts", "archive", "examples", "notebooks", ".venv", "external_libs"]

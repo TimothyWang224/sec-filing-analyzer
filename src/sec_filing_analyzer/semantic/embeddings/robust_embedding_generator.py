@@ -55,9 +55,7 @@ class RobustEmbeddingGenerator:
         """
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError(
-                "OPENAI_API_KEY environment variable not set. Please set it in your .env file."
-            )
+            raise ValueError("OPENAI_API_KEY environment variable not set. Please set it in your .env file.")
 
         self.embed_model = OpenAIEmbedding(model=model, api_key=api_key)
         self.dimensions = 1536  # text-embedding-3-small has 1536 dimensions
@@ -79,13 +77,9 @@ class RobustEmbeddingGenerator:
             "chunked_texts": 0,
         }
 
-        logger.info(
-            f"Initialized Robust OpenAI embedding generator with model: {model}"
-        )
+        logger.info(f"Initialized Robust OpenAI embedding generator with model: {model}")
 
-    def _ensure_list_format(
-        self, embedding: Union[np.ndarray, List[float], Any]
-    ) -> List[float]:
+    def _ensure_list_format(self, embedding: Union[np.ndarray, List[float], Any]) -> List[float]:
         """Ensure embedding is in list format.
 
         Args:
@@ -189,18 +183,14 @@ class RobustEmbeddingGenerator:
                         sanitized_batch.append(str(text))
 
                 # Use the LlamaIndex embedding model to get embeddings
-                batch_embeddings = self.embed_model.get_text_embedding_batch(
-                    sanitized_batch
-                )
+                batch_embeddings = self.embed_model.get_text_embedding_batch(sanitized_batch)
 
                 # Update token usage stats
                 self.token_usage["total_tokens"] += estimated_tokens
                 self.token_usage["requests"] += 1
 
                 # Convert to list format
-                return [
-                    self._ensure_list_format(emb) for emb in batch_embeddings
-                ], False
+                return [self._ensure_list_format(emb) for emb in batch_embeddings], False
 
             except Exception as e:
                 retries += 1
@@ -209,9 +199,7 @@ class RobustEmbeddingGenerator:
                 if retries <= self.max_retries:
                     self.token_usage["retried_requests"] += 1
                     # Exponential backoff with jitter
-                    delay = self.retry_base_delay * (
-                        2 ** (retries - 1)
-                    ) + random.uniform(0, 0.5)
+                    delay = self.retry_base_delay * (2 ** (retries - 1)) + random.uniform(0, 0.5)
 
                     error_msg = f"Error generating embeddings (attempt {retries}/{self.max_retries}): {str(e)}. Retrying in {delay:.2f}s"
                     logger.warning(error_msg)
@@ -248,9 +236,7 @@ class RobustEmbeddingGenerator:
                 f"Text exceeds token limit ({token_count} > {self.max_tokens_per_chunk}), chunking and averaging"
             )
             chunks = self._chunk_text(text)
-            chunk_embeddings = self.generate_embeddings(chunks)[
-                0
-            ]  # Get embeddings only
+            chunk_embeddings = self.generate_embeddings(chunks)[0]  # Get embeddings only
 
             # Average the embeddings
             if chunk_embeddings:
@@ -316,9 +302,7 @@ class RobustEmbeddingGenerator:
             for i in range(0, len(processed_texts), batch_size):
                 batches.append(processed_texts[i : i + batch_size])
 
-            logger.info(
-                f"Processing {len(processed_texts)} texts in {len(batches)} batches with size {batch_size}"
-            )
+            logger.info(f"Processing {len(processed_texts)} texts in {len(batches)} batches with size {batch_size}")
 
             # Track which chunks used fallback embeddings
             fallback_flags = [False] * len(processed_texts)
@@ -340,9 +324,7 @@ class RobustEmbeddingGenerator:
                         if start_idx + i < len(fallback_flags):
                             fallback_flags[start_idx + i] = is_fallback
 
-                    logger.info(
-                        f"Completed batch {batch_idx + 1}/{len(batches)} {'(fallback)' if is_fallback else ''}"
-                    )
+                    logger.info(f"Completed batch {batch_idx + 1}/{len(batches)} {'(fallback)' if is_fallback else ''}")
 
                     # Add a small delay between batches to avoid rate limiting
                     if batch_idx < len(batches) - 1:
@@ -353,9 +335,7 @@ class RobustEmbeddingGenerator:
                     logger.error(error_msg)
 
                     # Use fallback for this batch
-                    batch_embeddings = [
-                        [0.0] * self.dimensions for _ in range(len(batch))
-                    ]
+                    batch_embeddings = [[0.0] * self.dimensions for _ in range(len(batch))]
                     all_embeddings.extend(batch_embeddings)
 
                     # Update fallback flags

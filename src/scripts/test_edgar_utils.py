@@ -16,9 +16,7 @@ from sec_filing_analyzer.utils import edgar_utils
 load_dotenv()
 
 # Setup logging
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Set edgar logger to DEBUG level
@@ -46,9 +44,7 @@ def test_get_filings(ticker="MSFT", form_type="8-K", limit=5):
     """Test getting filings for a company."""
     try:
         # Get filings for Microsoft
-        filings = edgar_utils.get_filings(
-            ticker=ticker, form_type=form_type, limit=limit
-        )
+        filings = edgar_utils.get_filings(ticker=ticker, form_type=form_type, limit=limit)
 
         logger.info(f"Found {len(filings)} {form_type} filings for {ticker}")
 
@@ -91,18 +87,10 @@ def test_get_filing_by_accession(ticker="MSFT", accession_number=None):
 
             # Check what content we got
             logger.info("Filing content:")
-            logger.info(
-                f"  Text: {'Available' if content.get('text') else 'Not available'}"
-            )
-            logger.info(
-                f"  HTML: {'Available' if content.get('html') else 'Not available'}"
-            )
-            logger.info(
-                f"  XML: {'Available' if content.get('xml') else 'Not available'}"
-            )
-            logger.info(
-                f"  XBRL: {'Available' if content.get('xbrl') else 'Not available'}"
-            )
+            logger.info(f"  Text: {'Available' if content.get('text') else 'Not available'}")
+            logger.info(f"  HTML: {'Available' if content.get('html') else 'Not available'}")
+            logger.info(f"  XML: {'Available' if content.get('xml') else 'Not available'}")
+            logger.info(f"  XBRL: {'Available' if content.get('xbrl') else 'Not available'}")
 
             # Test getting filing metadata
             metadata = edgar_utils.get_filing_metadata(filing, ticker)

@@ -63,9 +63,7 @@ class TimeAwarenessCapability(Capability):
 
         return context
 
-    async def process_prompt(
-        self, agent: Agent, context: Dict[str, Any], prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the prompt to enhance time awareness.
 
@@ -93,9 +91,7 @@ class TimeAwarenessCapability(Capability):
 
         return prompt
 
-    async def process_action(
-        self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action to include time awareness.
 
@@ -257,9 +253,7 @@ class TimeAwarenessCapability(Capability):
             references["years"] = sorted(list(set(years)))
 
         # Extract quarters
-        quarter_pattern = (
-            r"\b(Q[1-4]|first quarter|second quarter|third quarter|fourth quarter)\b"
-        )
+        quarter_pattern = r"\b(Q[1-4]|first quarter|second quarter|third quarter|fourth quarter)\b"
         quarters = re.findall(quarter_pattern, text, re.IGNORECASE)
         if quarters:
             # Normalize quarter names
@@ -308,39 +302,27 @@ class TimeAwarenessCapability(Capability):
             references["fiscal_period"] = (fiscal_year, fiscal_quarter)
 
         # Extract relative time references
-        relative_pattern = (
-            r"\b(last|previous|current|next|recent)\s+(year|quarter|month|week)\b"
-        )
+        relative_pattern = r"\b(last|previous|current|next|recent)\s+(year|quarter|month|week)\b"
         relative_refs = re.findall(relative_pattern, text, re.IGNORECASE)
         if relative_refs:
             references["relative_time"] = relative_refs
 
             # Process relative time references
             for rel_time, rel_period in relative_refs:
-                if (
-                    rel_time.lower() in ["last", "previous"]
-                    and rel_period.lower() == "year"
-                ):
+                if rel_time.lower() in ["last", "previous"] and rel_period.lower() == "year":
                     last_year = self.current_time.year - 1
                     references["date_range"] = (
                         f"{last_year}-01-01",
                         f"{last_year}-12-31",
                     )
-                elif (
-                    rel_time.lower() in ["last", "previous"]
-                    and rel_period.lower() == "quarter"
-                ):
+                elif rel_time.lower() in ["last", "previous"] and rel_period.lower() == "quarter":
                     last_quarter_date = self._get_last_quarter_date()
-                    quarter_start, quarter_end = self._get_quarter_range(
-                        last_quarter_date
-                    )
+                    quarter_start, quarter_end = self._get_quarter_range(last_quarter_date)
                     references["date_range"] = (quarter_start, quarter_end)
 
         return references
 
-    def _generate_time_context(
-        self, temporal_references: Dict[str, Any]
-    ) -> Dict[str, str]:
+    def _generate_time_context(self, temporal_references: Dict[str, Any]) -> Dict[str, str]:
         """
         Generate time context from temporal references.
 
@@ -455,9 +437,7 @@ class TimeAwarenessCapability(Capability):
 
         return sorted(list(time_periods))
 
-    def _analyze_trends(
-        self, financial_data: Dict[str, Any], time_periods: List[str]
-    ) -> Dict[str, Any]:
+    def _analyze_trends(self, financial_data: Dict[str, Any], time_periods: List[str]) -> Dict[str, Any]:
         """
         Analyze trends in financial data across time periods.
 
@@ -474,10 +454,6 @@ class TimeAwarenessCapability(Capability):
         # In a real implementation, this would perform more sophisticated analysis
         trends["periods_count"] = len(time_periods)
         trends["has_multiple_periods"] = len(time_periods) > 1
-        trends["time_span"] = (
-            f"{time_periods[0]} to {time_periods[-1]}"
-            if len(time_periods) > 1
-            else time_periods[0]
-        )
+        trends["time_span"] = f"{time_periods[0]} to {time_periods[-1]}" if len(time_periods) > 1 else time_periods[0]
 
         return trends

@@ -132,9 +132,7 @@ class PlanningCapability(Capability):
                 "current_step": current_step,
                 "completed_steps": self.completed_steps.copy(),
                 "plan_status": self.current_plan.status,
-                "phase": self.agent.state.current_phase
-                if hasattr(self.agent.state, "current_phase")
-                else "planning",
+                "phase": self.agent.state.current_phase if hasattr(self.agent.state, "current_phase") else "planning",
             }
         else:
             context["planning"] = {
@@ -177,19 +175,13 @@ class PlanningCapability(Capability):
             if self.enable_plan_caching and user_input in self.plan_cache:
                 logger.info("Using cached plan for this input")
                 self.current_plan = self.plan_cache[user_input]
-            elif (
-                coordinator_plan
-                and self.respect_existing_plan
-                and not self.is_coordinator
-            ):
+            elif coordinator_plan and self.respect_existing_plan and not self.is_coordinator:
                 # Use the coordinator's plan
                 logger.info("Using coordinator's plan instead of creating a new one")
 
                 # Create a Plan object from the coordinator's plan
                 plan_dict = {
-                    "goal": coordinator_plan.get(
-                        "task_objective", f"Process: {user_input}"
-                    ),
+                    "goal": coordinator_plan.get("task_objective", f"Process: {user_input}"),
                     "steps": [],
                     "status": "in_progress",
                     "created_at": datetime.now().isoformat(),
@@ -215,9 +207,7 @@ class PlanningCapability(Capability):
                     plan_dict["steps"] = [
                         {
                             "step_id": 1,
-                            "description": coordinator_plan.get(
-                                "task_objective", "Execute task"
-                            ),
+                            "description": coordinator_plan.get("task_objective", "Execute task"),
                             "status": "pending",
                         }
                     ]
@@ -230,9 +220,7 @@ class PlanningCapability(Capability):
 
                 # Set owner and can_modify attributes
                 self.current_plan.owner = self.plan_owner
-                self.current_plan.can_modify = (
-                    self.is_coordinator or not self.respect_existing_plan
-                )
+                self.current_plan.can_modify = self.is_coordinator or not self.respect_existing_plan
 
                 # Cache the plan if caching is enabled
                 if self.enable_plan_caching:
@@ -248,20 +236,12 @@ class PlanningCapability(Capability):
             context["planning"] = {
                 "has_plan": True,
                 "plan": self.current_plan,
-                "current_step": self.current_plan.steps[0]
-                if self.current_plan.steps
-                else None,
+                "current_step": self.current_plan.steps[0] if self.current_plan.steps else None,
                 "completed_steps": [],
                 "plan_status": "in_progress",
-                "phase": agent.state.current_phase
-                if hasattr(agent.state, "current_phase")
-                else "planning",
-                "plan_owner": self.current_plan.owner
-                if hasattr(self.current_plan, "owner")
-                else self.plan_owner,
-                "can_modify": self.current_plan.can_modify
-                if hasattr(self.current_plan, "can_modify")
-                else True,
+                "phase": agent.state.current_phase if hasattr(agent.state, "current_phase") else "planning",
+                "plan_owner": self.current_plan.owner if hasattr(self.current_plan, "owner") else self.plan_owner,
+                "can_modify": self.current_plan.can_modify if hasattr(self.current_plan, "can_modify") else True,
             }
 
         # Update the planning context with the current phase
@@ -283,18 +263,10 @@ class PlanningCapability(Capability):
 
             # Guard against infinite planning loops
             # If we already have a plan and we're still in planning phase, check if we should move to execution
-            if (
-                hasattr(agent.state, "current_phase")
-                and agent.state.current_phase == "planning"
-            ):
+            if hasattr(agent.state, "current_phase") and agent.state.current_phase == "planning":
                 # If the plan is in progress and we've done at least one planning iteration, move to execution
-                if (
-                    self.current_plan.status == "in_progress"
-                    and agent.state.phase_iterations.get("planning", 0) > 0
-                ):
-                    logger.info(
-                        "Plan already exists and is in progress. Moving to execution phase."
-                    )
+                if self.current_plan.status == "in_progress" and agent.state.phase_iterations.get("planning", 0) > 0:
+                    logger.info("Plan already exists and is in progress. Moving to execution phase.")
                     agent.state.set_phase("execution")
 
                     # Roll over unused tokens from planning to execution if the agent supports it
@@ -307,13 +279,10 @@ class PlanningCapability(Capability):
                 "has_plan": bool(self.current_plan),
                 "plan": self.current_plan,
                 "current_step": self.current_plan.steps[self.current_step_index]
-                if self.current_plan
-                and self.current_step_index < len(self.current_plan.steps)
+                if self.current_plan and self.current_step_index < len(self.current_plan.steps)
                 else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan.status
-                if self.current_plan
-                else "not_started",
+                "plan_status": self.current_plan.status if self.current_plan else "not_started",
             }
 
         # If we have a plan, update the current step
@@ -328,9 +297,7 @@ class PlanningCapability(Capability):
 
         return True
 
-    async def process_prompt(
-        self, agent: Agent, context: Dict[str, Any], prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the prompt to include planning information.
 
@@ -352,19 +319,13 @@ class PlanningCapability(Capability):
                 else None,
                 "completed_steps": self.completed_steps.copy(),
                 "plan_status": self.current_plan.status,
-                "phase": agent.state.current_phase
-                if hasattr(agent.state, "current_phase")
-                else "planning",
+                "phase": agent.state.current_phase if hasattr(agent.state, "current_phase") else "planning",
             }
 
         # If we have a plan, add the current step to the prompt
         if self.current_plan and self.current_step_index < len(self.current_plan.steps):
             current_step = self.current_plan.steps[self.current_step_index]
-            current_phase = (
-                agent.state.current_phase
-                if hasattr(agent.state, "current_phase")
-                else "planning"
-            )
+            current_phase = agent.state.current_phase if hasattr(agent.state, "current_phase") else "planning"
 
             # Add planning context to the prompt
             enhanced_prompt = f"{prompt}\n\nCurrent Phase: {current_phase.upper()}\n"
@@ -379,20 +340,20 @@ class PlanningCapability(Capability):
 
             if current_step.dependencies:
                 enhanced_prompt += (
-                    "- Dependencies: "
-                    + ", ".join([str(dep) for dep in current_step.dependencies])
-                    + "\n"
+                    "- Dependencies: " + ", ".join([str(dep) for dep in current_step.dependencies]) + "\n"
                 )
 
             # Add phase-specific guidance
             if current_phase == "planning":
-                enhanced_prompt += "\nIn the PLANNING phase, focus on understanding the task and creating a detailed plan.\n"
+                enhanced_prompt += (
+                    "\nIn the PLANNING phase, focus on understanding the task and creating a detailed plan.\n"
+                )
                 enhanced_prompt += "Analyze the question carefully and identify the key information needed.\n"
             elif current_phase == "execution":
-                enhanced_prompt += "\nIn the EXECUTION phase, focus on gathering data and generating an initial answer.\n"
                 enhanced_prompt += (
-                    "Use the appropriate tools to collect the necessary information.\n"
+                    "\nIn the EXECUTION phase, focus on gathering data and generating an initial answer.\n"
                 )
+                enhanced_prompt += "Use the appropriate tools to collect the necessary information.\n"
             elif current_phase == "refinement":
                 enhanced_prompt += "\nIn the REFINEMENT phase, focus on improving the answer quality.\n"
                 enhanced_prompt += "Make the answer more concise, accurate, and directly responsive to the question.\n"
@@ -405,9 +366,7 @@ class PlanningCapability(Capability):
 
         return prompt
 
-    async def process_action(
-        self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action to align with the current plan step.
 
@@ -440,29 +399,21 @@ class PlanningCapability(Capability):
             if not dependencies_satisfied:
                 # If dependencies are not satisfied, log a warning and modify the action
                 missing_deps = self._get_missing_dependencies(current_step)
-                logger.warning(
-                    f"Dependencies not satisfied for step {current_step.step_id}: {missing_deps}"
-                )
+                logger.warning(f"Dependencies not satisfied for step {current_step.step_id}: {missing_deps}")
 
                 # If the action is trying to use a tool that depends on previous steps,
                 # modify it to get the missing dependency data first
                 if "tool" in action:
                     # Find a step that would satisfy the dependency
-                    dependency_step = self._find_dependency_step(
-                        missing_deps[0] if missing_deps else None
-                    )
+                    dependency_step = self._find_dependency_step(missing_deps[0] if missing_deps else None)
                     if dependency_step and dependency_step.tool:
                         # Replace the current tool with the dependency tool
-                        logger.info(
-                            f"Replacing tool {action.get('tool')} with dependency tool {dependency_step.tool}"
-                        )
+                        logger.info(f"Replacing tool {action.get('tool')} with dependency tool {dependency_step.tool}")
                         action["tool"] = dependency_step.tool
                         if dependency_step.parameters:
                             tool_name = dependency_step.tool
                             parameters = dependency_step.parameters
-                            validation_result = validate_tool_parameters(
-                                tool_name, parameters
-                            )
+                            validation_result = validate_tool_parameters(tool_name, parameters)
                             action["args"] = validation_result["parameters"]
 
                         # Add dependency context to the action
@@ -488,9 +439,7 @@ class PlanningCapability(Capability):
                 if tool_name:
                     validation_result = validate_tool_parameters(tool_name, parameters)
                     if validation_result["errors"]:
-                        logger.warning(
-                            f"Parameter validation errors for {tool_name}: {validation_result['errors']}"
-                        )
+                        logger.warning(f"Parameter validation errors for {tool_name}: {validation_result['errors']}")
                     action["args"] = validation_result["parameters"]
                 else:
                     action["args"] = parameters
@@ -583,13 +532,10 @@ class PlanningCapability(Capability):
                 "has_plan": bool(self.current_plan),
                 "plan": self.current_plan,
                 "current_step": self.current_plan.steps[self.current_step_index]
-                if self.current_plan
-                and self.current_step_index < len(self.current_plan.steps)
+                if self.current_plan and self.current_step_index < len(self.current_plan.steps)
                 else None,
                 "completed_steps": self.completed_steps.copy(),
-                "plan_status": self.current_plan.status
-                if self.current_plan
-                else "not_started",
+                "plan_status": self.current_plan.status if self.current_plan else "not_started",
             }
 
         # If we have a plan and a current step, update the plan status
@@ -634,16 +580,11 @@ class PlanningCapability(Capability):
                 and len(self.completed_steps) >= self.min_steps_before_reflection
                 and (
                     not self.last_reflection_at
-                    or len(self.completed_steps) - self.last_reflection_at
-                    >= self.min_steps_before_reflection
+                    or len(self.completed_steps) - self.last_reflection_at >= self.min_steps_before_reflection
                 )
             ):
                 # Reflect on the plan and potentially update it if allowed
-                can_modify = (
-                    self.current_plan.can_modify
-                    if hasattr(self.current_plan, "can_modify")
-                    else True
-                )
+                can_modify = self.current_plan.can_modify if hasattr(self.current_plan, "can_modify") else True
                 if self.enable_dynamic_replanning and can_modify:
                     updated_plan = await self._reflect_and_update_plan(
                         self.current_plan,
@@ -672,9 +613,7 @@ class PlanningCapability(Capability):
                             }
                         )
                 elif not can_modify and self.enable_dynamic_replanning:
-                    logger.info(
-                        "Plan reflection skipped - plan is not modifiable (owned by coordinator)"
-                    )
+                    logger.info("Plan reflection skipped - plan is not modifiable (owned by coordinator)")
 
                 # Update last reflection time
                 self.last_reflection_at = len(self.completed_steps)
@@ -700,9 +639,7 @@ class PlanningCapability(Capability):
                 )
             else:
                 # Update current step in context
-                context["planning"]["current_step"] = self.current_plan.steps[
-                    self.current_step_index
-                ]
+                context["planning"]["current_step"] = self.current_plan.steps[self.current_step_index]
 
         # Add plan information to the result
         if isinstance(result, dict):
@@ -710,16 +647,12 @@ class PlanningCapability(Capability):
                 "current_step": self.current_step_index + 1 if self.current_plan else 0,
                 "total_steps": len(self.current_plan.steps) if self.current_plan else 0,
                 "completed_steps": len(self.completed_steps),
-                "plan_status": self.current_plan.status
-                if self.current_plan
-                else "not_started",
+                "plan_status": self.current_plan.status if self.current_plan else "not_started",
             }
 
         return result
 
-    async def should_terminate(
-        self, agent: Agent, context: Dict[str, Any], response: str
-    ) -> bool:
+    async def should_terminate(self, agent: Agent, context: Dict[str, Any], response: str) -> bool:
         """
         Determine if the agent should terminate based on plan completion.
 
@@ -737,9 +670,7 @@ class PlanningCapability(Capability):
             plan_dict = self._plan_to_dict(self.current_plan)
             current_step = None
             if self.current_step_index < len(self.current_plan.steps):
-                current_step = self._plan_step_to_dict(
-                    self.current_plan.steps[self.current_step_index]
-                )
+                current_step = self._plan_step_to_dict(self.current_plan.steps[self.current_step_index])
 
             context["planning"] = {
                 "has_plan": True,
@@ -786,9 +717,7 @@ Return your plan in the exact JSON format requested."""
 
         # Count tokens if return_usage is True
         if isinstance(plan_response, dict) and "usage" in plan_response:
-            self.agent.state.count_tokens(
-                plan_response["usage"]["total_tokens"], "planning"
-            )
+            self.agent.state.count_tokens(plan_response["usage"]["total_tokens"], "planning")
             plan_response = plan_response["content"]
 
         # Parse the plan from the response
@@ -800,9 +729,7 @@ Return your plan in the exact JSON format requested."""
             else:
                 # Create a default plan if parsing fails
                 plan = self._create_default_plan(user_input)
-                logger.warning(
-                    "Failed to parse plan from LLM response, using default plan"
-                )
+                logger.warning("Failed to parse plan from LLM response, using default plan")
         except Exception as e:
             logger.error(f"Error parsing plan: {str(e)}")
             plan = self._create_default_plan(user_input)
@@ -817,9 +744,7 @@ Return your plan in the exact JSON format requested."""
         """Create a prompt for plan generation."""
         # Get available tools and agents
         available_tools = []
-        if hasattr(self.agent, "environment") and hasattr(
-            self.agent.environment, "get_available_tools"
-        ):
+        if hasattr(self.agent, "environment") and hasattr(self.agent.environment, "get_available_tools"):
             available_tools = list(self.agent.environment.get_available_tools().keys())
 
         available_agents = ["financial_analyst", "risk_analyst", "qa_specialist"]
@@ -999,19 +924,13 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
             "created_at": datetime.now().isoformat(),
         }
 
-    def _validate_and_clean_plan(
-        self, plan: Dict[str, Any], user_input: str
-    ) -> Dict[str, Any]:
+    def _validate_and_clean_plan(self, plan: Dict[str, Any], user_input: str) -> Dict[str, Any]:
         """Validate and clean up the plan."""
         # Ensure required fields exist
         if "goal" not in plan:
             plan["goal"] = f"Analyze financial information based on: {user_input}"
 
-        if (
-            "steps" not in plan
-            or not isinstance(plan["steps"], list)
-            or not plan["steps"]
-        ):
+        if "steps" not in plan or not isinstance(plan["steps"], list) or not plan["steps"]:
             plan["steps"] = self._create_default_plan(user_input)["steps"]
 
         if "status" not in plan:
@@ -1097,9 +1016,7 @@ The plan should be detailed but concise, with no more than {self.max_plan_steps}
                     # Create a specific key based on parameters
                     if ticker and query:
                         # Shorten and clean query for key
-                        short_query = re.sub(r"[^a-zA-Z0-9]", "_", query[:20]).strip(
-                            "_"
-                        )
+                        short_query = re.sub(r"[^a-zA-Z0-9]", "_", query[:20]).strip("_")
                         step["expected_key"] = f"{ticker}_search_{short_query}"
                     elif ticker:
                         step["expected_key"] = f"{ticker}_semantic_search"
@@ -1269,9 +1186,7 @@ Return the updated plan in the exact JSON format of the original plan."""
 
         # Count tokens if return_usage is True
         if isinstance(reflection_response, dict) and "usage" in reflection_response:
-            self.agent.state.count_tokens(
-                reflection_response["usage"]["total_tokens"], "planning"
-            )
+            self.agent.state.count_tokens(reflection_response["usage"]["total_tokens"], "planning")
             reflection_response = reflection_response["content"]
 
         # Parse the updated plan from the response
@@ -1282,30 +1197,20 @@ Return the updated plan in the exact JSON format of the original plan."""
                 updated_plan_dict = json.loads(json_match.group(0))
 
                 # Validate and clean the updated plan
-                updated_plan_dict = self._validate_and_clean_plan(
-                    updated_plan_dict, original_input
-                )
+                updated_plan_dict = self._validate_and_clean_plan(updated_plan_dict, original_input)
 
                 # Preserve completed steps
                 for step in updated_plan_dict["steps"]:
                     step_id = step["step_id"]
                     # If this step was already completed, mark it as such
                     for completed_step in completed_steps:
-                        if (
-                            isinstance(completed_step, dict)
-                            and completed_step.get("step_id") == step_id
-                        ):
+                        if isinstance(completed_step, dict) and completed_step.get("step_id") == step_id:
                             step["status"] = "completed"
                             step["completed_at"] = completed_step.get("completed_at")
-                        elif (
-                            hasattr(completed_step, "step_id")
-                            and completed_step.step_id == step_id
-                        ):
+                        elif hasattr(completed_step, "step_id") and completed_step.step_id == step_id:
                             step["status"] = "completed"
                             step["completed_at"] = (
-                                completed_step.completed_at
-                                if hasattr(completed_step, "completed_at")
-                                else None
+                                completed_step.completed_at if hasattr(completed_step, "completed_at") else None
                             )
 
                 # Convert to Plan object

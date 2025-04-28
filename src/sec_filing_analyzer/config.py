@@ -40,9 +40,7 @@ class StorageConfig:
     graph_store_path: Optional[Path] = None
 
     # Vector store settings
-    vector_store_type: str = os.getenv(
-        "VECTOR_STORE_TYPE", "simple"
-    )  # simple, pinecone, weaviate, etc.
+    vector_store_type: str = os.getenv("VECTOR_STORE_TYPE", "simple")  # simple, pinecone, weaviate, etc.
     vector_store_path: Optional[Path] = None
 
     def __post_init__(self):
@@ -63,15 +61,11 @@ class AgentConfig:
     """Configuration for agent parameters."""
 
     # Agent iteration parameters
-    max_iterations: Optional[int] = (
-        3  # Legacy parameter, still used for backward compatibility
-    )
+    max_iterations: Optional[int] = 3  # Legacy parameter, still used for backward compatibility
     max_planning_iterations: int = 2
     max_execution_iterations: int = 3
     max_refinement_iterations: int = 1
-    max_iterations_effective: int = field(
-        init=False
-    )  # Computed effective max iterations
+    max_iterations_effective: int = field(init=False)  # Computed effective max iterations
 
     # Tool execution parameters
     max_tool_retries: int = 2
@@ -103,11 +97,7 @@ class AgentConfig:
             return
 
         # Otherwise, compute from phase iterations with a small buffer
-        phase_sum = (
-            self.max_planning_iterations
-            + self.max_execution_iterations
-            + self.max_refinement_iterations
-        )
+        phase_sum = self.max_planning_iterations + self.max_execution_iterations + self.max_refinement_iterations
 
         # Add a small buffer (10%) to account for potential phase transitions
         # or other edge cases, with a minimum of 1 extra iteration
@@ -124,31 +114,16 @@ class AgentConfig:
 
         return cls(
             max_iterations=max_iterations,
-            max_planning_iterations=int(
-                os.getenv("AGENT_MAX_PLANNING_ITERATIONS", "2")
-            ),
-            max_execution_iterations=int(
-                os.getenv("AGENT_MAX_EXECUTION_ITERATIONS", "3")
-            ),
-            max_refinement_iterations=int(
-                os.getenv("AGENT_MAX_REFINEMENT_ITERATIONS", "1")
-            ),
+            max_planning_iterations=int(os.getenv("AGENT_MAX_PLANNING_ITERATIONS", "2")),
+            max_execution_iterations=int(os.getenv("AGENT_MAX_EXECUTION_ITERATIONS", "3")),
+            max_refinement_iterations=int(os.getenv("AGENT_MAX_REFINEMENT_ITERATIONS", "1")),
             max_tool_retries=int(os.getenv("AGENT_MAX_TOOL_RETRIES", "2")),
             tools_per_iteration=int(os.getenv("AGENT_TOOLS_PER_ITERATION", "1")),
-            circuit_breaker_threshold=int(
-                os.getenv("AGENT_CIRCUIT_BREAKER_THRESHOLD", "3")
-            ),
-            circuit_breaker_reset_timeout=int(
-                os.getenv("AGENT_CIRCUIT_BREAKER_RESET_TIMEOUT", "300")
-            ),
+            circuit_breaker_threshold=int(os.getenv("AGENT_CIRCUIT_BREAKER_THRESHOLD", "3")),
+            circuit_breaker_reset_timeout=int(os.getenv("AGENT_CIRCUIT_BREAKER_RESET_TIMEOUT", "300")),
             max_duration_seconds=int(os.getenv("AGENT_MAX_DURATION_SECONDS", "180")),
-            enable_dynamic_termination=os.getenv(
-                "AGENT_ENABLE_DYNAMIC_TERMINATION", "false"
-            ).lower()
-            == "true",
-            min_confidence_threshold=float(
-                os.getenv("AGENT_MIN_CONFIDENCE_THRESHOLD", "0.8")
-            ),
+            enable_dynamic_termination=os.getenv("AGENT_ENABLE_DYNAMIC_TERMINATION", "false").lower() == "true",
+            min_confidence_threshold=float(os.getenv("AGENT_MIN_CONFIDENCE_THRESHOLD", "0.8")),
             llm_model=os.getenv("DEFAULT_LLM_MODEL", "gpt-4.1-nano"),
             llm_temperature=float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.7")),
             llm_max_tokens=int(os.getenv("DEFAULT_LLM_MAX_TOKENS", "4000")),
@@ -215,8 +190,7 @@ class ETLConfig:
             batch_size=int(os.getenv("BATCH_SIZE", "100")),
             rate_limit=float(os.getenv("RATE_LIMIT", "0.1")),
             process_semantic=os.getenv("PROCESS_SEMANTIC", "true").lower() == "true",
-            process_quantitative=os.getenv("PROCESS_QUANTITATIVE", "true").lower()
-            == "true",
+            process_quantitative=os.getenv("PROCESS_QUANTITATIVE", "true").lower() == "true",
             delay_between_companies=int(os.getenv("DELAY_BETWEEN_COMPANIES", "1")),
         )
 
@@ -249,8 +223,7 @@ class VectorStoreConfig:
             type=os.getenv("VECTOR_STORE_TYPE", "optimized"),
             path=Path(os.getenv("VECTOR_STORE_PATH", "data/vector_store")),
             index_type=os.getenv("VECTOR_INDEX_TYPE", "hnsw"),
-            use_gpu=os.getenv("VECTOR_USE_GPU", "true").lower()
-            == "true",  # Default to using GPU
+            use_gpu=os.getenv("VECTOR_USE_GPU", "true").lower() == "true",  # Default to using GPU
             hnsw_m=int(os.getenv("VECTOR_HNSW_M", "32")),
             hnsw_ef_construction=int(os.getenv("VECTOR_HNSW_EF_CONSTRUCTION", "400")),
             hnsw_ef_search=int(os.getenv("VECTOR_HNSW_EF_SEARCH", "200")),
@@ -288,22 +261,15 @@ class StreamlitConfig:
             port=int(os.getenv("STREAMLIT_PORT", "8501")),
             headless=os.getenv("STREAMLIT_HEADLESS", "true").lower() == "true",
             enable_cors=os.getenv("STREAMLIT_ENABLE_CORS", "true").lower() == "true",
-            enable_xsrf_protection=os.getenv(
-                "STREAMLIT_ENABLE_XSRF_PROTECTION", "false"
-            ).lower()
-            == "true",
+            enable_xsrf_protection=os.getenv("STREAMLIT_ENABLE_XSRF_PROTECTION", "false").lower() == "true",
             max_upload_size=int(os.getenv("STREAMLIT_MAX_UPLOAD_SIZE", "200")),
             base_url_path=os.getenv("STREAMLIT_BASE_URL_PATH", ""),
             theme_base=os.getenv("STREAMLIT_THEME_BASE", "light"),
             hide_top_bar=os.getenv("STREAMLIT_HIDE_TOP_BAR", "false").lower() == "true",
-            show_error_details=os.getenv("STREAMLIT_SHOW_ERROR_DETAILS", "true").lower()
-            == "true",
+            show_error_details=os.getenv("STREAMLIT_SHOW_ERROR_DETAILS", "true").lower() == "true",
             toolbar_mode=os.getenv("STREAMLIT_TOOLBAR_MODE", "auto"),
             caching=os.getenv("STREAMLIT_CACHING", "false").lower() == "true",
-            gather_usage_stats=os.getenv(
-                "STREAMLIT_GATHER_USAGE_STATS", "false"
-            ).lower()
-            == "true",
+            gather_usage_stats=os.getenv("STREAMLIT_GATHER_USAGE_STATS", "false").lower() == "true",
         )
 
 
@@ -335,9 +301,7 @@ class ConfigProvider:
     _schema_dir: Optional[Path] = None
 
     @classmethod
-    def initialize(
-        cls, config_path: Optional[str] = None, schema_dir: Optional[str] = None
-    ) -> None:
+    def initialize(cls, config_path: Optional[str] = None, schema_dir: Optional[str] = None) -> None:
         """Initialize the configuration provider."""
         # Set external config path if provided
         if config_path:
@@ -377,9 +341,7 @@ class ConfigProvider:
 
             cls._agent_specific_configs = AGENT_CONFIGS
         except ImportError:
-            logger.warning(
-                "Could not import agent-specific configurations from llm_config.py"
-            )
+            logger.warning("Could not import agent-specific configurations from llm_config.py")
 
         # Load tool schemas
         cls._load_tool_schemas()
@@ -504,13 +466,9 @@ class ConfigProvider:
                             json.dump(schema, f, indent=2)
                         logger.debug(f"Saved schema for tool: {tool_name}")
                     except Exception as e:
-                        logger.warning(
-                            f"Error saving schema to {schema_file}: {str(e)}"
-                        )
+                        logger.warning(f"Error saving schema to {schema_file}: {str(e)}")
             except ImportError:
-                logger.warning(
-                    "Could not import TOOL_PARAMETER_SCHEMAS from tool_parameter_helper.py"
-                )
+                logger.warning("Could not import TOOL_PARAMETER_SCHEMAS from tool_parameter_helper.py")
 
         cls._tool_schemas = schemas
 

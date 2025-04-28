@@ -108,22 +108,16 @@ class LoggingCapability(Capability):
         self.agent_logger = self._setup_logger(agent_type)
 
         # Log initialization
-        self.agent_logger.info(
-            f"Initializing {agent_type} with session ID: {self.session_id}"
-        )
+        self.agent_logger.info(f"Initializing {agent_type} with session ID: {self.session_id}")
 
         # Log goals
         if hasattr(agent, "goals") and agent.goals:
-            goals_str = ", ".join(
-                [f"{goal.name}: {goal.description}" for goal in agent.goals]
-            )
+            goals_str = ", ".join([f"{goal.name}: {goal.description}" for goal in agent.goals])
             self.agent_logger.info(f"Agent goals: {goals_str}")
 
         # Log capabilities
         if hasattr(agent, "capabilities") and agent.capabilities:
-            capabilities_str = ", ".join(
-                [cap.__class__.__name__ for cap in agent.capabilities]
-            )
+            capabilities_str = ", ".join([cap.__class__.__name__ for cap in agent.capabilities])
             self.agent_logger.info(f"Agent capabilities: {capabilities_str}")
 
         # Add logging info to context
@@ -148,9 +142,7 @@ class LoggingCapability(Capability):
             Whether to continue the loop
         """
         # Log iteration start
-        self.agent_logger.info(
-            f"Starting iteration {agent.state.current_iteration + 1}/{agent.max_iterations}"
-        )
+        self.agent_logger.info(f"Starting iteration {agent.state.current_iteration + 1}/{agent.max_iterations}")
 
         # Log memory if enabled
         if self.include_memory and hasattr(agent, "state"):
@@ -162,9 +154,7 @@ class LoggingCapability(Capability):
 
         return True
 
-    async def process_prompt(
-        self, agent: Agent, context: Dict[str, Any], prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the prompt before it's sent to the LLM.
 
@@ -182,9 +172,7 @@ class LoggingCapability(Capability):
 
         return prompt
 
-    async def process_response(
-        self, agent: Agent, context: Dict[str, Any], response: str
-    ) -> str:
+    async def process_response(self, agent: Agent, context: Dict[str, Any], response: str) -> str:
         """
         Process the response from the LLM.
 
@@ -202,9 +190,7 @@ class LoggingCapability(Capability):
 
         return response
 
-    async def process_action(
-        self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def process_action(self, agent: Agent, context: Dict[str, Any], action: Dict[str, Any]) -> Dict[str, Any]:
         """
         Process an action before it's executed.
 
@@ -262,9 +248,7 @@ class LoggingCapability(Capability):
             context: Current context
         """
         # Log iteration end
-        self.agent_logger.info(
-            f"Completed iteration {agent.state.current_iteration + 1}"
-        )
+        self.agent_logger.info(f"Completed iteration {agent.state.current_iteration + 1}")
 
         # Log memory changes if enabled
         if self.include_memory and hasattr(agent, "state"):
@@ -375,14 +359,10 @@ class LoggingCapability(Capability):
         self.agent_logger.debug(f"{prefix} memory size: {len(memory)} items")
 
         # Log memory items
-        for i, item in enumerate(
-            memory[-3:]
-        ):  # Log only the last 3 items to avoid verbosity
+        for i, item in enumerate(memory[-3:]):  # Log only the last 3 items to avoid verbosity
             # Format memory item
             formatted_item = self._format_memory_item(item)
-            self.agent_logger.debug(
-                f"Memory item {len(memory) - 3 + i + 1}: {formatted_item}"
-            )
+            self.agent_logger.debug(f"Memory item {len(memory) - 3 + i + 1}: {formatted_item}")
 
         # Log to JSON file
         if hasattr(self, "json_log_file"):

@@ -96,9 +96,7 @@ with tab1:
     st.subheader("Sample Data")
 
     # Pagination
-    rows_per_page = st.slider(
-        "Rows per page", min_value=5, max_value=100, value=10, step=5
-    )
+    rows_per_page = st.slider("Rows per page", min_value=5, max_value=100, value=10, step=5)
     page = st.number_input(
         "Page",
         min_value=1,
@@ -111,9 +109,7 @@ with tab1:
     # Get sample data
     @st.cache_data
     def get_sample_data(conn, table, limit, offset):
-        data = conn.execute(
-            f"SELECT * FROM {table} LIMIT {limit} OFFSET {offset}"
-        ).fetchdf()
+        data = conn.execute(f"SELECT * FROM {table} LIMIT {limit} OFFSET {offset}").fetchdf()
         return data
 
     sample_data = get_sample_data(conn, selected_table, rows_per_page, offset)
@@ -222,9 +218,7 @@ with tab4:
         # Get available tickers
         @st.cache_data
         def get_tickers(conn):
-            tickers = conn.execute(
-                "SELECT DISTINCT ticker FROM companies ORDER BY ticker"
-            ).fetchall()
+            tickers = conn.execute("SELECT DISTINCT ticker FROM companies ORDER BY ticker").fetchall()
             return [ticker[0] for ticker in tickers]
 
         tickers = get_tickers(conn)
@@ -282,9 +276,7 @@ with tab4:
 
                 if not viz_data.empty:
                     # Choose visualization type
-                    viz_type = st.selectbox(
-                        "Visualization Type", ["Line Chart", "Bar Chart"], index=0
-                    )
+                    viz_type = st.selectbox("Visualization Type", ["Line Chart", "Bar Chart"], index=0)
 
                     if viz_type == "Line Chart":
                         fig = px.line(

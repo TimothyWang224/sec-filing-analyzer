@@ -100,9 +100,7 @@ class CoordinatedSearch:
                 filing_id = result["id"]
 
                 # Get related documents from graph with same company filter
-                related_docs = self.graph_store.get_filing_relationships(
-                    filing_id=filing_id, companies=companies
-                )
+                related_docs = self.graph_store.get_filing_relationships(filing_id=filing_id, companies=companies)
 
                 # Add to enhanced results
                 enhanced_results.append({**result, "related_documents": related_docs})
@@ -147,13 +145,9 @@ class CoordinatedSearch:
         Returns:
             List of filing dictionaries
         """
-        return self.graph_store.get_filings_by_companies(
-            companies=companies, filing_types=filing_types
-        )
+        return self.graph_store.get_filings_by_companies(companies=companies, filing_types=filing_types)
 
-    def search_within_filing(
-        self, filing_id: str, query_text: str, top_k: int = 5
-    ) -> Dict[str, Any]:
+    def search_within_filing(self, filing_id: str, query_text: str, top_k: int = 5) -> Dict[str, Any]:
         """Search within a specific filing.
 
         Args:
@@ -169,9 +163,7 @@ class CoordinatedSearch:
         try:
             # Try to get company information for the filing
             if self.graph_store.use_neo4j:
-                with self.graph_store.driver.session(
-                    database=self.graph_store.database
-                ) as session:
+                with self.graph_store.driver.session(database=self.graph_store.database) as session:
                     query = """
                     MATCH (c:Company)-[:FILED]->(f:Filing {accession_number: $filing_id})
                     RETURN c.ticker as ticker, f.filing_type as filing_type

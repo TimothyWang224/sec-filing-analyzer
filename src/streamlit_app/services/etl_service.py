@@ -60,16 +60,13 @@ class ETLJob:
         return {
             "id": self.job_id,
             "status": self.status,
-            "companies": ", ".join(self.tickers[:3])
-            + ("..." if len(self.tickers) > 3 else ""),
+            "companies": ", ".join(self.tickers[:3]) + ("..." if len(self.tickers) > 3 else ""),
             "filing_types": ", ".join(self.filing_types),
             "date_range": f"{self.start_date} to {self.end_date}",
             "filings": self.estimated_filings,
             "force_reprocessing": self.force_reprocessing,
             "submitted": self.submitted_at.strftime("%Y-%m-%d %H:%M"),
-            "completed": self.completed_at.strftime("%Y-%m-%d %H:%M")
-            if self.completed_at
-            else None,
+            "completed": self.completed_at.strftime("%Y-%m-%d %H:%M") if self.completed_at else None,
             "progress": self.progress,
         }
 
@@ -118,9 +115,7 @@ class ETLService:
         try:
             # Initialize edgar identity first
             if not initialize_edgar_identity():
-                logger.error(
-                    "Failed to initialize edgar identity. ETL pipeline will not work properly."
-                )
+                logger.error("Failed to initialize edgar identity. ETL pipeline will not work properly.")
                 # Continue anyway to allow other functionality to work
 
             # Initialize configuration
@@ -167,31 +162,23 @@ class ETLService:
 
             logger.info(f"ETL config db_path: {etl_config.db_path}")
             logger.info(f"ETL config db_read_only: {etl_config.db_read_only}")
-            logger.info(
-                f"Storage config vector_store_path: {storage_config.vector_store_path}"
-            )
+            logger.info(f"Storage config vector_store_path: {storage_config.vector_store_path}")
             logger.info(f"Storage config filings_dir: {etl_config.filings_dir}")
 
             # Check if we already have a read-write connection to the database
             logger.info("Checking for existing database connections")
             from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
-            self.duckdb_manager = (
-                duckdb_manager  # Store reference to duckdb_manager for later use
-            )
+            self.duckdb_manager = duckdb_manager  # Store reference to duckdb_manager for later use
             read_write_key = f"{etl_config.db_path}:False"
             read_only = etl_config.db_read_only
 
-            logger.info(
-                f"Active connections: {list(duckdb_manager._active_connections.keys())}"
-            )
+            logger.info(f"Active connections: {list(duckdb_manager._active_connections.keys())}")
 
             # If we're trying to open in read-only mode but already have a read-write connection,
             # we need to use read-write mode to avoid connection conflicts
             if read_only and read_write_key in duckdb_manager._active_connections:
-                logger.info(
-                    "Using read-write mode for sync manager because a read-write connection already exists"
-                )
+                logger.info("Using read-write mode for sync manager because a read-write connection already exists")
                 read_only = False
 
             # Make sure the database directory exists
@@ -206,9 +193,7 @@ class ETLService:
             logger.info(f"Database file exists: {db_exists}")
 
             # Force close any existing connections to the database
-            logger.info(
-                f"Forcing close of all connections to {etl_config.db_path} before initializing sync manager"
-            )
+            logger.info(f"Forcing close of all connections to {etl_config.db_path} before initializing sync manager")
             duckdb_manager.force_close_all_connections(etl_config.db_path)
 
             # Initialize enhanced sync manager
@@ -235,20 +220,13 @@ class ETLService:
 
     def _close_write_connection(self) -> None:
         """Close the write connection to the database."""
-        if (
-            hasattr(self, "duckdb_manager")
-            and self.duckdb_manager
-            and hasattr(self, "db_path")
-            and self.db_path
-        ):
+        if hasattr(self, "duckdb_manager") and self.duckdb_manager and hasattr(self, "db_path") and self.db_path:
             try:
                 # Close the read-write connection to the database
                 self.duckdb_manager.close_connection(self.db_path, read_only=False)
                 logger.info(f"Closed read-write connection to {self.db_path}")
             except Exception as e:
-                logger.error(
-                    f"Error closing read-write connection to {self.db_path}: {e}"
-                )
+                logger.error(f"Error closing read-write connection to {self.db_path}: {e}")
 
     def create_job(
         self,
@@ -292,15 +270,11 @@ class ETLService:
         self.jobs[job_id] = job
 
         # Log job creation
-        job.add_log(
-            f"Created ETL job for {len(tickers)} companies, {len(filing_types)} filing types"
-        )
+        job.add_log(f"Created ETL job for {len(tickers)} companies, {len(filing_types)} filing types")
 
         return job_id
 
-    def start_job(
-        self, job_id: str, log_callback: Optional[Callable[[str], None]] = None
-    ) -> bool:
+    def start_job(self, job_id: str, log_callback: Optional[Callable[[str], None]] = None) -> bool:
         """
         Start an ETL job.
 
@@ -348,9 +322,7 @@ class ETLService:
 
         return True
 
-    def _run_job(
-        self, job: ETLJob, log_callback: Optional[Callable[[str], None]] = None
-    ) -> None:
+    def _run_job(self, job: ETLJob, log_callback: Optional[Callable[[str], None]] = None) -> None:
         """
         Run an ETL job.
 
@@ -382,8 +354,7 @@ class ETLService:
                     # Check if the pipeline supports force_download parameter
                     if (
                         hasattr(self.pipeline, "process_company")
-                        and "force_download"
-                        in inspect.signature(self.pipeline.process_company).parameters
+                        and "force_download" in inspect.signature(self.pipeline.process_company).parameters
                     ):
                         company_result = self.pipeline.process_company(
                             ticker=ticker,
@@ -406,20 +377,14 @@ class ETLService:
 
                     # Log company processing result
                     if "error" in company_result:
-                        job.add_log(
-                            f"Error processing {ticker}: {company_result['error']}"
-                        )
+                        job.add_log(f"Error processing {ticker}: {company_result['error']}")
                         if log_callback:
-                            log_callback(
-                                f"Error processing {ticker}: {company_result['error']}"
-                            )
+                            log_callback(f"Error processing {ticker}: {company_result['error']}")
                     else:
                         num_filings = len(company_result.get("results", []))
                         job.add_log(f"Processed {num_filings} filings for {ticker}")
                         if log_callback:
-                            log_callback(
-                                f"Processed {num_filings} filings for {ticker}"
-                            )
+                            log_callback(f"Processed {num_filings} filings for {ticker}")
                 except Exception as e:
                     # Log error
                     error_msg = f"Error processing {ticker}: {str(e)}"
@@ -448,9 +413,7 @@ class ETLService:
                             f"Storage synchronization completed successfully: {sync_results['total_filings']} total filings"
                         )
                 elif sync_results.get("overall_status") == "partial_success":
-                    failed_components = ", ".join(
-                        sync_results.get("failed_components", [])
-                    )
+                    failed_components = ", ".join(sync_results.get("failed_components", []))
                     job.add_log(
                         f"Storage synchronization partially completed: {sync_results['total_filings']} total filings. Failed components: {failed_components}"
                     )
@@ -458,23 +421,15 @@ class ETLService:
                         log_callback(
                             f"Storage synchronization partially completed. Failed components: {failed_components}"
                         )
-                        log_callback(
-                            "The successful parts have been synchronized and are available in the inventory."
-                        )
+                        log_callback("The successful parts have been synchronized and are available in the inventory.")
                 else:
                     job.add_log("Storage synchronization failed")
                     if log_callback:
-                        log_callback(
-                            "Storage synchronization failed, but processed filings are still available."
-                        )
+                        log_callback("Storage synchronization failed, but processed filings are still available.")
             else:
-                job.add_log(
-                    "Storage sync manager not initialized, skipping synchronization"
-                )
+                job.add_log("Storage sync manager not initialized, skipping synchronization")
                 if log_callback:
-                    log_callback(
-                        "Storage sync manager not initialized, skipping synchronization"
-                    )
+                    log_callback("Storage sync manager not initialized, skipping synchronization")
 
             # Set flag that index needs rebuilding
             from src.streamlit_app.utils import app_state
@@ -583,9 +538,7 @@ class ETLService:
 
             # Check if initialization was successful
             if self.sync_manager:
-                logger.info(
-                    "Successfully forced initialization of storage sync manager"
-                )
+                logger.info("Successfully forced initialization of storage sync manager")
                 return True
             else:
                 logger.error("Failed to force initialize storage sync manager")
@@ -608,9 +561,7 @@ class ETLService:
 
         # Check if sync manager is initialized
         if not self.sync_manager:
-            logger.warning(
-                "Storage sync manager not initialized, attempting to initialize..."
-            )
+            logger.warning("Storage sync manager not initialized, attempting to initialize...")
             if not self.force_initialize_sync_manager():
                 logger.error("Failed to initialize storage sync manager")
                 return {"error": "Storage sync manager not initialized"}
@@ -634,9 +585,7 @@ class ETLService:
                 results["message"] = (
                     f"Storage synchronization partially completed. Failed components: {failed_components}"
                 )
-                results["warning"] = (
-                    "Some components failed to synchronize, but the successful parts are available."
-                )
+                results["warning"] = "Some components failed to synchronize, but the successful parts are available."
             else:
                 results["message"] = "Storage synchronization failed."
                 results["error"] = "Failed to synchronize storage systems."

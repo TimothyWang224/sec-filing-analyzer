@@ -67,9 +67,7 @@ class WorkflowLogger:
             self.logger.removeHandler(handler)
 
         # Create formatter
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
         # Add console handler
         console_handler = logging.StreamHandler()
@@ -190,9 +188,7 @@ class WorkflowLogger:
         """Log the start of a workflow."""
         self.info(f"Workflow started: {description or 'No description'}")
 
-    def log_workflow_end(
-        self, status: str = "completed", details: Optional[str] = None
-    ):
+    def log_workflow_end(self, status: str = "completed", details: Optional[str] = None):
         """Log the end of a workflow."""
         self.info(f"Workflow {status}: {details or 'No details'}")
 
@@ -229,10 +225,7 @@ class Workflow:
             description: Description of the workflow
         """
         # Generate workflow ID if not provided
-        self.workflow_id = (
-            workflow_id
-            or f"{self.__class__.__name__}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        )
+        self.workflow_id = workflow_id or f"{self.__class__.__name__}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.description = description or self.__class__.__name__
 
         # Initialize logger

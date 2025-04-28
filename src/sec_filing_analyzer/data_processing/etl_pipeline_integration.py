@@ -21,9 +21,7 @@ class FinancialDataProcessor:
     Processes financial data from SEC filings and integrates with the ETL pipeline.
     """
 
-    def __init__(
-        self, xbrl_cache_dir: Optional[str] = None, db_path: Optional[str] = None
-    ):
+    def __init__(self, xbrl_cache_dir: Optional[str] = None, db_path: Optional[str] = None):
         """Initialize the financial data processor.
 
         Args:
@@ -72,13 +70,9 @@ class FinancialDataProcessor:
             success = self.financial_store.store_xbrl_data(xbrl_data)
 
             if success:
-                logger.info(
-                    f"Successfully processed financial data for filing {filing_id}"
-                )
+                logger.info(f"Successfully processed financial data for filing {filing_id}")
             else:
-                logger.warning(
-                    f"Failed to process financial data for filing {filing_id}"
-                )
+                logger.warning(f"Failed to process financial data for filing {filing_id}")
 
             return success
         except Exception as e:

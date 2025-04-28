@@ -21,9 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from sec_filing_analyzer.storage.financial_data_store import FinancialDataStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -50,9 +48,7 @@ def show_database_stats(financial_store: FinancialDataStore) -> None:
     for filing_type in stats.get("filing_types", []):
         print(f"  {filing_type}")
 
-    print(
-        f"\nYear Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}"
-    )
+    print(f"\nYear Range: {stats.get('min_year', 'N/A')} - {stats.get('max_year', 'N/A')}")
 
 
 def show_company_metrics(
@@ -324,27 +320,15 @@ def main():
     )
     parser.add_argument("--stats", action="store_true", help="Show database statistics")
     parser.add_argument("--ticker", type=str, help="Company ticker symbol")
-    parser.add_argument(
-        "--metrics", type=str, help="Comma-separated list of metrics to show"
-    )
-    parser.add_argument(
-        "--ratios", type=str, help="Comma-separated list of ratios to show"
-    )
-    parser.add_argument(
-        "--compare", type=str, help="Comma-separated list of tickers to compare"
-    )
+    parser.add_argument("--metrics", type=str, help="Comma-separated list of metrics to show")
+    parser.add_argument("--ratios", type=str, help="Comma-separated list of ratios to show")
+    parser.add_argument("--compare", type=str, help="Comma-separated list of tickers to compare")
     parser.add_argument("--metric", type=str, help="Metric to compare")
-    parser.add_argument(
-        "--filing-type", type=str, help="Filing type (10-K, 10-Q, etc.)"
-    )
+    parser.add_argument("--filing-type", type=str, help="Filing type (10-K, 10-Q, etc.)")
     parser.add_argument("--start-year", type=int, help="Start year (inclusive)")
     parser.add_argument("--end-year", type=int, help="End year (inclusive)")
-    parser.add_argument(
-        "--quarterly", action="store_true", help="Include quarterly data"
-    )
-    parser.add_argument(
-        "--filings", action="store_true", help="Show filing information"
-    )
+    parser.add_argument("--quarterly", action="store_true", help="Include quarterly data")
+    parser.add_argument("--filings", action="store_true", help="Show filing information")
     parser.add_argument("--query", type=str, help="Run a custom SQL query")
 
     args = parser.parse_args()

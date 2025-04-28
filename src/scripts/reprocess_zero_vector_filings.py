@@ -30,9 +30,7 @@ from sec_filing_analyzer.utils.logging_utils import (
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -110,9 +108,7 @@ def find_zero_vector_filings() -> List[Dict[str, Any]]:
     return zero_vector_filings
 
 
-def reprocess_filing(
-    filing_info: Dict[str, Any], pipeline: ParallelSECFilingETLPipeline
-) -> bool:
+def reprocess_filing(filing_info: Dict[str, Any], pipeline: ParallelSECFilingETLPipeline) -> bool:
     """Reprocess a filing with zero vectors.
 
     Args:
@@ -123,9 +119,7 @@ def reprocess_filing(
         True if reprocessing was successful, False otherwise
     """
     try:
-        logger.info(
-            f"Reprocessing filing {filing_info['filing_id']} for {filing_info['company']}"
-        )
+        logger.info(f"Reprocessing filing {filing_info['filing_id']} for {filing_info['company']}")
 
         # Process the filing with improved settings
         processed_data = pipeline.process_filing_data(filing_info["metadata"])
@@ -137,14 +131,10 @@ def reprocess_filing(
         # Check if the embedding is still a zero vector
         embedding = processed_data.get("embedding", [])
         if embedding and is_zero_vector(embedding):
-            logger.warning(
-                f"Embedding is still a zero vector after reprocessing for {filing_info['filing_id']}"
-            )
+            logger.warning(f"Embedding is still a zero vector after reprocessing for {filing_info['filing_id']}")
             return False
 
-        logger.info(
-            f"Successfully reprocessed filing {filing_info['filing_id']} with non-zero embeddings"
-        )
+        logger.info(f"Successfully reprocessed filing {filing_info['filing_id']} with non-zero embeddings")
 
         # Check embedding metadata
         embedding_metadata = processed_data.get("embedding_metadata", {})
@@ -164,9 +154,7 @@ def reprocess_filing(
         return False
 
 
-def main(
-    max_filings: Optional[int] = None, batch_size: int = 20, rate_limit: float = 0.2
-):
+def main(max_filings: Optional[int] = None, batch_size: int = 20, rate_limit: float = 0.2):
     """Main function to reprocess filings with zero vectors.
 
     Args:
@@ -229,12 +217,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Reprocess filings with zero vectors")
-    parser.add_argument(
-        "--max", type=int, default=None, help="Maximum number of filings to reprocess"
-    )
-    parser.add_argument(
-        "--batch-size", type=int, default=20, help="Batch size for embedding generation"
-    )
+    parser.add_argument("--max", type=int, default=None, help="Maximum number of filings to reprocess")
+    parser.add_argument("--batch-size", type=int, default=20, help="Batch size for embedding generation")
     parser.add_argument(
         "--rate-limit",
         type=float,

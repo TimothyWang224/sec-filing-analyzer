@@ -25,9 +25,7 @@ class SECAnalysisCapability(Capability):
         self.agent = agent
         self.context = context
 
-    async def process_prompt(
-        self, agent: Agent, context: Dict[str, Any], prompt: str
-    ) -> str:
+    async def process_prompt(self, agent: Agent, context: Dict[str, Any], prompt: str) -> str:
         """
         Process the input prompt to identify SEC filing analysis needs.
 
@@ -84,9 +82,7 @@ Format your response as a clear, structured prompt that will guide the analysis.
 
 Format your analysis in a clear, structured way."""
 
-        analysis = await agent.llm.generate(
-            prompt=str(response), system_prompt=system_prompt, temperature=0.7
-        )
+        analysis = await agent.llm.generate(prompt=str(response), system_prompt=system_prompt, temperature=0.7)
 
         return {
             **response,
@@ -136,9 +132,7 @@ Format your analysis in a clear, structured way."""
 
 Format your response as a structured action plan."""
 
-        enhanced_action = await agent.llm.generate(
-            prompt=str(action), system_prompt=system_prompt, temperature=0.3
-        )
+        enhanced_action = await agent.llm.generate(prompt=str(action), system_prompt=system_prompt, temperature=0.3)
 
         return {
             **action,
@@ -180,9 +174,7 @@ Format your response as a structured action plan."""
 
 Format your analysis in a clear, structured way."""
 
-        analysis = await agent.llm.generate(
-            prompt=str(result), system_prompt=system_prompt, temperature=0.7
-        )
+        analysis = await agent.llm.generate(prompt=str(result), system_prompt=system_prompt, temperature=0.7)
 
         return {
             **result,

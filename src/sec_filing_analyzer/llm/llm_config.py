@@ -261,9 +261,7 @@ class LLMConfigFactory:
         return all(field in config for field in required_fields)
 
     @staticmethod
-    def get_recommended_config(
-        agent_type: str, task_complexity: str = "medium"
-    ) -> Dict[str, Any]:
+    def get_recommended_config(agent_type: str, task_complexity: str = "medium") -> Dict[str, Any]:
         """
         Get a recommended configuration based on agent type and task complexity.
 

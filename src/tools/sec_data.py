@@ -75,9 +75,7 @@ class SECDataTool(Tool):
         """Initialize the SEC data tool."""
         super().__init__()
 
-    async def _execute_abstract(
-        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    async def _execute_abstract(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Execute the SEC data retrieval tool.
 
@@ -175,9 +173,7 @@ class SECDataTool(Tool):
                 }
 
                 # Create a custom result with additional fields
-                result = self.format_success_response(
-                    query_type=query_type, parameters=parameters, results=mock_data
-                )
+                result = self.format_success_response(query_type=query_type, parameters=parameters, results=mock_data)
 
                 # Add additional fields
                 result["ticker"] = ticker
@@ -204,9 +200,7 @@ class SECDataTool(Tool):
                 error_message=f"Unexpected error: {str(e)}",
             )
 
-    def validate_args(
-        self, query_type: str, parameters: Optional[Dict[str, Any]] = None
-    ) -> bool:
+    def validate_args(self, query_type: str, parameters: Optional[Dict[str, Any]] = None) -> bool:
         """
         Validate the tool arguments.
 
@@ -220,9 +214,7 @@ class SECDataTool(Tool):
         try:
             # Validate query type
             if query_type not in SUPPORTED_QUERIES:
-                logger.error(
-                    f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}"
-                )
+                logger.error(f"Invalid query_type: must be one of {list(SUPPORTED_QUERIES.keys())}")
                 return False
 
             # Validate parameters using the appropriate model

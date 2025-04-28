@@ -18,9 +18,7 @@ from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -48,9 +46,7 @@ def test_nvda_2023_filings():
     # Check for required environment variables
     edgar_identity = os.getenv("EDGAR_IDENTITY")
     if not edgar_identity:
-        logger.error(
-            "EDGAR_IDENTITY environment variable not set. Please set it in your .env file."
-        )
+        logger.error("EDGAR_IDENTITY environment variable not set. Please set it in your .env file.")
         return
 
     logger.info(f"Using EDGAR identity: {edgar_identity}")
@@ -66,9 +62,7 @@ def test_nvda_2023_filings():
     )
 
     vector_store = LlamaIndexVectorStore(store_dir=STORAGE_CONFIG["vector_store_path"])
-    filing_processor = FilingProcessor(
-        graph_store=graph_store, vector_store=vector_store
-    )
+    filing_processor = FilingProcessor(graph_store=graph_store, vector_store=vector_store)
     file_storage = FileStorage(base_dir=ETLConfig().filings_dir)
 
     # Initialize pipeline

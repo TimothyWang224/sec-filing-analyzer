@@ -41,9 +41,7 @@ class EdgarXBRLToDuckDBExtractor:
             batch_size: Size of batches for bulk operations
             read_only: Whether to open the database in read-only mode
         """
-        self.db = OptimizedDuckDBStore(
-            db_path=db_path, batch_size=batch_size, read_only=read_only
-        )
+        self.db = OptimizedDuckDBStore(db_path=db_path, batch_size=batch_size, read_only=read_only)
         logger.info(
             f"Initialized Edgar XBRL to DuckDB extractor with database at {self.db.db_path} (read_only={read_only})"
         )
@@ -119,9 +117,7 @@ class EdgarXBRLToDuckDBExtractor:
             financials = Financials.extract(filing)
 
             if not financials:
-                logger.warning(
-                    f"Could not extract financials for {ticker} {accession_number}"
-                )
+                logger.warning(f"Could not extract financials for {ticker} {accession_number}")
                 return {
                     "status": "success",
                     "message": "Filing processed but could not extract financials",
@@ -139,9 +135,7 @@ class EdgarXBRLToDuckDBExtractor:
                 self.db.update_filing(filing_data)
 
             # Process financial statements
-            self._process_financial_statements(
-                financials, filing_id, ticker, fiscal_info
-            )
+            self._process_financial_statements(financials, filing_id, ticker, fiscal_info)
 
             # Process US-GAAP facts
             self._process_us_gaap_facts(xbrl_data, filing_id, ticker, fiscal_info)
@@ -238,21 +232,15 @@ class EdgarXBRLToDuckDBExtractor:
 
             # Process balance sheet
             if balance_sheet:
-                self._process_statement(
-                    balance_sheet, "balance_sheet", filing_id, ticker, fiscal_info
-                )
+                self._process_statement(balance_sheet, "balance_sheet", filing_id, ticker, fiscal_info)
 
             # Process income statement
             if income_statement:
-                self._process_statement(
-                    income_statement, "income_statement", filing_id, ticker, fiscal_info
-                )
+                self._process_statement(income_statement, "income_statement", filing_id, ticker, fiscal_info)
 
             # Process cash flow statement
             if cash_flow:
-                self._process_statement(
-                    cash_flow, "cash_flow", filing_id, ticker, fiscal_info
-                )
+                self._process_statement(cash_flow, "cash_flow", filing_id, ticker, fiscal_info)
 
         except Exception as e:
             logger.warning(f"Error processing financial statements: {e}")
@@ -304,9 +292,7 @@ class EdgarXBRLToDuckDBExtractor:
                                     continue
 
                                 # Generate a unique ID for the fact
-                                fact_id = self._generate_id(
-                                    f"{filing_id}_{concept}_{col}"
-                                )
+                                fact_id = self._generate_id(f"{filing_id}_{concept}_{col}")
 
                                 # Parse the period information
                                 period_info = self._parse_period_info(col)
@@ -319,9 +305,7 @@ class EdgarXBRLToDuckDBExtractor:
                                     "metric_name": label,
                                     "value": value,
                                     "unit": "USD",  # Assuming USD for financial statements
-                                    "period_type": period_info.get(
-                                        "period_type", "duration"
-                                    ),
+                                    "period_type": period_info.get("period_type", "duration"),
                                     "start_date": period_info.get("start_date"),
                                     "end_date": period_info.get("end_date"),
                                     "segment": statement_type,
@@ -336,9 +320,7 @@ class EdgarXBRLToDuckDBExtractor:
                                         "ticker": ticker,
                                         "metric_name": label,
                                         "fiscal_year": fiscal_info.get("fiscal_year"),
-                                        "fiscal_quarter": fiscal_info.get(
-                                            "fiscal_quarter"
-                                        ),
+                                        "fiscal_quarter": fiscal_info.get("fiscal_quarter"),
                                         "value": value,
                                         "unit": "USD",
                                         "filing_id": filing_id,
@@ -353,9 +335,7 @@ class EdgarXBRLToDuckDBExtractor:
                 if metrics:
                     self.db.store_time_series_metrics_batch(metrics)
 
-                logger.info(
-                    f"Processed {statement_type} with {len(facts)} facts and {len(metrics)} metrics"
-                )
+                logger.info(f"Processed {statement_type} with {len(facts)} facts and {len(metrics)} metrics")
 
         except Exception as e:
             logger.warning(f"Error processing {statement_type}: {e}")
@@ -407,9 +387,7 @@ class EdgarXBRLToDuckDBExtractor:
                     continue
 
                 # Generate a unique ID for the fact
-                fact_id = self._generate_id(
-                    f"{filing_id}_{concept}_{row.get('context_id')}"
-                )
+                fact_id = self._generate_id(f"{filing_id}_{concept}_{row.get('context_id')}")
 
                 # Create fact entry
                 fact = {
@@ -449,9 +427,7 @@ class EdgarXBRLToDuckDBExtractor:
             if metrics:
                 self.db.store_time_series_metrics_batch(metrics)
 
-            logger.info(
-                f"Processed {len(facts)} US-GAAP facts and {len(metrics)} metrics"
-            )
+            logger.info(f"Processed {len(facts)} US-GAAP facts and {len(metrics)} metrics")
 
         except Exception as e:
             logger.warning(f"Error processing US-GAAP facts: {e}")

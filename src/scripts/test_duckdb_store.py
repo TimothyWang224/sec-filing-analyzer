@@ -18,9 +18,7 @@ from sec_filing_analyzer.data_processing.simplified_xbrl_extractor import (
 from sec_filing_analyzer.storage.duckdb_financial_store import DuckDBFinancialStore
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -128,9 +126,7 @@ def test_duckdb_store():
     print(f"Financial Ratios: {stats.get('ratio_count', 0)}")
 
     # Get company metrics
-    metrics_df = store.get_company_metrics(
-        ticker="AAPL", metrics=["revenue", "net_income", "total_assets"]
-    )
+    metrics_df = store.get_company_metrics(ticker="AAPL", metrics=["revenue", "net_income", "total_assets"])
 
     print("\n=== Company Metrics ===")
     print(metrics_df)
@@ -159,9 +155,7 @@ def test_with_extracted_data(ticker: str, accession_number: str):
     filing_id = f"{ticker}_{accession_number.replace('-', '_')}"
 
     # Extract financials
-    financials = extractor.extract_financials(
-        ticker=ticker, filing_id=filing_id, accession_number=accession_number
-    )
+    financials = extractor.extract_financials(ticker=ticker, filing_id=filing_id, accession_number=accession_number)
 
     # Check for errors
     if "error" in financials:
@@ -172,9 +166,7 @@ def test_with_extracted_data(ticker: str, accession_number: str):
     success = store.store_financial_data(financials)
 
     if success:
-        logger.info(
-            f"Successfully stored financial data for {ticker} {accession_number}"
-        )
+        logger.info(f"Successfully stored financial data for {ticker} {accession_number}")
     else:
         logger.error(f"Failed to store financial data for {ticker} {accession_number}")
 
