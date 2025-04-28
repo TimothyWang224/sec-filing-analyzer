@@ -63,8 +63,7 @@ def run_pre_commit():
 
             # Run pre-commit with all hooks except our wrapper
             # Only run on staged files, not all files
-            # Add --no-stash to prevent pre-commit from stashing unstaged changes
-            cmd = ["pre-commit", "run", "--hook-stage", "pre-commit", "--no-stash"]
+            cmd = ["pre-commit", "run", "--hook-stage", "pre-commit"]
 
             # Log the command
             f.write(f"Running command: {' '.join(cmd)}\n\n")

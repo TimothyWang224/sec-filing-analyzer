@@ -21,6 +21,9 @@ repos:
         require_serial: true
         # This option tells pre-commit that this hook doesn't modify files
         always_run: true
+        # This option tells pre-commit that this hook doesn't care about file types
+        types: [text]
+        types_or: [python, yaml, toml, markdown]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.7
