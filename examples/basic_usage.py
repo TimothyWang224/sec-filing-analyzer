@@ -1,6 +1,12 @@
 import asyncio
+import sys
+from pathlib import Path
 
-from ..api import SECFilingAnalyzer
+# Add the project root to the Python path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+# Use absolute import instead of relative import
+from src.api import SECFilingAnalyzer
 
 
 async def main():

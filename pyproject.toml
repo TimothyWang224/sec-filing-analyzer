@@ -18,7 +18,8 @@ dependencies = [
     "plotly (>=5.15.0,<6.0.0)",
     "networkx (>=3.4.2,<4.0.0)",
     "pydantic (>=2.6.0,<3.0.0)",
-    "h11 (>=0.16.0,<0.17.0)"
+    "h11 (>=0.16.0,<0.17.0)",
+    "duckdb (>=1.2.2,<2.0.0)"
 ]
 
 [tool.poetry]
@@ -33,7 +34,7 @@ pydantic = ">=2.6.0,<3.0.0"
 orjson = "^3.9.1"  # Fast JSON parser
 duckdb = "^1.2.2"  # SQL database for metadata storage
 # Core LLM dependencies
-llama-index-core = "^0.10.0"
+llama-index-core = ">=0.12.0,<0.13.0"
 llama-index-llms-openai = "^0.1.0"
 llama-index-embeddings-openai = "^0.3.0"
 # Graph database
@@ -58,8 +59,8 @@ sec-edgar-downloader = "^5.0.0"
 
 # Vector database dependencies
 [tool.poetry.group.vector.dependencies]
-llama-index-vector-stores-chroma = "^0.1.0"
-chromadb = "^0.4.0"
+llama-index-vector-stores-chroma = "^0.4.0"
+chromadb = ">=0.5.17"
 faiss-cpu = "^1.10.0"
 
 # NLP dependencies
@@ -83,8 +84,16 @@ jupyter = "^1.0.0"
 notebook = "^6.5.0"
 ipywidgets = "^8.0.0"
 
+# Demo dependencies
+[tool.poetry.group.demo.dependencies]
+streamlit = "^1.31"
+plotly = "^5.15"
+humanize = "^4.9.0"
+
 [tool.poetry.scripts]
 pytest-log = "scripts.pytest_log_wrapper:main"
+chat-demo = "examples.run_chat_demo:main"
+chat-demo-web = "examples.streamlit_demo:main"
 
 [build-system]
 requires = ["poetry-core"]

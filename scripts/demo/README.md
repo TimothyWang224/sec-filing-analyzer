@@ -2,9 +2,34 @@
 
 This directory contains scripts for demonstrating the SEC Filing Analyzer's capabilities in a clean, concise way.
 
-## Demo Flow
+## Demo Options
 
-The demo shows that the project installs cleanly, ingests raw SEC filings, builds embeddings, and answers concrete finance questions—all without venturing into the trickier multi-agent graph.
+### 1. Command-Line Demo
+
+The command-line demo shows that the project installs cleanly, ingests raw SEC filings, builds embeddings, and answers concrete finance questions—all without venturing into the trickier multi-agent graph.
+
+### 2. Streamlit Demo (New!)
+
+For a more visual and interactive experience, we've added a Streamlit demo that provides a sleek, user-friendly interface for exploring the SEC Filing Analyzer's capabilities. This is perfect for recording demos with tools like Loom.
+
+To run the Streamlit demo:
+
+```bash
+# From the project root
+poetry run streamlit run scripts/demo/streamlit_demo.py
+
+# Or use the convenience scripts
+./run_demo.sh  # On macOS/Linux
+run_demo.bat   # On Windows
+```
+
+The Streamlit demo provides:
+- A clean, modern UI for interacting with the SEC Filing Analyzer
+- Interactive controls for running the ETL process
+- Visualizations of financial data
+- Quick revenue lookup functionality
+
+This is ideal for showcasing the project's capabilities in a visually appealing way.
 
 ### Step 1: Clone & Install
 

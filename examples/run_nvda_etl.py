@@ -6,10 +6,10 @@ This script processes SEC filings for NVIDIA Corporation (NVDA) for the specifie
 It downloads the filings, extracts the data, and stores it in the database.
 
 Usage:
-    python scripts/demo/run_nvda_etl.py --ticker NVDA --years 2023 2024
+    python examples/run_nvda_etl.py --ticker NVDA --years 2023 2024
 
     # Use synthetic data for testing
-    TEST_MODE=True python scripts/demo/run_nvda_etl.py --ticker NVDA --years 2023 2024
+    TEST_MODE=True python examples/run_nvda_etl.py --ticker NVDA --years 2023 2024
 """
 
 import argparse
@@ -28,6 +28,7 @@ except ImportError:
         logging.warning("python-dotenv not found, environment variables will not be loaded from .env file")
         pass
 
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -36,10 +37,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Add the project root to the Python path if needed
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Import the actual ETL pipeline components
-from scripts.demo.etl_config import ETLConfig
+from examples.etl_config import ETLConfig
 from sec_filing_analyzer.data_retrieval import SECFilingsDownloader
 from sec_filing_analyzer.pipeline.etl_pipeline import SECFilingETLPipeline
 from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
@@ -48,35 +49,16 @@ from sec_filing_analyzer.storage import GraphStore, LlamaIndexVectorStore
 def parse_args():
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description="Process SEC filings for NVIDIA Corporation")
+    parser.add_argument("--ticker", type=str, default="NVDA", help="Company ticker symbol (default: NVDA)")
+    parser.add_argument("--years", nargs="+", type=int, required=True, help="Years to process (e.g., 2023 2024)")
     parser.add_argument(
-        "--ticker",
-        type=str,
-        default="NVDA",
-        help="Company ticker symbol (default: NVDA)"
+        "--filing-types", nargs="+", default=["10-K", "10-Q"], help="Filing types to process (default: 10-K 10-Q)"
     )
     parser.add_argument(
-        "--years",
-        nargs="+",
-        type=int,
-        required=True,
-        help="Years to process (e.g., 2023 2024)"
+        "--db-path", type=str, default="data/db_backup/financial_data.duckdb", help="Path to DuckDB database"
     )
     parser.add_argument(
-        "--filing-types",
-        nargs="+",
-        default=["10-K", "10-Q"],
-        help="Filing types to process (default: 10-K 10-Q)"
-    )
-    parser.add_argument(
-        "--db-path",
-        type=str,
-        default="data/db_backup/financial_data.duckdb",
-        help="Path to DuckDB database"
-    )
-    parser.add_argument(
-        "--test-mode",
-        action="store_true",
-        help="Use synthetic data instead of downloading real filings"
+        "--test-mode", action="store_true", help="Use synthetic data instead of downloading real filings"
     )
 
     return parser.parse_args()
@@ -176,7 +158,7 @@ def main():
     if test_mode:
         setup_synthetic_mode()
         # Import the patch for SECFilingsDownloader
-        import scripts.demo.sec_downloader_patch
+        import examples.sec_downloader_patch
 
     logger.info(f"Starting ETL process for {args.ticker}")
     logger.info(f"Processing years: {', '.join(map(str, args.years))}")
