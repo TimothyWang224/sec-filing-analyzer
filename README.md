@@ -113,9 +113,34 @@ For more details, see the [Agent Parameters and Phases](docs/agent_parameters.md
 
 ## Running the Application
 
+### Quick Demo
+
+For a quick demonstration of the system's capabilities:
+
+```bash
+# Clone and install
+git clone https://github.com/TimothyWang224/sec-filing-analyzer.git
+cd sec-filing-analyzer
+poetry install --no-root
+
+# Run ETL for NVIDIA (downloads real SEC filings)
+export OPENAI_API_KEY=sk-...
+poetry run python scripts/demo/run_nvda_etl.py --ticker NVDA --years 2023
+
+# For offline testing, use synthetic data
+# TEST_MODE=True poetry run python scripts/demo/run_nvda_etl.py --ticker NVDA --years 2023
+
+# Query revenue data
+poetry run python scripts/demo/query_revenue.py --ticker NVDA --year 2023
+```
+
+The demo uses real NVIDIA SEC filings for authenticity and credibility, with a synthetic data fallback for testing. For more details, see [Demo README](scripts/demo/README.md).
+
+### Full Application
+
 To run the Streamlit application:
 
-### On Windows
+#### On Windows
 
 Simply run the batch file in the project root:
 
@@ -123,7 +148,7 @@ Simply run the batch file in the project root:
 run_app.bat
 ```
 
-### On macOS/Linux
+#### On macOS/Linux
 
 Run the Python launcher script:
 
@@ -320,7 +345,8 @@ The system uses intelligent chunking to process SEC filings:
 
 ### ETL Scripts
 
-- `scripts/run_nvda_etl.py`: Run the ETL pipeline for NVIDIA
+- `scripts/demo/run_nvda_etl.py`: Run the ETL pipeline for NVIDIA (demo version)
+- `scripts/demo/query_revenue.py`: Query revenue data for a company (demo version)
 - `scripts/test_reorganized_pipeline.py`: Test the reorganized ETL pipeline
 - `scripts/test_reorganized_structure.py`: Test the reorganized directory structure
 

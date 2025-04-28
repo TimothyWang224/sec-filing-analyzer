@@ -17,7 +17,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import the DuckDB manager
-from src.sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
+from sec_filing_analyzer.utils.duckdb_manager import duckdb_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
