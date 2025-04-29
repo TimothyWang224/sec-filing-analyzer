@@ -74,11 +74,9 @@ logger = logging.getLogger("chat_demo")
 logger.info(f"Starting SEC Filing Analyzer Chat Demo")
 logger.info(f"Log file: {log_file}")
 
-# Import *real* tools so the demo exercises production code paths.
-# These imports ensure the tools are available in the environment
-# even though they're not directly used in this simplified demo
-from src.agents.qa_specialist import QASpecialistAgent
-from src.llm.openai import OpenAILLM
+# Import the FixedChatAgent that knows how to call tools
+from examples.fixed_chat_agent import FixedChatAgent
+from src.agents.base import Goal
 
 # Import tools for documentation purposes and to ensure they're available
 # in the Python environment (they may be used by other modules)
@@ -98,26 +96,25 @@ def build_demo_agent() -> Any:
     """
     logger.info("Building demo agent")
 
-    # Create a simple QA agent with the core tools
-    agent = QASpecialistAgent(
+    # Build the demo-friendly agent that already knows how to call tools
+    agent = FixedChatAgent(
+        goals=[
+            Goal(
+                name="Answer SEC filing questions",
+                description="Answer user questions about SEC filings and financial data",
+            )
+        ],
         llm_model="gpt-4o-mini",
         llm_temperature=0.7,
         llm_max_tokens=4000,
         max_iterations=5,
+        vector_store_path="data/vector_store",  # Path to the vector store
     )
-    logger.info(f"Created QASpecialistAgent with max_iterations={5}")
+    logger.info(f"Created FixedChatAgent with max_iterations={5}")
 
-    # Initialize the LLM
-    llm = OpenAILLM(
-        model="gpt-4o-mini",
-        temperature=0.7,
-        max_tokens=4000,
-    )
-    logger.info(f"Initialized OpenAI LLM with model=gpt-4o-mini, temperature=0.7")
-
-    # Add the respond method to make it compatible with the demo interface
+    # Add a thin sync wrapper so CLI stays simple
     def respond(user_input: str) -> str:
-        """Generate a response to the user input.
+        """Generate a response to the user input using the agent's run method.
 
         Args:
             user_input: The user's input text
@@ -129,21 +126,15 @@ def build_demo_agent() -> Any:
         start_time = time.time()
 
         try:
-            # For demo purposes, we'll use a simple prompt
-            prompt = f"""
-            You are an AI assistant specialized in analyzing SEC filings and financial data.
-
-            User question: {user_input}
-
-            Please respond to this question about SEC filings or financial data.
-            If you need specific financial data, mention which metrics and companies you would look for.
-            """
-            logger.debug(f"Generated prompt: {prompt}")
-
-            # Since generate is an async method, we need to run it synchronously
+            # Use the agent's run method to process the input with tools
+            # Since run is an async method, we need to run it synchronously
             async def get_response() -> str:
-                logger.debug("Calling LLM generate method")
-                return await llm.generate(prompt)
+                logger.debug("Calling agent.run method with chat_mode=True")
+                result = await agent.run(user_input, chat_mode=True)
+                # Extract the response from the result
+                if isinstance(result, dict) and "response" in result:
+                    return result["response"]
+                return str(result)
 
             # Run the async function in a new event loop
             response = asyncio.run(get_response())
@@ -160,8 +151,7 @@ def build_demo_agent() -> Any:
             return f"Error: {str(e)}"
 
     # Add the respond method to the agent
-    # Using setattr to avoid mypy error about QASpecialistAgent not having respond attribute
-    agent.respond = respond
+    agent.respond = respond  # type: ignore[attr-defined]
     logger.info("Added respond method to agent")
 
     return agent

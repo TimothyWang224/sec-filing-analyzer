@@ -16,7 +16,6 @@ st.set_page_config(
 )
 
 import asyncio
-import importlib.util
 import logging
 import os
 import sys
@@ -43,6 +42,7 @@ try:
     from examples.simple_chat_agent import SimpleChatAgent
     from sec_filing_analyzer.config import ConfigProvider
     from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
+    from src.agents.base import Goal
 
     # Import capabilities
     from src.capabilities import (
@@ -201,6 +201,12 @@ def initialize_simple_chat_agent():
 
         # Create simple chat agent
         agent = SimpleChatAgent(
+            goals=[
+                Goal(
+                    name="Answer SEC filing questions",
+                    description="Answer user questions about SEC filings and financial data",
+                )
+            ],
             environment=environment,
             capabilities=capabilities,
             tools=tools,

@@ -1,13 +1,14 @@
 """
-Simple Chat Agent for SEC Filing Analyzer Demo.
+Fixed Simple Chat Agent for SEC Filing Analyzer Demo.
 
-This module provides a simplified chat agent for the SEC Filing Analyzer demo.
+This module provides a fixed version of the SimpleChatAgent that properly extends the Agent class.
 """
 
 import logging
 import time
 from typing import Any, Dict, List, Optional
 
+from examples.parameter_adapter import adapt_parameters
 from src.agents.base import Agent, Goal
 from src.agents.core import AgentState
 from src.capabilities.base import Capability
@@ -21,9 +22,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 
-class SimpleChatAgent(Agent):
+class FixedChatAgent(Agent):
     """
-    A simplified chat agent for the SEC Filing Analyzer demo.
+    A fixed version of the SimpleChatAgent for the SEC Filing Analyzer demo.
 
     This agent uses a limited set of tools to provide a streamlined experience
     for the demo version of the SEC Filing Analyzer.
@@ -44,10 +45,10 @@ class SimpleChatAgent(Agent):
         vector_store_path: Optional[str] = None,
     ):
         """
-        Initialize the SimpleChatAgent.
+        Initialize the FixedChatAgent.
 
         Args:
-            goals: List of goals the agent aims to achieve
+            goals: List of goals for the agent
             environment: Optional environment for the agent
             capabilities: Optional list of capabilities
             tools: Optional list of tools to use
@@ -67,6 +68,8 @@ class SimpleChatAgent(Agent):
             llm_temperature=llm_temperature,
             llm_max_tokens=llm_max_tokens,
             max_iterations=max_iterations,
+            max_tool_retries=max_tool_retries,
+            tools_per_iteration=tools_per_iteration,
         )
 
         # Initialize state
@@ -74,10 +77,6 @@ class SimpleChatAgent(Agent):
         self.state.current_iteration = 0
         self.state.start_time = time.time()
         self.state.context = {}
-
-        # Set agent parameters
-        self.max_tool_retries = max_tool_retries
-        self.tools_per_iteration = tools_per_iteration
 
         # Initialize tools if not provided
         if tools is None:
@@ -126,7 +125,7 @@ class SimpleChatAgent(Agent):
         chat_mode: bool = False,
     ) -> Dict[str, Any]:
         """
-        Run the SimpleChatAgent with the given input.
+        Run the FixedChatAgent with the given input.
 
         Args:
             user_input: The input to process
@@ -186,6 +185,78 @@ class SimpleChatAgent(Agent):
             return {"response": final_response}
 
         return final_response
+
+    async def process_with_llm_tools(self, input_text: str) -> Dict[str, Any]:
+        """
+        Process input using LLM-driven tool calling with parameter adaptation.
+
+        This method overrides the base Agent's process_with_llm_tools method to add
+        parameter adaptation for SEC tools.
+
+        Args:
+            input_text: User's input text
+
+        Returns:
+            Dictionary containing tool call results and other information
+        """
+        process_start_time = time.time()
+        self.logger.info(f"Processing input: {input_text[:100]}{'...' if len(input_text) > 100 else ''}")
+
+        # Update the agent's context with the input text
+        self.state.context["input"] = input_text
+
+        # 1. Select tools to call
+        tool_selection_start = time.time()
+        tool_calls = await self.select_tools(input_text)
+        tool_selection_duration = time.time() - tool_selection_start
+        self.logger.info(
+            f"Tool selection completed in {tool_selection_duration:.3f}s, selected {len(tool_calls)} tools"
+        )
+
+        # 2. Adapt parameters for SEC tools
+        adapted_tool_calls = []
+        for tool_call in tool_calls:
+            tool_name = tool_call.get("tool")
+            tool_args = tool_call.get("args", {})
+
+            # Check if this is an SEC tool that needs parameter adaptation
+            if tool_name in ["SECDataTool", "SECFinancialDataTool", "SECSemanticSearchTool"]:
+                # Extract query_type from args
+                query_type = tool_args.get("query_type")
+                if query_type:
+                    # Adapt parameters
+                    self.logger.info(f"Adapting parameters for {tool_name} with query_type {query_type}")
+                    adapted_args = adapt_parameters(tool_name, query_type, tool_args)
+                    adapted_tool_calls.append({"tool": tool_name, "args": adapted_args})
+                else:
+                    # If no query_type, keep original args
+                    self.logger.warning(f"No query_type found for {tool_name}, using original args")
+                    adapted_tool_calls.append(tool_call)
+            else:
+                # For non-SEC tools, keep original args
+                adapted_tool_calls.append(tool_call)
+
+        # 3. Execute adapted tool calls
+        execution_start = time.time()
+        results = await self.execute_tool_calls(adapted_tool_calls)
+        execution_duration = time.time() - execution_start
+        self.logger.info(f"Tool execution completed in {execution_duration:.3f}s")
+
+        # 4. Return results with timing information
+        total_duration = time.time() - process_start_time
+        self.logger.info(f"Total processing completed in {total_duration:.3f}s")
+
+        return {
+            "input": input_text,
+            "tool_calls": tool_calls,  # Return original tool calls for transparency
+            "adapted_tool_calls": adapted_tool_calls,  # Include adapted tool calls for debugging
+            "results": results,
+            "timing": {
+                "total": total_duration,
+                "tool_selection": tool_selection_duration,
+                "tool_execution": execution_duration,
+            },
+        }
 
     async def generate_final_response(self, user_input: str) -> str:
         """
