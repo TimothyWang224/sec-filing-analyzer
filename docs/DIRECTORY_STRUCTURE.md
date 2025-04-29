@@ -26,13 +26,30 @@ The `src` directory contains the main source code for the application:
 
 - **sec_filing_analyzer/**: Main package for the SEC Filing Analyzer
   - **agents/**: Agent implementations
-  - **config/**: Configuration classes and utilities
-  - **contracts/**: Contract classes for agent-tool interactions
   - **data_processing/**: Data processing utilities
   - **data_retrieval/**: Data retrieval utilities
+  - **embeddings/**: Embedding generation utilities
+  - **graphrag/**: Graph RAG components
+  - **llm/**: LLM integration components
   - **pipeline/**: ETL pipeline implementation
+  - **quantitative/**: Quantitative data processing
+  - **search/**: Search functionality
+  - **semantic/**: Semantic data processing
   - **storage/**: Storage utilities
+  - **tools/**: Tool implementations for agents
   - **utils/**: Utility functions
+- **agents/**: Agent implementations and core functionality
+- **capabilities/**: Agent capabilities like planning and time awareness
+- **environments/**: Environment definitions
+- **llm/**: LLM integration components
+- **memory/**: Memory implementations
+- **streamlit_app/**: Streamlit application
+- **tools/**: Tool implementations
+- **utils/**: Utility functions
+- **workflows/**: Workflow definitions
+- **contracts.py**: Contract classes for agent-tool interactions
+- **errors.py**: Error definitions
+- **api.py**: API definitions
 
 ## scripts Directory
 
@@ -49,11 +66,11 @@ The `scripts` directory contains utility scripts and tools:
   - **monitor_logs.py**: Monitor log files
 - **maintenance/**: Scripts for project maintenance
   - **organize_root_directory.py**: Organize the root directory
-  - **delete_problematic_file.py**: Delete problematic files
+  - **cleanup_root_directory.py**: Clean up the root directory
   - **list_and_delete_files.py**: List and delete files
 - **etl/**: ETL scripts for processing SEC filings
   - **run_etl_pipeline.py**: Run the ETL pipeline for multiple companies
-  - **master_etl.py**: Master ETL script with comprehensive options
+  - **run_nvda_etl.py**: Run the ETL pipeline for NVIDIA
 - **data/**: Scripts for data management and manipulation
   - **add_nvda.py**: Add NVIDIA data to the database
   - **reset_duckdb.py**: Reset the DuckDB database
@@ -71,6 +88,9 @@ The `scripts` directory contains utility scripts and tools:
 - **tests/**: Test scripts for various components
   - **test_vector_store.py**: Test the vector store
   - **test_unified_config.py**: Test the unified configuration
+- **src_scripts_backup/**: Scripts moved from src/scripts during directory consolidation
+  - Contains various development, testing, and exploration scripts
+  - See the README.md in this directory for more details
 
 ## tests Directory
 
@@ -110,5 +130,9 @@ The `docs` directory contains documentation:
 The `archive` directory contains archived files that are no longer needed but kept for reference:
 
 - **root_cleanup/**: Files moved from the root directory during cleanup
-- **old_scripts/**: Old scripts that are no longer used
-- **old_tests/**: Old tests that are no longer used
+- **batch_files/**: Old batch files for running the application
+- **db_backup/**: Old database backup files
+- **pyproject_backups/**: Backups of pyproject.toml during dependency updates
+- **scripts/**: Old scripts that are no longer used
+- **test_scripts/**: Old test scripts that are no longer used
+- **semantic/**: Old semantic processing code

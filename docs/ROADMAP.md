@@ -1,5 +1,28 @@
 # SEC Filing Analyzer Roadmap
 
+## Recently Completed Features
+
+### QA Agent Optimizations
+- ✅ Made Tool Calls Idempotent & Cacheable
+  - Implemented memoization decorator for tool caching
+  - Applied to Tool base class execute method
+  - Added cache clearing mechanism
+- ✅ Implemented Success-Criterion Short-Circuit
+  - Added success criteria checking after each tool call
+  - Extended plan schema with expected_key and output_path
+- ✅ Implemented Plan-Step ↔ Tool Contract
+  - Created formal contract using Pydantic models
+  - Added comprehensive error hierarchy
+  - Implemented validation framework
+
+### Infrastructure Improvements
+- ✅ Fixed Vector Store Initialization
+- ✅ Fixed Duplicate Schema Registry Mappings
+- ✅ Fixed Module Import Warning
+- ✅ Set Default Token Budgets
+- ✅ Reduced Log Noise
+- ✅ Fixed Database Path Inconsistency in Financial Data Tool
+
 This document outlines the planned enhancements and future development directions for the SEC Filing Analyzer project.
 
 ## Current Status
@@ -49,6 +72,12 @@ The SEC Filing Analyzer currently provides:
   - [ ] Optimize for different GPU memory constraints
   - [ ] Support for RTX 3060 with 6GB VRAM
   - [ ] Add performance metrics and comparison tools
+- [ ] Implement local GPU embedding calculation
+  - [ ] Integrate local embedding models optimized for GPU
+  - [ ] Add batch processing for efficient GPU utilization
+  - [ ] Implement model caching for faster repeated embeddings
+  - [ ] Support for high-dimensionality embeddings (~1500)
+  - [ ] Add fallback to CPU for compatibility
 
 ### 2. Advanced Search Capabilities
 
