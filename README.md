@@ -117,6 +117,8 @@ For more details, see the [Agent Parameters and Phases](docs/agent_parameters.md
 
 For a quick demonstration of the system's capabilities:
 
+#### Command-Line Demo
+
 ```bash
 # Clone and install
 git clone https://github.com/TimothyWang224/sec-filing-analyzer.git
@@ -125,16 +127,49 @@ poetry install --no-root
 
 # Run ETL for NVIDIA (downloads real SEC filings)
 export OPENAI_API_KEY=sk-...
-poetry run python scripts/demo/run_nvda_etl.py --ticker NVDA --years 2023
+poetry run python examples/run_nvda_etl.py --ticker NVDA --years 2023
 
 # For offline testing, use synthetic data
-# TEST_MODE=True poetry run python scripts/demo/run_nvda_etl.py --ticker NVDA --years 2023
+# TEST_MODE=True poetry run python examples/run_nvda_etl.py --ticker NVDA --years 2023
 
 # Query revenue data
-poetry run python scripts/demo/query_revenue.py --ticker NVDA --year 2023
+poetry run python examples/query_revenue.py --ticker NVDA --year 2023
 ```
 
-The demo uses real NVIDIA SEC filings for authenticity and credibility, with a synthetic data fallback for testing. For more details, see [Demo README](scripts/demo/README.md).
+#### Interactive Streamlit Demo
+
+For a more visual and interactive experience, we've added a Streamlit demo:
+
+```bash
+# Run the Streamlit demo
+poetry run streamlit run examples/finance_streamlit_demo.py
+
+# Or use the convenience scripts
+./run_demo.sh  # On macOS/Linux
+run_demo.bat   # On Windows
+```
+
+The Streamlit demo provides a sleek, user-friendly interface for exploring the SEC Filing Analyzer's capabilities, with interactive controls, visualizations, and quick lookup functionality. This is perfect for recording demos with tools like Loom.
+
+#### Lightweight Chat Demo
+
+We also provide a lightweight chat demo that focuses on a single agent with a limited set of tools:
+
+```bash
+# Run the CLI demo
+poetry run python examples/run_chat_demo.py
+# Or use the Poetry script
+poetry run chat-demo
+
+# Run the Streamlit demo
+poetry run streamlit run examples/streamlit_demo.py
+# Or use the Poetry script
+poetry run chat-demo-web
+```
+
+This demo is perfect for showcasing the core chat functionality without the complexity of the full hierarchical planner. For more details, see [Examples Documentation](EXAMPLES.md).
+
+All demos use real NVIDIA SEC filings for authenticity and credibility, with a synthetic data fallback for testing. For more details, see [Examples Documentation](EXAMPLES.md).
 
 ### Full Application
 
