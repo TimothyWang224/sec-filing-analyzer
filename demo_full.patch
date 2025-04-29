@@ -1,0 +1,96 @@
+diff --git a/src/sec_filing_analyzer/agents/__init__.py b/src/sec_filing_analyzer/agents/__init__.py
+index 0000000..1111aaa
+--- a/src/sec_filing_analyzer/agents/__init__.py
++++ b/src/sec_filing_analyzer/agents/__init__.py
+@@ -1,2 +1,8 @@
+-from .base import Agent, Goal
++from .base import Agent, Goal
++from .simple_chat import SimpleChatAgent  # re‑export for demo ease
++
++__all__ = [
++    "Agent",
++    "Goal",
++    "SimpleChatAgent",
++]
+diff --git a/src/sec_filing_analyzer/agents/simple_chat.py b/src/sec_filing_analyzer/agents/simple_chat.py
+new file mode 100644
+index 0000000..1111aaa
+--- /dev/null
++++ b/src/sec_filing_analyzer/agents/simple_chat.py
+@@ -0,0 +1,29 @@
++"""A bare‑bones, synchronous chat agent for demo purposes.
++
++This avoids the hierarchical planner: it just
++ 1. Receives user input,
++ 2. Lets the LLM decide whether to invoke a tool,
++ 3. Returns the final answer.
++"""
++
++from __future__ import annotations
++
++from typing import List
++
++from ..base import Agent, Goal
++
++
++class SimpleChatAgent(Agent):
++    """Single‑shot agent. Assumes all tools expose a `.run(query)` method."""
++
++    def __init__(self, tools: List[object], llm):
++        super().__init__(goal=Goal("Answer user finance questions"))
++        self.tools = tools
++        self.llm = llm
++
++    def respond(self, user_input: str) -> str:
++        # Demo heuristic: first try tools in order; fall back to LLM summary.
++        for tool in self.tools:
++            if tool.can_handle(user_input):  # type: ignore[attr-defined]
++                return tool.run(user_input)  # type: ignore[attr-defined]
++        return self.llm(user_input)
+
+diff --git a/examples/streamlit_demo.py b/examples/streamlit_demo.py
+new file mode 100644
+index 0000000..2222bbb
+--- /dev/null
++++ b/examples/streamlit_demo.py
+@@ -0,0 +1,40 @@
++"""Streamlit front‑end for the single‑agent SEC Filing Analyzer demo."""
++
++import os
++
++import streamlit as st
++import humanize
++
++from examples.run_chat_demo import build_demo_agent
++
++
++def main() -> None:
++    os.environ["SFA_DEMO_MODE"] = "1"
++
++    st.set_page_config(page_title="SEC Filing Analyzer", layout="wide")
++    st.title("📊 SEC Filing Analyzer — Demo")
++
++    agent = build_demo_agent()
++
++    # Chat UI using Streamlit Experimental chat components (built‑in v1.25+).
++    if "history" not in st.session_state:
++        st.session_state.history = []
++
++    for msg, is_user in st.session_state.history:
++        avatar = "👤" if is_user else "🤖"
++        st.chat_message("user" if is_user else "assistant", avatar=avatar).markdown(msg)
++
++    prompt = st.chat_input("Ask about an SEC filing…")
++    if prompt:
++        st.session_state.history.append((prompt, True))
++        st.chat_message("user", avatar="👤").markdown(prompt)
++
++        with st.spinner("Analyzing…"):
++            answer = agent.respond(prompt)
++
++        st.session_state.history.append((answer, False))
++        st.chat_message("assistant", avatar="🤖").markdown(answer)
++
++
++if __name__ == "__main__":
++    main()

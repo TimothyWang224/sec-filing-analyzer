@@ -18,10 +18,30 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Import logging utilities
 try:
     from src.sec_filing_analyzer.utils.logging_utils import get_standard_log_dir, setup_logging
+
+    # Create a wrapper function that returns a log file path
+    def setup_logging_with_path() -> Path:
+        """Set up logging and return the log file path."""
+        # The imported setup_logging doesn't return a value
+        setup_logging()
+
+        # Create a log file path for the chat demo
+        log_dir = get_standard_log_dir("chat_demo")
+        log_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return log_dir / f"chat_demo_{timestamp}.log"
+
 except ImportError:
     # Fallback if the logging utilities aren't available
-    def setup_logging() -> Path:
-        """Set up basic logging.
+    def get_standard_log_dir(subdir=None):
+        """Get standard log directory."""
+        base_dir = Path(".logs")
+        if subdir:
+            return base_dir / subdir
+        return base_dir
+
+    def setup_logging_with_path() -> Path:
+        """Set up basic logging and return the log file path.
 
         Returns:
             Path to the log file
@@ -39,16 +59,9 @@ except ImportError:
         )
         return log_file
 
-    def get_standard_log_dir(subdir=None):
-        """Get standard log directory."""
-        base_dir = Path(".logs")
-        if subdir:
-            return base_dir / subdir
-        return base_dir
-
 
 # Set up logging
-log_file = setup_logging()
+log_file = setup_logging_with_path()
 logger = logging.getLogger("chat_demo")
 logger.info(f"Starting SEC Filing Analyzer Chat Demo")
 logger.info(f"Log file: {log_file}")
@@ -58,6 +71,7 @@ logger.info(f"Log file: {log_file}")
 # even though they're not directly used in this simplified demo
 from src.agents.qa_specialist import QASpecialistAgent
 from src.llm.openai import OpenAILLM
+
 # Import tools for documentation purposes and to ensure they're available
 # in the Python environment (they may be used by other modules)
 # noqa: F401 tells linters to ignore unused imports
