@@ -63,7 +63,6 @@ The project's dependencies are organized into the following groups:
 We use the following tools to maintain code quality:
 
 - **Ruff**: For linting and code style checking
-- **Black**: For code formatting
 - **MyPy**: For type checking
 
 ### Pre-commit Hooks

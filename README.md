@@ -1,12 +1,38 @@
 # SEC Filing Analyzer
 
-A comprehensive tool for analyzing SEC filings using graph databases and vector embeddings.
+A comprehensive tutorial project demonstrating SEC filing analysis using graph databases and vector embeddings.
+
+## Project Status
+
+This is an educational project that demonstrates modern approaches to financial document analysis. The project itself serves as a case study in AI-assisted development, with core architecture and implementations developed through advanced LLM pair programming techniques.
+
+✅ Working Features:
+- ETL pipeline for SEC filings
+- Vector embeddings and semantic search
+- Basic financial data extraction
+- Demo chat interface
+
+🚧 Development Areas:
+- Comprehensive test coverage needed
+- Some features need refactoring
+- Known bugs in the full application UI
+- Performance optimizations pending
+
+For the most stable experience, start with the [demo applications](#quick-demo). For a detailed view of implemented features and future development plans, see our [development roadmap](docs/roadmap.md).
 
 ## Features
 
 ### Semantic Data Processing
 
-- **Intelligent Chunking**: Semantic chunking of documents with a 1500 token size for optimal retrieval
+- **Intelligent Chunking**: Two-tiered approach to document chunking:
+  - Primary: Uses edgartools' built-in understanding of SEC filing structure
+    - Preserves natural section boundaries from 10-K/10-Q forms
+    - Maintains XBRL data relationships
+    - Handles both structured (XBRL) and unstructured (text) content
+  - Fallback: Token-based chunking with 1500 token size (default)
+    - Activates if edgartools processing fails
+    - Ensures consistent processing even for non-standard documents
+    - Maintains overlap between chunks for context preservation
 - **Vector Embeddings**: Generate and store embeddings using OpenAI's API
 - **Vector Search**: Efficient similarity search using LlamaIndex
 - **Graph Database**: Store filing data in Neo4j with rich relationships
