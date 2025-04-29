@@ -12,21 +12,19 @@ from src.agents.base import Agent
 from src.agents.core import AgentState
 from src.capabilities.base import Capability
 from src.environments.base import Environment
+from src.tools.sec_data import SECDataTool
 from src.tools.sec_financial_data import SECFinancialDataTool
 from src.tools.sec_semantic_search import SECSemanticSearchTool
-from src.tools.sec_data import SECDataTool
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 class SimpleChatAgent(Agent):
     """
     A simplified chat agent for the SEC Filing Analyzer demo.
-    
+
     This agent uses a limited set of tools to provide a streamlined experience
     for the demo version of the SEC Filing Analyzer.
     """
@@ -46,7 +44,7 @@ class SimpleChatAgent(Agent):
     ):
         """
         Initialize the SimpleChatAgent.
-        
+
         Args:
             environment: Optional environment for the agent
             capabilities: Optional list of capabilities
@@ -67,17 +65,17 @@ class SimpleChatAgent(Agent):
             llm_max_tokens=llm_max_tokens,
             max_iterations=max_iterations,
         )
-        
+
         # Initialize state
         self.state = AgentState()
         self.state.current_iteration = 0
         self.state.start_time = time.time()
         self.state.context = {}
-        
+
         # Set agent parameters
         self.max_tool_retries = max_tool_retries
         self.tools_per_iteration = tools_per_iteration
-        
+
         # Initialize tools if not provided
         if tools is None:
             self.tools = [
@@ -87,10 +85,10 @@ class SimpleChatAgent(Agent):
             ]
         else:
             self.tools = tools
-            
+
         # Create a mapping of tool names to tools
         self.tool_map = {tool.__class__.__name__: tool for tool in self.tools}
-        
+
         # Set up the system prompt
         self.system_prompt = f"""
         You are an AI assistant specialized in analyzing SEC filings and financial data.
@@ -117,7 +115,7 @@ class SimpleChatAgent(Agent):
         
         You are in DEMO MODE, which means you have access to a limited set of data and functionality.
         """
-    
+
     async def run(
         self,
         user_input: str,
@@ -126,12 +124,12 @@ class SimpleChatAgent(Agent):
     ) -> Dict[str, Any]:
         """
         Run the SimpleChatAgent with the given input.
-        
+
         Args:
             user_input: The input to process
             memory: Optional memory to initialize with
             chat_mode: Whether to format the response for chat interface
-            
+
         Returns:
             Dictionary containing the agent's response and any additional data
         """
@@ -139,58 +137,60 @@ class SimpleChatAgent(Agent):
         if memory:
             for item in memory:
                 self.state.add_memory_item(item)
-                
+
         # Initialize capabilities
         for capability in self.capabilities:
             await capability.init(self, {"input": user_input})
-                
+
         # Add the user input to the context
         self.state.context["input"] = user_input
-        
+
         # Reset iteration counter
         self.state.current_iteration = 0
-        
+
         # Main agent loop
         while not self.should_terminate():
             # Start of loop capabilities
             for capability in self.capabilities:
                 if not await capability.start_agent_loop(self, {"input": user_input}):
                     break
-            
+
             # Process the input with tools
             self.state.current_iteration += 1
             logger.info(f"Starting iteration {self.state.current_iteration}")
-            
+
             # Process with LLM-driven tool calling
             tool_results = await self.process_with_llm_tools(user_input)
-            
+
             # Add results to memory
-            self.add_to_memory({
-                "type": "tool_results",
-                "content": tool_results,
-                "iteration": self.state.current_iteration,
-            })
-            
+            self.add_to_memory(
+                {
+                    "type": "tool_results",
+                    "content": tool_results,
+                    "iteration": self.state.current_iteration,
+                }
+            )
+
             # End of loop capabilities
             for capability in self.capabilities:
                 await capability.end_agent_loop(self, {"input": user_input, "results": tool_results})
-        
+
         # Generate final response
         final_response = await self.generate_final_response(user_input)
-        
+
         # Format response for chat mode if requested
         if chat_mode:
             return {"response": final_response}
-        
+
         return final_response
-    
+
     async def generate_final_response(self, user_input: str) -> str:
         """
         Generate a final response based on the memory and context.
-        
+
         Args:
             user_input: The original user input
-            
+
         Returns:
             The final response as a string
         """
@@ -199,7 +199,7 @@ class SimpleChatAgent(Agent):
         for item in self.state.memory:
             if item.get("type") == "tool_results":
                 tool_results.append(item.get("content", {}))
-        
+
         # Create a prompt for the final response
         prompt = f"""
         Based on the user's question and the tool results, provide a comprehensive answer.
@@ -216,8 +216,8 @@ class SimpleChatAgent(Agent):
         4. Be well-organized and easy to understand
         5. Acknowledge any limitations or uncertainties
         """
-        
+
         # Generate the final response
         response = await self.llm.generate(prompt)
-        
+
         return response

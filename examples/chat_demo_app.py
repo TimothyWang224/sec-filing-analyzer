@@ -27,9 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Check for demo mode
@@ -41,26 +39,25 @@ if not DEMO_MODE:
 # Import agent components
 imports_successful = True
 try:
+    # Import the SimpleChatAgent
+    from examples.simple_chat_agent import SimpleChatAgent
     from sec_filing_analyzer.config import ConfigProvider
     from sec_filing_analyzer.llm.llm_config import LLMConfigFactory
 
-    # Import the SimpleChatAgent
-    from examples.simple_chat_agent import SimpleChatAgent
-    
     # Import capabilities
     from src.capabilities import (
         LoggingCapability,
         TimeAwarenessCapability,
     )
-    
+
     # Import environment
     from src.environments import FinancialEnvironment
-    
+    from src.tools.sec_data import SECDataTool
+
     # Import tools
     from src.tools.sec_financial_data import SECFinancialDataTool
     from src.tools.sec_semantic_search import SECSemanticSearchTool
-    from src.tools.sec_data import SECDataTool
-    
+
 except ImportError as e:
     st.error(f"Error importing SEC Filing Analyzer components: {e}")
     st.warning(
@@ -173,6 +170,7 @@ demo_vector_store_path = st.sidebar.text_input(
     help="Path to the demo vector store (leave as is unless you know what you're doing)",
 )
 
+
 # Function to initialize the simple chat agent
 def initialize_simple_chat_agent():
     """Initialize the simple chat agent with capabilities."""
@@ -237,9 +235,7 @@ if st.sidebar.button("Reset Chat"):
     st.rerun()
 
 # Update agent button
-if st.session_state.agent_initialized and st.sidebar.button(
-    "Update Agent Configuration"
-):
+if st.session_state.agent_initialized and st.sidebar.button("Update Agent Configuration"):
     with st.spinner("Updating agent configuration..."):
         # Create a new agent with updated configuration
         st.session_state.agent = initialize_simple_chat_agent()
@@ -273,9 +269,7 @@ if st.session_state.agent_initialized:
             try:
                 # Run the agent with chat mode enabled
                 start_time = time.time()
-                response = asyncio.run(
-                    st.session_state.agent.run(user_input, chat_mode=True)
-                )
+                response = asyncio.run(st.session_state.agent.run(user_input, chat_mode=True))
                 elapsed_time = time.time() - start_time
 
                 # Extract the response content
@@ -289,28 +283,20 @@ if st.session_state.agent_initialized:
                     agent_response = str(response)
 
                 # Add processing time information
-                agent_response += (
-                    f"\n\n*Response generated in {elapsed_time:.2f} seconds*"
-                )
+                agent_response += f"\n\n*Response generated in {elapsed_time:.2f} seconds*"
 
                 # Update the message placeholder
                 message_placeholder.markdown(agent_response)
 
                 # Add assistant message to chat
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": agent_response}
-                )
+                st.session_state.messages.append({"role": "assistant", "content": agent_response})
 
             except Exception as e:
                 error_message = f"Error: {str(e)}"
                 message_placeholder.markdown(error_message)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": error_message}
-                )
+                st.session_state.messages.append({"role": "assistant", "content": error_message})
 else:
-    st.info(
-        "Please initialize the agent using the button in the sidebar to start chatting."
-    )
+    st.info("Please initialize the agent using the button in the sidebar to start chatting.")
 
 # Demo notice
 st.sidebar.markdown("---")

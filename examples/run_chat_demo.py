@@ -3,8 +3,8 @@
 Lightweight single-agent chat demo using sample data or fixtures.
 """
 
-import os
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -12,13 +12,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Import *real* tools so the demo exercises production code paths.
-from src.tools.sec_semantic_search import SECSemanticSearchTool
-from src.tools.sec_financial_data import SECFinancialDataTool
-from src.tools.sec_data import SECDataTool
-
 # Import the agent base class
 from src.agents.qa_specialist import QASpecialistAgent
 from src.llm.openai import OpenAILLM
+from src.tools.sec_data import SECDataTool
+from src.tools.sec_financial_data import SECFinancialDataTool
+from src.tools.sec_semantic_search import SECSemanticSearchTool
 
 
 def build_demo_agent():
@@ -73,7 +72,9 @@ def build_demo_agent():
 def main() -> None:
     parser = argparse.ArgumentParser(description="SEC Filing Analyzer demo chat")
     parser.add_argument(
-        "--demo", action="store_true", default=True,
+        "--demo",
+        action="store_true",
+        default=True,
         help="(flag kept for symmetry; always true in demo script)",
     )
     _ = parser.parse_args()
