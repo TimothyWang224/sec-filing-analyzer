@@ -161,7 +161,7 @@ def build_demo_agent() -> Any:
 
     # Add the respond method to the agent
     # Using setattr to avoid mypy error about QASpecialistAgent not having respond attribute
-    setattr(agent, "respond", respond)
+    agent.respond = respond
     logger.info("Added respond method to agent")
 
     return agent
