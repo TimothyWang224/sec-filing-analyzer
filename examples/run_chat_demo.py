@@ -11,6 +11,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional, Union
 
 # Add the project root to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -33,8 +34,15 @@ try:
 
 except ImportError:
     # Fallback if the logging utilities aren't available
-    def get_standard_log_dir(subdir=None):
-        """Get standard log directory."""
+    def get_standard_log_dir(subdir: Optional[str] = None) -> Path:
+        """Get standard log directory.
+
+        Args:
+            subdir: Optional subdirectory within the logs directory
+
+        Returns:
+            Path to the standard log directory
+        """
         base_dir = Path(".logs")
         if subdir:
             return base_dir / subdir
@@ -82,8 +90,12 @@ from src.tools.sec_semantic_search import SECSemanticSearchTool  # noqa: F401
 logger.info("Imported required modules and tools")
 
 
-def build_demo_agent():
-    """Return a stripped-down agent with just a few core tools."""
+def build_demo_agent() -> Any:
+    """Return a stripped-down agent with just a few core tools.
+
+    Returns:
+        An agent with a respond method for generating responses to user input
+    """
     logger.info("Building demo agent")
 
     # Create a simple QA agent with the core tools
@@ -104,8 +116,15 @@ def build_demo_agent():
     logger.info(f"Initialized OpenAI LLM with model=gpt-4o-mini, temperature=0.7")
 
     # Add the respond method to make it compatible with the demo interface
-    def respond(user_input):
-        """Generate a response to the user input."""
+    def respond(user_input: str) -> str:
+        """Generate a response to the user input.
+
+        Args:
+            user_input: The user's input text
+
+        Returns:
+            The generated response text
+        """
         logger.info(f"Received user input: {user_input}")
         start_time = time.time()
 
@@ -122,7 +141,7 @@ def build_demo_agent():
             logger.debug(f"Generated prompt: {prompt}")
 
             # Since generate is an async method, we need to run it synchronously
-            async def get_response():
+            async def get_response() -> str:
                 logger.debug("Calling LLM generate method")
                 return await llm.generate(prompt)
 
@@ -141,7 +160,8 @@ def build_demo_agent():
             return f"Error: {str(e)}"
 
     # Add the respond method to the agent
-    agent.respond = respond
+    # Using setattr to avoid mypy error about QASpecialistAgent not having respond attribute
+    setattr(agent, "respond", respond)
     logger.info("Added respond method to agent")
 
     return agent
@@ -200,7 +220,7 @@ def main() -> None:
 
             # Get response from agent
             interaction_start = time.time()
-            reply = agent.respond(user_input)
+            reply = agent.respond(user_input)  # type: ignore[attr-defined]
             interaction_time = time.time() - interaction_start
 
             # Log and print the response
